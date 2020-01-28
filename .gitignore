@@ -439,3 +439,4 @@ out/build/x86-Debug/.cmake/api/v1/reply/target-enet-Debug-d301abed48f6c38bdcfb.j
 out/build/x86-Debug/.cmake/api/v1/reply/index-2020-01-28T12-30-44-0946.json
 out/build/x86-Debug/.cmake/api/v1/reply/codemodel-v2-3eaabe43603befc605b1.json
 out/build/x86-Debug/.cmake/api/v1/reply/target-cmake-main-Debug-70eff68e1e381b42992e.json
+*.xml
