@@ -3,4 +3,4 @@ project(BeamNG-MP-Server)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(untitled src/main.cpp)
+add_executable(untitled main.cpp)
