@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 project(BeamNG-MP-Server)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(cmake-main src/main.cpp src/network.cpp src/logger.cpp)
+add_executable(cmake-main src/main.cpp src/network.cpp src/logger.cpp src/config.cpp)
 ADD_LIBRARY(
 	enet STATIC
 	enet.lib
