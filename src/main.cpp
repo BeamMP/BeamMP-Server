@@ -9,6 +9,5 @@
 int main() {
 	// ALL > DEBUG > INFO > WARN > ERROR > OFF
 	setLoggerLevel("ALL");
-
 	startRUDP("localhost", 30814);
 }

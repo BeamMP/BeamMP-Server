@@ -2,29 +2,30 @@
 // Created by jojos38 on 28.01.2020.
 //
 
+
 #include "logger.h"
 using namespace std;
 
-int level = 0;
+int loggerlevel;
 
 void setLoggerLevel(char level_string[]) {
     if (!strcmp(level_string, "ALL"))
-        level = 0;
+        loggerlevel = 0;
 
     if (!strcmp(level_string, "DEBUG"))
-        level = 1;
+        loggerlevel = 1;
 
     if (!strcmp(level_string, "INFO"))
-        level = 2;
+        loggerlevel = 2;
 
     if (!strcmp(level_string, "WARN"))
-        level = 3;
+        loggerlevel = 3;
 
     if (!strcmp(level_string, "ERROR"))
-        level = 4;
+        loggerlevel = 4;
 
     if (!strcmp(level_string, "OFF"))
-        level = 5;
+        loggerlevel = 5;
 }
 
 stringstream getDate() {
@@ -71,6 +72,7 @@ stringstream getDate() {
     return date;
 }
 
+/*
 void info(char obj[]) {
     if (level <= 2)
         cout << getDate().str() << "\u001b[36m" << "[INFO]" << "\u001b[0m" << " " << obj << endl;
@@ -89,4 +91,4 @@ void warn(char obj[]) {
 void debug(char obj[]) {
     if (level <= 1)
         cout << getDate().str() << "\u001b[35m" << "[DBUG]" << "\u001b[0m" << " " << obj << endl;
-}
+}*/
