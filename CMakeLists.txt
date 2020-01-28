@@ -3,8 +3,7 @@ project(BeamNG-MP-Server)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(cmake-main src/main.cpp)
-
+add_executable(cmake-main src/main.cpp src/network.cpp src/logger.cpp)
 ADD_LIBRARY(
 	enet STATIC
 	enet.lib
