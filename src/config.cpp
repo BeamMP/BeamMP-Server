@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include "logger.h"
 using namespace std; //nameSpace STD
 void GenerateConfig();
 string RemoveComments(string Line);
@@ -23,7 +24,7 @@ void ParseConfig(){
     ifstream InFileStream;
     InFileStream.open("Server.cfg");
     if(InFileStream.good()){ //Checks if Config Exists
-        cout << "Config Found Updating Values \n\n";
+        info("Config Found Updating Values");
         string line;
         int index = 1;
         while (getline(InFileStream, line)) {
@@ -35,7 +36,7 @@ void ParseConfig(){
         }
         SetMainValues(D,P,M,S); //gives the values to Main
     }else{
-        cout << "Config Not Found Generating A new One \n";
+        info("Config Not Found Generating A new One");
         GenerateConfig();
     }
     InFileStream.close();

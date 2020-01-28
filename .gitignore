@@ -440,3 +440,8 @@ out/build/x86-Debug/.cmake/api/v1/reply/index-2020-01-28T12-30-44-0946.json
 out/build/x86-Debug/.cmake/api/v1/reply/codemodel-v2-3eaabe43603befc605b1.json
 out/build/x86-Debug/.cmake/api/v1/reply/target-cmake-main-Debug-70eff68e1e381b42992e.json
 *.xml
+out/build/x86-Debug/.cmake/api/v1/reply/target-enet-Debug-48db38ae5d08e27876b8.json
+out/build/x86-Debug/.cmake/api/v1/reply/target-cmake-main-Debug-540e487569703b71c785.json
+out/build/x86-Debug/.cmake/api/v1/reply/index-2020-01-28T17-35-38-0764.json
+out/build/x86-Debug/.cmake/api/v1/reply/codemodel-v2-6a61e390ef8eaf17e9f8.json
+out/build/x86-Debug/Server.cfg
