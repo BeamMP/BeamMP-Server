@@ -5,17 +5,17 @@
 #include "main.h"
 #include <iostream>
 #include <string>
-#include "enet/enet.h"
-#include "network.h"
 #include "logger.h"
 
 using namespace std; //nameSpace STD
 
 void DebugData();
 void ParseConfig();
+void ServerMain(int Port, int MaxClients);
 
 bool Debug = false;
-int Port = 30813;
+int Port = 30814;
+int MaxClients = 10;
 string MapName = "levels/gridmap/level.json";
 string ServerName = "BeamNG-MP FTW";
 
@@ -26,21 +26,24 @@ int main() {
         DebugData(); //Prints Debug Data
     }
     setLoggerLevel("ALL");
-    startRUDP("localhost", 30814);
+
+    ServerMain(Port, MaxClients);
 }
 
 
 void DebugData(){
     cout << "Debug : true" << "\n";
     cout << "Port : " << Port << "\n";
+    cout << "MaxPlayers : " << MaxClients << "\n";
     cout << "MapName : " << MapName << "\n";
     cout << "ServerName : " << ServerName << "\n";
 }
 
-void SetMainValues(bool D, int P,string Name,string serverName){
+void SetMainValues(bool D, int P,int MP,string Name,string serverName){
     Debug = D;
     Port = P;
     MapName = Name;
     ServerName = serverName;
+    MaxClients = MP;
 }
 

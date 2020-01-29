@@ -12,9 +12,10 @@ void GenerateConfig();
 string RemoveComments(string Line);
 string convertToString(char* a, int size);
 void SetValues(string Line, int Index);
-void SetMainValues(bool D,int P,string Name,string serverName);
+void SetMainValues(bool D,int P,int MP,string Name,string serverName);
 bool D;
 int P;
+int MP;
 string M;
 string S;
 
@@ -34,7 +35,7 @@ void ParseConfig(){
                 index++;
             }
         }
-        SetMainValues(D,P,M,S); //gives the values to Main
+        SetMainValues(D,P,MP,M,S); //gives the values to Main
     }else{
         info("Config Not Found Generating A new One");
         GenerateConfig();
@@ -48,7 +49,7 @@ void SetValues(string Line, int Index) {
     int i = 0, state = 0;
     char Data[50] = "";
     bool Switch = false;
-    if (Index > 2) { Switch = true; }
+    if (Index > 3) { Switch = true; }
     for (char &c : Line) {
         if (Switch) {
             if (c == '\"') { state++; }
@@ -75,9 +76,11 @@ void SetValues(string Line, int Index) {
             break;
         case 2 : P = stoi(Data, &sz);//sets the Port
             break;
-        case 3 : M = Data; //Map
+        case 3 : MP = stoi(Data, &sz);//sets the Max Amount of player
             break;
-        case 4 : S = Data; //Name
+        case 4 : M = Data; //Map
+            break;
+        case 5 : S = Data; //Name
     }
 }
 
@@ -89,7 +92,8 @@ void GenerateConfig(){
     FileStream.open ("Server.cfg");
     FileStream << "# This is the BeamNG-MP Server Configuration File\n"
                   "Debug = false # true or false to enable debug console output\n"
-                  "Port = 30813 # Port to run the server on\n"
+                  "Port = 30814 # Port to run the server on\n"
+                  "MaxClients = 10 # Maximum Amount of Clients\n"
                   "Map = \"levels/gridmap/level.json\"\n"
                   "Name = \"BeamNG-MP FTW\"";
     FileStream.close();
