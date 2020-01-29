@@ -1,5 +1,5 @@
 //
-// Created by Антон on 28.01.2020.
+// Created by Anonymous275 on 28.01.2020.
 //
 
 #ifndef BEAMNG_MP_SERVER_MAIN_H
