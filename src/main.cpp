@@ -7,6 +7,8 @@
 #include <string>
 #include <fstream>
 #include "logger.h"
+#include <chrono>
+#include <thread>
 
 using namespace std; //nameSpace STD
 void DebugData();
@@ -22,8 +24,8 @@ string ServerName = "BeamNG-MP FTW";
 
 //Entry
 int main() {
-    ParseConfig();
     LogInit();
+    ParseConfig();
     if(Debug){ //checks if debug is on
         DebugData(); //Prints Debug Data
     }
@@ -49,12 +51,9 @@ void SetMainValues(bool D, int P,int MP,string Name,string serverName){
 }
 
 void LogInit(){
-    ifstream InFileStream;
-    InFileStream.open("Server.log");
-    if(InFileStream.good()){
-        remove("Server.log");
-    }
-    InFileStream.close();
+    ofstream LFS;
+    LFS.open ("Server.log");
+    LFS.close();
 }
 
 void addToLog(basic_string<char> Data){

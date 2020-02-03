@@ -52,14 +52,14 @@ void ServerMain(int Port, int MaxClients) {
 
 
     /* create a server */
-    info("starting server with a maximum of " + to_string(MaxClients) + " Clients...\n");
+    info("starting server with a maximum of " + to_string(MaxClients) + " Clients...");
     server = enet_host_create(&address, MaxClients, 2, 0, 0);
     if (server == NULL) {
-        error("An error occurred while trying to create a server host.\n");
+        error("An error occurred while trying to create a server host.");
         return;
     }
 
-    info("Waiting for clients on port "+to_string(Port)+"...\n");
+    info("Waiting for clients on port "+to_string(Port)+"...");
 
     while (true) {
         host_server(server);
