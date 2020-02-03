@@ -1,6 +1,9 @@
 #define ENET_IMPLEMENTATION
 #include "enet.h"
+#include <string>
 #include <stdio.h>
+#include "../logger.h"
+
 void ParseData(size_t Length, enet_uint8* Data, char* Sender, enet_uint8 ChannelID); //Data Parser
 void host_server(ENetHost *server) {
     ENetEvent event;
@@ -49,14 +52,14 @@ void ServerMain(int Port, int MaxClients) {
 
 
     /* create a server */
-    printf("starting server with a maximum of %d Clients...\n",MaxClients);
+    info("starting server with a maximum of " + to_string(MaxClients) + " Clients...\n");
     server = enet_host_create(&address, MaxClients, 2, 0, 0);
     if (server == NULL) {
-        printf("An error occurred while trying to create a server host.\n");
+        error("An error occurred while trying to create a server host.\n");
         return;
     }
 
-    printf("Waiting for clients on port %d...\n",Port);
+    info("Waiting for clients on port "+to_string(Port)+"...\n");
 
     while (true) {
         host_server(server);

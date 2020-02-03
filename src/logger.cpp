@@ -3,9 +3,10 @@
 //
 
 
+#include <fstream>
 #include "logger.h"
+void addToLog(basic_string<char> Data);
 using namespace std;
-
 int loggerlevel;
 
 void setLoggerLevel(char level_string[]) {
@@ -72,23 +73,40 @@ stringstream getDate() {
     return date;
 }
 
-/*
-void info(char obj[]) {
-    if (level <= 2)
-        cout << getDate().str() << "\u001b[36m" << "[INFO]" << "\u001b[0m" << " " << obj << endl;
+
+
+
+
+
+
+
+
+void info(basic_string<char> toPrint) {
+    if (loggerlevel <= 2){
+        cout << getDate().str() << "[INFO] " << toPrint << endl;
+        addToLog(getDate().str() + "[INFO] " + toPrint + "\n");
+    }
 }
 
-void error(char obj[]) {
-    if (level <= 4)
-        cout << getDate().str() << "\x1B[31m" << "[ERRO]" << "\u001b[0m" << " " << obj << endl;
+void error(basic_string<char> toPrint) {
+    if (loggerlevel <= 4) {
+        cout << getDate().str() << "[ERROR] " << toPrint << endl;
+        addToLog(getDate().str() + "[ERROR] " + toPrint + "\n");
+    }
 }
 
-void warn(char obj[]) {
-    if (level <= 3)
-        cout << getDate().str() << "\u001b[33m" << "[WARN]" << "\u001b[0m" << " " << obj << endl;
+
+void warn(basic_string<char> toPrint) {
+    if (loggerlevel <= 3) {
+        cout << getDate().str() << "[WARN] " << toPrint << endl;
+        addToLog(getDate().str() + "[WARN] " + toPrint + "\n");
+    }
 }
 
-void debug(char obj[]) {
-    if (level <= 1)
-        cout << getDate().str() << "\u001b[35m" << "[DBUG]" << "\u001b[0m" << " " << obj << endl;
-}*/
+
+void debug(basic_string<char> toPrint) {
+    if (loggerlevel <= 1) {
+        cout << getDate().str() << "[DEBUG] " << toPrint << endl;
+        addToLog(getDate().str() + "[DEBUG] " + toPrint + "\n");
+    }
+}
