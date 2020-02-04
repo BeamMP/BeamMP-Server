@@ -1,22 +1,33 @@
+//
+// Created by Anonymous275 on 4/2/2020.
+//
+
 #define ENET_IMPLEMENTATION
 #include "enet.h"
 #include <string>
 #include <stdio.h>
 #include "../logger.h"
+void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
+void NameRequest(ENetPeer*peer);
+void SendToAll(ENetHost *server,ENetEvent event);
+ENetPacket* packet;
 
-void ParseData(size_t Length, enet_uint8* Data, char* Sender, enet_uint8 ChannelID); //Data Parser
+
 void host_server(ENetHost *server) {
     ENetEvent event;
     while (enet_host_service(server, &event, 2) > 0) {
         switch (event.type) {
             case ENET_EVENT_TYPE_CONNECT:
-                printf("new Client Connected ::1:%u.\n", event.peer->address.port);
-
+                 printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port); //Help xD
                 //the data should be the client info could be name for now it's Client information
+                NameRequest(event.peer);
                 event.peer->data = (void *)"Client information";
+
+                SendToAll(server,event);
+
                 break;
             case ENET_EVENT_TYPE_RECEIVE:
-                ParseData(event.packet->dataLength,event.packet->data, (char *)event.peer->data, event.channelID); //We grab and Parse the Data
+                ParseData(event.packet,event.peer/*->dataLength,event.packet->data, (char *)event.peer->data, event.channelID*/); //We grab and Parse the Data
                 /* Clean up the packet now that we're done using it. */
                 enet_packet_destroy (event.packet);
                 break;
@@ -28,7 +39,7 @@ void host_server(ENetHost *server) {
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
-                printf ("%s timeout.\n", (char *)event.peer->data);
+                printf ("%s timed out.\n", (char *)event.peer->data);
                 event.peer->data = NULL;
                 break;
 
@@ -47,11 +58,10 @@ void ServerMain(int Port, int MaxClients) {
 
     ENetAddress address = {0};
 
-    address.host = ENET_HOST_ANY; /* Bind the server to the default localhost. */
-    address.port = Port; /* Bind the server to port 7777. */
+    address.host = ENET_HOST_ANY; //Bind the server to the default localhost.
+    address.port = Port; // Sets the port
 
-
-    /* create a server */
+    //create a server
     info("starting server with a maximum of " + to_string(MaxClients) + " Clients...");
     server = enet_host_create(&address, MaxClients, 2, 0, 0);
     if (server == NULL) {
@@ -69,4 +79,3 @@ void ServerMain(int Port, int MaxClients) {
     enet_deinitialize();
     return;
 }
-
