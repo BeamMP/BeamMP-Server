@@ -18,7 +18,7 @@ void ServerMain(int Port, int MaxClients);
 bool Debug = false;
 void addToLog(basic_string<char> Data);
 int Port = 30814;
-int MaxClients = 10;
+int MaxPlayers = 10;
 string MapName = "levels/gridmap/level.json";
 string ServerName = "BeamNG-MP FTW";
 
@@ -30,14 +30,14 @@ int main() {
         DebugData(); //Prints Debug Data
     }
     setLoggerLevel("ALL");
-    ServerMain(Port, MaxClients);
+    ServerMain(Port, MaxPlayers);
 }
 
 
 void DebugData(){
     cout << "Debug : true" << "\n";
     cout << "Port : " << Port << "\n";
-    cout << "MaxPlayers : " << MaxClients << "\n";
+    cout << "MaxPlayers : " << MaxPlayers << "\n";
     cout << "MapName : " << MapName << "\n";
     cout << "ServerName : " << ServerName << "\n";
 }
@@ -47,7 +47,7 @@ void SetMainValues(bool D, int P,int MP,string Name,string serverName){
     Port = P;
     MapName = Name;
     ServerName = serverName;
-    MaxClients = MP;
+    MaxPlayers = MP;
 }
 
 void LogInit(){

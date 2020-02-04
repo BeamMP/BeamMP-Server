@@ -93,7 +93,7 @@ void GenerateConfig(){
     FileStream << "# This is the BeamNG-MP Server Configuration File\n"
                   "Debug = false # true or false to enable debug console output\n"
                   "Port = 30814 # Port to run the server on\n"
-                  "MaxClients = 10 # Maximum Amount of Clients\n"
+                  "MaxPlayers = 10 # Maximum Amount of Clients\n"
                   "Map = \"levels/gridmap/level.json\"\n"
                   "Name = \"BeamNG-MP FTW\"";
     FileStream.close();
