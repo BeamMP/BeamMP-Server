@@ -17,6 +17,7 @@ void ParseConfig();
 void ServerMain(int Port, int MaxClients);
 bool Debug = false;
 void addToLog(basic_string<char> Data);
+void HeartbeatInit();
 int Port = 30814;
 int MaxClients = 10;
 string MapName = "levels/gridmap/level.json";
@@ -25,6 +26,7 @@ string ServerName = "BeamNG-MP FTW";
 //Entry
 int main() {
     LogInit();
+    HeartbeatInit();
     ParseConfig();
     if(Debug){ //checks if debug is on
         DebugData(); //Prints Debug Data
