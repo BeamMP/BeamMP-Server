@@ -32,6 +32,8 @@ int main() {
         DebugData(); //Prints Debug Data
     }
     setLoggerLevel("ALL");
+
+
     ServerMain(Port, MaxPlayers);
 }
 

@@ -21,7 +21,9 @@ void host_server(ENetHost *server) {
                  printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port); //Help xD
                 //the data should be the client info could be name for now it's Client information
                 NameRequest(event.peer);
-                event.peer->data = (void *)"Client information";
+                event.peer->Name = (void *)"Client information";
+                event.peer->gameVehicleID[0] = 15;
+                event.peer->serverVehicleID = 17;
 
                 SendToAll(server,event);
 
@@ -33,14 +35,14 @@ void host_server(ENetHost *server) {
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
-                printf ("%s disconnected.\n", (char *)event.peer->data);
+                printf ("%s disconnected.\n", (char *)event.peer->Name);
                 // Reset the peer's client information.
-                event.peer->data = NULL;
+                event.peer->Name = NULL;
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
-                printf ("%s timed out.\n", (char *)event.peer->data);
-                event.peer->data = NULL;
+                printf ("%s timed out.\n", (char *)event.peer->Name);
+                event.peer->Name = NULL;
                 break;
 
             case ENET_EVENT_TYPE_NONE: break;

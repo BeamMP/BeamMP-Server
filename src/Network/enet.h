@@ -637,7 +637,9 @@ extern "C" {
         enet_uint8        outgoingSessionID;
         enet_uint8        incomingSessionID;
         ENetAddress       address; /**< Internet address of the peer */
-        void *            data;    /**< Application private data, may be freely modified */
+        void *            Name;    /**< Application private data, may be freely modified */
+        int               gameVehicleID[50]; //added By Anonymous275
+        int               serverVehicleID; //added By Anonymous275
         ENetPeerState     state;
         ENetChannel *     channels;
         size_t            channelCount;      /**< Number of channels allocated for communication with peer */
@@ -3438,11 +3440,11 @@ extern "C" {
     }
 
     void * enet_peer_get_data(ENetPeer *peer) {
-        return (void *) peer->data;
+        return (void *) peer->Name;
     }
 
-    void enet_peer_set_data(ENetPeer *peer, const void *data) {
-        peer->data = (enet_uint32 *) data;
+    void enet_peer_set_data(ENetPeer *peer, const void *Name) {
+        peer->Name = (enet_uint32 *) Name;
     }
 
     void * enet_packet_get_data(ENetPacket *packet) {
@@ -4417,7 +4419,7 @@ extern "C" {
             currentPeer->host = host;
             currentPeer->incomingPeerID    = currentPeer - host->peers;
             currentPeer->outgoingSessionID = currentPeer->incomingSessionID = 0xFF;
-            currentPeer->data = NULL;
+            currentPeer->Name = NULL;
 
             enet_list_clear(&currentPeer->acknowledgements);
             enet_list_clear(&currentPeer->sentReliableCommands);
