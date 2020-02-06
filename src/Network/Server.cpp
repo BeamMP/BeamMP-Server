@@ -55,7 +55,6 @@ void ServerMain(int Port, int MaxClients) {
     }
 
     ENetHost *server;
-
     ENetAddress address = {0};
 
     address.host = ENET_HOST_ANY; //Bind the server to the default localhost.

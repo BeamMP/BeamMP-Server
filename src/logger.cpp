@@ -36,9 +36,9 @@ stringstream getDate() {
     
     int month = 1 + ltm->tm_mon;
     int day = ltm->tm_mday;
-    int hours = 1 + ltm->tm_hour;
-    int minutes = 1 + ltm->tm_min;
-    int seconds = 1 + ltm->tm_sec;
+    int hours = ltm->tm_hour;
+    int minutes = ltm->tm_min;
+    int seconds = ltm->tm_sec;
 
     string month_string;
     if (month < 10) month_string = "0" + to_string(month);

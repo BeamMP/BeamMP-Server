@@ -2,8 +2,6 @@
 // Created by Anonymous275 on 4/2/2020.
 //
 
-#define LOGGER_H
-
 #include <iostream>
 #include <ctime>
 #include <sstream>
