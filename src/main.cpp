@@ -32,8 +32,6 @@ int main() {
         DebugData(); //Prints Debug Data
     }
     setLoggerLevel("ALL");
-
-
     ServerMain(Port, MaxPlayers);
 }
 
@@ -61,18 +59,8 @@ void LogInit(){
 }
 
 void addToLog(basic_string<char> Data){
-    basic_string<char> LogData = "";
-    ifstream InFileStream;
-    InFileStream.open("Server.log");
-    if(InFileStream.good()){
-        string line;
-        while (getline(InFileStream, line)) {
-            LogData = LogData + line + "\n";
-        }
-    }
     ofstream LFS;
-    LFS.open ("Server.log");
-    LFS << LogData;
+    LFS.open ("Server.log", std::ios_base::app);
     LFS << Data.c_str();
     LFS.close();
 }

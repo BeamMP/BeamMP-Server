@@ -115,7 +115,7 @@ string RemoveComments(string Line){
 string convertToString(char* a, int size)
 {
     int i;
-    string s = "";
+    string s;
     for (i = 0; i < size; i++) {
         s = s + a[i];
     }
