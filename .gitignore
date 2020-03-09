@@ -16,6 +16,9 @@
 # Mono auto generated files
 mono_crash.*
 
+#VS Files
+out/
+
 #Clion Files
 cmake-build-debug/
 # Build results
