@@ -12,10 +12,11 @@ void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
 void OnConnect(ENetPeer*peer);
 
 ENetPacket* packet;
-
+static int PlayerCount;
 
 void host_server(ENetHost *server) {
     ENetEvent event;
+    PlayerCount = server->connectedPeers;
     while (enet_host_service(server, &event, 2) > 0) {
         switch (event.type) {
             case ENET_EVENT_TYPE_CONNECT:

@@ -17,12 +17,12 @@ void ServerMain(int Port, int MaxClients);
 bool Debug = false;
 void addToLog(basic_string<char> Data);
 void HeartbeatInit();
-int Port = 30814;
-int MaxPlayers = 10;
-string MapName = "levels/gridmap/level.json";
-string ServerName = "BeamNG-MP FTW";
-string Resource = "/Resources";
-
+static int Port = 30814;
+static int MaxPlayers = 10;
+static string MapName = "levels/gridmap/level.json";
+static string ServerName = "BeamNG-MP FTW";
+static string Resource = "/Resources";
+static string ServerVersion = "0.1";
 //Entry
 int main() {
     LogInit();
