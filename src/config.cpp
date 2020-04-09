@@ -2,7 +2,6 @@
 // Created by Anonymous275 on 1/28/2020.
 //
 
-#include "main.h"
 #include <iostream>
 #include <fstream>
 #include <string>

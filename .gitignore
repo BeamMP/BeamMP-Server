@@ -21,6 +21,7 @@ out/
 
 #Clion Files
 cmake-build-debug/
+cmake-build-release/
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

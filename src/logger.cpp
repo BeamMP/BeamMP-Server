@@ -5,6 +5,7 @@
 
 #include <fstream>
 #include "logger.h"
+#include <string>
 void addToLog(basic_string<char> Data);
 using namespace std;
 int loggerlevel;
@@ -81,14 +82,14 @@ stringstream getDate() {
 
 
 
-void info(basic_string<char> toPrint) {
+void info(const std::string& toPrint) {
     if (loggerlevel <= 2){
         cout << getDate().str() << "[INFO] " << toPrint << endl;
         addToLog(getDate().str() + "[INFO] " + toPrint + "\n");
     }
 }
 
-void error(basic_string<char> toPrint) {
+void error(const std::string& toPrint) {
     if (loggerlevel <= 4) {
         cout << getDate().str() << "[ERROR] " << toPrint << endl;
         addToLog(getDate().str() + "[ERROR] " + toPrint + "\n");
@@ -96,7 +97,7 @@ void error(basic_string<char> toPrint) {
 }
 
 
-void warn(basic_string<char> toPrint) {
+void warn(const std::string& toPrint) {
     if (loggerlevel <= 3) {
         cout << getDate().str() << "[WARN] " << toPrint << endl;
         addToLog(getDate().str() + "[WARN] " + toPrint + "\n");
@@ -104,7 +105,7 @@ void warn(basic_string<char> toPrint) {
 }
 
 
-void debug(basic_string<char> toPrint) {
+void debug(const std::string& toPrint) {
     if (loggerlevel <= 1) {
         cout << getDate().str() << "[DEBUG] " << toPrint << endl;
         addToLog(getDate().str() + "[DEBUG] " + toPrint + "\n");

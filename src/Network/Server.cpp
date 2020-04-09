@@ -5,11 +5,11 @@
 #define ENET_IMPLEMENTATION
 #include "enet.h"
 #include <string>
-#include <stdio.h>
+#include <cstdio>
 #include "../logger.h"
+
 void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
-void NameRequest(ENetPeer*peer);
-void SendToAll(ENetHost *server,ENetEvent event);
+
 ENetPacket* packet;
 
 
@@ -20,12 +20,9 @@ void host_server(ENetHost *server) {
             case ENET_EVENT_TYPE_CONNECT:
                  printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port); //Help xD
                 //the data should be the client info could be name for now it's Client information
-                NameRequest(event.peer);
                 event.peer->Name = (void *)"Client information";
                 event.peer->gameVehicleID[0] = 15;
                 event.peer->serverVehicleID = 17;
-
-                SendToAll(server,event);
 
                 break;
             case ENET_EVENT_TYPE_RECEIVE:
@@ -38,12 +35,12 @@ void host_server(ENetHost *server) {
             case ENET_EVENT_TYPE_DISCONNECT:
                 printf ("%s disconnected.\n", (char *)event.peer->Name);
                 // Reset the peer's client information.
-                event.peer->Name = NULL;
+                event.peer->Name = nullptr;
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
                 printf ("%s timed out.\n", (char *)event.peer->Name);
-                event.peer->Name = NULL;
+                event.peer->Name = nullptr;
                 break;
 
             case ENET_EVENT_TYPE_NONE: break;
@@ -66,7 +63,7 @@ void ServerMain(int Port, int MaxClients) {
     //create a server
     info("starting server with a maximum of " + to_string(MaxClients) + " Clients...");
     server = enet_host_create(&address, MaxClients, 2, 0, 0);
-    if (server == NULL) {
+    if (server == nullptr) {
         error("An error occurred while trying to create a server host.");
         return;
     }
