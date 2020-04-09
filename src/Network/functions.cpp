@@ -18,13 +18,9 @@ std::vector<std::string> Split(const std::string& String,const std::string& deli
     return Val;
 }
 
-void OnConnect(ENetPeer*peer,const std::string& data){
-    std::vector<std::string> Data = Split(data,":");
-    if(strcmp((char*)peer->Name,"Client information")==0){ //Checks if the Client has no name
-        peer->Name = (void *)Data.at(0).c_str();
-        char Info[100];
-        info("Client Name is " + Data.at(0) + " ID : " + std::to_string(peer->connectID)); //ID System //Logs the data
-        peer->serverVehicleID = (int)peer->connectID; //test to see if it works
-        info(Data.at(0)+" ServerVehicleID : "+std::to_string(peer->serverVehicleID)+"  GameVehicleID : " + std::to_string(peer->gameVehicleID[0]));
-    }
+void OnConnect(ENetPeer*peer){
+    ENetPacket* packet = enet_packet_create ("NameRequest", //Send A Name Request to the Client
+                                             strlen ("NameRequest") + 1,
+                                             ENET_PACKET_FLAG_RELIABLE); //Create A reliable packet using the data
+    enet_peer_send(peer, 0, packet);
 }

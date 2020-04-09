@@ -1,6 +1,6 @@
-//
-// Created by Anonymous275 on 4/2/2020.
-//
+///
+/// Created by Anonymous275 on 4/2/2020
+///
 
 #define ENET_IMPLEMENTATION
 #include "enet.h"
@@ -9,6 +9,7 @@
 #include "../logger.h"
 
 void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
+void OnConnect(ENetPeer*peer);
 
 ENetPacket* packet;
 
@@ -18,16 +19,18 @@ void host_server(ENetHost *server) {
     while (enet_host_service(server, &event, 2) > 0) {
         switch (event.type) {
             case ENET_EVENT_TYPE_CONNECT:
-                 printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port); //Help xD
+                 printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port);
                 //the data should be the client info could be name for now it's Client information
                 event.peer->Name = (void *)"Client information";
                 event.peer->gameVehicleID[0] = 15;
                 event.peer->serverVehicleID = 17;
-
+                OnConnect(event.peer);
                 break;
+
             case ENET_EVENT_TYPE_RECEIVE:
 
-                ParseData(event.packet,event.peer/*->dataLength,event.packet->data, (char *)event.peer->data, event.channelID*/); //We grab and Parse the Data
+                ParseData(event.packet,event.peer);
+                /*->dataLength,event.packet->data, (char *)event.peer->data, event.channelID*/ //We grab and Parse the Data
                 /* Clean up the packet now that we're done using it. */
                 enet_packet_destroy (event.packet);
                 break;

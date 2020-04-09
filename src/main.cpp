@@ -1,6 +1,6 @@
-//
-// Created by Anonymous275 on 28.01.2020.
-//
+///
+/// Created by Anonymous275 on 28/01/2020
+///
 
 #include <iostream>
 #include <string>
@@ -21,6 +21,7 @@ int Port = 30814;
 int MaxPlayers = 10;
 string MapName = "levels/gridmap/level.json";
 string ServerName = "BeamNG-MP FTW";
+string Resource = "/Resources";
 
 //Entry
 int main() {
@@ -41,14 +42,16 @@ void DebugData(){
     cout << "MaxPlayers : " << MaxPlayers << "\n";
     cout << "MapName : " << MapName << "\n";
     cout << "ServerName : " << ServerName << "\n";
+    cout << "File : " << Resource << "\n";
 }
 
-void SetMainValues(bool D, int P,int MP,string Name,string serverName){
+void SetMainValues(bool D, int P,int MP,string Name,string serverName,string filename){
     Debug = D;
     Port = P;
     MapName = Name;
     ServerName = serverName;
     MaxPlayers = MP;
+    Resource = filename;
 }
 
 void LogInit(){

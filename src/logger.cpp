@@ -1,6 +1,6 @@
-//
-// Created by jojos38 on 28.01.2020.
-//
+///
+/// Created by jojos38 on 28/01/2020
+///
 
 
 #include <fstream>
@@ -32,7 +32,7 @@ void setLoggerLevel(char level_string[]) {
 
 stringstream getDate() {
     // current date/time based on current system
-    time_t now = time(0);
+    time_t now = time(nullptr);
     tm* ltm = localtime(&now);
     
     int month = 1 + ltm->tm_mon;

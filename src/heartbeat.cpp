@@ -1,6 +1,6 @@
-//
-// Created by Mitch on 04/02/2020.
-//
+///
+/// Created by Mitch on 04/02/2020
+///
 
 #include "heartbeat.h"
 #include <stdio.h>

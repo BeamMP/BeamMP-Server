@@ -1,6 +1,7 @@
-//
-// Created by Anonymous275 on 4/2/2020.
-//
+///
+/// Created by Anonymous275 on 4/2/2020
+///
+
 #include "enet.h"
 #include <iostream>
 #include <string>
@@ -8,7 +9,6 @@
 #include "../logger.h"
 
 std::vector<std::string> Split(const std::string& String,const std::string& delimiter);
-void OnConnect(ENetPeer*peer,const std::string& data);
 
 void ParseData(ENetPacket*packet,ENetPeer*peer){ //here we will parse the data
     std::string Packet = (char*)packet->data;
@@ -21,12 +21,7 @@ void ParseData(ENetPacket*packet,ENetPeer*peer){ //here we will parse the data
         split = Split(header, ":"); //1st is reliable - 2nd is Code - 3rd is VehID
     }
     if(!data.empty()){
-        switch (stoi(split.at(1))){
-            case 2000:
-                OnConnect(peer,data);
-                break;
-        }
-        //std::cout << data << std::endl;
+        std::cout << data << std::endl;
     }
 
 }

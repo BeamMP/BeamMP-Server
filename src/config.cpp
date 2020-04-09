@@ -1,6 +1,6 @@
-//
-// Created by Anonymous275 on 1/28/2020.
-//
+///
+/// Created by Anonymous275 on 1/28/2020
+///
 
 #include <iostream>
 #include <fstream>
@@ -8,15 +8,16 @@
 #include "logger.h"
 using namespace std; //nameSpace STD
 void GenerateConfig();
-string RemoveComments(string Line);
+string RemoveComments(const string& Line);
 string convertToString(char* a, int size);
-void SetValues(string Line, int Index);
-void SetMainValues(bool D,int P,int MP,string Name,string serverName);
+void SetValues(const string& Line, int Index);
+void SetMainValues(bool,int,int,string,string,string);
 bool D;
 int P;
 int MP;
 string M;
 string S;
+string F;
 
 
 //Generates or Reads Config
@@ -34,7 +35,7 @@ void ParseConfig(){
                 index++;
             }
         }
-        SetMainValues(D,P,MP,M,S); //gives the values to Main
+        SetMainValues(D,P,MP,M,S,F); //gives the values to Main
     }else{
         info("Config Not Found Generating A new One");
         GenerateConfig();
@@ -44,12 +45,12 @@ void ParseConfig(){
 
 
 
-void SetValues(string Line, int Index) {
+void SetValues(const string& Line, int Index) {
     int i = 0, state = 0;
     char Data[50] = "";
     bool Switch = false;
     if (Index > 3) { Switch = true; }
-    for (char &c : Line) {
+    for (char c : Line) {
         if (Switch) {
             if (c == '\"') { state++; }
             if (state > 0 && state < 2) {
@@ -71,7 +72,7 @@ void SetValues(string Line, int Index) {
     bool Boolean = (convertToString(Data,i-1).find("true") != string::npos);//searches for "true"
     switch (Index){
         case 1 :
-            if(Boolean){D = true;}else{D = false;}//checks and sets the Debug Value
+            D = Boolean;//checks and sets the Debug Value
             break;
         case 2 : P = stoi(Data, &sz);//sets the Port
             break;
@@ -80,6 +81,7 @@ void SetValues(string Line, int Index) {
         case 4 : M = Data; //Map
             break;
         case 5 : S = Data; //Name
+        case 6 : F = Data; //File name
     }
 }
 
@@ -94,15 +96,16 @@ void GenerateConfig(){
                   "Port = 30814 # Port to run the server on\n"
                   "MaxPlayers = 10 # Maximum Amount of Clients\n"
                   "Map = \"levels/gridmap/level.json\"\n"
-                  "Name = \"BeamNG-MP FTW\"";
+                  "Name = \"BeamNG-MP FTW\"\n"
+                  "use = \"/Resources\"";
     FileStream.close();
 }
 
 
-string RemoveComments(string Line){
+string RemoveComments(const string& Line){
     int i = 0;
     char Data[50] = "";
-    for(char& c : Line) {
+    for(char c : Line) {
         if(c == '#'){break;} //when it finds the # it will stop
         Data[i] = c;
         i++;
