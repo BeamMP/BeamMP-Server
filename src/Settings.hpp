@@ -2,7 +2,7 @@
 /// Created by Anonymous275 on 4/10/2020
 ///
 extern std::string MapName;
-extern std::string Private;
+extern bool Private;
 extern int MaxPlayers;
 extern int UDPPort;
 extern int TCPPort;

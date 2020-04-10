@@ -19,7 +19,7 @@ void addToLog(basic_string<char> Data);
 void HeartbeatInit();
 
 string MapName = "levels/gridmap/level.json";
-string Private = "false";
+bool Private = false;
 int MaxPlayers = 10;
 int UDPPort = 30814;
 int TCPPort = 0;
