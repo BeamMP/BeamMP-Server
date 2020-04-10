@@ -12,7 +12,7 @@ void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
 void OnConnect(ENetPeer*peer);
 
 ENetPacket* packet;
-static int PlayerCount;
+int PlayerCount = 0;
 
 void host_server(ENetHost *server) {
     ENetEvent event;

@@ -7,7 +7,7 @@
 #include <string>
 #include <chrono>
 #include "logger.h"
-#include "settings.h"
+#include "Settings.hpp"
 
 using namespace std;
 
@@ -20,8 +20,6 @@ void Heartbeat()
     std::cout << "UUID GEN : " << UUID << std::endl;
     while(true)
     {
-        //"name=daniel&project=curl"
-        //player maxplayers port map private version
         PostHTTP("https://beamng-mp.com/heartbeat","uuid="+UUID+"&players="+to_string(PlayerCount)+"&maxplayers="+to_string(MaxPlayers)+"&port="
         + to_string(UDPPort) + "&map=" + MapName + "&private="+Private+"&serverversion="+ServerVersion+"&clientversion="+ClientVersion+"&name="+ServerName);
 

@@ -6,7 +6,6 @@
 #include <string>
 #include <fstream>
 #include "logger.h"
-#include "settings.h"
 #include <chrono>
 #include <thread>
 
@@ -18,6 +17,17 @@ void ServerMain(int Port, int MaxClients);
 bool Debug = false;
 void addToLog(basic_string<char> Data);
 void HeartbeatInit();
+
+string MapName = "levels/gridmap/level.json";
+string Private = "false";
+int MaxPlayers = 10;
+int UDPPort = 30814;
+int TCPPort = 0;
+string ServerName = "BeamMP Server";
+string Resource = "/Resources";
+string ServerVersion = "0.1";
+string ClientVersion = "0.21";
+
 
 //Entry
 int main() {
@@ -42,12 +52,12 @@ void DebugData(){
 }
 
 void SetMainValues(bool D, int P,int MP,string Name,string serverName,string filename){
-    bool Debug = D;
-    int UDPPort = P;
-    string MapName = Name;
-    string ServerName = serverName;
-    int MaxPlayers = MP;
-    string Resource = filename;
+    Debug = D;
+    UDPPort = P;
+    MapName = Name;
+    ServerName = serverName;
+    MaxPlayers = MP;
+    Resource = filename;
 }
 
 void LogInit(){
