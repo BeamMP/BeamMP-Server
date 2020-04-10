@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 #include "logger.h"
+#include "settings.h"
 #include <chrono>
 #include <thread>
 
@@ -17,28 +18,23 @@ void ServerMain(int Port, int MaxClients);
 bool Debug = false;
 void addToLog(basic_string<char> Data);
 void HeartbeatInit();
-static int Port = 30814;
-static int MaxPlayers = 10;
-static string MapName = "levels/gridmap/level.json";
-static string ServerName = "BeamNG-MP FTW";
-static string Resource = "/Resources";
-static string ServerVersion = "0.1";
+
 //Entry
 int main() {
     LogInit();
-    HeartbeatInit();
     ParseConfig();
+    HeartbeatInit();
     if(Debug){ //checks if debug is on
         DebugData(); //Prints Debug Data
     }
     setLoggerLevel("ALL");
-    ServerMain(Port, MaxPlayers);
+    ServerMain(UDPPort, MaxPlayers);
 }
 
 
 void DebugData(){
     cout << "Debug : true" << "\n";
-    cout << "Port : " << Port << "\n";
+    cout << "Port : " << UDPPort << "\n";
     cout << "MaxPlayers : " << MaxPlayers << "\n";
     cout << "MapName : " << MapName << "\n";
     cout << "ServerName : " << ServerName << "\n";
@@ -46,12 +42,12 @@ void DebugData(){
 }
 
 void SetMainValues(bool D, int P,int MP,string Name,string serverName,string filename){
-    Debug = D;
-    Port = P;
-    MapName = Name;
-    ServerName = serverName;
-    MaxPlayers = MP;
-    Resource = filename;
+    bool Debug = D;
+    int UDPPort = P;
+    string MapName = Name;
+    string ServerName = serverName;
+    int MaxPlayers = MP;
+    string Resource = filename;
 }
 
 void LogInit(){

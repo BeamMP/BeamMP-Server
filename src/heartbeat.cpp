@@ -6,19 +6,13 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include "logger.h"
+#include "settings.h"
+
 using namespace std;
 
 string HTTP_REQUEST(const std::string&,int);
 void PostHTTP(const std::string& IP,const std::string& Fields);
-
-int PlayerCount;
-int Port;
-int MaxPlayers;
-string MapName;
-string ServerName;
-string Resource;
-string ServerVersion;
-
 
 void Heartbeat()
 {
@@ -28,10 +22,10 @@ void Heartbeat()
     {
         //"name=daniel&project=curl"
         //player maxplayers port map private version
-        PostHTTP("https://beamng-mp.com/heartbeat","d.uuid="+UUID+"&d.players="+to_string(PlayerCount)+"&d.maxplayers="+to_string(MaxPlayers)+"&d.port="
-        + to_string(Port) + "&d.map=" + MapName + "&d.private=false"+"&d.version="+ServerVersion);
+        PostHTTP("https://beamng-mp.com/heartbeat","uuid="+UUID+"&players="+to_string(PlayerCount)+"&maxplayers="+to_string(MaxPlayers)+"&port="
+        + to_string(UDPPort) + "&map=" + MapName + "&private="+Private+"&serverversion="+ServerVersion+"&clientversion="+ClientVersion+"&name="+ServerName);
 
-        std::this_thread::sleep_for (std::chrono::seconds(30));
+        std::this_thread::sleep_for (std::chrono::seconds(5));
     }
 }
 
