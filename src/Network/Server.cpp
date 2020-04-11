@@ -8,6 +8,7 @@
 #include <cstdio>
 #include "../logger.h"
 
+
 void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
 void OnConnect(ENetPeer*peer);
 
@@ -81,4 +82,65 @@ void ServerMain(int Port, int MaxClients) {
     enet_host_destroy(server);
     enet_deinitialize();
     return;
+}
+
+
+void CreateNewThread(void*);
+
+void TCPMain(int Port){
+    info("Starting TCP Server on port " + to_string(Port));
+
+    WSADATA wsaData;
+    int iResult;
+    sockaddr_in addr{};
+    SOCKET sock,client;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(Port);
+
+    iResult = WSAStartup(MAKEWORD(2,2),&wsaData);
+
+    if(iResult)
+    {
+        printf("WSA startup failed");
+        return;
+    }
+
+
+    sock = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+
+    if(sock == INVALID_SOCKET)
+    {
+        printf("Invalid socket");
+        return;
+    }
+
+    iResult = bind(sock,(sockaddr*)&addr,sizeof(sockaddr_in ));
+
+    if(iResult)
+    {
+
+        printf("bind failed %lu",GetLastError());
+
+        return;
+    }
+
+    iResult = listen(sock,SOMAXCONN);
+
+    if(iResult)
+    {
+
+        printf("iResult failed %lu",GetLastError());
+
+        return;
+    }
+
+    while(client = accept(sock,nullptr,nullptr))
+    {
+        if(client == INVALID_SOCKET)
+        {
+            printf("invalid client socket\n");
+            continue;
+        }
+        CreateNewThread((void*)&client);
+    }
 }

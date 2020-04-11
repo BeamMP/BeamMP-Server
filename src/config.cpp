@@ -11,14 +11,10 @@ void GenerateConfig();
 string RemoveComments(const string& Line);
 string convertToString(char* a, int size);
 void SetValues(const string& Line, int Index);
-void SetMainValues(bool,int,int,string,string,string);
+void SetMainValues(bool,int,int,int,string,string,string);
 bool D;
-int P;
-int MP;
-string M;
-string S;
-string F;
-
+int P,FP,MP;
+string M,S,F;
 
 //Generates or Reads Config
 void ParseConfig(){
@@ -35,7 +31,7 @@ void ParseConfig(){
                 index++;
             }
         }
-        SetMainValues(D,P,MP,M,S,F); //gives the values to Main
+        SetMainValues(D,P,FP,MP,M,S,F); //gives the values to Main
     }else{
         info("Config Not Found Generating A new One");
         GenerateConfig();
@@ -49,7 +45,7 @@ void SetValues(const string& Line, int Index) {
     int i = 0, state = 0;
     char Data[50] = "";
     bool Switch = false;
-    if (Index > 3) { Switch = true; }
+    if (Index > 4) { Switch = true; }
     for (char c : Line) {
         if (Switch) {
             if (c == '\"') { state++; }
@@ -76,12 +72,14 @@ void SetValues(const string& Line, int Index) {
             break;
         case 2 : P = stoi(Data, &sz);//sets the Port
             break;
-        case 3 : MP = stoi(Data, &sz);//sets the Max Amount of player
+        case 3 : FP = stoi(Data, &sz);//sets the TCP File Port
             break;
-        case 4 : M = Data; //Map
+        case 4 : MP = stoi(Data, &sz); //sets the Max Amount of player
             break;
-        case 5 : S = Data; //Name
-        case 6 : F = Data; //File name
+        case 5 : M = Data; //Map
+            break;
+        case 6 : S = Data; //Name
+        case 7 : F = Data; //File name
     }
 }
 
@@ -91,13 +89,14 @@ void SetValues(const string& Line, int Index) {
 void GenerateConfig(){
     ofstream FileStream;
     FileStream.open ("Server.cfg");
-    FileStream << "# This is the BeamNG-MP Server Configuration File\n"
+    FileStream << "# This is the BeamMP Server Configuration File\n"
                   "Debug = false # true or false to enable debug console output\n"
                   "Port = 30814 # Port to run the server on\n"
+                  "FilePort = 30814 # Port to transfer Files\n"
                   "MaxPlayers = 10 # Maximum Amount of Clients\n"
-                  "Map = \"levels/gridmap/level.json\"\n"
-                  "Name = \"BeamNG-MP FTW\"\n"
-                  "use = \"/Resources\"";
+                  "Map = \"/levels/gridmap/info.json\" # Default Map\n"
+                  "Name = \"BeamMP New Server\" # Server Name\n"
+                  "use = \"Resources\" # Resource file name";
     FileStream.close();
 }
 

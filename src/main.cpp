@@ -9,7 +9,7 @@
 #include <chrono>
 #include <thread>
 
-using namespace std; //nameSpace STD
+using namespace std;
 void DebugData();
 void LogInit();
 void ParseConfig();
@@ -22,38 +22,43 @@ string MapName = "levels/gridmap/level.json";
 bool Private = false;
 int MaxPlayers = 10;
 int UDPPort = 30814;
-int TCPPort = 0;
+int TCPPort = 30814;
 string ServerName = "BeamMP Server";
-string Resource = "/Resources";
+string Resource = "Resources";
 string ServerVersion = "0.1";
 string ClientVersion = "0.21";
-
-
+void HandleResources(const std::string& path);
+void TCPMain(int Port);
 //Entry
 int main() {
     LogInit();
     ParseConfig();
+    HandleResources(Resource);
     HeartbeatInit();
     if(Debug){ //checks if debug is on
         DebugData(); //Prints Debug Data
     }
     setLoggerLevel("ALL");
+    std::thread TCPThread(TCPMain,TCPPort);
+    TCPThread.detach();
     ServerMain(UDPPort, MaxPlayers);
 }
 
 
 void DebugData(){
-    cout << "Debug : true" << "\n";
-    cout << "Port : " << UDPPort << "\n";
-    cout << "MaxPlayers : " << MaxPlayers << "\n";
-    cout << "MapName : " << MapName << "\n";
-    cout << "ServerName : " << ServerName << "\n";
-    cout << "File : " << Resource << "\n";
+    cout << "Debug : true" << endl;
+    cout << "Port : " << UDPPort << endl;
+    cout << "TCP Port : " << TCPPort << endl;
+    cout << "MaxPlayers : " << MaxPlayers << endl;
+    cout << "MapName : " << MapName << endl;
+    cout << "ServerName : " << ServerName << endl;
+    cout << "File : " << Resource << endl;
 }
 
-void SetMainValues(bool D, int P,int MP,string Name,string serverName,string filename){
+void SetMainValues(bool D, int P, int FP,int MP,string Name,string serverName,string filename){
     Debug = D;
     UDPPort = P;
+    TCPPort = FP;
     MapName = Name;
     ServerName = serverName;
     MaxPlayers = MP;

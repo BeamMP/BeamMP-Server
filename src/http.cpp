@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 
+
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
@@ -44,5 +45,4 @@ void PostHTTP(const std::string& IP,const std::string& Fields){
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
     }
-    std::cout << "Buffer : " << readBuffer << std::endl;
 }
