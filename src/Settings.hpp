@@ -12,3 +12,4 @@ extern std::string Resource;
 extern std::string ServerVersion;
 extern std::string ClientVersion;
 extern std::string FileList;
+extern std::string FileSizes;

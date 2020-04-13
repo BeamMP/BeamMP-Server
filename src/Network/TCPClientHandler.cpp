@@ -16,7 +16,8 @@ int ParseAndSend(SOCKET Client, std::string Data){
     bool FileSent = true;
     switch (ID){
         case 'a' :
-            Response = FileList;
+            Response = FileList+FileSizes;
+            if(Response.empty())Response = " ";
             break;
         case 'b' :
             FileSent = false;
@@ -35,9 +36,10 @@ int ParseAndSend(SOCKET Client, std::string Data){
                     f.seekg(0, std::ios_base::beg);
                     f.read(&Response[0], Size);
                     f.close();
-                }else{f.close();}
+                }else f.close();
 
                 if(DataSent != Size){
+                    Packet.clear();
                     if((Size-DataSent) < 65535){
                         Packet = Response.substr(Prev,(Size-DataSent));
                         DataSent += (Size-DataSent);
@@ -48,14 +50,15 @@ int ParseAndSend(SOCKET Client, std::string Data){
                     }
                     Prev = DataSent;
                 }else{
-                    Size = DataSent = Prev = 0;
-                    Response = "End of file";
+                    Size = 0;
+                    DataSent = 0;
+                    Prev = 0;
                     FileSent = true;
                     Packet.clear();
                 }
             }else{
                 FileSent = true;
-                Response = "Cannot Open File " + FLocation;
+                Response = "Cannot Open";
             }
         }
 
