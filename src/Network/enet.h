@@ -678,6 +678,7 @@ typedef struct _ENetPeer {
     enet_uint32       lastRoundTripTimeVariance;
     enet_uint32       highestRoundTripTimeVariance;
     enet_uint32       roundTripTime; /**< mean round trip time (RTT), in milliseconds, between sending a reliable packet and receiving its acknowledgement */
+    enet_uint32       ping;
     enet_uint32       roundTripTimeVariance;
     enet_uint32       mtu;
     enet_uint32       windowSize;
@@ -2258,7 +2259,7 @@ extern "C" {
 
         enet_peer_throttle(peer, roundTripTime);
         peer->roundTripTimeVariance -= peer->roundTripTimeVariance / 4;
-
+        peer->ping = roundTripTime;
         if (roundTripTime >= peer->roundTripTime) {
             peer->roundTripTime         += (roundTripTime - peer->roundTripTime) / 8;
             peer->roundTripTimeVariance += (roundTripTime - peer->roundTripTime) / 4;
@@ -3747,6 +3748,7 @@ extern "C" {
         peer->lastRoundTripTimeVariance     = 0;
         peer->highestRoundTripTimeVariance  = 0;
         peer->roundTripTime                 = ENET_PEER_DEFAULT_ROUND_TRIP_TIME;
+        peer->ping                          = 0;
         peer->roundTripTimeVariance         = 0;
         peer->mtu                           = peer->host->mtu;
         peer->reliableDataInTransit         = 0;

@@ -7,13 +7,32 @@
 #include <string>
 #include <cstdio>
 #include "../logger.h"
-
+#include "../Settings.hpp"
 
 void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
 void OnConnect(ENetPeer*peer);
 
 ENetPacket* packet;
 int PlayerCount = 0;
+
+int FindID(ENetHost *server,ENetPeer*peer){
+    int OpenID = 1;
+    bool Found = false;
+    do {
+        Found = true;
+        for (int i = 0; i < server->connectedPeers; i++) {
+            if (&server->peers[i] != peer) {
+                if(server->peers[i].serverVehicleID == OpenID){
+                    Found = false;
+                    OpenID++;
+                    break;
+                }
+            }
+        }
+    }while (!Found);
+    return OpenID;
+}
+
 
 void host_server(ENetHost *server) {
     ENetEvent event;
@@ -24,8 +43,8 @@ void host_server(ENetHost *server) {
                  printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port);
                 //the data should be the client info could be name for now it's Client information
                 event.peer->Name = (void *)"Client information";
-                event.peer->gameVehicleID[0] = 15;
-                event.peer->serverVehicleID = 17;
+                event.peer->gameVehicleID[0] = 0;
+                event.peer->serverVehicleID = FindID(server, event.peer);
                 OnConnect(event.peer);
                 break;
 
@@ -54,6 +73,7 @@ void host_server(ENetHost *server) {
 }
 
 void ServerMain(int Port, int MaxClients) {
+
     if (enet_initialize() != 0) {
         printf("An error occurred while initializing.\n");
         return;

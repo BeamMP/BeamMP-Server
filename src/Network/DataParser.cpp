@@ -22,6 +22,7 @@ void ParseData(ENetPacket*packet,ENetPeer*peer){ //here we will parse the data
     }
     if(!data.empty()){
         std::cout << data << std::endl;
+        std::cout << "Ping : " << peer->ping << std::endl;
     }
 
 }

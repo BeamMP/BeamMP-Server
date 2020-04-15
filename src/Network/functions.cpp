@@ -23,4 +23,5 @@ void OnConnect(ENetPeer*peer){
                                              strlen ("NameRequest") + 1,
                                              ENET_PACKET_FLAG_RELIABLE); //Create A reliable packet using the data
     enet_peer_send(peer, 0, packet);
+    std::cout << "ID : " << peer->serverVehicleID << std::endl;
 }
