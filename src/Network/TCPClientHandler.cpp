@@ -22,6 +22,9 @@ int ParseAndSend(SOCKET Client, std::string Data){
         case 'b' :
             FileSent = false;
             break;
+        case 'M' :
+            Response = MapName;
+            break;
     }
     std::string FLocation = Data.substr(1);
     if(FileList.find(FLocation) == std::string::npos)return -1;

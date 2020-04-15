@@ -21,7 +21,7 @@ void Heartbeat()
     while(true)
     {
         PostHTTP("https://beamng-mp.com/heartbeat","uuid="+UUID+"&players="+to_string(PlayerCount)+"&maxplayers="+to_string(MaxPlayers)+"&port="
-        + to_string(UDPPort) + "&map=" + MapName + "&private="+State+"&serverversion="+ServerVersion+"&clientversion="+ClientVersion+"&name="+ServerName);
+        + to_string(UDPPort) + "&map=" + MapName + "&private="+State+"&version="+ServerVersion+"&clientversion="+ClientVersion+"&name="+ServerName);
         std::this_thread::sleep_for (std::chrono::seconds(5));
     }
 }
