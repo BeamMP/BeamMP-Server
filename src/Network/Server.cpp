@@ -17,7 +17,7 @@ int PlayerCount = 0;
 
 int FindID(ENetHost *server,ENetPeer*peer){
     int OpenID = 1;
-    bool Found = false;
+    bool Found;
     do {
         Found = true;
         for (int i = 0; i < server->connectedPeers; i++) {

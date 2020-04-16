@@ -34,9 +34,7 @@ void SendToAll(ENetHost *server,ENetEvent event){
 }
 
 void OnConnect(ENetPeer*peer){
-    ENetPacket* packet = enet_packet_create ("NameRequest", //Send A Name Request to the Client
-                                             strlen ("NameRequest") + 1,
-                                             ENET_PACKET_FLAG_RELIABLE); //Create A reliable packet using the data
+    ENetPacket* packet = enet_packet_create ("NR", 3,ENET_PACKET_FLAG_RELIABLE); //Create A reliable packet using the data
     enet_peer_send(peer, 0, packet);
     std::cout << "ID : " << peer->serverVehicleID << std::endl;
 }
