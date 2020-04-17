@@ -20,7 +20,7 @@ void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
     std::vector<std::string> vector = Split(Packet,":");
     switch(Code){ //Spawned Destroyed Switched/Moved Reset
         case 's':
-            if(!stoi(vector.at(0))){
+            if(!stoi(vector.at(1))){
                 peer->serverVehicleID[0] = FindID(server,peer); ///TODO: WHAT IF IT IS THE SECOND VEHICLE?!
                 vector.at(1) = std::to_string(peer->serverVehicleID[0]);
                 Packet.clear();
@@ -53,12 +53,12 @@ void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
             std::cout << "Name : " << peer->Name << std::endl;
             return;
         case 'O':
-            std::cout << peer->Name << " : " << Packet << std::endl;
+            std::cout << "Received data from: " << peer->Name << " Size: " << Packet.length() << std::endl;
             VehicleParser(Packet,peer,server);
             return;
     }
     //V to Z
-    std::cout << peer->Name << " : " << Packet << std::endl;
+    std::cout << "Received data from: " << peer->Name << " Size: " << Packet.length() << std::endl;
     if(Code <= 90 && Code >= 86)SendToAll(server,peer,Packet,false);
     if(Debug)debug("Data : " + Packet);
 }

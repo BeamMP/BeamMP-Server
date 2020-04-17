@@ -14,6 +14,7 @@ void Respond(const std::string& MSG, ENetPeer*peer){
 }
 
 void SendToAll(ENetHost *server, ENetPeer*peer, const std::string& Data, bool All){
+    std::cout << "Sending to all with the self switch : " << All << std::endl;
     for (int i = 0; i < server->connectedPeers; i++) {
         if (All || &server->peers[i] != peer) {
             enet_peer_send(&server->peers[i], 0, enet_packet_create(Data.c_str(),Data.length()+1, ENET_PACKET_FLAG_UNRELIABLE_FRAGMENT));
