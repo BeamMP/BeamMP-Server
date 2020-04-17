@@ -92,7 +92,6 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <mmsystem.h>
-
 #include <intrin.h>
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -637,9 +636,9 @@ typedef struct _ENetPeer {
     enet_uint8        outgoingSessionID;
     enet_uint8        incomingSessionID;
     ENetAddress       address; /**< Internet address of the peer */
-    void *            Name;    /**< Application private data, may be freely modified */
-    int               gameVehicleID[50]; //added By Anonymous275
-    int               serverVehicleID; //added By Anonymous275
+    std::string       Name;    /**< Application private data, may be freely modified */
+    int               gameVehicleID[10] = {0}; //added By Anonymous275
+    int               serverVehicleID[10] = {0}; //added By Anonymous275
     ENetPeerState     state;
     ENetChannel *     channels;
     size_t            channelCount;      /**< Number of channels allocated for communication with peer */
@@ -3441,11 +3440,11 @@ extern "C" {
     }
 
     void * enet_peer_get_data(ENetPeer *peer) {
-        return (void *) peer->Name;
+        return (void *) peer->Name.c_str();
     }
 
     void enet_peer_set_data(ENetPeer *peer, const void *Name) {
-        peer->Name = (enet_uint32 *) Name;
+        peer->Name = (char *) Name;
     }
 
     void * enet_packet_get_data(ENetPacket *packet) {
@@ -4421,7 +4420,7 @@ extern "C" {
             currentPeer->host = host;
             currentPeer->incomingPeerID    = currentPeer - host->peers;
             currentPeer->outgoingSessionID = currentPeer->incomingSessionID = 0xFF;
-            currentPeer->Name = NULL;
+            currentPeer->Name.clear();
 
             enet_list_clear(&currentPeer->acknowledgements);
             enet_list_clear(&currentPeer->sentReliableCommands);

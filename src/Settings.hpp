@@ -3,6 +3,7 @@
 ///
 
 extern bool Private;
+extern bool Debug;
 extern int MaxPlayers;
 extern int UDPPort;
 extern int TCPPort;

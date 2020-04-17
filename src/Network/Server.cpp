@@ -3,29 +3,31 @@
 ///
 
 #define ENET_IMPLEMENTATION
-#include "enet.h"
 #include <string>
+#include "enet.hpp"
 #include <cstdio>
 #include "../logger.h"
 #include "../Settings.hpp"
 
-void ParseData(ENetPacket*packet,ENetPeer*peer); //Data Parser
+void ParseData(ENetPacket*packet,ENetPeer*peer,ENetHost *server); //Data Parser
 void OnConnect(ENetPeer*peer);
 
 ENetPacket* packet;
 int PlayerCount = 0;
 
 int FindID(ENetHost *server,ENetPeer*peer){
-    int OpenID = 1;
+    int OpenID = 1, *p;
     bool Found;
     do {
         Found = true;
         for (int i = 0; i < server->connectedPeers; i++) {
             if (&server->peers[i] != peer) {
-                if(server->peers[i].serverVehicleID == OpenID){
-                    Found = false;
-                    OpenID++;
-                    break;
+                for(p=server->peers[i].serverVehicleID; p<(&server->peers[i].serverVehicleID)[1]; p++){
+                    if(*p == OpenID) {
+                        Found = false;
+                        OpenID++;
+                        break;
+                    }
                 }
             }
         }
@@ -42,31 +44,29 @@ void host_server(ENetHost *server) {
             case ENET_EVENT_TYPE_CONNECT:
                  printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port);
                 //the data should be the client info could be name for now it's Client information
-                event.peer->Name = (void *)"Client information";
-                event.peer->gameVehicleID[0] = 0;
-                event.peer->serverVehicleID = FindID(server, event.peer);
+                event.peer->Name = "Client information";
+                /*event.peer->gameVehicleID[0] = 0;
+                event.peer->serverVehicleID[0] = FindID(server, event.peer);*/
                 OnConnect(event.peer);
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
-
-                ParseData(event.packet,event.peer);
+                ParseData(event.packet,event.peer,server);
                 /*->dataLength,event.packet->data, (char *)event.peer->data, event.channelID*/ //We grab and Parse the Data
                 /* Clean up the packet now that we're done using it. */
                 enet_packet_destroy (event.packet);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
-                printf ("%s disconnected.\n", (char *)event.peer->Name);
+                std::cout << event.peer->Name << " disconnected." << std::endl;
                 // Reset the peer's client information.
-                event.peer->Name = nullptr;
+                event.peer->Name.clear();
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
-                printf ("%s timed out.\n", (char *)event.peer->Name);
-                event.peer->Name = nullptr;
+                std::cout << event.peer->Name << " timed out." << std::endl;
+                event.peer->Name.clear();
                 break;
-
             case ENET_EVENT_TYPE_NONE: break;
         }
     }
