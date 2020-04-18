@@ -61,11 +61,13 @@ void host_server(ENetHost *server) {
                 std::cout << event.peer->Name << " disconnected." << std::endl;
                 // Reset the peer's client information.
                 event.peer->Name.clear();
+                event.peer->VehicleData.clear();
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
                 std::cout << event.peer->Name << " timed out." << std::endl;
                 event.peer->Name.clear();
+                event.peer->VehicleData.clear();
                 break;
             case ENET_EVENT_TYPE_NONE: break;
         }
