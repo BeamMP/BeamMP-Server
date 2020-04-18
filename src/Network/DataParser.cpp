@@ -17,15 +17,12 @@ int FindID(ENetHost *server,ENetPeer*peer);
 void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
     char Code = Packet.at(1);
     std::string Data = Packet.substr(3);
-    std::vector<std::string> vector = Split(Packet,":");
+    //std::vector<std::string> vector = Split(Packet,":");
     switch(Code){ //Spawned Destroyed Switched/Moved Reset
         case 's':
-            if(!stoi(vector.at(1))){
+            if(Data.at(0) == '0'){
                 peer->serverVehicleID[0] = FindID(server,peer); ///TODO: WHAT IF IT IS THE SECOND VEHICLE?!
-                vector.at(1) = std::to_string(peer->serverVehicleID[0]);
-                Packet.clear();
-                for(const std::string&a : vector)Packet += a + ":";
-                Packet = Packet.substr(0,Packet.length()-1);
+                Packet = "Os:"+std::to_string(peer->serverVehicleID[0])+Packet.substr(4);
             }
             SendToAll(server,peer,Packet,true);
             break;
