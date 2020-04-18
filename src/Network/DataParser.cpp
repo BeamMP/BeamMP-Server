@@ -9,30 +9,26 @@
 #include "../logger.h"
 #include "../Settings.hpp"
 
-std::vector<std::string> Split(const std::string& String,const std::string& delimiter);
-void SendToAll(ENetHost *server, ENetPeer*peer, const std::string& Data,bool All);
+void SendToAll(ENetHost *server, ENetPeer*peer, const std::string& Data,bool All, bool Reliable);
 void Respond(const std::string& MSG, ENetPeer*peer);
-int FindID(ENetHost *server,ENetPeer*peer);
 
 void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
     char Code = Packet.at(1);
     std::string Data = Packet.substr(3);
-    //std::vector<std::string> vector = Split(Packet,":");
     switch(Code){ //Spawned Destroyed Switched/Moved Reset
         case 's':
             if(Data.at(0) == '0'){
-                peer->serverVehicleID[0] = FindID(server,peer); ///TODO: WHAT IF IT IS THE SECOND VEHICLE?!
-                Packet = "Os:"+std::to_string(peer->serverVehicleID[0])+Packet.substr(4);
+                Packet = "Os:"+ peer->Name +":"+std::to_string(peer->serverVehicleID[0])+Packet.substr(4);
             }
-            SendToAll(server,peer,Packet,true);
+            SendToAll(server,peer,Packet,true,true);
             break;
         case 'd':
-            SendToAll(server,peer,Packet,true);
+            SendToAll(server,peer,Packet,true,true);
             break;
         case 'm':
             break;
         case 'r':
-            SendToAll(server,peer,Packet,true);
+            SendToAll(server,peer,Packet,true,true);
             break;
     }
 }
@@ -56,6 +52,6 @@ void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
     }
     //V to Z
     std::cout << "Received data from: " << peer->Name << " Size: " << Packet.length() << std::endl;
-    if(Code <= 90 && Code >= 86)SendToAll(server,peer,Packet,false);
+    if(Code <= 90 && Code >= 86)SendToAll(server,peer,Packet,false,false);
     if(Debug)debug("Data : " + Packet);
 }

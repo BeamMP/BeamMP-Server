@@ -10,7 +10,7 @@
 #include "../Settings.hpp"
 
 void ParseData(ENetPacket*packet,ENetPeer*peer,ENetHost *server); //Data Parser
-void OnConnect(ENetPeer*peer);
+void OnConnect(ENetHost *server,ENetPeer*peer);
 
 ENetPacket* packet;
 int PlayerCount = 0;
@@ -47,7 +47,7 @@ void host_server(ENetHost *server) {
                 event.peer->Name = "Client information";
                 /*event.peer->gameVehicleID[0] = 0;
                 event.peer->serverVehicleID[0] = FindID(server, event.peer);*/
-                OnConnect(event.peer);
+                OnConnect(server,event.peer);
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
