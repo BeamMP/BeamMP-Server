@@ -15,7 +15,7 @@ void Respond(const std::string& MSG, ENetPeer*peer){
 }
 
 void SendToAll(ENetHost *server, ENetPeer*peer,const std::string& Data, bool All, bool Reliable){
-    std::cout << "Sending Code " << Data.at(0) << " length:" << Data.length() << " to all with the self switch : " << All << std::endl;
+    //std::cout << "Sending Code " << Data.at(0) << " length:" << Data.length() << " to all with the self switch : " << All << std::endl;
     for (int i = 0; i < server->connectedPeers; i++) {
         if (All || &server->peers[i] != peer) {
             //reliable is 1 unreliable is 8
@@ -23,6 +23,15 @@ void SendToAll(ENetHost *server, ENetPeer*peer,const std::string& Data, bool All
             enet_host_flush(server);
         }
     }
+}
+
+void OnDisconnect(ENetHost *server,ENetPeer*peer){
+    std::string Packet = "Od:" + std::to_string(peer->serverVehicleID[0]);
+    SendToAll(server,peer, Packet,false,true);
+    Packet.clear();
+    peer->DID.clear();
+    peer->Name.clear();
+    peer->VehicleData.clear();
 }
 
 void OnConnect(ENetHost *server,ENetPeer*peer){

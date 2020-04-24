@@ -637,6 +637,8 @@ typedef struct _ENetPeer {
     enet_uint8        incomingSessionID;
     ENetAddress       address; /**< Internet address of the peer */
     std::string       Name;    /**< Application private data, may be freely modified */
+    std::string       DID;
+    std::string       Role = "USER";
     std::string       VehicleData;
     int               gameVehicleID[10] = {0}; //added By Anonymous275
     int               serverVehicleID[10] = {0}; //added By Anonymous275
