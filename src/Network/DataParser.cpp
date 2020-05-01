@@ -13,11 +13,25 @@
 void SendToAll(ENetHost *server, ENetPeer*peer,const std::string& Data,bool All, bool Reliable);
 std::string HTTP_REQUEST(const std::string& IP,int port);
 void Respond(const std::string& MSG, ENetPeer*peer);
+void UpdatePlayers(ENetHost *server,ENetPeer*peer);
+
+void FindAndSync(ENetPeer*peer,ENetHost*server,int VehID){
+    ENetPeer*ENetClient;
+    for (int i = 0; i < server->connectedPeers; i++) {
+        ENetClient = &server->peers[i];
+        if (ENetClient != peer){
+            if(ENetClient->serverVehicleID[0] == VehID){
+                Respond(ENetClient->VehicleData,peer);
+            }
+        }
+    }
+}
 
 void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
     char Code = Packet.at(1);
+    int ID = -1;
     std::string Data = Packet.substr(3);
-    switch(Code){ //Spawned Destroyed Switched/Moved Reset
+    switch(Code){ //Spawned Destroyed Switched/Moved NotFound Reset
         case 's':
             if(Data.at(0) == '0'){
                 Packet = "Os:"+peer->Role+":"+peer->Name+":"+std::to_string(peer->serverVehicleID[0])+Packet.substr(4);
@@ -26,10 +40,21 @@ void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
             SendToAll(server,peer,Packet,true,true);
             break;
         case 'd':
+            if(Packet.substr(3).find_first_not_of("0123456789") == std::string::npos){
+               ID = stoi(Packet.substr(3));
+            }
             peer->VehicleData.clear();
-            SendToAll(server,peer,Packet,true,true);
+            if(ID != -1 && ID == peer->serverVehicleID[0]){
+                SendToAll(server,peer,Packet,true,true);
+            }
             break;
         case 'm':
+            break;
+        case 'n':
+            if(Packet.substr(3).find_first_not_of("0123456789") == std::string::npos){
+                ID = stoi(Packet.substr(3));
+            }
+            FindAndSync(peer,server,ID);
             break;
         case 'r':
             SendToAll(server,peer,Packet,false,true);
@@ -56,7 +81,9 @@ void HTTP(ENetPeer*peer){
         if(!a.empty()){
             int pos = a.find('"');
             peer->Role = a.substr(pos+1,a.find('"',pos+1)-2);
-            if(Debug)debug("ROLE -> " + peer->Role);
+            if(Debug){
+                debug("ROLE -> " + peer->Role + " ID -> " + peer->DID);
+            }
         }
     }
 }
@@ -68,7 +95,7 @@ void GrabRole(ENetPeer*peer){
 
 void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
     std::string Packet = (char*)packet->data;
-    if(Packet == "TEST")SyncVehicles(server,peer);
+    if(Packet.find("TEST")!=std::string::npos)SyncVehicles(server,peer);
     char Code = Packet.at(0),SubCode = 0;
     if(Packet.length() > 1)SubCode = Packet.at(1);
     switch (Code) {
@@ -79,6 +106,9 @@ void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
             if(SubCode == 'R'){
                 peer->Name = Packet.substr(2,Packet.find(':')-2);
                 peer->DID = Packet.substr(Packet.find(':')+1);
+                Respond("Sn"+peer->Name,peer);
+                SendToAll(server,peer,"JWelcome "+peer->Name+"!",false,true);
+                UpdatePlayers(server,peer);
                 GrabRole(peer);
             }
             std::cout << "Name : " << peer->Name << std::endl;
@@ -89,6 +119,9 @@ void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
             }
             VehicleParser(Packet,peer,server);
             return;
+        case 'J':
+            SendToAll(server,peer,Packet,false,true);
+            break;
     }
     //V to Z
     if(Packet.length() > 1000){

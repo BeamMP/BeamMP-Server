@@ -10,7 +10,7 @@
 #include "../Settings.hpp"
 
 void ParseData(ENetPacket*packet,ENetPeer*peer,ENetHost *server); //Data Parser
-void OnDisconnect(ENetHost *server,ENetPeer*peer);
+void OnDisconnect(ENetHost *server,ENetPeer*peer,bool Timed);
 void OnConnect(ENetHost *server,ENetPeer*peer);
 ENetPacket* packet;
 int PlayerCount = 0;
@@ -59,12 +59,12 @@ void host_server(ENetHost *server) {
 
             case ENET_EVENT_TYPE_DISCONNECT:
                 std::cout << event.peer->Name << " disconnected." << std::endl;
-                OnDisconnect(server,event.peer);
+                OnDisconnect(server,event.peer,false);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
                 std::cout << event.peer->Name << " timed out." << std::endl;
-                OnDisconnect(server,event.peer);
+                OnDisconnect(server,event.peer,true);
                 break;
             case ENET_EVENT_TYPE_NONE: break;
         }
