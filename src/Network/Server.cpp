@@ -91,9 +91,7 @@ void ServerMain(int Port, int MaxClients) {
         error("An error occurred while trying to create a server host.");
         return;
     }
-
     info("Waiting for clients on port "+to_string(Port)+"...");
-
     while (true) {
         host_server(server);
     }

@@ -13,7 +13,7 @@
 void SendToAll(ENetHost *server, ENetPeer*peer,const std::string& Data,bool All, bool Reliable);
 std::string HTTP_REQUEST(const std::string& IP,int port);
 void Respond(const std::string& MSG, ENetPeer*peer);
-void UpdatePlayers(ENetHost *server,ENetPeer*peer);
+void UpdatePlayers(ENetHost *server, ENetPeer*peer);
 
 void FindAndSync(ENetPeer*peer,ENetHost*server,int VehID){
     ENetPeer*ENetClient;
@@ -81,9 +81,7 @@ void HTTP(ENetPeer*peer){
         if(!a.empty()){
             int pos = a.find('"');
             peer->Role = a.substr(pos+1,a.find('"',pos+1)-2);
-            if(Debug){
-                debug("ROLE -> " + peer->Role + " ID -> " + peer->DID);
-            }
+            if(Debug)debug("ROLE -> " + peer->Role + " ID -> " + peer->DID);
         }
     }
 }
@@ -95,12 +93,14 @@ void GrabRole(ENetPeer*peer){
 
 void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
     std::string Packet = (char*)packet->data;
+    if(Packet.empty())return;
     if(Packet.find("TEST")!=std::string::npos)SyncVehicles(server,peer);
     char Code = Packet.at(0),SubCode = 0;
     if(Packet.length() > 1)SubCode = Packet.at(1);
     switch (Code) {
         case 'p':
             Respond("p",peer);
+            UpdatePlayers(server,peer);
             return;
         case 'N':
             if(SubCode == 'R'){
@@ -108,7 +108,6 @@ void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
                 peer->DID = Packet.substr(Packet.find(':')+1);
                 Respond("Sn"+peer->Name,peer);
                 SendToAll(server,peer,"JWelcome "+peer->Name+"!",false,true);
-                UpdatePlayers(server,peer);
                 GrabRole(peer);
             }
             std::cout << "Name : " << peer->Name << std::endl;
@@ -121,6 +120,12 @@ void ParseData(ENetPacket*packet, ENetPeer*peer, ENetHost*server){
             return;
         case 'J':
             SendToAll(server,peer,Packet,false,true);
+            break;
+        case 'C':
+            SendToAll(server,peer,Packet, true,true);
+            break;
+        case 'E':
+            SendToAll(server,peer,Packet, true,true);
             break;
     }
     //V to Z
