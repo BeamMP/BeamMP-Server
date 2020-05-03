@@ -9,25 +9,23 @@
 #include "../logger.h"
 #include "../Settings.hpp"
 
-void ParseData(ENetPacket*packet,ENetPeer*peer,ENetHost *server); //Data Parser
+void ParseData(ENetPacket*packet,ENetPeer*peer,ENetHost *server);
 void OnDisconnect(ENetHost *server,ENetPeer*peer,bool Timed);
 void OnConnect(ENetHost *server,ENetPeer*peer);
 ENetPacket* packet;
 int PlayerCount = 0;
 
 int FindID(ENetHost *server,ENetPeer*peer){
-    int OpenID = 1, *p;
+    int OpenID = 1;
     bool Found;
     do {
         Found = true;
         for (int i = 0; i < server->connectedPeers; i++) {
             if (&server->peers[i] != peer) {
-                for(p=server->peers[i].serverVehicleID; p<(&server->peers[i].serverVehicleID)[1]; p++){
-                    if(*p == OpenID) {
-                        Found = false;
-                        OpenID++;
-                        break;
-                    }
+                if(server->peers[i].PlayerID == OpenID) {
+                   Found = false;
+                   OpenID++;
+                   break;
                 }
             }
         }
@@ -39,7 +37,7 @@ int FindID(ENetHost *server,ENetPeer*peer){
 void host_server(ENetHost *server) {
     ENetEvent event;
     PlayerCount = server->connectedPeers;
-    while (enet_host_service(server, &event, 2) > 0) {
+    while (enet_host_service(server, &event, 1) > 0) {
         switch (event.type) {
             case ENET_EVENT_TYPE_CONNECT:
                  printf("A new client connected from %x:%u.\n", event.peer->address.host, event.peer->address.port);

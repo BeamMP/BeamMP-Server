@@ -11,10 +11,14 @@ void GenerateConfig();
 string RemoveComments(const string& Line);
 string convertToString(char* a, int size);
 void SetValues(const string& Line, int Index);
-void SetMainValues(bool,int,int,int,string,string,string);
-bool D;
-int P,FP,MP;
-string M,S,F;
+string MapName = "/levels/gridmap/level.json";
+string ServerName = "BeamMP Server";
+string Resource = "Resources";
+bool Private = false;
+bool Debug = false;
+int MaxPlayers = 10;
+int Port = 30814;
+int MaxCars = 1;
 
 //Generates or Reads Config
 void ParseConfig(){
@@ -31,7 +35,6 @@ void ParseConfig(){
                 index++;
             }
         }
-        SetMainValues(D,P,FP,MP,M,S,F); //gives the values to Main
     }else{
         info("Config Not Found Generating A new One");
         GenerateConfig();
@@ -45,7 +48,7 @@ void SetValues(const string& Line, int Index) {
     int i = 0, state = 0;
     char Data[50] = "";
     bool Switch = false;
-    if (Index > 4) { Switch = true; }
+    if (Index > 5)Switch = true;
     for (char c : Line) {
         if (Switch) {
             if (c == '\"') { state++; }
@@ -67,19 +70,21 @@ void SetValues(const string& Line, int Index) {
     string::size_type sz;
     bool Boolean = (convertToString(Data,i-1).find("true") != string::npos);//searches for "true"
     switch (Index){
-        case 1 :
-            D = Boolean;//checks and sets the Debug Value
+        case 1 : Debug = Boolean;//checks and sets the Debug Value
             break;
-        case 2 : P = stoi(Data, &sz);//sets the Port
+        case 2 : Private = Boolean;//checks and sets the Private Value
             break;
-        case 3 : FP = stoi(Data, &sz);//sets the TCP File Port
+        case 3 : Port = stoi(Data, &sz);//sets the Port
             break;
-        case 4 : MP = stoi(Data, &sz); //sets the Max Amount of player
+        case 4 : MaxCars = stoi(Data, &sz);//sets the Max Car amount
             break;
-        case 5 : M = Data; //Map
+        case 5 : MaxPlayers = stoi(Data, &sz); //sets the Max Amount of player
             break;
-        case 6 : S = Data; //Name
-        case 7 : F = Data; //File name
+        case 6 : MapName = Data; //Map
+            break;
+        case 7 : ServerName = Data; //Name
+            break;
+        case 8 : Resource = Data; //File name
     }
 }
 
@@ -91,8 +96,9 @@ void GenerateConfig(){
     FileStream.open ("Server.cfg");
     FileStream << "# This is the BeamMP Server Configuration File\n"
                   "Debug = false # true or false to enable debug console output\n"
-                  "Port = 30814 # Port to run the server on\n"
-                  "FilePort = 30814 # Port to transfer Files\n"
+                  "Private = false # Private?\n"
+                  "Port = 30814 # Port to run the server on UDP and TCP\n"
+                  "Cars = 1 # Max cars for every player\n"
                   "MaxPlayers = 10 # Maximum Amount of Clients\n"
                   "Map = \"/levels/gridmap/info.json\" # Default Map\n"
                   "Name = \"BeamMP New Server\" # Server Name\n"

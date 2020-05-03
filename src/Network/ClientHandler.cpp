@@ -34,7 +34,7 @@ void UpdatePlayers(ENetHost *server, ENetPeer*peer){
 }
 
 void OnDisconnect(ENetHost *server,ENetPeer*peer,bool Timed){
-    std::string Packet = "Od:" + std::to_string(peer->serverVehicleID[0]);
+    std::string Packet = "Od:" + std::to_string(peer->PlayerID);
     SendToAll(server,peer, Packet,false,true);
     if(Timed)Packet = "L"+peer->Name+" Timed out!";
     else Packet = "L"+peer->Name+" Left the server!";
@@ -47,8 +47,8 @@ void OnDisconnect(ENetHost *server,ENetPeer*peer,bool Timed){
 
 void OnConnect(ENetHost *server,ENetPeer*peer){
     Respond("NR",peer);
-    peer->serverVehicleID[0] = FindID(server,peer);  ///TODO: WHAT IF IT IS THE SECOND VEHICLE?
-    std::string ID = "P" + std::to_string(peer->serverVehicleID[0]);
+    peer->PlayerID = FindID(server,peer);  ///TODO: WHAT IF IT IS THE SECOND VEHICLE?
+    std::string ID = "P" + std::to_string(peer->PlayerID);
     Respond(ID,peer);
-    if(Debug)debug(peer->Name + " ID : " + std::to_string(peer->serverVehicleID[0]));
+    if(Debug)debug(peer->Name + " ID : " + std::to_string(peer->PlayerID));
 }

@@ -6,28 +6,13 @@
 #include <fstream>
 #include "logger.h"
 #include <string>
-void addToLog(basic_string<char> Data);
+void addToLog(const std::string& Data);
 using namespace std;
 int loggerlevel;
 
-void setLoggerLevel(char level_string[]) {
-    if (!strcmp(level_string, "ALL"))
-        loggerlevel = 0;
-
-    if (!strcmp(level_string, "DEBUG"))
-        loggerlevel = 1;
-
-    if (!strcmp(level_string, "INFO"))
-        loggerlevel = 2;
-
-    if (!strcmp(level_string, "WARN"))
-        loggerlevel = 3;
-
-    if (!strcmp(level_string, "ERROR"))
-        loggerlevel = 4;
-
-    if (!strcmp(level_string, "OFF"))
-        loggerlevel = 5;
+void setLoggerLevel(int level) {
+    //0 ALL 1 DEBUG 2 INFO 3 WARN 4 ERROR 5 OFF
+    loggerlevel = level;
 }
 
 stringstream getDate() {
@@ -73,13 +58,6 @@ stringstream getDate() {
         << "] ";
     return date;
 }
-
-
-
-
-
-
-
 
 
 void info(const std::string& toPrint) {

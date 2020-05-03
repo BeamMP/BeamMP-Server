@@ -1,12 +1,11 @@
 ///
 /// Created by Anonymous275 on 4/2/2020
 ///
-
+#include <set>
 #include <string>
-#include "enet.hpp"
-#include <vector>
-#include <iostream>
 #include <thread>
+#include <iostream>
+#include "enet.hpp"
 #include "../logger.h"
 #include "../Settings.hpp"
 
@@ -20,7 +19,7 @@ void FindAndSync(ENetPeer*peer,ENetHost*server,int VehID){
     for (int i = 0; i < server->connectedPeers; i++) {
         ENetClient = &server->peers[i];
         if (ENetClient != peer){
-            if(ENetClient->serverVehicleID[0] == VehID){
+            if(ENetClient->PlayerID == VehID){ /////mark
                 Respond(ENetClient->VehicleData,peer);
             }
         }
@@ -34,7 +33,7 @@ void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
     switch(Code){ //Spawned Destroyed Switched/Moved NotFound Reset
         case 's':
             if(Data.at(0) == '0'){
-                Packet = "Os:"+peer->Role+":"+peer->Name+":"+std::to_string(peer->serverVehicleID[0])+Packet.substr(4);
+                Packet = "Os:"+peer->Role+":"+peer->Name+":"+std::to_string(peer->PlayerID)+Packet.substr(4);
                 peer->VehicleData = Packet;
             }
             SendToAll(server,peer,Packet,true,true);
@@ -44,7 +43,7 @@ void VehicleParser(std::string Packet,ENetPeer*peer,ENetHost*server){
                ID = stoi(Packet.substr(3));
             }
             peer->VehicleData.clear();
-            if(ID != -1 && ID == peer->serverVehicleID[0]){
+            if(ID != -1 && ID == peer->PlayerID){
                 SendToAll(server,peer,Packet,true,true);
             }
             break;

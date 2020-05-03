@@ -5,8 +5,8 @@
 extern bool Private;
 extern bool Debug;
 extern int MaxPlayers;
-extern int UDPPort;
-extern int TCPPort;
+extern int Port;
+extern int MaxCars;
 extern int PlayerCount;
 extern std::string MapName;
 extern std::string ServerName;

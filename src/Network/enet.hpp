@@ -35,10 +35,9 @@
 #ifndef ENET_INCLUDE_H
 #define ENET_INCLUDE_H
 
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <time.h>
+#include <cstdlib>
+#include <cstdint>
+#include <ctime>
 
 #define ENET_VERSION_MAJOR 2
 #define ENET_VERSION_MINOR 2
@@ -640,7 +639,7 @@ typedef struct _ENetPeer {
     std::string       DID;
     std::string       Role = "USER";
     std::string       VehicleData;
-    int               gameVehicleID[10] = {0}; //added By Anonymous275
+    int               PlayerID;
     int               serverVehicleID[10] = {0}; //added By Anonymous275
     ENetPeerState     state;
     ENetChannel *     channels;

@@ -5,26 +5,18 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include "logger.h"
 #include <chrono>
 #include <thread>
+#include "logger.h"
+#include "Settings.hpp"
 
 using namespace std;
 void DebugData();
 void LogInit();
 void ParseConfig();
+void addToLog(const string& Data);
 void ServerMain(int Port, int MaxClients);
-bool Debug = false;
-void addToLog(basic_string<char> Data);
 void HeartbeatInit();
-
-string MapName = "/levels/gridmap/level.json";
-bool Private = false;
-int MaxPlayers = 10;
-int UDPPort = 30814;
-int TCPPort = 30814;
-string ServerName = "BeamMP Server";
-string Resource = "Resources";
 string ServerVersion = "0.1";
 string ClientVersion = "0.21";
 void HandleResources(const std::string& path);
@@ -35,35 +27,25 @@ int main() {
     ParseConfig();
     HandleResources(Resource);
     HeartbeatInit();
-    if(Debug){ //checks if debug is on
-        DebugData(); //Prints Debug Data
-    }
-    setLoggerLevel("ALL");
-    std::thread TCPThread(TCPMain,TCPPort);
+    if(Debug)DebugData();
+    setLoggerLevel(0); //0 for all
+    std::thread TCPThread(TCPMain,Port);
     TCPThread.detach();
-    ServerMain(UDPPort, MaxPlayers);
+    ServerMain(Port, MaxPlayers);
 }
 
 
 void DebugData(){
-    cout << "Debug : true" << endl;
-    cout << "Port : " << UDPPort << endl;
-    cout << "TCP Port : " << TCPPort << endl;
-    cout << "MaxPlayers : " << MaxPlayers << endl;
-    cout << "MapName : " << MapName << endl;
-    cout << "ServerName : " << ServerName << endl;
-    cout << "File : " << Resource << endl;
+    debug(string("Debug : ") + (Debug?"true":"false"));
+    debug(string("Private : ") + (Private?"true":"false"));
+    debug("Port : " + to_string(Port));
+    debug("Max Cars : " + to_string(MaxCars));
+    debug("MaxPlayers : " + to_string(MaxPlayers));
+    debug("MapName : " + MapName);
+    debug("ServerName : " + ServerName );
+    debug("File : " + Resource);
 }
 
-void SetMainValues(bool D, int P, int FP,int MP,string Name,string serverName,string filename){
-    Debug = D;
-    UDPPort = P;
-    TCPPort = FP;
-    MapName = Name;
-    ServerName = serverName;
-    MaxPlayers = MP;
-    Resource = filename;
-}
 
 void LogInit(){
     ofstream LFS;
@@ -71,7 +53,7 @@ void LogInit(){
     LFS.close();
 }
 
-void addToLog(basic_string<char> Data){
+void addToLog(const string& Data){
     ofstream LFS;
     LFS.open ("Server.log", std::ios_base::app);
     LFS << Data.c_str();

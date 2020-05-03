@@ -9,7 +9,7 @@
 using namespace std;
 extern int loggerlevel;
 stringstream getDate();
-void setLoggerLevel(char level_string[]);
+void setLoggerLevel(int level);
 void info(const std::string& toPrint);
 void warn(const std::string& toPrint);
 void error(const std::string& toPrint);
