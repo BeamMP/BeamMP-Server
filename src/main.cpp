@@ -15,12 +15,13 @@ void DebugData();
 void LogInit();
 void ParseConfig();
 void addToLog(const string& Data);
-void ServerMain(int Port, int MaxClients);
+//void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
 string ServerVersion = "0.1";
 string ClientVersion = "0.21";
 void HandleResources(const std::string& path);
-void TCPMain(int Port);
+//void TCPMain(int Port);
+void NetMain();
 //Entry
 int main() {
     LogInit();
@@ -29,9 +30,10 @@ int main() {
     HeartbeatInit();
     if(Debug)DebugData();
     setLoggerLevel(0); //0 for all
-    std::thread TCPThread(TCPMain,Port);
-    TCPThread.detach();
-    ServerMain(Port, MaxPlayers);
+    /*std::thread TCPThread(TCPMain,Port);
+    TCPThread.detach();*/
+    //ServerMain(Port, MaxPlayers);
+    NetMain();
 }
 
 

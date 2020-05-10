@@ -6,8 +6,10 @@ include_directories(${PROJECT_SOURCE_DIR}/curl)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(BeamMP-Server src/main.cpp src/http.cpp src/logger.cpp src/config.cpp src/Network/Server.cpp
-        src/Network/enet.hpp src/Network/DataParser.cpp src/heartbeat.cpp
-        src/Network/ClientHandler.cpp src/Network/functions.cpp src/Settings.hpp
-         src/Resources.cpp src/Network/TCPClientHandler.cpp)
-target_link_libraries(BeamMP-Server winmm ws2_32 libcurl_a)
+file(GLOB source_files
+        "src/*.h" "src/*.hpp" "src/*.cpp"
+        "src/Network 2.0/*.hpp" "src/Network 2.0/*.cpp"
+        "src/curl/*.h")
+
+add_executable(BeamMP-Server ${source_files})
+target_link_libraries(BeamMP-Server libcurl_a ws2_32)

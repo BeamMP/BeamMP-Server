@@ -7,7 +7,6 @@ extern bool Debug;
 extern int MaxPlayers;
 extern int Port;
 extern int MaxCars;
-extern int PlayerCount;
 extern std::string MapName;
 extern std::string ServerName;
 extern std::string Resource;
