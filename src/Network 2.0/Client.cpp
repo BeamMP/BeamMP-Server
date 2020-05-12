@@ -12,6 +12,12 @@ void Client::SetName(const std::string& name){
 void Client::SetDID(const std::string& did){
     DID = did;
 }
+void Client::SetConnected(bool state){
+    Connected = state;
+}
+bool Client::isConnected(){
+    return Connected;
+}
 std::string Client::GetDID(){
     return DID;
 }

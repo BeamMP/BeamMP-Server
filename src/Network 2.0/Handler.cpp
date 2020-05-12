@@ -7,6 +7,7 @@
 #include <iostream>
 #include <thread>
 
+
 void TCPSend(Client*c,const std::string&Data){
     int BytesSent = send(c->GetTCPSock(), Data.c_str(), int(Data.length())+1, 0);
     if (BytesSent == 0){
@@ -21,9 +22,10 @@ void TCPSend(Client*c,const std::string&Data){
 }
 
 void GlobalParser(Client*c, const std::string&Packet);
+
 void TCPRcv(Client*c){
-    char buf[10240];
-    int len = 10240;
+    char buf[4096];
+    int len = 4096;
     ZeroMemory(buf, len);
     int BytesRcv = recv(c->GetTCPSock(), buf, len,0);
     if (BytesRcv == 0){

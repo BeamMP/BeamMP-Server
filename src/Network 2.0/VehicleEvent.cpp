@@ -25,11 +25,12 @@ void TCPServerMain(){
         std::cout << "Can't start Winsock!" << std::endl;
         return;
     }
-    SOCKET client,Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    SOCKET client, Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
     sockaddr_in addr{};
     addr.sin_addr.S_un.S_addr = ADDR_ANY;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(Port);
+
 
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR)
     {

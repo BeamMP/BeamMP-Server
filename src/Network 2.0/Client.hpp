@@ -12,12 +12,14 @@ class Client {
 private:
     std::set<std::pair<int,std::string>> VehicleData; //ID and Data;
     std::string Name = "Unknown Client";
+    bool Connected = false;
     sockaddr_in UDPADDR;
     std::string Role;
     std::string DID; //Discord ID
     SOCKET TCPSOCK;
     int Status = 0;
     int ID = -1; //PlayerID
+
 
 public:
     void AddNewCar(int ident,const std::string& Data);
@@ -27,6 +29,7 @@ public:
     std::string GetCarData(int ident);
     void SetUDPAddr(sockaddr_in Addr);
     void SetTCPSock(SOCKET CSock);
+    void SetConnected(bool state);
     void SetStatus(int status);
     void DeleteCar(int ident);
     sockaddr_in GetUDPAddr();
@@ -34,6 +37,7 @@ public:
     std::string GetName();
     std::string GetDID();
     SOCKET GetTCPSock();
+    bool isConnected();
     void SetID(int ID);
     int GetCarCount();
     int GetStatus();

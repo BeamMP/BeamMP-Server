@@ -22,16 +22,22 @@ int OpenID(){
     }while (!found);
     return ID;
 }
-
+void TCPSendLarge(Client*c,const std::string&Data);
 void Respond(Client*c, const std::string& MSG, bool Rel){
-    if(Rel)TCPSend(c,MSG);
+    if(Rel){
+        if(MSG.length() > 1000)TCPSendLarge(c,MSG);
+        else TCPSend(c,MSG);
+    }
     else UDPSend(c,MSG);
 }
 
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     for(Client*client : Clients){
         if(Self || client != c){
-            if(Rel)TCPSend(client,Data);
+            if(Rel){
+                if(Data.length() > 1000)TCPSendLarge(client,Data);
+                else TCPSend(client,Data);
+            }
             else UDPSend(client,Data);
         }
     }
