@@ -18,7 +18,7 @@ void addToLog(const string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
 string ServerVersion = "0.1";
-string ClientVersion = "0.21";
+string ClientVersion = "1.1";
 void HandleResources(const std::string& path);
 //void TCPMain(int Port);
 void NetMain();
@@ -26,6 +26,7 @@ void NetMain();
 int main() {
     LogInit();
     ParseConfig();
+    info("BeamMP Server Running version " + ServerVersion);
     HandleResources(Resource);
     HeartbeatInit();
     if(Debug)DebugData();

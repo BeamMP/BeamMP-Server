@@ -14,7 +14,6 @@
 SOCKET UDPSock;
 
 std::set<std::tuple<int,Client*,std::string>> BigDataAcks;
-
 void UDPSend(Client*c,const std::string&Data){
     if(!c->isConnected())return;
     sockaddr_in Addr = c->GetUDPAddr();
@@ -24,17 +23,18 @@ void UDPSend(Client*c,const std::string&Data){
 }
 
 void AckID(int ID){
-    if(BigDataAcks.empty())return;
     for(std::tuple<int,Client*,std::string> a : BigDataAcks){
-        if(get<0>(a) == ID)BigDataAcks.erase(a);
+        if(get<0>(a) == ID){
+            BigDataAcks.erase(a);
+            break;
+        }
     }
 }
 
 void TCPSendLarge(Client*c,const std::string&Data){
     static int ID = 0;
     std::string Header = "BD:" + std::to_string(ID) + ":";
-    //BigDataAcks.insert(std::make_tuple(ID,c,Header+Data));
-    UDPSend(c,Header+Data);
+    BigDataAcks.insert(std::make_tuple(ID,c,Header+Data));
     if(ID > 483647)ID = 0;
     else ID++;
 }
@@ -58,6 +58,7 @@ void GlobalParser(Client*c, const std::string&Packet);
 void UDPParser(Client*c, const std::string&Packet){
     if(Packet.substr(0,4) == "ACK:"){
         AckID(stoi(Packet.substr(4)));
+        std::cout << "Got Ack from " << c->GetName() << std::endl;
         return;
     }else if(Packet.substr(0,3) == "BD:"){
         int pos = Packet.find(':',4);
@@ -130,9 +131,9 @@ void LOOP(){
         for (std::tuple<int, Client *, std::string> a : BigDataAcks) {
             if (get<1>(a)->GetTCPSock() == -1) {
                 BigDataAcks.erase(a);
-                continue;
+                break;
             }
-            //UDPSend(get<1>(a), get<2>(a));
+            UDPSend(get<1>(a), get<2>(a));
         }
         std::this_thread::sleep_for(std::chrono::seconds(2));
     }
