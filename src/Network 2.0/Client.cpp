@@ -59,9 +59,28 @@ void Client::DeleteCar(int ident){
         }
     }
 }
+int Client::GetOpenCarID(){
+    int OpenID = 0;
+    bool found;
+    do {
+        found = true;
+        for (const std::pair<int, std::string> &a : VehicleData) {
+            if (a.first == OpenID){
+                OpenID++;
+                found = false;
+            }
+        }
+    }while (!found);
+    return OpenID;
+}
 void Client::AddNewCar(int ident,const std::string& Data){
     VehicleData.insert(std::make_pair(ident,Data));
 }
+
+std::set<std::pair<int,std::string>> Client::GetAllCars(){
+    return VehicleData;
+}
+
 std::string Client::GetCarData(int ident){
     for(const std::pair<int,std::string>& a : VehicleData){
         if(a.first == ident){

@@ -14,3 +14,4 @@ extern std::string ServerVersion;
 extern std::string ClientVersion;
 extern std::string FileList;
 extern std::string FileSizes;
+extern std::string Key;

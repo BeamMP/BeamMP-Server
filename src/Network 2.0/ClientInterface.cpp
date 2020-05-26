@@ -4,6 +4,7 @@
 #include "Client.hpp"
 #include "../logger.h"
 #include "../Settings.hpp"
+#include "../Lua System/LuaSystem.hpp"
 
 void UDPSend(Client*c,const std::string&Data);
 void TCPSend(Client*c,const std::string&Data);
@@ -35,7 +36,7 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     for(Client*client : Clients){
         if(Self || client != c){
             if(Rel){
-                if(Data.length() > 1000)TCPSendLarge(client,Data);
+                if(Data.length() > 1000 || Data.substr(0,2) == "Od")TCPSendLarge(client,Data);
                 else TCPSend(client,Data);
             }
             else UDPSend(client,Data);
@@ -52,19 +53,25 @@ void UpdatePlayers(){
     SendToAll(nullptr, Packet,true,true);
 }
 
-void OnDisconnect(Client*c,bool Timed){
-    std::string Packet = "Od:" + std::to_string(c->GetID());
-    SendToAll(c, Packet,false,true);
-    //if(Timed)Packet = "L"+c->GetName()+" Timed out!";
+void OnDisconnect(Client*c,bool kicked){
+    std::string Packet;
+
+    for(const std::pair<int,std::string>&a : c->GetAllCars()){
+        Packet = "Od:" + std::to_string(c->GetID()) + "-" + std::to_string(a.first);
+        SendToAll(c, Packet,false,true);
+    }
+
+    if(kicked)Packet = "L"+c->GetName()+" was kicked!";
     Packet = "L"+c->GetName()+" Left the server!";
     SendToAll(c, Packet,false,true);
     Packet.clear();
-    Clients.erase(c); ///Removes the Client from the list
+    Clients.erase(c); ///Removes the Client from the existence
 }
-
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller);
 void OnConnect(Client*c){
     c->SetID(OpenID());
     std::cout << "New Client Created! ID : " << c->GetID() << std::endl;
     Respond(c,"NR",true);
     Respond(c,"M"+MapName,true); //Send the Map on connect
+    TriggerLuaEvent("onPlayerJoining",false,nullptr);
 }

@@ -9,7 +9,8 @@ set(CMAKE_CXX_STANDARD 14)
 file(GLOB source_files
         "src/*.h" "src/*.hpp" "src/*.cpp"
         "src/Network 2.0/*.hpp" "src/Network 2.0/*.cpp"
-        "src/curl/*.h")
+        "src/Lua System/*.hpp" "src/Lua System/*.cpp"
+        "src/curl/*.h" "src/lua/*.h" "src/lua/*.hpp")
 
 add_executable(BeamMP-Server ${source_files})
-target_link_libraries(BeamMP-Server libcurl_a ws2_32)
+target_link_libraries(BeamMP-Server libcurl_a ws2_32 lua53)

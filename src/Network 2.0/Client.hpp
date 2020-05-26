@@ -22,6 +22,7 @@ private:
 
 
 public:
+    std::set<std::pair<int,std::string>> GetAllCars();
     void AddNewCar(int ident,const std::string& Data);
     void SetName(const std::string& name);
     void SetRole(const std::string& role);
@@ -40,6 +41,7 @@ public:
     bool isConnected();
     void SetID(int ID);
     int GetCarCount();
+    int GetOpenCarID();
     int GetStatus();
     int GetID();
 };

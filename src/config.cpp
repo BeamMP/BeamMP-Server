@@ -9,11 +9,11 @@
 using namespace std; //nameSpace STD
 void GenerateConfig();
 string RemoveComments(const string& Line);
-string convertToString(char* a, int size);
 void SetValues(const string& Line, int Index);
-string MapName = "/levels/gridmap/level.json";
+string MapName = "/levels/gridmap/info.json";
 string ServerName = "BeamMP Server";
 string Resource = "Resources";
+string Key;
 bool Private = false;
 bool Debug = false;
 int MaxPlayers = 10;
@@ -68,7 +68,7 @@ void SetValues(const string& Line, int Index) {
         Data[C-1] = Data[C];
     }
     string::size_type sz;
-    bool Boolean = (convertToString(Data,i-1).find("true") != string::npos);//searches for "true"
+    bool Boolean = std::string(Data).find("true") != string::npos;//searches for "true"
     switch (Index){
         case 1 : Debug = Boolean;//checks and sets the Debug Value
             break;
@@ -85,6 +85,8 @@ void SetValues(const string& Line, int Index) {
         case 7 : ServerName = Data; //Name
             break;
         case 8 : Resource = Data; //File name
+            break;
+        case 9 : Key = Data; //File name
     }
 }
 
@@ -102,7 +104,8 @@ void GenerateConfig(){
                   "MaxPlayers = 10 # Maximum Amount of Clients\n"
                   "Map = \"/levels/gridmap/info.json\" # Default Map\n"
                   "Name = \"BeamMP New Server\" # Server Name\n"
-                  "use = \"Resources\" # Resource file name";
+                  "use = \"Resources\" # Resource file name\n"
+                  "AuthKey = \"\" # Auth Key";
     FileStream.close();
 }
 
@@ -115,16 +118,5 @@ string RemoveComments(const string& Line){
         Data[i] = c;
         i++;
     }
-    return convertToString(Data,i); //Converts it from a char array to string and returns it
-}
-
-//Converts a char array or pointer to string
-string convertToString(char* a, int size)
-{
-    int i;
-    string s;
-    for (i = 0; i < size; i++) {
-        s = s + a[i];
-    }
-    return s;
+    return std::string(Data); //Converts it from a char array to string and returns it
 }

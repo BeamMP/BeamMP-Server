@@ -17,9 +17,9 @@ void ParseConfig();
 void addToLog(const string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-string ServerVersion = "0.1";
-string ClientVersion = "1.1";
-void HandleResources(const std::string& path);
+string ServerVersion = "0.2";
+string ClientVersion = "1.1+";
+void HandleResources(std::string path);
 //void TCPMain(int Port);
 void NetMain();
 //Entry
@@ -47,6 +47,7 @@ void DebugData(){
     debug("MapName : " + MapName);
     debug("ServerName : " + ServerName );
     debug("File : " + Resource);
+    debug("Auth Key : " + Key);
 }
 
 

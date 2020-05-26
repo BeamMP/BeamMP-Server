@@ -10,11 +10,18 @@ namespace fs = std::experimental::filesystem;
 std::string FileList;
 std::string FileSizes;
 
-void HandleResources(const std::string& path){
+void LuaMain(std::string Path);
+void HandleResources(std::string path){
+    LuaMain(path);
     struct stat info{};
-    if(stat( "Resources", &info) != 0){
-        _wmkdir(L"Resources");
+    if(stat( path.c_str(), &info) != 0){
+        fs::create_directory(path);
+        path += "/Client";
+        if(stat( path.c_str(), &info) != 0) {
+            fs::create_directory(path);
+        }
     }
+
     for (const auto & entry : fs::directory_iterator(path)){
         int pos = entry.path().string().find(".zip");
         if(pos != std::string::npos){

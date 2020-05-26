@@ -30,7 +30,7 @@ std::string HTTP_REQUEST(const std::string& IP,int port){
     return readBuffer;
 }
 
-void PostHTTP(const std::string& IP,const std::string& Fields){
+std::string PostHTTP(const std::string& IP,const std::string& Fields){
     CURL *curl;
     CURLcode res;
     std::string readBuffer;
@@ -45,4 +45,5 @@ void PostHTTP(const std::string& IP,const std::string& Fields){
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
     }
+    return readBuffer;
 }

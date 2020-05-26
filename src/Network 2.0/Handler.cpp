@@ -17,7 +17,7 @@ void TCPSend(Client*c,const std::string&Data){
     else if (BytesSent < 0) {
         std::cout << "(TCP) send failed with error: " << WSAGetLastError() << std::endl;
         closesocket(c->GetTCPSock());
-        c->SetStatus(-2);
+        c->SetStatus(-1);
     }
 }
 
@@ -35,7 +35,7 @@ void TCPRcv(Client*c){
     else if (BytesRcv < 0) {
         std::cout << "(TCP) recv failed with error: " << WSAGetLastError() << std::endl;
         closesocket(c->GetTCPSock());
-        c->SetStatus(-2);
+        c->SetStatus(-1);
     }
     GlobalParser(c, std::string(buf));
 }

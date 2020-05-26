@@ -6,68 +6,82 @@
 #include "Client.hpp"
 #include "../logger.h"
 #include "../Settings.hpp"
+#include "../Lua System/LuaSystem.hpp"
 
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel);
 std::string HTTP_REQUEST(const std::string& IP,int port);
 void Respond(Client*c, const std::string& MSG, bool Rel);
 void UpdatePlayers();
 
-void FindAndSync(Client*c,int VehID){
+
+
+/*void FindAndSync(Client*c,int ClientID){
     for (Client*client : Clients) {
         if (client != c){
-            if(client->GetID() == VehID){ /////mark
-                Respond(client,c->GetCarData(VehID),true);
+            if(client->GetID() == ClientID){ /////mark
+                Respond(client,c->GetCarData(ClientID),true);
             }
         }
     }
-}
+}*/
+
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller);
 void VehicleParser(Client*c, std::string Packet){
     char Code = Packet.at(1);
-    int ID = -1;
-    std::string Data = Packet.substr(3);
+    int PID = -1;
+    int VID = -1;
+    std::string Data = Packet.substr(3),pid,vid;
     switch(Code){ //Spawned Destroyed Switched/Moved NotFound Reset
         case 's':
             if(Data.at(0) == '0'){
+                if(TriggerLuaEvent("onVehicleSpawn",false,nullptr))break;
+                int CarID = c->GetOpenCarID();
+                std::cout << c->GetName() << " CarID : " << CarID << std::endl;
+                Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+"-"+std::to_string(CarID)+Packet.substr(4);
                 if(c->GetCarCount() >= MaxCars){
-                    std::string Destroy = "Od:" + std::to_string(c->GetID()); ///to revise
-                    SendToAll(c,Destroy,true,true);
-                    c->DeleteCar(c->GetID());
+                    Respond(c,Packet,true);
+                    std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(CarID);
+                    Respond(c,Destroy,true);
+                }else{
+                    c->AddNewCar(CarID,Packet);
+                    SendToAll(nullptr, Packet,true,true);
                 }
-                Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+Packet.substr(4);
-                c->AddNewCar(c->GetID(),Packet); ///revise later
             }
-            SendToAll(nullptr,Packet,true,true);
             break;
         case 'd':
-            if(Data.find_first_not_of("0123456789") == std::string::npos){
-               ID = stoi(Data);
+            pid = Data.substr(0,Data.find('-'));
+            vid = Data.substr(Data.find('-')+1);
+            if(pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos){
+               PID = stoi(pid);
+               VID = stoi(vid);
             }
-            if(ID != -1 && ID == c->GetID()){
+            if(PID != -1 && VID != -1 && PID == c->GetID()){
                 SendToAll(nullptr,Packet,true,true);
-                c->DeleteCar(c->GetID());
-                ///std::cout << "Delete Requested from " << c->GetName() << std::endl;
+                c->DeleteCar(VID);
             }
             break;
         case 'm':
             break;
-        case 'n':
+        /*case 'n':
             if(Packet.substr(3).find_first_not_of("0123456789") == std::string::npos){
-                ID = stoi(Packet.substr(3));
+                PID = stoi(Packet.substr(3));
             }
-            FindAndSync(c,ID);
-            break;
+            FindAndSync(c,PID); //ACK System
+            break;*/
         case 'r':
             SendToAll(c,Packet,false,true);
             break;
     }
 }
-
 void SyncVehicles(Client*c){
     Respond(c,"Sn"+c->GetName(),true);
     SendToAll(c,"JWelcome "+c->GetName()+"!",false,true);
+    TriggerLuaEvent("onPlayerJoin",false,nullptr);
     for (Client*client : Clients) {
         if (client != c) {
-            Respond(c,client->GetCarData(client->GetID()),true); ///revise later
+            for(const std::pair<int,std::string>&a : client->GetAllCars()){
+                Respond(c,a.second,true);
+            }
         }
     }
 }
@@ -119,6 +133,7 @@ void GlobalParser(Client*c, const std::string&Packet){
             SendToAll(c,Packet,false,true);
             break;
         case 'C':
+            if(TriggerLuaEvent("onChatMessage",false,nullptr))break;
             SendToAll(nullptr,Packet,true,true);
             break;
         case 'E':

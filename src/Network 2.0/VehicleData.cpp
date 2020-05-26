@@ -7,7 +7,6 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
-
 #include "../logger.h"
 #include "../Settings.hpp"
 
