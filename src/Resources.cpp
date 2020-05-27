@@ -12,16 +12,15 @@ std::string FileSizes;
 
 void LuaMain(std::string Path);
 void HandleResources(std::string path){
-    LuaMain(path);
     struct stat info{};
     if(stat( path.c_str(), &info) != 0){
         fs::create_directory(path);
-        path += "/Client";
-        if(stat( path.c_str(), &info) != 0) {
-            fs::create_directory(path);
-        }
     }
-
+    LuaMain(path);
+    path += "/Client";
+    if(stat( path.c_str(), &info) != 0) {
+        fs::create_directory(path);
+    }
     for (const auto & entry : fs::directory_iterator(path)){
         int pos = entry.path().string().find(".zip");
         if(pos != std::string::npos){

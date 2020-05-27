@@ -39,7 +39,7 @@ void Heartbeat()
         if(R.find_first_not_of("20") != std::string::npos){
             //Backend system refused server startup!
             error(HTA("4261636b656e642073797374656d20726566757365642073657276657221"));
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::this_thread::sleep_for(std::chrono::seconds(3));
             exit(-1);
         }
         //Server Authenticated
