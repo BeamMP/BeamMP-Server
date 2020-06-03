@@ -14,17 +14,6 @@ void Respond(Client*c, const std::string& MSG, bool Rel);
 void UpdatePlayers();
 
 
-
-/*void FindAndSync(Client*c,int ClientID){
-    for (Client*client : Clients) {
-        if (client != c){
-            if(client->GetID() == ClientID){ /////mark
-                Respond(client,c->GetCarData(ClientID),true);
-            }
-        }
-    }
-}*/
-
 int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller);
 void VehicleParser(Client*c, std::string Packet){
     char Code = Packet.at(1);
@@ -62,12 +51,6 @@ void VehicleParser(Client*c, std::string Packet){
             break;
         case 'm':
             break;
-        /*case 'n':
-            if(Packet.substr(3).find_first_not_of("0123456789") == std::string::npos){
-                PID = stoi(Packet.substr(3));
-            }
-            FindAndSync(c,PID); //ACK System
-            break;*/
         case 'r':
             SendToAll(c,Packet,false,true);
             break;

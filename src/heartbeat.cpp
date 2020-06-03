@@ -9,8 +9,6 @@
 #include "Settings.hpp"
 #include "Network 2.0/Client.hpp"
 
-using namespace std;
-
 string HTTP_REQUEST(const std::string&,int);
 std::string PostHTTP(const std::string& IP,const std::string& Fields);
 std::string HTA(const std::string& hex)
@@ -34,6 +32,7 @@ void Heartbeat()
         R = "uuid="+Key+"&players="+to_string(Clients.size())+"&maxplayers="+to_string(MaxPlayers)+"&port="
             + to_string(Port) + "&map=" + MapName + "&private="+State+"&version="+ServerVersion+
             "&clientversion="+ClientVersion+"&name="+ServerName;
+        if(!CustomIP.empty())R+="&ip="+CustomIP;
         // https://beamng-mp.com/heartbeatv2
         R = PostHTTP(HTA("68747470733a2f2f6265616d6e672d6d702e636f6d2f6865617274626561747632"),R);
         if(R.find_first_not_of("20") != std::string::npos){

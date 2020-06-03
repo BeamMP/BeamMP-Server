@@ -8,22 +8,32 @@
 #include <chrono>
 #include <thread>
 #include "logger.h"
+#include <algorithm>
 #include "Settings.hpp"
 
-using namespace std;
 void DebugData();
 void LogInit();
 void ParseConfig();
 void addToLog(const string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-string ServerVersion = "0.2";
-string ClientVersion = "1.1+";
+std::string ServerVersion = "0.2";
+std::string ClientVersion = "1.1+";
+std::string CustomIP;
 void HandleResources(std::string path);
 //void TCPMain(int Port);
 void NetMain();
 //Entry
-int main() {
+int main(int argc, char* argv[]) {
+    if(argc > 1){
+        CustomIP = argv[1];
+        size_t n = std::count(CustomIP.begin(), CustomIP.end(), '.');
+        int p = CustomIP.find_first_not_of(".0123456789");
+        if(p != std::string::npos || n != 3 || CustomIP.substr(0,3) == "127"){
+            CustomIP.clear();
+            warn("IP Specified is invalid!");
+        }else info("Started with custom ip : " + CustomIP);
+    }
     LogInit();
     ParseConfig();
     info("BeamMP Server Running version " + ServerVersion);

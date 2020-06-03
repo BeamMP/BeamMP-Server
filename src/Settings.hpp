@@ -15,3 +15,4 @@ extern std::string ClientVersion;
 extern std::string FileList;
 extern std::string FileSizes;
 extern std::string Key;
+extern std::string CustomIP;

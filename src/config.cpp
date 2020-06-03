@@ -6,7 +6,7 @@
 #include <fstream>
 #include <string>
 #include "logger.h"
-using namespace std; //nameSpace STD
+
 void GenerateConfig();
 string RemoveComments(const string& Line);
 void SetValues(const string& Line, int Index);

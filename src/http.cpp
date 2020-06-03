@@ -6,8 +6,6 @@
 
 #include "curl/curl.h"
 #include <iostream>
-#include <string>
-
 
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -42,6 +40,7 @@ std::string PostHTTP(const std::string& IP,const std::string& Fields){
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, Fields.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
     }

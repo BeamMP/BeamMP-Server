@@ -23,20 +23,21 @@ int OpenID(){
     }while (!found);
     return ID;
 }
-void TCPSendLarge(Client*c,const std::string&Data);
+void SendLarge(Client*c,const std::string&Data);
 void Respond(Client*c, const std::string& MSG, bool Rel){
+    char C = MSG.at(0);
     if(Rel){
-        if(MSG.length() > 1000)TCPSendLarge(c,MSG);
+        if(C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
         else TCPSend(c,MSG);
-    }
-    else UDPSend(c,MSG);
+    }else UDPSend(c,MSG);
 }
 
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
+    char C = Data.at(0);
     for(Client*client : Clients){
         if(Self || client != c){
             if(Rel){
-                if(Data.length() > 1000 || Data.substr(0,2) == "Od")TCPSendLarge(client,Data);
+                if(C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
                 else TCPSend(client,Data);
             }
             else UDPSend(client,Data);
@@ -55,17 +56,15 @@ void UpdatePlayers(){
 
 void OnDisconnect(Client*c,bool kicked){
     std::string Packet;
-
     for(const std::pair<int,std::string>&a : c->GetAllCars()){
         Packet = "Od:" + std::to_string(c->GetID()) + "-" + std::to_string(a.first);
         SendToAll(c, Packet,false,true);
     }
-
     if(kicked)Packet = "L"+c->GetName()+" was kicked!";
     Packet = "L"+c->GetName()+" Left the server!";
     SendToAll(c, Packet,false,true);
     Packet.clear();
-    Clients.erase(c); ///Removes the Client from the existence
+    Clients.erase(c); ///Removes the Client from existence
 }
 int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller);
 void OnConnect(Client*c){
