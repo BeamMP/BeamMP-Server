@@ -8,12 +8,12 @@
 #include "logger.h"
 
 void GenerateConfig();
-string RemoveComments(const string& Line);
-void SetValues(const string& Line, int Index);
-string MapName = "/levels/gridmap/info.json";
-string ServerName = "BeamMP Server";
-string Resource = "Resources";
-string Key;
+std::string RemoveComments(const std::string& Line);
+void SetValues(const std::string& Line, int Index);
+std::string MapName = "/levels/gridmap/info.json";
+std::string ServerName = "BeamMP Server";
+std::string Resource = "Resources";
+std::string Key;
 bool Private = false;
 bool Debug = false;
 int MaxPlayers = 10;
@@ -22,15 +22,15 @@ int MaxCars = 1;
 
 //Generates or Reads Config
 void ParseConfig(){
-    ifstream InFileStream;
+    std::ifstream InFileStream;
     InFileStream.open("Server.cfg");
     if(InFileStream.good()){ //Checks if Config Exists
         info("Config Found Updating Values");
-        string line;
+        std::string line;
         int index = 1;
         while (getline(InFileStream, line)) {
             if(line.rfind('#', 0) != 0){ //Checks if it starts as Comment
-                string CleanLine = RemoveComments(line); //Cleans it from the Comments
+                std::string CleanLine = RemoveComments(line); //Cleans it from the Comments
                 SetValues(CleanLine,index); //sets the values
                 index++;
             }
@@ -44,7 +44,7 @@ void ParseConfig(){
 
 
 
-void SetValues(const string& Line, int Index) {
+void SetValues(const std::string& Line, int Index) {
     int i = 0, state = 0;
     char Data[50] = "";
     bool Switch = false;
@@ -67,18 +67,18 @@ void SetValues(const string& Line, int Index) {
     for (int C = 1; C <= i; C++){
         Data[C-1] = Data[C];
     }
-    string::size_type sz;
-    bool Boolean = std::string(Data).find("true") != string::npos;//searches for "true"
+    std::string::size_type sz;
+    bool Boolean = std::string(Data).find("true") != std::string::npos;//searches for "true"
     switch (Index){
         case 1 : Debug = Boolean;//checks and sets the Debug Value
             break;
         case 2 : Private = Boolean;//checks and sets the Private Value
             break;
-        case 3 : Port = stoi(Data, &sz);//sets the Port
+        case 3 : Port = std::stoi(Data, &sz);//sets the Port
             break;
-        case 4 : MaxCars = stoi(Data, &sz);//sets the Max Car amount
+        case 4 : MaxCars = std::stoi(Data, &sz);//sets the Max Car amount
             break;
-        case 5 : MaxPlayers = stoi(Data, &sz); //sets the Max Amount of player
+        case 5 : MaxPlayers = std::stoi(Data, &sz); //sets the Max Amount of player
             break;
         case 6 : MapName = Data; //Map
             break;
@@ -94,7 +94,7 @@ void SetValues(const string& Line, int Index) {
 
 //generates default Config
 void GenerateConfig(){
-    ofstream FileStream;
+    std::ofstream FileStream;
     FileStream.open ("Server.cfg");
     FileStream << "# This is the BeamMP Server Configuration File\n"
                   "Debug = false # true or false to enable debug console output\n"
@@ -110,7 +110,7 @@ void GenerateConfig(){
 }
 
 
-string RemoveComments(const string& Line){
+std::string RemoveComments(const std::string& Line){
     int i = 0;
     char Data[50] = "";
     for(char c : Line) {

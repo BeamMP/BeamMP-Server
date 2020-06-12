@@ -4,7 +4,7 @@ project(BeamMP-Server)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2")
 include_directories(${PROJECT_SOURCE_DIR}/curl)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 file(GLOB source_files
         "src/*.h" "src/*.hpp" "src/*.cpp"

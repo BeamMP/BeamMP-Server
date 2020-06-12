@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <filesystem>
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 std::string FileList;
 std::string FileSizes;
@@ -13,12 +13,12 @@ std::string FileSizes;
 void LuaMain(std::string Path);
 void HandleResources(std::string path){
     struct stat info{};
-    if(stat( path.c_str(), &info) != 0){
+    if(stat(path.c_str(), &info) != 0){
         fs::create_directory(path);
     }
     LuaMain(path);
     path += "/Client";
-    if(stat( path.c_str(), &info) != 0) {
+    if(stat(path.c_str(), &info) != 0) {
         fs::create_directory(path);
     }
     for (const auto & entry : fs::directory_iterator(path)){

@@ -1,21 +1,38 @@
 ///
 /// Created by Anonymous275 on 5/19/2020
 ///
+
 #include "../Network 2.0/Client.hpp"
 #include "LuaSystem.hpp"
 #include "../logger.h"
 #include <iostream>
 #include <thread>
 
-int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller){
+LuaArg* CreateArg(lua_State *L,int T){
+    LuaArg* temp = new LuaArg;
+    for(int C = 2;C <= T;C++){
+        if(lua_isstring(L,C)){
+            temp->args.emplace_back(std::string(lua_tostring(L,C)));
+        }else if(lua_isinteger(L,C)){
+            temp->args.emplace_back(int(lua_tointeger(L,C)));
+        }else if(lua_isboolean(L,C)){
+            temp->args.emplace_back(bool(lua_toboolean(L,C)));
+        }else if(lua_isnumber(L,C)) {
+            temp->args.emplace_back(float(lua_tonumber(L, C)));
+        }
+    }
+    return temp;
+}
+
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg){
     int R = 0;
     for(Lua*Script : PluginEngine){
         if(Script->IsRegistered(Event)){
             if(local){
                 if (Script->GetPluginName() == Caller->GetPluginName()){
-                    R += Script->CallFunction(Script->GetRegistered(Event));
+                    R += Script->CallFunction(Script->GetRegistered(Event),arg);
                 }
-            }else R += Script->CallFunction(Script->GetRegistered(Event));
+            }else R += Script->CallFunction(Script->GetRegistered(Event),arg);
         }
     }
     return R;
@@ -59,9 +76,9 @@ int lua_TriggerEventL(lua_State *L)
     Lua* Script = GetScript(L);
     if(Args > 0){
         if(lua_isstring(L,1)) {
-            TriggerLuaEvent(lua_tostring(L, 1), true, Script);
+            TriggerLuaEvent(lua_tostring(L, 1), true, Script, CreateArg(L,Args));
         }else{
-            SendError(L,"TriggerLocalEvent wrong arguments need string");
+            SendError(L,"TriggerLocalEvent wrong argument [1] need string");
         }
     }else{
         SendError(L,"TriggerLocalEvent not enough arguments");
@@ -75,24 +92,24 @@ int lua_TriggerEventG(lua_State *L)
     Lua* Script = GetScript(L);
     if(Args > 0){
         if(lua_isstring(L,1)) {
-            TriggerLuaEvent(lua_tostring(L, 1), true, Script);
-        }else SendError(L,"TriggerGlobalEvent wrong arguments need string");
+            TriggerLuaEvent(lua_tostring(L, 1), false, Script, CreateArg(L,Args));
+        }else SendError(L,"TriggerGlobalEvent wrong argument [1] need string");
     }else{
         SendError(L,"TriggerGlobalEvent not enough arguments");
     }
     return 0;
 }
-void CallAsync(Lua* Script,const std::string&FuncName){
-    Script->CallFunction(FuncName);
+void CallAsync(Lua* Script,const std::string&FuncName,LuaArg* args){
+    Script->CallFunction(FuncName,args);
 }
 int lua_CreateThread(lua_State *L){
     int Args = lua_gettop(L);
     Lua* Script = GetScript(L);
     if(Args > 0){
         if(lua_isstring(L,1)) {
-            std::thread Worker(CallAsync,Script,lua_tostring(L,1));
+            std::thread Worker(CallAsync,Script,lua_tostring(L,1),CreateArg(L,Args));
             Worker.detach();
-        }else SendError(L,"CreateThread wrong arguments need string");
+        }else SendError(L,"CreateThread wrong argument [1] need string");
     }else SendError(L,"CreateThread not enough arguments");
     return 0;
 }
@@ -193,18 +210,35 @@ int lua_dropPlayer(lua_State *L){
         if(c != nullptr){
             Respond(c,"C:Server:You have been Kicked from the server!",true);
             c->SetStatus(-2);
+            closesocket(c->GetTCPSock());
         }
     }else SendError(L,"DropPlayer not enough arguments");
     return 0;
 }
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel);
 int lua_sendChat(lua_State *L){
-    if(lua_isstring(L,1)){
-        std::string Packet = "C:Server: " + std::string(lua_tostring(L, 1));
-        SendToAll(nullptr,Packet,true,true);
-    }else SendError(L,"SendChatMessage not enough arguments");
+    if(lua_isinteger(L,1) || lua_isnumber(L,1)){
+        if(lua_isstring(L,2)){
+            int ID = lua_tointeger(L,1);
+            if(ID == -1){
+                std::string Packet = "C:Server: " + std::string(lua_tostring(L, 1));
+                SendToAll(nullptr,Packet,true,true);
+            }else{
+                Client*c = GetClient(ID);
+                if(c != nullptr) {
+                    std::string Packet = "C:Server: " + std::string(lua_tostring(L, 1));
+                    Respond(c, Packet, true);
+                }else SendError(L,"SendChatMessage invalid argument [1] invalid ID");
+            }
+        }else SendError(L,"SendChatMessage invalid argument [2] expected string");
+    }else SendError(L,"SendChatMessage invalid argument [1] expected number");
     return 0;
 }
+int lua_HWID(lua_State *L){
+    lua_pushinteger(L, -1);
+    return 1;
+}
+
 void Lua::Init(){
     luaL_openlibs(luaState);
     lua_register(luaState,"TriggerGlobalEvent",lua_TriggerEventG);
@@ -213,23 +247,31 @@ void Lua::Init(){
     lua_register(luaState,"isPlayerConnected",lua_isConnected);
     lua_register(luaState,"RegisterEvent",lua_RegisterEvent);
     lua_register(luaState,"GetPlayerName",lua_GetPlayerName);
+    lua_register(luaState,"GetPlayerDiscordID",lua_GetDID);
     lua_register(luaState,"GetPlayerVehicles",lua_GetCars);
     lua_register(luaState,"CreateThread",lua_CreateThread);
     lua_register(luaState,"SendChatMessage",lua_sendChat);
     lua_register(luaState,"DropPlayer",lua_dropPlayer);
     lua_register(luaState,"GetPlayers",lua_GetAllIDs);
-    lua_register(luaState,"GetDID",lua_GetDID);
+    lua_register(luaState,"GetPlayerHWID",lua_HWID);
     lua_register(luaState,"Sleep",lua_Sleep);
+    Reload();
+}
+void Lua::Reload(){
     if(CheckLua(luaState,luaL_dofile(luaState,FileName.c_str()))){
-        CallFunction("onInit");
+        CallFunction("onInit",{});
     }
 }
-int Lua::CallFunction(const std::string&FuncName){
+int Lua::CallFunction(const std::string&FuncName,LuaArg* Arg){
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {
-        /*lua_pushstring(luaState, "Anonymous275");
-        lua_pushinteger(luaState, 1);*/
-        if(CheckLua(luaState, lua_pcall(luaState, 0, 1, 0))){
+        int Size = 0;
+        if(Arg != nullptr){
+            Size = Arg->args.size();
+            Arg->PushArgs(luaState);
+        }
+        if(CheckLua(luaState, lua_pcall(luaState, Size, 1, 0))){
+
             if(lua_isnumber(luaState,-1)){
                 return lua_tointeger(luaState,-1);
             }
@@ -274,4 +316,10 @@ std::string Lua::GetPluginName(){
 }
 lua_State* Lua::GetState(){
     return luaState;
+}
+void Lua::SetLastWrite(fs::file_time_type time){
+   LastWrote = time;
+}
+fs::file_time_type Lua::GetLastWrite(){
+    return LastWrote;
 }

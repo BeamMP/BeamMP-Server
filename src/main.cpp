@@ -14,7 +14,7 @@
 void DebugData();
 void LogInit();
 void ParseConfig();
-void addToLog(const string& Data);
+void addToLog(const std::string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
 std::string ServerVersion = "0.3";
@@ -49,11 +49,11 @@ int main(int argc, char* argv[]) {
 
 
 void DebugData(){
-    debug(string("Debug : ") + (Debug?"true":"false"));
-    debug(string("Private : ") + (Private?"true":"false"));
-    debug("Port : " + to_string(Port));
-    debug("Max Cars : " + to_string(MaxCars));
-    debug("MaxPlayers : " + to_string(MaxPlayers));
+    debug(std::string("Debug : ") + (Debug?"true":"false"));
+    debug(std::string("Private : ") + (Private?"true":"false"));
+    debug("Port : " + std::to_string(Port));
+    debug("Max Cars : " + std::to_string(MaxCars));
+    debug("MaxPlayers : " + std::to_string(MaxPlayers));
     debug("MapName : " + MapName);
     debug("ServerName : " + ServerName );
     debug("File : " + Resource);
@@ -62,13 +62,13 @@ void DebugData(){
 
 
 void LogInit(){
-    ofstream LFS;
+    std::ofstream LFS;
     LFS.open ("Server.log");
     LFS.close();
 }
 
-void addToLog(const string& Data){
-    ofstream LFS;
+void addToLog(const std::string& Data){
+    std::ofstream LFS;
     LFS.open ("Server.log", std::ios_base::app);
     LFS << Data.c_str();
     LFS.close();

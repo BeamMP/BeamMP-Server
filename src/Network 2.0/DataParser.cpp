@@ -14,7 +14,7 @@ void Respond(Client*c, const std::string& MSG, bool Rel);
 void UpdatePlayers();
 
 
-int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller);
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg);
 void VehicleParser(Client*c, std::string Packet){
     char Code = Packet.at(1);
     int PID = -1;
@@ -23,11 +23,12 @@ void VehicleParser(Client*c, std::string Packet){
     switch(Code){ //Spawned Destroyed Switched/Moved NotFound Reset
         case 's':
             if(Data.at(0) == '0'){
-                if(TriggerLuaEvent("onVehicleSpawn",false,nullptr))break;
                 int CarID = c->GetOpenCarID();
                 std::cout << c->GetName() << " CarID : " << CarID << std::endl;
                 Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+"-"+std::to_string(CarID)+Packet.substr(4);
-                if(c->GetCarCount() >= MaxCars){
+                if(TriggerLuaEvent("onVehicleSpawn",false,nullptr,
+                                   new LuaArg{{c->GetID(),CarID,Packet.substr(3)}})
+                || c->GetCarCount() >= MaxCars){
                     Respond(c,Packet,true);
                     std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(CarID);
                     Respond(c,Destroy,true);
@@ -36,6 +37,9 @@ void VehicleParser(Client*c, std::string Packet){
                     SendToAll(nullptr, Packet,true,true);
                 }
             }
+            break;
+        case 'c':
+            SendToAll(c,Packet,false,true);
             break;
         case 'd':
             pid = Data.substr(0,Data.find('-'));
@@ -49,17 +53,17 @@ void VehicleParser(Client*c, std::string Packet){
                 c->DeleteCar(VID);
             }
             break;
-        case 'm':
-            break;
         case 'r':
             SendToAll(c,Packet,false,true);
+            break;
+        case 'm':
             break;
     }
 }
 void SyncVehicles(Client*c){
     Respond(c,"Sn"+c->GetName(),true);
     SendToAll(c,"JWelcome "+c->GetName()+"!",false,true);
-    TriggerLuaEvent("onPlayerJoin",false,nullptr);
+    TriggerLuaEvent("onPlayerJoin",false,nullptr,new LuaArg{{c->GetID()}});
     for (Client*client : Clients) {
         if (client != c) {
             for(const std::pair<int,std::string>&a : client->GetAllCars()){
@@ -74,8 +78,10 @@ void HTTP(Client*c){
         std::string a = HTTP_REQUEST("https://beamng-mp.com/entitlement?did="+c->GetDID(),443);
         if(!a.empty()){
             int pos = a.find('"');
-            c->SetRole(a.substr(pos+1,a.find('"',pos+1)-2));
-            if(Debug)debug("ROLE -> " + c->GetRole() + " ID -> " + c->GetDID());
+            if(c != nullptr){
+                c->SetRole(a.substr(pos+1,a.find('"',pos+1)-2));
+                if(Debug)debug("ROLE -> " + c->GetRole() + " ID -> " + c->GetDID());
+            }
         }
     }
 }
@@ -116,7 +122,8 @@ void GlobalParser(Client*c, const std::string&Packet){
             SendToAll(c,Packet,false,true);
             break;
         case 'C':
-            if(TriggerLuaEvent("onChatMessage",false,nullptr))break;
+            if(TriggerLuaEvent("onChatMessage",false,nullptr,
+                    new LuaArg{{c->GetID(),c->GetName(),Packet.substr(Packet.find(':',3)+1)}}))break;
             SendToAll(nullptr,Packet,true,true);
             break;
         case 'E':

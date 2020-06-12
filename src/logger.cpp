@@ -7,7 +7,6 @@
 #include "logger.h"
 #include <string>
 void addToLog(const std::string& Data);
-using namespace std;
 int loggerlevel;
 
 void setLoggerLevel(int level) {
@@ -15,7 +14,7 @@ void setLoggerLevel(int level) {
     loggerlevel = level;
 }
 
-stringstream getDate() {
+std::stringstream getDate() {
     // current date/time based on current system
     time_t now = time(nullptr);
     tm* ltm = localtime(&now);
@@ -26,25 +25,25 @@ stringstream getDate() {
     int minutes = ltm->tm_min;
     int seconds = ltm->tm_sec;
 
-    string month_string;
-    if (month < 10) month_string = "0" + to_string(month);
-    else month_string = to_string(month);
+    std::string month_string;
+    if (month < 10) month_string = "0" + std::to_string(month);
+    else month_string = std::to_string(month);
 
-    string day_string;
-    if (day < 10) day_string = "0" + to_string(day);
-    else day_string = to_string(day);
+    std::string day_string;
+    if (day < 10) day_string = "0" + std::to_string(day);
+    else day_string = std::to_string(day);
 
-    string hours_string;
-    if (hours < 10) hours_string = "0" + to_string(hours);
-    else hours_string = to_string(hours);
+    std::string hours_string;
+    if (hours < 10) hours_string = "0" + std::to_string(hours);
+    else hours_string = std::to_string(hours);
 
-    string minutes_string;
-    if (minutes < 10) minutes_string = "0" + to_string(minutes);
-    else minutes_string = to_string(minutes);
+    std::string minutes_string;
+    if (minutes < 10) minutes_string = "0" + std::to_string(minutes);
+    else minutes_string = std::to_string(minutes);
 
-    string seconds_string;
-    if (seconds < 10) seconds_string = "0" + to_string(seconds);
-    else seconds_string = to_string(seconds);
+    std::string seconds_string;
+    if (seconds < 10) seconds_string = "0" + std::to_string(seconds);
+    else seconds_string = std::to_string(seconds);
 
     std::stringstream date;
     date
@@ -62,14 +61,14 @@ stringstream getDate() {
 
 void info(const std::string& toPrint) {
     if (loggerlevel <= 2){
-        cout << getDate().str() << "[INFO] " << toPrint << endl;
+        std::cout << getDate().str() << "[INFO] " << toPrint << std::endl;
         addToLog(getDate().str() + "[INFO] " + toPrint + "\n");
     }
 }
 
 void error(const std::string& toPrint) {
     if (loggerlevel <= 4) {
-        cout << getDate().str() << "[ERROR] " << toPrint << endl;
+        std::cout << getDate().str() << "[ERROR] " << toPrint << std::endl;
         addToLog(getDate().str() + "[ERROR] " + toPrint + "\n");
     }
 }
@@ -77,7 +76,7 @@ void error(const std::string& toPrint) {
 
 void warn(const std::string& toPrint) {
     if (loggerlevel <= 3) {
-        cout << getDate().str() << "[WARN] " << toPrint << endl;
+        std::cout << getDate().str() << "[WARN] " << toPrint << std::endl;
         addToLog(getDate().str() + "[WARN] " + toPrint + "\n");
     }
 }
@@ -85,7 +84,7 @@ void warn(const std::string& toPrint) {
 
 void debug(const std::string& toPrint) {
     if (loggerlevel <= 1) {
-        cout << getDate().str() << "[DEBUG] " << toPrint << endl;
+        std::cout << getDate().str() << "[DEBUG] " << toPrint << std::endl;
         addToLog(getDate().str() + "[DEBUG] " + toPrint + "\n");
     }
 }

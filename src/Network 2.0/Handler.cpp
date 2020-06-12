@@ -12,17 +12,16 @@ void TCPSend(Client*c,const std::string&Data){
     int BytesSent = send(c->GetTCPSock(), Data.c_str(), int(Data.length())+1, 0);
     if (BytesSent == 0){
         std::cout << "(TCP) Connection closing..." << std::endl;
-        c->SetStatus(-1);
+        if(c->GetStatus() > -1)c->SetStatus(-1);
     }
     else if (BytesSent < 0) {
         std::cout << "(TCP) send failed with error: " << WSAGetLastError() << std::endl;
+        if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
-        c->SetStatus(-1);
     }
 }
 
 void GlobalParser(Client*c, const std::string&Packet);
-
 void TCPRcv(Client*c){
     char buf[4096];
     int len = 4096;
@@ -30,12 +29,12 @@ void TCPRcv(Client*c){
     int BytesRcv = recv(c->GetTCPSock(), buf, len,0);
     if (BytesRcv == 0){
         std::cout << "(TCP) Connection closing..." << std::endl;
-        c->SetStatus(-1);
+        if(c->GetStatus() > -1)c->SetStatus(-1);
     }
     else if (BytesRcv < 0) {
         std::cout << "(TCP) recv failed with error: " << WSAGetLastError() << std::endl;
+        if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
-        c->SetStatus(-1);
     }
     GlobalParser(c, std::string(buf));
 }

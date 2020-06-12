@@ -6,9 +6,8 @@
 #include <ctime>
 #include <sstream>
 #include <string.h>
-using namespace std;
 extern int loggerlevel;
-stringstream getDate();
+std::stringstream getDate();
 void setLoggerLevel(int level);
 void info(const std::string& toPrint);
 void warn(const std::string& toPrint);

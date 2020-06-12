@@ -37,7 +37,7 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     for(Client*client : Clients){
         if(Self || client != c){
             if(Rel){
-                if(C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
+                if(C == 'C' || C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
                 else TCPSend(client,Data);
             }
             else UDPSend(client,Data);
@@ -53,7 +53,12 @@ void UpdatePlayers(){
     Packet = Packet.substr(0,Packet.length()-1);
     SendToAll(nullptr, Packet,true,true);
 }
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg);
 
+void Destroy(Client*c){
+    Clients.erase(c);
+    delete c;
+}
 void OnDisconnect(Client*c,bool kicked){
     std::string Packet;
     for(const std::pair<int,std::string>&a : c->GetAllCars()){
@@ -64,13 +69,15 @@ void OnDisconnect(Client*c,bool kicked){
     Packet = "L"+c->GetName()+" Left the server!";
     SendToAll(c, Packet,false,true);
     Packet.clear();
-    Clients.erase(c); ///Removes the Client from existence
+    TriggerLuaEvent("onPlayerDisconnect",false,nullptr,new LuaArg{{c->GetID()}});
+    Destroy(c); ///Removes the Client from existence
 }
-int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller);
+void SyncResources(Client*c);
 void OnConnect(Client*c){
     c->SetID(OpenID());
     std::cout << "New Client Created! ID : " << c->GetID() << std::endl;
-    Respond(c,"NR",true);
+    TriggerLuaEvent("onPlayerConnecting",false,nullptr,new LuaArg{{c->GetID()}});
+    SyncResources(c);
     Respond(c,"M"+MapName,true); //Send the Map on connect
-    TriggerLuaEvent("onPlayerJoining",false,nullptr);
+    TriggerLuaEvent("onPlayerJoining",false,nullptr,new LuaArg{{c->GetID()}});
 }
