@@ -90,7 +90,7 @@ void GrabRole(Client*c){
     std::thread t1(HTTP,c);
     t1.detach();
 }
-
+extern int PPS;
 void GlobalParser(Client*c, const std::string&Packet){
     if(Packet.empty())return;
     if(Packet.find("TEST")!=std::string::npos)SyncVehicles(c);
@@ -131,10 +131,9 @@ void GlobalParser(Client*c, const std::string&Packet){
             break;
     }
     //V to Z
-    if(Packet.length() > 1000){
-        std::cout << "Received data from: " << c->GetName() << " Size: " << Packet.length() << std::endl;
+    if(Code <= 90 && Code >= 86){
+        PPS++;
+        SendToAll(c,Packet,false,false);
     }
-
-    if(Code <= 90 && Code >= 86)SendToAll(c,Packet,false,false);
-    if(Debug)debug("Data : " + Packet);
+    if(Debug)debug("Vehicle Data Received from " + c->GetName());
 }

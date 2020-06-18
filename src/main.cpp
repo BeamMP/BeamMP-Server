@@ -21,9 +21,9 @@ std::string ServerVersion = "0.3";
 std::string ClientVersion = "1.3+";
 std::string CustomIP;
 void HandleResources(std::string path);
-//void TCPMain(int Port);
+void StatInit();
 void NetMain();
-//Entry
+
 int main(int argc, char* argv[]) {
     if(argc > 1){
         CustomIP = argv[1];
@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
     /*std::thread TCPThread(TCPMain,Port);
     TCPThread.detach();*/
     //ServerMain(Port, MaxPlayers);
+    StatInit();
     NetMain();
 }
 
