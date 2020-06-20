@@ -11,13 +11,14 @@
 
 void GrabRole(Client*c);
 
-void STCPSend(Client*c,const std::any& Data,size_t Size){
-    char *MSG;
+void STCPSend(Client*c,std::any Data,size_t Size){
+    int BytesSent;
     if(std::string(Data.type().name()).find("string") != std::string::npos){
-        MSG = (char*)(std::any_cast<std::string>(Data).c_str());
-    }else MSG = std::any_cast<char*>(Data);
-    if(Size == 0)Size = strlen(MSG)+1;
-    int BytesSent = send(c->GetTCPSock(), MSG, Size, 0);
+        std::string data = std::any_cast<std::string>(Data);
+        BytesSent = send(c->GetTCPSock(), data.c_str(), data.size(), 0);
+    }else{
+        BytesSent = send(c->GetTCPSock(), std::any_cast<char*>(Data), Size, 0);
+    }
     if (BytesSent == 0){
         std::cout << "(TCP) Connection closing..." << std::endl;
         if(c->GetStatus() > -1)c->SetStatus(-1);
@@ -76,7 +77,7 @@ void Parse(Client*c,char*data){
         case 'S':
             if(SubCode == 'R'){
                 std::cout << "Sending File Info" << std::endl;
-                STCPSend(c,FileList+FileSizes,0);
+                STCPSend(c,std::string(FileList+FileSizes),0);
             }
             return;
         case 'N':
