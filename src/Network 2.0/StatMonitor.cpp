@@ -21,6 +21,7 @@ int PPS = 0;
             }else{
                 R = PPS/C;
                 StatReport = std::to_string(R);
+                PPS = 0;
             }
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));

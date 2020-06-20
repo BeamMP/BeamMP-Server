@@ -44,6 +44,9 @@ int main(int argc, char* argv[]) {
     /*std::thread TCPThread(TCPMain,Port);
     TCPThread.detach();*/
     //ServerMain(Port, MaxPlayers);
+    if(ModsLoaded){
+        info("Loaded "+std::to_string(ModsLoaded)+" Mods");
+    }
     StatInit();
     NetMain();
 }

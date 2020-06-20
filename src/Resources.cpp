@@ -9,7 +9,8 @@ namespace fs = std::filesystem;
 
 std::string FileList;
 std::string FileSizes;
-
+int ModsLoaded = 0;
+int MaxModSize = 0;
 void LuaMain(std::string Path);
 void HandleResources(std::string path){
     struct stat info{};
@@ -27,6 +28,8 @@ void HandleResources(std::string path){
             if(entry.path().string().length() - pos == 4){
                 FileList += entry.path().string() + ";";
                 FileSizes += std::to_string(fs::file_size(entry.path()))+";";
+                MaxModSize += fs::file_size(entry.path());
+                ModsLoaded++;
             }
         }
     }

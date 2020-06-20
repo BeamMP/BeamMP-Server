@@ -12,6 +12,8 @@ extern std::string CustomIP;
 extern std::string MapName;
 extern std::string Key;
 extern int MaxPlayers;
+extern int ModsLoaded;
+extern int MaxModSize;
 extern bool Private;
 extern int MaxCars;
 extern bool Debug;
