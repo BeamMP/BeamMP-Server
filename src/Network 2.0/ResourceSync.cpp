@@ -10,11 +10,10 @@
 
 
 void GrabRole(Client*c);
-
 void STCPSend(Client*c,std::any Data,size_t Size){
     int BytesSent;
     if(std::string(Data.type().name()).find("string") != std::string::npos){
-        std::string data = std::any_cast<std::string>(Data);
+        auto data = std::any_cast<std::string>(Data);
         BytesSent = send(c->GetTCPSock(), data.c_str(), data.size(), 0);
     }else{
         BytesSent = send(c->GetTCPSock(), std::any_cast<char*>(Data), Size, 0);
