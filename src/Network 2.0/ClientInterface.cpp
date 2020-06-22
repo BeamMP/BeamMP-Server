@@ -36,11 +36,13 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     char C = Data.at(0);
     for(Client*client : Clients){
         if(Self || client != c){
-            if(Rel){
-                if(C == 'C' || C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
-                else TCPSend(client,Data);
+            if(!client->isDownloading){
+                if(Rel){
+                    if(C == 'C' || C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
+                    else TCPSend(client,Data);
+                }
+                else UDPSend(client,Data);
             }
-            else UDPSend(client,Data);
         }
     }
 }

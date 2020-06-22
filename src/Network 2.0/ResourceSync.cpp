@@ -114,4 +114,5 @@ bool STCPRecv(Client*c){
 }
 void SyncResources(Client*c){
     while(c->GetStatus() > -1 && STCPRecv(c));
+    c->isDownloading = false;
 }
