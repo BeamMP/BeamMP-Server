@@ -79,14 +79,6 @@ void Parse(Client*c,char*data){
                 STCPSend(c,std::string(FileList+FileSizes),0);
             }
             return;
-        case 'N':
-            if(SubCode == 'R'){
-                c->SetName(Packet.substr(2,Packet.find(':')-2));
-                c->SetDID(Packet.substr(Packet.find(':')+1));
-                GrabRole(c);
-            }
-            std::cout << "Name : " << c->GetName() << std::endl;
-            return;
     }
 }
 bool STCPRecv(Client*c){
@@ -97,6 +89,7 @@ bool STCPRecv(Client*c){
     if (BytesRcv == 0){
         std::cout << "(TCP) Connection closing..." << std::endl;
         if(c->GetStatus() > -1)c->SetStatus(-1);
+        closesocket(c->GetTCPSock());
         return false;
     }
     else if (BytesRcv < 0) {
@@ -113,6 +106,7 @@ bool STCPRecv(Client*c){
     return true;
 }
 void SyncResources(Client*c){
+    STCPSend(c,std::string("WS"),0);
     while(c->GetStatus() > -1 && STCPRecv(c));
     c->isDownloading = false;
 }

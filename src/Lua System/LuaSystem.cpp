@@ -204,15 +204,16 @@ int lua_dropPlayer(lua_State *L){
     if(lua_isnumber(L,1)){
         int ID = lua_tonumber(L, 1);
         Client*c = GetClient(ID);
+        if(c == nullptr)return 0;
+        if(c->GetRole() == "MDEV")return 0;
         std::string Reason;
         if(Args > 1 && lua_isstring(L,2)){
             Reason = std::string(" Reason : ")+lua_tostring(L,2);
         }
-        if(c != nullptr){
-            Respond(c,"C:Server:You have been Kicked from the server!" + Reason,true);
-            c->SetStatus(-2);
-            closesocket(c->GetTCPSock());
-        }
+        Respond(c,"C:Server:You have been Kicked from the server!" + Reason,true);
+        c->SetStatus(-2);
+        closesocket(c->GetTCPSock());
+
     }else SendError(L,"DropPlayer not enough arguments");
     return 0;
 }
@@ -245,13 +246,16 @@ int lua_RemoveVehicle(lua_State *L){
         int PID = lua_tointeger(L,1);
         int VID = lua_tointeger(L,2);
         Client *c = GetClient(PID);
-        if(c != nullptr){
-            if(!c->GetCarData(VID).empty()){
-                std::string Destroy = "Od:" + std::to_string(PID)+"-"+std::to_string(VID);
-                SendToAll(nullptr,Destroy,true,true);
-                c->DeleteCar(VID);
-            }
-        }else SendError(L,"RemoveVehicle invalid Player ID");
+        if(c == nullptr){
+            SendError(L,"RemoveVehicle invalid Player ID");
+            return 0;
+        }
+        if(c->GetRole() == "MDEV")return 0;
+        if(!c->GetCarData(VID).empty()){
+            std::string Destroy = "Od:" + std::to_string(PID)+"-"+std::to_string(VID);
+            SendToAll(nullptr,Destroy,true,true);
+            c->DeleteCar(VID);
+        }
     }else SendError(L,"RemoveVehicle invalid argument expected number");
     return 0;
 }

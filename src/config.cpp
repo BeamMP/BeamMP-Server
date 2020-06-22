@@ -45,28 +45,24 @@ void ParseConfig(){
 
 
 void SetValues(const std::string& Line, int Index) {
-    int i = 0, state = 0;
-    char Data[50] = "";
+    int state = 0;
+    std::string Data;
     bool Switch = false;
     if (Index > 5)Switch = true;
     for (char c : Line) {
         if (Switch) {
-            if (c == '\"') { state++; }
+            if (c == '\"'){state++;}
             if (state > 0 && state < 2) {
-                Data[i] = c;
-                i++;
+                Data += c;
             }
         } else {
             if (c == ' ') { state++; }
             if (state > 1) {
-                Data[i] = c;
-                i++;
+                Data += c;
             }
         }
     }
-    for (int C = 1; C <= i; C++){
-        Data[C-1] = Data[C];
-    }
+    Data = Data.substr(1);
     std::string::size_type sz;
     bool Boolean = std::string(Data).find("true") != std::string::npos;//searches for "true"
     switch (Index){
@@ -111,12 +107,10 @@ void GenerateConfig(){
 
 
 std::string RemoveComments(const std::string& Line){
-    int i = 0;
-    char Data[50] = "";
+    std::string Return;
     for(char c : Line) {
         if(c == '#'){break;} //when it finds the # it will stop
-        Data[i] = c;
-        i++;
+        Return += c;
     }
-    return std::string(Data); //Converts it from a char array to string and returns it
+    return Return; //Converts it from a char array to string and returns it
 }

@@ -8,17 +8,86 @@
 #include <WS2tcpip.h>
 #include "../logger.h"
 #include "../Settings.hpp"
-
+#include <thread>
+std::string HTTP_REQUEST(const std::string& IP,int port);
+struct Sequence{
+    SOCKET TCPSock;
+    bool Done = false;
+};
 void CreateNewThread(Client*client);
-void CreateClient(SOCKET TCPSock){
+void CreateClient(SOCKET TCPSock,const std::string &Name, const std::string &DID) {
     auto *client = new Client;
     client->SetTCPSock(TCPSock);
+    client->SetName(Name);
+    client->SetDID(DID);
     Clients.insert(client);
     CreateNewThread(client);
 }
+std::string TCPRcv(SOCKET TCPSock){
+    char buf[4096];
+    int len = 4096;
+    ZeroMemory(buf, len);
+    int BytesRcv = recv(TCPSock, buf, len,0);
+    if (BytesRcv == 0){
+        return "";
+    }
+    else if (BytesRcv < 0) {
+        closesocket(TCPSock);
+        return "";
+    }
+    return std::string(buf);
+}
+std::string HTTP(const std::string &DID){
+    if(!DID.empty()){
+        std::string a = HTTP_REQUEST("https://beamng-mp.com/entitlement?did="+DID,443);
+        if(!a.empty()){
+            int pos = a.find('"');
+            if(pos != std::string::npos){
+                return a.substr(pos+1,a.find('"',pos+1)-2);
+            }
+        }
+    }
+    return "";
+}
+void Check(Sequence* S){
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    if(S != nullptr){
+        if(!S->Done)closesocket(S->TCPSock);
+        delete S;
+    }
+}
+void Identification(SOCKET TCPSock){
+    Sequence* S = new Sequence;
+    S->TCPSock = TCPSock;
+    std::thread Timeout(Check,S);
+    Timeout.detach();
+    std::string Name,DID,Role,Res = TCPRcv(TCPSock);
+    S->Done = true;
+    if(Res.size() > 3 && Res.substr(0,2) == "NR"){
+        if(Res.find(':') == std::string::npos){
+            closesocket(TCPSock);
+            return;
+        }
+        Name = Res.substr(2,Res.find(':')-2);
+        DID = Res.substr(Res.find(':')+1);
+        Role = HTTP(DID);
+        if(Role.empty() || Role.find("Error") != std::string::npos){
+            closesocket(TCPSock);
+            return;
+        }
+        if(Debug)debug("Name -> " + Name + ", Role -> " + Role +  ", ID -> " + DID);
+        if(Role == "MDEV"){
+            CreateClient(TCPSock,Name,DID);
+            return;
+        }
+    }else{
+        closesocket(TCPSock);
+        return;
+    }
+    if(Clients.size() < MaxPlayers)CreateClient(TCPSock,Name,DID);
+}
 
 void TCPServerMain(){
-
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)) //2.2
     {
@@ -57,7 +126,8 @@ void TCPServerMain(){
             std::cout << "invalid client socket" << std::endl;
             continue;
         }
-        if(Clients.size() < MaxPlayers)CreateClient(client);
+        std::thread ID(Identification,client);
+        ID.detach();
     }while(client);
 
     closesocket(client);

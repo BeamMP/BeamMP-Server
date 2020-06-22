@@ -9,7 +9,6 @@
 #include "../Lua System/LuaSystem.hpp"
 
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel);
-std::string HTTP_REQUEST(const std::string& IP,int port);
 void Respond(Client*c, const std::string& MSG, bool Rel);
 void UpdatePlayers();
 
@@ -73,23 +72,7 @@ void SyncVehicles(Client*c){
     }
 }
 
-void HTTP(Client*c){
-    if(!c->GetDID().empty()){
-        std::string a = HTTP_REQUEST("https://beamng-mp.com/entitlement?did="+c->GetDID(),443);
-        if(!a.empty()){
-            int pos = a.find('"');
-            if(c != nullptr){
-                c->SetRole(a.substr(pos+1,a.find('"',pos+1)-2));
-                if(Debug)debug("ROLE -> " + c->GetRole() + " ID -> " + c->GetDID());
-            }
-        }
-    }
-}
 
-void GrabRole(Client*c){
-    std::thread t1(HTTP,c);
-    t1.detach();
-}
 extern int PPS;
 void GlobalParser(Client*c, const std::string&Packet){
     if(Packet.empty())return;
@@ -103,14 +86,6 @@ void GlobalParser(Client*c, const std::string&Packet){
         case 'p':
             Respond(c,"p",false);
             UpdatePlayers();
-            return;
-        case 'N':
-            if(SubCode == 'R'){
-                c->SetName(Packet.substr(2,Packet.find(':')-2));
-                c->SetDID(Packet.substr(Packet.find(':')+1));
-                GrabRole(c);
-            }
-            std::cout << "Name : " << c->GetName() << std::endl;
             return;
         case 'O':
             if(Packet.length() > 1000) {

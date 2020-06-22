@@ -5,7 +5,7 @@
 #include "../logger.h"
 #include "../Settings.hpp"
 #include "../Lua System/LuaSystem.hpp"
-
+#include <thread>
 void UDPSend(Client*c,const std::string&Data);
 void TCPSend(Client*c,const std::string&Data);
 
@@ -75,6 +75,8 @@ void OnDisconnect(Client*c,bool kicked){
     Destroy(c); ///Removes the Client from existence
 }
 void SyncResources(Client*c);
+
+
 void OnConnect(Client*c){
     c->SetID(OpenID());
     std::cout << "New Client Created! ID : " << c->GetID() << std::endl;
