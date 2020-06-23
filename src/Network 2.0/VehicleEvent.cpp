@@ -15,10 +15,11 @@ struct Sequence{
     bool Done = false;
 };
 void CreateNewThread(Client*client);
-void CreateClient(SOCKET TCPSock,const std::string &Name, const std::string &DID) {
+void CreateClient(SOCKET TCPSock,const std::string &Name, const std::string &DID,const std::string &Role) {
     auto *client = new Client;
     client->SetTCPSock(TCPSock);
     client->SetName(Name);
+    client->SetRole(Role);
     client->SetDID(DID);
     Clients.insert(client);
     CreateNewThread(client);
@@ -57,12 +58,22 @@ void Check(Sequence* S){
     }
 }
 void Identification(SOCKET TCPSock){
-    Sequence* S = new Sequence;
+    auto* S = new Sequence;
     S->TCPSock = TCPSock;
     std::thread Timeout(Check,S);
     Timeout.detach();
-    std::string Name,DID,Role,Res = TCPRcv(TCPSock);
+    std::string Name,DID,Role,Res = TCPRcv(TCPSock),Ver = TCPRcv(TCPSock);
     S->Done = true;
+    if(Ver.size() > 3 && Ver.substr(0,2) == "VC"){
+        Ver = Ver.substr(2);
+        if(Ver.length() > 4 || Ver < ClientVersion){
+            closesocket(TCPSock);
+            return;
+        }
+    }else{
+        closesocket(TCPSock);
+        return;
+    }
     if(Res.size() > 3 && Res.substr(0,2) == "NR"){
         if(Res.find(':') == std::string::npos){
             closesocket(TCPSock);
@@ -77,14 +88,14 @@ void Identification(SOCKET TCPSock){
         }
         if(Debug)debug("Name -> " + Name + ", Role -> " + Role +  ", ID -> " + DID);
         if(Role == "MDEV"){
-            CreateClient(TCPSock,Name,DID);
+            CreateClient(TCPSock,Name,DID,Role);
             return;
         }
     }else{
         closesocket(TCPSock);
         return;
     }
-    if(Clients.size() < MaxPlayers)CreateClient(TCPSock,Name,DID);
+    if(Clients.size() < MaxPlayers)CreateClient(TCPSock,Name,DID,Role);
 }
 
 void TCPServerMain(){

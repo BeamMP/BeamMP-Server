@@ -182,7 +182,6 @@ void HandleChunk(Client*c,const std::string&Data){
 void UDPParser(Client*c, const std::string&Packet){
     if(Packet.substr(0,4) == "ACK:"){
         AckID(stoi(Packet.substr(4)));
-        std::cout << "Got Ack from " << c->GetName() << std::endl;
         return;
     }else if(Packet.substr(0,3) == "BD:"){
         int pos = Packet.find(':',4);
