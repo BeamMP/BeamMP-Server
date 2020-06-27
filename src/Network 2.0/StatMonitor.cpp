@@ -2,6 +2,7 @@
 /// Created by Anonymous275 on 6/18/2020
 ///
 #include "Client.hpp"
+#include <iostream>
 #include <string>
 #include <thread>
 std::string StatReport = "-";
@@ -12,7 +13,7 @@ int PPS = 0;
         if(Clients.empty()){
             StatReport = "-";
         }else{
-            C = 0;
+            C = 0;V = 0;
             for(Client *c : Clients){
                 if(c->GetCarCount() > 0){
                     C++;
@@ -23,9 +24,10 @@ int PPS = 0;
                 StatReport = "-";
             }else{
                 R = (PPS/C)/V;
+                std::cout << PPS << std::endl;
                 StatReport = std::to_string(R);
-                PPS = 0;
             }
+            PPS = 0;
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }

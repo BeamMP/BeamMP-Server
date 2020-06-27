@@ -7,7 +7,6 @@
 #include <iostream>
 #include <thread>
 
-
 void TCPSend(Client*c,const std::string&Data){
     int BytesSent = send(c->GetTCPSock(), Data.c_str(), int(Data.length())+1, 0);
     if (BytesSent == 0){

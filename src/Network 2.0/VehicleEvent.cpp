@@ -45,7 +45,7 @@ std::string HTTP(const std::string &DID){
             int pos = a.find('"');
             if(pos != std::string::npos){
                 return a.substr(pos+1,a.find('"',pos+1)-2);
-            }
+            }else if(a == "[]")return ""; //Member
         }
     }
     return "";
@@ -56,6 +56,13 @@ void Check(Sequence* S){
         if(!S->Done)closesocket(S->TCPSock);
         delete S;
     }
+}
+int Max(){
+    int T = MaxPlayers;
+    for(Client*c : Clients){
+        if(c->GetRole() == "MDEV")T--;
+    }
+    return T;
 }
 void Identification(SOCKET TCPSock){
     auto* S = new Sequence;
@@ -74,28 +81,27 @@ void Identification(SOCKET TCPSock){
         closesocket(TCPSock);
         return;
     }
-    if(Res.size() > 3 && Res.substr(0,2) == "NR"){
-        if(Res.find(':') == std::string::npos){
-            closesocket(TCPSock);
-            return;
-        }
-        Name = Res.substr(2,Res.find(':')-2);
-        DID = Res.substr(Res.find(':')+1);
-        Role = HTTP(DID);
-        if(Role.empty() || Role.find("Error") != std::string::npos){
-            closesocket(TCPSock);
-            return;
-        }
-        if(Debug)debug("Name -> " + Name + ", Role -> " + Role +  ", ID -> " + DID);
-        if(Role == "MDEV"){
-            CreateClient(TCPSock,Name,DID,Role);
-            return;
-        }
-    }else{
+    if(Res.size() > 3 && Res.substr(0,2) != "NR") {
         closesocket(TCPSock);
         return;
     }
-    if(Clients.size() < MaxPlayers)CreateClient(TCPSock,Name,DID,Role);
+    if(Res.find(':') == std::string::npos){
+        closesocket(TCPSock);
+        return;
+    }
+    Name = Res.substr(2,Res.find(':')-2);
+    DID = Res.substr(Res.find(':')+1);
+    Role = HTTP(DID);
+    if(Role.empty() || Role.find("Error") != std::string::npos){
+        closesocket(TCPSock);
+        return;
+    }
+    if(Debug)debug("Name -> " + Name + ", Role -> " + Role +  ", ID -> " + DID);
+    if(Role == "MDEV"){
+        CreateClient(TCPSock,Name,DID,Role);
+        return;
+    }
+    if(Clients.size() < Max())CreateClient(TCPSock,Name,DID,Role);
 }
 
 void TCPServerMain(){

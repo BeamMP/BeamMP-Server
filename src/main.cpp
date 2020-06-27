@@ -2,11 +2,9 @@
 /// Created by Anonymous275 on 28/01/2020
 ///
 
-#include <iostream>
 #include <string>
-#include <fstream>
 #include <chrono>
-#include <thread>
+#include <fstream>
 #include "logger.h"
 #include <algorithm>
 #include "Settings.hpp"
@@ -17,8 +15,8 @@ void ParseConfig();
 void addToLog(const std::string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-std::string ServerVersion = "0.4";
-std::string ClientVersion = "1.4";
+std::string ServerVersion = "0.42";
+std::string ClientVersion = "1.41";
 std::string CustomIP;
 void HandleResources(std::string path);
 void StatInit();

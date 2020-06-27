@@ -1,7 +1,6 @@
 ///
 /// Created by Anonymous275 on 4/2/2020
 ///
-#include <thread>
 #include <iostream>
 #include "Client.hpp"
 #include "../logger.h"
@@ -11,7 +10,6 @@
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel);
 void Respond(Client*c, const std::string& MSG, bool Rel);
 void UpdatePlayers();
-
 
 int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg);
 void VehicleParser(Client*c, std::string Packet){
@@ -55,7 +53,9 @@ void VehicleParser(Client*c, std::string Packet){
         case 'r':
             SendToAll(c,Packet,false,true);
             break;
-        case 'm':
+        //case 'm':
+          //  break;
+        default:
             break;
     }
 }
@@ -77,8 +77,7 @@ extern int PPS;
 void GlobalParser(Client*c, const std::string&Packet){
     if(Packet.empty())return;
     if(Packet.find("TEST")!=std::string::npos)SyncVehicles(c);
-    char Code = Packet.at(0),SubCode = 0;
-    if(Packet.length() > 1)SubCode = Packet.at(1);
+    char Code = Packet.at(0);
     switch (Code) {
         case 'P':
             Respond(c, "P" + std::to_string(c->GetID()),true);
@@ -103,6 +102,8 @@ void GlobalParser(Client*c, const std::string&Packet){
             break;
         case 'E':
             SendToAll(nullptr,Packet,true,true);
+            break;
+        default:
             break;
     }
     //V to Z

@@ -5,7 +5,6 @@
 #include "../logger.h"
 #include "../Settings.hpp"
 #include "../Lua System/LuaSystem.hpp"
-#include <thread>
 void UDPSend(Client*c,const std::string&Data);
 void TCPSend(Client*c,const std::string&Data);
 
@@ -56,7 +55,6 @@ void UpdatePlayers(){
     SendToAll(nullptr, Packet,true,true);
 }
 int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg);
-
 void Destroy(Client*c){
     Clients.erase(c);
     delete c;
@@ -75,13 +73,13 @@ void OnDisconnect(Client*c,bool kicked){
     Destroy(c); ///Removes the Client from existence
 }
 void SyncResources(Client*c);
-
-
+#include <thread>
 void OnConnect(Client*c){
     c->SetID(OpenID());
     std::cout << "New Client Created! ID : " << c->GetID() << std::endl;
     TriggerLuaEvent("onPlayerConnecting",false,nullptr,new LuaArg{{c->GetID()}});
     SyncResources(c);
     Respond(c,"M"+MapName,true); //Send the Map on connect
+    info(c->GetName() + " : Connected");
     TriggerLuaEvent("onPlayerJoining",false,nullptr,new LuaArg{{c->GetID()}});
 }

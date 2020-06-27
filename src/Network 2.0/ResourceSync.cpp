@@ -8,8 +8,6 @@
 #include <fstream>
 #include <any>
 
-
-void GrabRole(Client*c);
 void STCPSend(Client*c,std::any Data,size_t Size){
     int BytesSent;
     if(std::string(Data.type().name()).find("string") != std::string::npos){
@@ -19,11 +17,11 @@ void STCPSend(Client*c,std::any Data,size_t Size){
         BytesSent = send(c->GetTCPSock(), std::any_cast<char*>(Data), Size, 0);
     }
     if (BytesSent == 0){
-        std::cout << "(TCP) Connection closing..." << std::endl;
+        std::cout << "(STCPS) Connection closing..." << std::endl;
         if(c->GetStatus() > -1)c->SetStatus(-1);
     }
     else if (BytesSent < 0) {
-        std::cout << "(TCP) send failed with error: " << WSAGetLastError() << std::endl;
+        std::cout << "(STCPS) send failed with error: " << WSAGetLastError() << std::endl;
         if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
     }
@@ -76,7 +74,9 @@ void Parse(Client*c,char*data){
         case 'S':
             if(SubCode == 'R'){
                 std::cout << "Sending File Info" << std::endl;
-                STCPSend(c,std::string(FileList+FileSizes),0);
+                std::string ToSend = FileList+FileSizes;
+                if(ToSend.empty())ToSend = "-";
+                STCPSend(c,ToSend,0);
             }
             return;
     }
@@ -87,13 +87,13 @@ bool STCPRecv(Client*c){
     ZeroMemory(buf, len);
     int BytesRcv = recv(c->GetTCPSock(), buf, len,0);
     if (BytesRcv == 0){
-        std::cout << "(TCP) Connection closing..." << std::endl;
+        std::cout << "(STCPR) Connection closing..." << std::endl;
         if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
         return false;
     }
     else if (BytesRcv < 0) {
-        std::cout << "(TCP) recv failed with error: " << WSAGetLastError() << std::endl;
+        std::cout << "(STCPR) recv failed with error: " << WSAGetLastError() << std::endl;
         if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
         return false;

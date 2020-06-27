@@ -17,8 +17,8 @@ struct PacketData{
     int Tries;
 };
 struct SplitData{
-    int Total;
-    int ID;
+    int Total{};
+    int ID{};
     std::set<std::pair<int,std::string>> Fragments;
 };
 
@@ -83,11 +83,10 @@ void SendLarge(Client*c,const std::string&Data){
 
 struct HandledC{
     int Pos = 0;
-    Client *c;
-    std::array<int, 50> HandledIDs;
+    Client *c{};
+    std::array<int, 50> HandledIDs{};
 };
 std::set<HandledC*> HandledIDs;
-
 void ResetIDs(HandledC*H){
     for(int C = 0;C < 50;C++){
         H->HandledIDs.at(C) = -1;
@@ -149,15 +148,16 @@ SplitData*GetSplit(int SplitID){
     for(SplitData* a : SplitPackets){
         if(a->ID == SplitID)return a;
     }
-    SplitData* a = new SplitData();
-    SplitPackets.insert(a);
-    return a;
+    auto* SP = new SplitData();
+    SplitPackets.insert(SP);
+    return SP;
 }
 
 void GlobalParser(Client*c, const std::string&Packet);
 void HandleChunk(Client*c,const std::string&Data){
-    int pos1 = Data.find(':')+1,pos2 = Data.find(':',pos1),pos3 = Data.find('/');
+    int pos1 = int(Data.find(':'))+1,pos2 = Data.find(':',pos1),pos3 = Data.find('/');
     int pos4 = Data.find('|');
+    if(pos1 == std::string::npos)return;
     int Max = stoi(Data.substr(pos3+1,pos1-pos3-2));
     int Current = stoi(Data.substr(2,pos3-2));
     int ID = stoi(Data.substr(pos1,pos4-pos1));
@@ -171,7 +171,7 @@ void HandleChunk(Client*c,const std::string&Data){
     SData->Fragments.insert(std::make_pair(Current,Data.substr(pos2+1)));
     if(SData->Fragments.size() == SData->Total){
         std::string ToHandle;
-        for(std::pair<int,std::string> a : SData->Fragments){
+        for(const std::pair<int,std::string>& a : SData->Fragments){
             ToHandle += a.second;
         }
         GlobalParser(c,ToHandle);
