@@ -5,6 +5,7 @@
 #pragma once
 #include <set>
 #include <any>
+#include <thread>
 #include <vector>
 #include <iostream>
 #include <filesystem>
@@ -42,9 +43,9 @@ private:
 
 public:
     void RegisterEvent(const std::string&Event,const std::string&FunctionName);
+    int CallFunction(const std::string& FuncName,LuaArg* args);
     std::string GetRegistered(const std::string&Event);
     void UnRegisterEvent(const std::string&Event);
-    int CallFunction(const std::string&FuncName,LuaArg* args);
     void SetLastWrite(fs::file_time_type time);
     bool IsRegistered(const std::string&Event);
     void SetPluginName(const std::string&Name);
@@ -52,6 +53,7 @@ public:
     fs::file_time_type GetLastWrite();
     std::string GetPluginName();
     std::string GetFileName();
+    bool HasThread = false;
     lua_State* GetState();
     void Reload();
     void Init();

@@ -36,7 +36,8 @@ void Heartbeat(){
         R = "uuid="+Key+"&players="+std::to_string(Clients.size())+"&maxplayers="+std::to_string(MaxPlayers)+"&port="
             + std::to_string(Port) + "&map=" + MapName + "&private="+State+"&version="+ServerVersion+
             "&clientversion="+ClientVersion+"&name="+ServerName+"&pps="+StatReport+"&modlist="+FileList+
-            "&modstotalsize="+std::to_string(MaxModSize)+"&modstotal="+std::to_string(ModsLoaded);
+            "&modstotalsize="+std::to_string(MaxModSize)+"&modstotal="+std::to_string(ModsLoaded)
+            +"&playerslist="+GetPlayers()+"&desc="+ServerDesc;
         if(!CustomIP.empty())R+="&ip="+CustomIP;
         //https://beamng-mp.com/heartbeatv2
         T = PostHTTP(HTA("68747470733a2f2f6265616d6e672d6d702e636f6d2f6865617274626561747632"),R);

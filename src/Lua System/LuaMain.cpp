@@ -6,7 +6,6 @@
 #include "../logger.h"
 #include <thread>
 std::set<Lua*> PluginEngine;
-
 bool NewFile(const std::string&Path){
     for(Lua*Script : PluginEngine){
         if(Path == Script->GetFileName())return false;

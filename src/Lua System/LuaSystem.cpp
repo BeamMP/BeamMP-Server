@@ -95,15 +95,30 @@ int lua_TriggerEventG(lua_State *L)
     }
     return 0;
 }
-void CallAsync(Lua* Script,const std::string&FuncName,LuaArg* args){
-    Script->CallFunction(FuncName,args);
+void CallAsync(Lua* lua,const std::string& FuncName,LuaArg* args){
+    if(lua->HasThread){
+        SendError(lua->GetState(),"CreateThread there is a thread already running");
+        return;
+    }
+    lua->HasThread = true;
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    lua_getglobal(lua->GetState(), FuncName.c_str());
+    if(lua_isfunction(lua->GetState(), -1)) {
+        int Size = 0;
+        if(args != nullptr){
+            Size = args->args.size();
+            args->PushArgs(lua->GetState());
+        }
+        CheckLua(lua->GetState(), lua_pcall(lua->GetState(), Size, 0, 0));
+    }
+    lua->HasThread = false;
 }
 int lua_CreateThread(lua_State *L){
     int Args = lua_gettop(L);
-    Lua* Script = GetScript(L);
     if(Args > 0){
         if(lua_isstring(L,1)) {
-            std::thread Worker(CallAsync,Script,lua_tostring(L,1),CreateArg(L,Args));
+            std::string STR = lua_tostring(L,1);
+            std::thread Worker(CallAsync,GetScript(L),STR,CreateArg(L,Args));
             Worker.detach();
         }else SendError(L,"CreateThread wrong argument [1] need string");
     }else SendError(L,"CreateThread not enough arguments");
@@ -223,12 +238,12 @@ int lua_sendChat(lua_State *L){
         if(lua_isstring(L,2)){
             int ID = lua_tointeger(L,1);
             if(ID == -1){
-                std::string Packet = "C:Server: " + std::string(lua_tostring(L, 1));
+                std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
                 SendToAll(nullptr,Packet,true,true);
             }else{
                 Client*c = GetClient(ID);
                 if(c != nullptr) {
-                    std::string Packet = "C:Server: " + std::string(lua_tostring(L, 1));
+                    std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
                     Respond(c, Packet, true);
                 }else SendError(L,"SendChatMessage invalid argument [1] invalid ID");
             }
@@ -282,23 +297,24 @@ void Lua::Init(){
     lua_register(luaState,"Sleep",lua_Sleep);
     Reload();
 }
+
 void Lua::Reload(){
     if(CheckLua(luaState,luaL_dofile(luaState,FileName.c_str()))){
         CallFunction("onInit",{});
     }
 }
-int Lua::CallFunction(const std::string&FuncName,LuaArg* Arg){
+
+int Lua::CallFunction(const std::string& FuncName,LuaArg* Arg){
     lua_getglobal(luaState, FuncName.c_str());
-    if (lua_isfunction(luaState, -1)) {
+    if(lua_isfunction(luaState, -1)) {
         int Size = 0;
         if(Arg != nullptr){
             Size = Arg->args.size();
             Arg->PushArgs(luaState);
         }
-        if(CheckLua(luaState, lua_pcall(luaState, Size, 1, 0))){
-
-            if(lua_isnumber(luaState,-1)){
-                return lua_tointeger(luaState,-1);
+        if (CheckLua(luaState, lua_pcall(luaState, Size, 1, 0))) {
+            if (lua_isnumber(luaState, -1)) {
+                return lua_tointeger(luaState, -1);
             }
         }
     }

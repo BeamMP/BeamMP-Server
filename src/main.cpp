@@ -15,8 +15,8 @@ void ParseConfig();
 void addToLog(const std::string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-std::string ServerVersion = "0.42";
-std::string ClientVersion = "1.41";
+std::string ServerVersion = "0.43";
+std::string ClientVersion = "1.43";
 std::string CustomIP;
 void HandleResources(std::string path);
 void StatInit();
@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
             warn("IP Specified is invalid!");
         }else info("Started with custom ip : " + CustomIP);
     }
+    info("BeamMP Server Running version " + ServerVersion);
     LogInit();
     ParseConfig();
-    info("BeamMP Server Running version " + ServerVersion);
     HandleResources(Resource);
     HeartbeatInit();
     if(Debug)DebugData();
@@ -57,7 +57,8 @@ void DebugData(){
     debug("Max Cars : " + std::to_string(MaxCars));
     debug("MaxPlayers : " + std::to_string(MaxPlayers));
     debug("MapName : " + MapName);
-    debug("ServerName : " + ServerName );
+    debug("ServerName : " + ServerName);
+    debug("ServerDesc : " + ServerDesc);
     debug("File : " + Resource);
     debug("Auth Key : " + Key);
 }

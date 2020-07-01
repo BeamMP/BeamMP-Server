@@ -61,30 +61,34 @@ std::stringstream getDate() {
 
 void info(const std::string& toPrint) {
     if (loggerlevel <= 2){
-        std::cout << getDate().str() << "[INFO] " << toPrint << std::endl;
-        addToLog(getDate().str() + "[INFO] " + toPrint + "\n");
+        std::string Print = getDate().str() + "[INFO] " + toPrint + "\n";
+        std::cout << Print;
+        addToLog(Print);
     }
 }
 
 void error(const std::string& toPrint) {
     if (loggerlevel <= 4) {
-        std::cout << getDate().str() << "[ERROR] " << toPrint << std::endl;
-        addToLog(getDate().str() + "[ERROR] " + toPrint + "\n");
+        std::string Print = getDate().str() + "[ERROR] " + toPrint + "\n";
+        std::cout << Print;
+        addToLog(Print);
     }
 }
 
 
 void warn(const std::string& toPrint) {
     if (loggerlevel <= 3) {
-        std::cout << getDate().str() << "[WARN] " << toPrint << std::endl;
-        addToLog(getDate().str() + "[WARN] " + toPrint + "\n");
+        std::string Print = getDate().str() + "[WARN] " + toPrint + "\n";
+        std::cout << Print;
+        addToLog(Print);
     }
 }
 
 
 void debug(const std::string& toPrint) {
     if (loggerlevel <= 1) {
-        std::cout << getDate().str() << "[DEBUG] " << toPrint << std::endl;
-        addToLog(getDate().str() + "[DEBUG] " + toPrint + "\n");
+        std::string Print = getDate().str() + "[DEBUG] " + toPrint + "\n";
+        std::cout << Print;
+        addToLog(Print);
     }
 }

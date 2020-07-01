@@ -5,13 +5,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <thread>
 #include "logger.h"
 
 void GenerateConfig();
 std::string RemoveComments(const std::string& Line);
 void SetValues(const std::string& Line, int Index);
 std::string MapName = "/levels/gridmap/info.json";
-std::string ServerName = "BeamMP Server";
+std::string ServerName = "BeamMP New Server";
+std::string ServerDesc = "BeamMP Default Description";
 std::string Resource = "Resources";
 std::string Key;
 bool Private = false;
@@ -25,11 +27,22 @@ void ParseConfig(){
     std::ifstream InFileStream;
     InFileStream.open("Server.cfg");
     if(InFileStream.good()){ //Checks if Config Exists
-        info("Config Found Updating Values");
         std::string line;
         int index = 1;
         while (getline(InFileStream, line)) {
-            if(line.rfind('#', 0) != 0){ //Checks if it starts as Comment
+            index++;
+        }
+        if(index-1 < 11){
+            error("Outdated/Incorrect config please remove it server will close in 5 secs");
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            exit(3);
+        }
+        InFileStream.close();
+        InFileStream.open("Server.cfg");
+        info("Config Found Updating Values");
+        index = 1;
+        while (getline(InFileStream, line)) {
+            if(line.rfind('#', 0) != 0 && line.rfind(' ', 0) != 0){ //Checks if it starts as Comment
                 std::string CleanLine = RemoveComments(line); //Cleans it from the Comments
                 SetValues(CleanLine,index); //sets the values
                 index++;
@@ -80,9 +93,11 @@ void SetValues(const std::string& Line, int Index) {
             break;
         case 7 : ServerName = Data; //Name
             break;
-        case 8 : Resource = Data; //File name
+        case 8 : ServerDesc = Data; //desc
             break;
-        case 9 : Key = Data; //File name
+        case 9 : Resource = Data; //File name
+            break;
+        case 10 : Key = Data; //File name
     }
 }
 
@@ -100,6 +115,7 @@ void GenerateConfig(){
                   "MaxPlayers = 10 # Maximum Amount of Clients\n"
                   "Map = \"/levels/gridmap/info.json\" # Default Map\n"
                   "Name = \"BeamMP New Server\" # Server Name\n"
+                  "Desc = \"BeamMP Default Description\" # Server Description\n"
                   "use = \"Resources\" # Resource file name\n"
                   "AuthKey = \"\" # Auth Key";
     FileStream.close();

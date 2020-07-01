@@ -4,6 +4,7 @@
 extern std::string ServerVersion;
 extern std::string ClientVersion;
 extern std::string ServerName;
+extern std::string ServerDesc;
 extern std::string StatReport;
 extern std::string FileSizes;
 extern std::string Resource;

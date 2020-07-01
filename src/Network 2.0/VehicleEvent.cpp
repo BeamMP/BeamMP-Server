@@ -58,11 +58,11 @@ void Check(Sequence* S){
     }
 }
 int Max(){
-    int T = MaxPlayers;
+    int M = MaxPlayers;
     for(Client*c : Clients){
-        if(c->GetRole() == "MDEV")T--;
+        if(c->GetRole() == "MDEV")M--;
     }
-    return T;
+    return M;
 }
 void Identification(SOCKET TCPSock){
     auto* S = new Sequence;
@@ -73,7 +73,7 @@ void Identification(SOCKET TCPSock){
     S->Done = true;
     if(Ver.size() > 3 && Ver.substr(0,2) == "VC"){
         Ver = Ver.substr(2);
-        if(Ver.length() > 4 || Ver < ClientVersion){
+        if(Ver.length() > 4 || Ver != ClientVersion){
             closesocket(TCPSock);
             return;
         }

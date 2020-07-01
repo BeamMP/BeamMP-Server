@@ -8,7 +8,7 @@
 std::string StatReport = "-";
 int PPS = 0;
 [[noreturn]] void Monitor(){
-    int R,C,V=0;
+    int R,C,V;
     while(true){
         if(Clients.empty()){
             StatReport = "-";
@@ -24,7 +24,6 @@ int PPS = 0;
                 StatReport = "-";
             }else{
                 R = (PPS/C)/V;
-                std::cout << PPS << std::endl;
                 StatReport = std::to_string(R);
             }
             PPS = 0;
