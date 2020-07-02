@@ -6,7 +6,7 @@
 #include "LuaSystem.hpp"
 #include "../logger.h"
 #include <iostream>
-#include <thread>
+#include <future>
 
 LuaArg* CreateArg(lua_State *L,int T){
     LuaArg* temp = new LuaArg;
@@ -118,8 +118,10 @@ int lua_CreateThread(lua_State *L){
     if(Args > 0){
         if(lua_isstring(L,1)) {
             std::string STR = lua_tostring(L,1);
-            std::thread Worker(CallAsync,GetScript(L),STR,CreateArg(L,Args));
-            Worker.detach();
+            std::thread t1(CallAsync,GetScript(L),STR,CreateArg(L,Args));
+            t1.detach();
+            //auto s = std::async();
+            ///TODO FIGURE OUT THREAD
         }else SendError(L,"CreateThread wrong argument [1] need string");
     }else SendError(L,"CreateThread not enough arguments");
     return 0;

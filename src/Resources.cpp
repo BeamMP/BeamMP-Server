@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 std::string FileList;
 std::string FileSizes;
 int ModsLoaded = 0;
-int MaxModSize = 0;
+long MaxModSize = 0;
 void LuaMain(std::string Path);
 void HandleResources(std::string path){
     struct stat info{};

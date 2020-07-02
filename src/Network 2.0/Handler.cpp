@@ -39,7 +39,7 @@ void TCPRcv(Client*c){
 }
 
 void OnConnect(Client*c);
-void OnDisconnect(Client*c,bool Timed);
+void OnDisconnect(Client*c,bool kicked);
 void TCPClient(Client*client){
     if(client->GetTCPSock() == -1)return;
     std::cout << "Client connected" << std::endl;

@@ -92,6 +92,13 @@ void Identification(SOCKET TCPSock){
     Name = Res.substr(2,Res.find(':')-2);
     DID = Res.substr(Res.find(':')+1);
     Role = HTTP(DID);
+    for(Client*c: Clients){
+        if(c->GetDID() == DID){
+            closesocket(c->GetTCPSock());
+            c->SetStatus(-2);
+            break;
+        }
+    }
     if(Role.empty() || Role.find("Error") != std::string::npos){
         closesocket(TCPSock);
         return;
@@ -101,7 +108,9 @@ void Identification(SOCKET TCPSock){
         CreateClient(TCPSock,Name,DID,Role);
         return;
     }
-    if(Clients.size() < Max())CreateClient(TCPSock,Name,DID,Role);
+    if(Clients.size() < Max()){
+        CreateClient(TCPSock,Name,DID,Role);
+    }else closesocket(TCPSock);
 }
 
 void TCPServerMain(){
