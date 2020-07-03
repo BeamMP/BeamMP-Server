@@ -45,7 +45,7 @@ std::string HTTP(const std::string &DID){
             int pos = a.find('"');
             if(pos != std::string::npos){
                 return a.substr(pos+1,a.find('"',pos+1)-2);
-            }else if(a == "[]")return ""; //Member
+            }else if(a == "[]")return "Member";
         }
     }
     return "";
@@ -92,6 +92,11 @@ void Identification(SOCKET TCPSock){
     Name = Res.substr(2,Res.find(':')-2);
     DID = Res.substr(Res.find(':')+1);
     Role = HTTP(DID);
+    if(Role.empty() || Role.find("Error") != std::string::npos){
+        closesocket(TCPSock);
+        return;
+    }
+
     for(Client*c: Clients){
         if(c->GetDID() == DID){
             closesocket(c->GetTCPSock());
@@ -99,10 +104,7 @@ void Identification(SOCKET TCPSock){
             break;
         }
     }
-    if(Role.empty() || Role.find("Error") != std::string::npos){
-        closesocket(TCPSock);
-        return;
-    }
+
     if(Debug)debug("Name -> " + Name + ", Role -> " + Role +  ", ID -> " + DID);
     if(Role == "MDEV"){
         CreateClient(TCPSock,Name,DID,Role);

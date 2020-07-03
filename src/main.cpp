@@ -15,7 +15,7 @@ void ParseConfig();
 void addToLog(const std::string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-std::string ServerVersion = "0.45";
+std::string ServerVersion = "0.46";
 std::string ClientVersion = "1.46";
 std::string CustomIP;
 void HandleResources(std::string path);
