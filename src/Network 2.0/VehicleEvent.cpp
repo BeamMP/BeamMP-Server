@@ -60,7 +60,7 @@ void Check(Sequence* S){
 int Max(){
     int M = MaxPlayers;
     for(Client*c : Clients){
-        if(c->GetRole() == "MDEV")M--;
+        if(c->GetRole() == "MDEV")M++;
     }
     return M;
 }

@@ -13,8 +13,11 @@ void STCPSend(Client*c,std::any Data,size_t Size){
     if(std::string(Data.type().name()).find("string") != std::string::npos){
         auto data = std::any_cast<std::string>(Data);
         BytesSent = send(c->GetTCPSock(), data.c_str(), data.size(), 0);
+        data.clear();
     }else{
-        BytesSent = send(c->GetTCPSock(), std::any_cast<char*>(Data), Size, 0);
+        char* D = std::any_cast<char*>(Data);
+        BytesSent = send(c->GetTCPSock(), D, Size, 0);
+        delete[] D;
     }
     if (BytesSent == 0){
         std::cout << "(STCPS) Connection closing..." << std::endl;
@@ -38,28 +41,25 @@ void SendFile(Client*c,const std::string&Name){
     f.seekg(0, std::ios_base::end);
     std::streampos fileSize = f.tellg();
     size_t Size = fileSize,Sent = 0,Diff;
-    char* Data = new char[Size];
-    f.seekg(0, std::ios_base::beg);
-    f.read(Data, fileSize);
-    f.close();
-    char* Chunk;
+    char* Data;
     int Split = 64000;
     while(c->GetStatus() > -1 && Sent < Size){
         Diff = Size - Sent;
         if(Diff > Split){
-            Chunk = new char[Split];
-            memcpy_s(Chunk,Split,Data+Sent,Split);
-            STCPSend(c,Chunk,Split);
+            Data = new char[Split];
+            f.seekg(Sent, std::ios_base::beg);
+            f.read(Data, Split);
+            STCPSend(c,Data,Split);
             Sent += Split;
         }else{
-            Chunk = new char[Diff];
-            memcpy_s(Chunk,Diff,Data+Sent,Diff);
-            STCPSend(c,Chunk,Diff);
+            Data = new char[Diff];
+            f.seekg(Sent, std::ios_base::beg);
+            f.read(Data, Diff);
+            STCPSend(c,Data,Diff);
             Sent += Diff;
         }
     }
-    delete[] Data;
-    delete[] Chunk;
+    f.close();
 }
 
 void Parse(Client*c,char*data){
@@ -103,6 +103,7 @@ bool STCPRecv(Client*c){
     memcpy_s(Ret,BytesRcv,buf,BytesRcv);
     ZeroMemory(buf, len);
     Parse(c,Ret);
+    delete[] Ret;
     return true;
 }
 void SyncResources(Client*c){
