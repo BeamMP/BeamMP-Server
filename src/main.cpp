@@ -15,8 +15,8 @@ void ParseConfig();
 void addToLog(const std::string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-std::string ServerVersion = "0.49";
-std::string ClientVersion = "1.48";
+std::string ServerVersion = "0.50";
+std::string ClientVersion = "1.50";
 std::string CustomIP;
 void HandleResources(std::string path);
 void StatInit();
@@ -39,9 +39,6 @@ int main(int argc, char* argv[]) {
     HeartbeatInit();
     if(Debug)DebugData();
     setLoggerLevel(0); //0 for all
-    /*std::thread TCPThread(TCPMain,Port);
-    TCPThread.detach();*/
-    //ServerMain(Port, MaxPlayers);
     if(ModsLoaded){
         info("Loaded "+std::to_string(ModsLoaded)+" Mods");
     }

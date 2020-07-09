@@ -7,7 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <any>
-
+std::string Encrypt(std::string msg);
 void STCPSend(Client*c,std::any Data,size_t Size){
     int BytesSent;
     if(std::string(Data.type().name()).find("string") != std::string::npos){
@@ -106,8 +106,9 @@ bool STCPRecv(Client*c){
     delete[] Ret;
     return true;
 }
+
 void SyncResources(Client*c){
-    STCPSend(c,std::string("WS"),0);
+    STCPSend(c,Encrypt("WS"),0);
     while(c->GetStatus() > -1 && STCPRecv(c));
     c->isDownloading = false;
 }

@@ -80,7 +80,6 @@ void Client::AddNewCar(int ident,const std::string& Data){
 std::set<std::pair<int,std::string>> Client::GetAllCars(){
     return VehicleData;
 }
-
 std::string Client::GetCarData(int ident){
     for(const std::pair<int,std::string>& a : VehicleData){
         if(a.first == ident){
@@ -89,6 +88,16 @@ std::string Client::GetCarData(int ident){
     }
     DeleteCar(ident);
     return "";
+}
+void Client::SetCarData(int ident,const std::string&Data){
+    for(const std::pair<int,std::string>& a : VehicleData){
+        if(a.first == ident){
+            VehicleData.erase(a);
+            VehicleData.insert(std::make_pair(ident,Data));
+            return;
+        }
+    }
+    DeleteCar(ident);
 }
 int Client::GetCarCount(){
     return VehicleData.size();

@@ -24,6 +24,7 @@ public:
     bool isDownloading = true;
     std::set<std::pair<int,std::string>> GetAllCars();
     void AddNewCar(int ident,const std::string& Data);
+    void SetCarData(int ident,const std::string&Data);
     void SetName(const std::string& name);
     void SetRole(const std::string& role);
     void SetDID(const std::string& did);

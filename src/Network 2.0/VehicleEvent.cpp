@@ -11,6 +11,7 @@
 #include <thread>
 std::string HTTP_REQUEST(const std::string& IP,int port);
 std::string HTA(const std::string& hex);
+std::string Decrypt(std::string);
 struct Sequence{
     SOCKET TCPSock;
     bool Done = false;
@@ -65,15 +66,7 @@ int Max(){
     }
     return M;
 }
-bool IsHex(const std::string&a){
-    if(a.empty())return false;
-    for(const char&c : a){
-        if(c < 48 || tolower(c) > 102){
-            return false;
-        }
-    }
-    return true;
-}
+
 void Identification(SOCKET TCPSock){
     auto* S = new Sequence;
     S->TCPSock = TCPSock;
@@ -81,8 +74,9 @@ void Identification(SOCKET TCPSock){
     Timeout.detach();
     std::string Name,DID,Role,Res = TCPRcv(TCPSock),Ver = TCPRcv(TCPSock);
     S->Done = true;
-    if(IsHex(Ver) && Ver.size() > 3 && HTA(Ver).substr(0,2) == "VC"){
-        Ver = HTA(Ver).substr(2);
+    Ver = Decrypt(Ver);
+    if(Ver.size() > 3 && Ver.substr(0,2) == "VC"){
+        Ver = Ver.substr(2);
         if(Ver.length() > 4 || Ver != ClientVersion){
             closesocket(TCPSock);
             return;
@@ -91,7 +85,8 @@ void Identification(SOCKET TCPSock){
         closesocket(TCPSock);
         return;
     }
-    if(Res.size() > 3 && Res.substr(0,2) != "NR") {
+    Res = Decrypt(Res);
+    if(Res.size() < 3 || Res.substr(0,2) != "NR") {
         closesocket(TCPSock);
         return;
     }

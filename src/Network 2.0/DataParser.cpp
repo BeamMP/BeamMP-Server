@@ -10,8 +10,16 @@
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel);
 void Respond(Client*c, const std::string& MSG, bool Rel);
 void UpdatePlayers();
-
 int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg);
+
+int FC(const std::string& s,const std::string& p,int n) {
+    std::string::size_type i = s.find(p);
+    int j;
+    for (j = 1; j < n && i != std::string::npos; ++j)i = s.find(p, i+1);
+    if (j == n)return(i);
+    else return(-1);
+}
+
 void VehicleParser(Client*c, std::string Packet){
     char Code = Packet.at(1);
     int PID = -1;
@@ -23,9 +31,9 @@ void VehicleParser(Client*c, std::string Packet){
                 int CarID = c->GetOpenCarID();
                 std::cout << c->GetName() << " CarID : " << CarID << std::endl;
                 Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+"-"+std::to_string(CarID)+Packet.substr(4);
-                if(TriggerLuaEvent("onVehicleSpawn",false,nullptr,
-                                   new LuaArg{{c->GetID(),CarID,Packet.substr(3)}})
-                || c->GetCarCount() >= MaxCars){
+                if(c->GetCarCount() >= MaxCars ||
+                TriggerLuaEvent("onVehicleSpawn",false,nullptr,
+                                   new LuaArg{{c->GetID(),CarID,Packet.substr(3)}})){
                     Respond(c,Packet,true);
                     std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(CarID);
                     Respond(c,Destroy,true);
@@ -36,7 +44,28 @@ void VehicleParser(Client*c, std::string Packet){
             }
             break;
         case 'c':
-            SendToAll(c,Packet,false,true);
+            pid = Data.substr(0,Data.find('-'));
+            vid = Data.substr(Data.find('-')+1,Data.find(':',1)-Data.find('-')-1);
+            if(pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos){
+                PID = stoi(pid);
+                VID = stoi(vid);
+            }
+            if(PID != -1 && VID != -1 && PID == c->GetID()){
+                if(!TriggerLuaEvent("onVehicleEdited",false,nullptr,
+                        new LuaArg{{c->GetID(),VID,Packet.substr(3)}})){
+                    SendToAll(c,Packet,false,true);
+                    std::string VD = c->GetCarData(VID);
+                    Packet = Packet.substr(FC(Packet,",",2)+1);
+                    Packet = VD.substr(0,FC(VD,",",2)+1)+
+                            Packet.substr(0,Packet.find_last_of('"')+1)+
+                            VD.substr(FC(VD,",\"",7));
+                    c->SetCarData(VID,Packet);
+                }else{
+                    std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(VID);
+                    Respond(c,Destroy,true);
+                    c->DeleteCar(VID);
+                }
+            }
             break;
         case 'd':
             pid = Data.substr(0,Data.find('-'));
@@ -47,6 +76,8 @@ void VehicleParser(Client*c, std::string Packet){
             }
             if(PID != -1 && VID != -1 && PID == c->GetID()){
                 SendToAll(nullptr,Packet,true,true);
+                TriggerLuaEvent("onVehicleDeleted",false,nullptr,
+                                new LuaArg{{c->GetID(),VID}});
                 c->DeleteCar(VID);
             }
             break;
@@ -58,6 +89,8 @@ void VehicleParser(Client*c, std::string Packet){
         default:
             break;
     }
+    Data.clear();
+    Packet.clear();
 }
 void SyncVehicles(Client*c){
     Respond(c,"Sn"+c->GetName(),true);
@@ -77,6 +110,7 @@ extern int PPS;
 void GlobalParser(Client*c, const std::string&Packet){
     if(Packet.empty())return;
     if(Packet.find("TEST")!=std::string::npos)SyncVehicles(c);
+    std::string pct;
     char Code = Packet.at(0);
     switch (Code) {
         case 'P':
@@ -98,7 +132,9 @@ void GlobalParser(Client*c, const std::string&Packet){
         case 'C':
             if(TriggerLuaEvent("onChatMessage",false,nullptr,
                     new LuaArg{{c->GetID(),c->GetName(),Packet.substr(Packet.find(':',3)+1)}}))break;
-            SendToAll(nullptr,Packet,true,true);
+            pct = "C:"+c->GetName()+Packet.substr(Packet.find(':',3));
+            SendToAll(nullptr,pct,true,true);
+            pct.clear();
             break;
         case 'E':
             SendToAll(nullptr,Packet,true,true);

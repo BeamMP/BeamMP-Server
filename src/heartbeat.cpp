@@ -11,6 +11,7 @@
 extern std::string StatReport;
 std::string HTTP_REQUEST(const std::string&,int);
 std::string PostHTTP(const std::string& IP,const std::string& Fields);
+int Beat = 0;
 std::string HTA(const std::string& hex)
 {
     std::string ascii;
@@ -29,6 +30,7 @@ std::string GetPlayers(){
     }
     return Return;
 }
+
 void Heartbeat(){
     std::string State,R,T;
     while(true){
@@ -43,7 +45,11 @@ void Heartbeat(){
         T = PostHTTP(HTA("68747470733a2f2f6265616d6e672d6d702e636f6d2f6865617274626561747632"),R);
         if(T.find_first_not_of("20") != std::string::npos){
             //Backend system refused server startup!
+            if(Beat > 50)Beat = 1;
+            else Beat++;
             std::this_thread::sleep_for(std::chrono::seconds(10));
+            if(Beat > 50)Beat = 1;
+            else Beat++;
             T = PostHTTP(HTA("68747470733a2f2f6265616d6e672d6d702e636f6d2f6865617274626561747632"),R);
             if(T.find_first_not_of("20") != std::string::npos){
                 error(HTA("4261636b656e642073797374656d20726566757365642073657276657221"));
@@ -56,7 +62,9 @@ void Heartbeat(){
         R.clear();
         T.clear();
         State.clear();
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        if(Beat > 50)Beat = 1;
+        else Beat++;
+        std::this_thread::sleep_for(std::chrono::seconds(3));
     }
 }
 

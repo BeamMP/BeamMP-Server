@@ -37,7 +37,7 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
         if(Self || client != c){
             if(!client->isDownloading){
                 if(Rel){
-                    if(C == 'C' || C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
+                    if(C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
                     else TCPSend(client,Data);
                 }
                 else UDPSend(client,Data);
