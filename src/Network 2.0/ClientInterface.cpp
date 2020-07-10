@@ -26,7 +26,7 @@ void SendLarge(Client*c,const std::string&Data);
 void Respond(Client*c, const std::string& MSG, bool Rel){
     char C = MSG.at(0);
     if(Rel){
-        if(C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
+        if(C == 'C' || C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
         else TCPSend(c,MSG);
     }else UDPSend(c,MSG);
 }
@@ -37,7 +37,7 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
         if(Self || client != c){
             if(!client->isDownloading){
                 if(Rel){
-                    if(C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
+                    if(C == 'C' || C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client,Data);
                     else TCPSend(client,Data);
                 }
                 else UDPSend(client,Data);

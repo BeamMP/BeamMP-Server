@@ -55,6 +55,7 @@ public:
     std::string GetFileName();
     bool HasThread = false;
     lua_State* GetState();
+    char* GetOrigin();
     void Reload();
     void Init();
 };

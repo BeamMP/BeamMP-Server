@@ -24,6 +24,7 @@ LuaArg* CreateArg(lua_State *L,int T){
     return temp;
 }
 
+
 int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg){
     int R = 0;
     for(Lua*Script : PluginEngine){
@@ -32,7 +33,7 @@ int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg){
                 if (Script->GetPluginName() == Caller->GetPluginName()){
                     R += Script->CallFunction(Script->GetRegistered(Event),arg);
                 }
-            }else R += Script->CallFunction(Script->GetRegistered(Event),arg);
+            }else R += Script->CallFunction(Script->GetRegistered(Event), arg);
         }
     }
     return R;
@@ -102,15 +103,7 @@ void CallAsync(Lua* lua,const std::string& FuncName,LuaArg* args){
     }
     lua->HasThread = true;
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    lua_getglobal(lua->GetState(), FuncName.c_str());
-    if(lua_isfunction(lua->GetState(), -1)) {
-        int Size = 0;
-        if(args != nullptr){
-            Size = args->args.size();
-            args->PushArgs(lua->GetState());
-        }
-        CheckLua(lua->GetState(), lua_pcall(lua->GetState(), Size, 0, 0));
-    }
+    lua->CallFunction(FuncName,args);
     lua->HasThread = false;
 }
 int lua_CreateThread(lua_State *L){
@@ -120,8 +113,6 @@ int lua_CreateThread(lua_State *L){
             std::string STR = lua_tostring(L,1);
             std::thread t1(CallAsync,GetScript(L),STR,CreateArg(L,Args));
             t1.detach();
-            //auto s = std::async();
-            ///TODO FIGURE OUT THREAD
         }else SendError(L,"CreateThread wrong argument [1] need string");
     }else SendError(L,"CreateThread not enough arguments");
     return 0;
@@ -305,7 +296,14 @@ void Lua::Reload(){
         CallFunction("onInit",{});
     }
 }
-
+int Handle(EXCEPTION_POINTERS *ep,char* Origin);
+char* Lua::GetOrigin(){
+    std::string T = GetFileName().substr(GetFileName().find('\\'));
+    char* Data = new char[T.size()];
+    ZeroMemory(Data,T.size());
+    memcpy_s(Data,T.size(),T.c_str(),T.size());
+    return Data;
+}
 int Lua::CallFunction(const std::string& FuncName,LuaArg* Arg){
     lua_getglobal(luaState, FuncName.c_str());
     if(lua_isfunction(luaState, -1)) {
@@ -314,7 +312,13 @@ int Lua::CallFunction(const std::string& FuncName,LuaArg* Arg){
             Size = Arg->args.size();
             Arg->PushArgs(luaState);
         }
-        if (CheckLua(luaState, lua_pcall(luaState, Size, 1, 0))) {
+        int R = 0;
+        char* Origin = GetOrigin();
+        __try{
+            R = lua_pcall(luaState, Size, 1, 0);
+        }__except(Handle(GetExceptionInformation(),Origin)){}
+        delete [] Origin;
+        if (CheckLua(luaState, R)){
             if (lua_isnumber(luaState, -1)) {
                 return lua_tointeger(luaState, -1);
             }

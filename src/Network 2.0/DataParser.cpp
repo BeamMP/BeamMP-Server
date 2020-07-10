@@ -19,8 +19,24 @@ int FC(const std::string& s,const std::string& p,int n) {
     if (j == n)return(i);
     else return(-1);
 }
+int Handle(EXCEPTION_POINTERS *ep,char* Origin);
 
-void VehicleParser(Client*c, std::string Packet){
+void Apply(Client*c,int VID,const std::string& pckt){
+    std::string Packet = pckt;
+    std::string VD = c->GetCarData(VID);
+    Packet = Packet.substr(FC(Packet, ",", 2) + 1);
+    Packet = VD.substr(0, FC(VD, ",", 2) + 1) +
+             Packet.substr(0, Packet.find_last_of('"') + 1) +
+             VD.substr(FC(VD, ",\"", 7));
+    c->SetCarData(VID, Packet);
+}
+void UpdateCarData(Client*c,int VID,const std::string& Packet){
+    __try{
+        Apply(c,VID,Packet);
+    }__except(Handle(GetExceptionInformation(),(char*)"Car Data Updater")){}
+}
+void VehicleParser(Client*c,const std::string& Pckt){
+    std::string Packet = Pckt;
     char Code = Packet.at(1);
     int PID = -1;
     int VID = -1;
@@ -52,19 +68,15 @@ void VehicleParser(Client*c, std::string Packet){
             }
             if(PID != -1 && VID != -1 && PID == c->GetID()){
                 if(!TriggerLuaEvent("onVehicleEdited",false,nullptr,
-                        new LuaArg{{c->GetID(),VID,Packet.substr(3)}})){
-                    SendToAll(c,Packet,false,true);
-                    std::string VD = c->GetCarData(VID);
-                    Packet = Packet.substr(FC(Packet,",",2)+1);
-                    Packet = VD.substr(0,FC(VD,",",2)+1)+
-                            Packet.substr(0,Packet.find_last_of('"')+1)+
-                            VD.substr(FC(VD,",\"",7));
-                    c->SetCarData(VID,Packet);
+                        new LuaArg{{c->GetID(),VID,Packet.substr(3)}})) {
+                    SendToAll(c, Packet, false, true);
+                    UpdateCarData(c,VID,Packet);
                 }else{
                     std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(VID);
                     Respond(c,Destroy,true);
                     c->DeleteCar(VID);
                 }
+
             }
             break;
         case 'd':
@@ -105,8 +117,14 @@ void SyncVehicles(Client*c){
     }
 }
 
-
 extern int PPS;
+
+void ParseVeh(Client*c, const std::string&Packet){
+    __try{
+            VehicleParser(c,Packet);
+    }__except(Handle(GetExceptionInformation(),(char*)"Vehicle Handler")){}
+}
+
 void GlobalParser(Client*c, const std::string&Packet){
     if(Packet.empty())return;
     if(Packet.find("TEST")!=std::string::npos)SyncVehicles(c);
@@ -124,16 +142,16 @@ void GlobalParser(Client*c, const std::string&Packet){
             if(Packet.length() > 1000) {
                 std::cout << "Received data from: " << c->GetName() << " Size: " << Packet.length() << std::endl;
             }
-            VehicleParser(c,Packet);
+            ParseVeh(c,Packet);
             return;
         case 'J':
             SendToAll(c,Packet,false,true);
             break;
         case 'C':
-            if(TriggerLuaEvent("onChatMessage",false,nullptr,
-                    new LuaArg{{c->GetID(),c->GetName(),Packet.substr(Packet.find(':',3)+1)}}))break;
-            pct = "C:"+c->GetName()+Packet.substr(Packet.find(':',3));
-            SendToAll(nullptr,pct,true,true);
+            pct = "C:" + c->GetName() + Packet.substr(Packet.find(':', 3));
+            if (TriggerLuaEvent("onChatMessage", false, nullptr,
+            new LuaArg{{ c->GetID(), c->GetName(), pct.substr(pct.find(':', 3) + 1) }}))break;
+            SendToAll(nullptr, pct, true, true);
             pct.clear();
             break;
         case 'E':

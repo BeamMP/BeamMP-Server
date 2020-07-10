@@ -6,6 +6,7 @@
 #include <fstream>
 #include "logger.h"
 #include <string>
+
 void addToLog(const std::string& Data);
 int loggerlevel;
 
@@ -75,7 +76,6 @@ void error(const std::string& toPrint) {
     }
 }
 
-
 void warn(const std::string& toPrint) {
     if (loggerlevel <= 3) {
         std::string Print = getDate().str() + "[WARN] " + toPrint + "\n";
@@ -83,11 +83,18 @@ void warn(const std::string& toPrint) {
         addToLog(Print);
     }
 }
-
-
 void debug(const std::string& toPrint) {
     if (loggerlevel <= 1) {
         std::string Print = getDate().str() + "[DEBUG] " + toPrint + "\n";
+        std::cout << Print;
+        addToLog(Print);
+    }
+}
+void Exception(unsigned long Code,char* Origin) {
+    char* hex_string = new char[100];
+    sprintf(hex_string, "%lX", Code); //convert number to hex
+    if (loggerlevel <= 4) {
+        std::string Print = getDate().str() + "[EXCEP] code " + hex_string + " Origin: "+ std::string(Origin) +"\n";
         std::cout << Print;
         addToLog(Print);
     }

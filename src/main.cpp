@@ -1,7 +1,6 @@
 ///
 /// Created by Anonymous275 on 28/01/2020
 ///
-
 #include <string>
 #include <chrono>
 #include <fstream>
@@ -15,7 +14,7 @@ void ParseConfig();
 void addToLog(const std::string& Data);
 //void ServerMain(int Port, int MaxClients);
 void HeartbeatInit();
-std::string ServerVersion = "0.50";
+std::string ServerVersion = "0.51";
 std::string ClientVersion = "1.50";
 std::string CustomIP;
 void HandleResources(std::string path);

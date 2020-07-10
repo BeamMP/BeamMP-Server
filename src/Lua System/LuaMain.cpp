@@ -50,10 +50,10 @@ void FolderList(const std::string& Path,bool HotSwap){
                 break;
             }
             if(Script->GetLastWrite() != fs::last_write_time(Script->GetFileName())){
+                info("[HOTSWAP] Updated : "+
+                     Script->GetFileName().substr(Script->GetFileName().find('\\')));
                 Script->SetLastWrite(fs::last_write_time(Script->GetFileName()));
                 Script->Reload();
-                info("[HOTSWAP] Updated : "+
-                Script->GetFileName().substr(Script->GetFileName().find('\\')));
             }
         }
         FolderList(path,true);

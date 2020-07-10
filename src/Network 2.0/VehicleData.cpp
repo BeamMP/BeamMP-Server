@@ -152,7 +152,6 @@ SplitData*GetSplit(int SplitID){
     SplitPackets.insert(SP);
     return SP;
 }
-
 void GlobalParser(Client*c, const std::string&Packet);
 void HandleChunk(Client*c,const std::string&Data){
     int pos1 = int(Data.find(':'))+1,pos2 = Data.find(':',pos1),pos3 = Data.find('/');
@@ -178,7 +177,6 @@ void HandleChunk(Client*c,const std::string&Data){
         SplitPackets.erase(SData);
     }
 }
-
 void UDPParser(Client*c, const std::string&Packet){
     if(Packet.substr(0,4) == "ACK:"){
         AckID(stoi(Packet.substr(4)));
@@ -194,19 +192,18 @@ void UDPParser(Client*c, const std::string&Packet){
         }
         return;
     }else if(Packet.substr(0,2) == "SC"){
+
         HandleChunk(c,Packet);
         return;
     }
     GlobalParser(c,Packet);
 }
-
 void StartLoop();
-[[noreturn]] void UDPServerMain(){
 
+[[noreturn]] void UDPServerMain(){
     WSADATA data;
     if (WSAStartup(514, &data)) //2.2
     {
-
         std::cout << "Can't start Winsock!" << std::endl;
         //return;
     }

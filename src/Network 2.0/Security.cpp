@@ -4,9 +4,14 @@
 #include <random>
 #include <thread>
 #include "Client.hpp"
+#include "../logger.h"
 #include "../Settings.hpp"
 #include <windows.h>
-void VehicleParser(Client*c, std::string Packet);
+void VehicleParser(Client*c,const std::string& Pckt);
+int Handle(EXCEPTION_POINTERS *ep,char* Origin){
+    Exception(ep->ExceptionRecord->ExceptionCode,Origin);
+    return 1;
+}
 int Rand(){
     std::random_device r;
     std::default_random_engine e1(r());
@@ -43,9 +48,9 @@ std::string Decrypt(std::string msg){
 [[noreturn]]void SLoop(){
     std::thread D(DLoop);
     D.detach();
-    int A = 0;
+    int A = -1;
     while(true) {
-        std::this_thread::sleep_for(std::chrono::seconds(15));
+        std::this_thread::sleep_for(std::chrono::seconds(20));
         if (A == Beat)VehicleParser(nullptr, "");
         A = Beat;
     }
