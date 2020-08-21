@@ -1,101 +1,80 @@
 ///
-/// Created by jojos38 on 28/01/2020
+/// Created by Anonymous275 on 7/17/2020
 ///
-
-
+#include "Security/Enc.h"
+#include "Settings.h"
+#include "Logger.h"
 #include <fstream>
-#include "logger.h"
-#include <string>
-
-void addToLog(const std::string& Data);
-int loggerlevel;
-
-void setLoggerLevel(int level) {
-    //0 ALL 1 DEBUG 2 INFO 3 WARN 4 ERROR 5 OFF
-    loggerlevel = level;
-}
-
-std::stringstream getDate() {
-    // current date/time based on current system
-    time_t now = time(nullptr);
-    tm* ltm = localtime(&now);
-    
-    int month = 1 + ltm->tm_mon;
-    int day = ltm->tm_mday;
-    int hours = ltm->tm_hour;
-    int minutes = ltm->tm_min;
-    int seconds = ltm->tm_sec;
-
-    std::string month_string;
-    if (month < 10) month_string = "0" + std::to_string(month);
-    else month_string = std::to_string(month);
-
-    std::string day_string;
-    if (day < 10) day_string = "0" + std::to_string(day);
-    else day_string = std::to_string(day);
-
-    std::string hours_string;
-    if (hours < 10) hours_string = "0" + std::to_string(hours);
-    else hours_string = std::to_string(hours);
-
-    std::string minutes_string;
-    if (minutes < 10) minutes_string = "0" + std::to_string(minutes);
-    else minutes_string = std::to_string(minutes);
-
-    std::string seconds_string;
-    if (seconds < 10) seconds_string = "0" + std::to_string(seconds);
-    else seconds_string = std::to_string(seconds);
-
+#include <sstream>
+#include <chrono>
+std::string getDate() {
+    typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>::type> days;
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    std::chrono::system_clock::duration tp = now.time_since_epoch();
+    days d = std::chrono::duration_cast<days>(tp);tp -= d;
+    auto h = std::chrono::duration_cast<std::chrono::hours>(tp);tp -= h;
+    auto m = std::chrono::duration_cast<std::chrono::minutes>(tp);tp -= m;
+    auto s = std::chrono::duration_cast<std::chrono::seconds>(tp);tp -= s;
+    time_t tt = std::chrono::system_clock::to_time_t(now);
+    tm local_tm{};
+    localtime_s(&local_tm,&tt);
     std::stringstream date;
+    int S = local_tm.tm_sec;
+    int M = local_tm.tm_min;
+    int H = local_tm.tm_hour;
+    std::string Secs = (S > 9 ? std::to_string(S) : "0" + std::to_string(S));
+    std::string Min = (M > 9 ? std::to_string(M) : "0" + std::to_string(M));
+    std::string Hour = (H > 9 ? std::to_string(H) : "0" + std::to_string(H));
     date
-        << "["
-        << day_string << "/"
-        << month_string << "/"
-        << 1900 + ltm->tm_year << " "
-        << hours_string << ":"
-        << minutes_string << ":"
-        << seconds_string
-        << "] ";
-    return date;
+            << "["
+            << local_tm.tm_mday << "/"
+            << local_tm.tm_mon + 1 << "/"
+            << local_tm.tm_year + 1900 << " "
+            << Hour << ":"
+            << Min << ":"
+            << Secs
+            << "] ";
+    return date.str();
 }
-
-
+void InitLog(){
+    std::ofstream LFS;
+    LFS.open (Sec("Server.log"));
+    if(!LFS.is_open()){
+        error(Sec("logger file init failed!"));
+    }else LFS.close();
+}
+void addToLog(const std::string& Line){
+    std::ofstream LFS;
+    LFS.open (Sec("Server.log"), std::ios_base::app);
+    LFS << Line.c_str();
+    LFS.close();
+}
 void info(const std::string& toPrint) {
-    if (loggerlevel <= 2){
-        std::string Print = getDate().str() + "[INFO] " + toPrint + "\n";
-        std::cout << Print;
-        addToLog(Print);
-    }
-}
-
-void error(const std::string& toPrint) {
-    if (loggerlevel <= 4) {
-        std::string Print = getDate().str() + "[ERROR] " + toPrint + "\n";
-        std::cout << Print;
-        addToLog(Print);
-    }
-}
-
-void warn(const std::string& toPrint) {
-    if (loggerlevel <= 3) {
-        std::string Print = getDate().str() + "[WARN] " + toPrint + "\n";
-        std::cout << Print;
-        addToLog(Print);
-    }
+    std::string Print = getDate() + Sec("[INFO] ") + toPrint + "\n";
+    std::cout << Print;
+    addToLog(Print);
 }
 void debug(const std::string& toPrint) {
-    if (loggerlevel <= 1) {
-        std::string Print = getDate().str() + "[DEBUG] " + toPrint + "\n";
-        std::cout << Print;
-        addToLog(Print);
-    }
+    if(!Debug)return;
+    std::string Print = getDate() + Sec("[DEBUG] ") + toPrint + "\n";
+    std::cout << Print;
+    addToLog(Print);
 }
-void Exception(unsigned long Code,char* Origin) {
-    char* hex_string = new char[100];
-    sprintf(hex_string, "%lX", Code); //convert number to hex
-    if (loggerlevel <= 4) {
-        std::string Print = getDate().str() + "[EXCEP] code " + hex_string + " Origin: "+ std::string(Origin) +"\n";
-        std::cout << Print;
-        addToLog(Print);
-    }
+void warn(const std::string& toPrint){
+    std::string Print = getDate() + Sec("[WARN] ") + toPrint + "\n";
+    std::cout << Print;
+    addToLog(Print);
+}
+void error(const std::string& toPrint) {
+    static int ECounter = 0;
+    std::string Print = getDate() + Sec("[ERROR] ") + toPrint + "\n";
+    std::cout << Print;
+    addToLog(Print);
+    if(ECounter > 10)exit(7);
+    ECounter++;
+}
+void except(const std::string& toPrint) {
+    std::string Print = getDate() + Sec("[EXCEP] ") + toPrint + "\n";
+    std::cout << Print;
+    addToLog(Print);
 }
