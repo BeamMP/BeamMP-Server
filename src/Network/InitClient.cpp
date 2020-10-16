@@ -25,7 +25,7 @@ int OpenID(){
 }
 void Respond(Client*c, const std::string& MSG, bool Rel){
     char C = MSG.at(0);
-    if(Rel){
+    if(Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E'){
         if(C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
         else TCPSend(c,MSG);
     }else UDPSend(c,MSG);
@@ -35,9 +35,10 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     for(Client*client : CI->Clients){
         if(client != nullptr) {
             if (Self || client != c) {
-                if (client->isSynced) {
-                    if (Rel) {
-                        if (C == 'O' || C == 'T' || Data.length() > 1000)SendLarge(client, Data);
+                if (client->isSynced || (C == 'O' && Data.at(1) == 's')) {
+                    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
+                        if (C == 'O' || C == 'T' ||
+                        Data.length() > 1000)SendLarge(client, Data);
                         else TCPSend(client, Data);
                     } else UDPSend(client, Data);
                 }
@@ -54,6 +55,7 @@ void UpdatePlayers(){
     SendToAll(nullptr, Packet,true,true);
 }
 void OnDisconnect(Client*c,bool kicked){
+    info(c->GetName() + Sec(" Connection Terminated"));
     if(c == nullptr)return;
     std::string Packet;
     for(VData*v : c->GetAllCars()){
@@ -66,17 +68,18 @@ void OnDisconnect(Client*c,bool kicked){
     Packet = Sec("L")+c->GetName()+Sec(" Left the server!");
     SendToAll(c, Packet,false,true);
     Packet.clear();
-    TriggerLuaEvent(Sec("onPlayerDisconnect"),false,nullptr,new LuaArg{{c->GetID()}});
+    TriggerLuaEvent(Sec("onPlayerDisconnect"),false,nullptr,new LuaArg{{c->GetID()}},false);
     c->ClearCars();
     CI->RemoveClient(c); ///Removes the Client from existence
 }
 void OnConnect(Client*c){
+    info(Sec("Client connected"));
     c->SetID(OpenID());
     info(Sec("Assigned ID ") + std::to_string(c->GetID()) + Sec(" to ") + c->GetName());
-    TriggerLuaEvent(Sec("onPlayerConnecting"),false,nullptr,new LuaArg{{c->GetID()}});
+    TriggerLuaEvent(Sec("onPlayerConnecting"),false,nullptr,new LuaArg{{c->GetID()}},false);
     SyncResources(c);
     if(c->GetStatus() < 0)return;
     Respond(c,"M"+MapName,true); //Send the Map on connect
     info(c->GetName() + Sec(" : Connected"));
-    TriggerLuaEvent(Sec("onPlayerJoining"),false,nullptr,new LuaArg{{c->GetID()}});
+    TriggerLuaEvent(Sec("onPlayerJoining"),false,nullptr,new LuaArg{{c->GetID()}},false);
 }

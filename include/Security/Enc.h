@@ -10,6 +10,7 @@ struct RSA{
     int e = 0;
     int d = 0;
 };
+std::string RSA_E(const std::string& Data,int e, int n);
 std::string RSA_E(const std::string& Data, RSA*k);
 std::string RSA_D(const std::string& Data, RSA*k);
 int Handle(EXCEPTION_POINTERS *ep,char* Origin);

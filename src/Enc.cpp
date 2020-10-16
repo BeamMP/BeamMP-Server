@@ -100,7 +100,13 @@ std::string RSA_E(const std::string& Data, RSA*k){
     }
     return stream.str();
 }
-
+std::string RSA_E(const std::string& Data,int e, int n){
+    std::stringstream stream;
+    for(const char&c : Data){
+        stream << std::hex << Enc(uint8_t(c),e,n) << "g";
+    }
+    return stream.str();
+}
 std::string RSA_D(const std::string& Data, RSA*k){
     std::stringstream ss(Data);
     std::string token,ret;

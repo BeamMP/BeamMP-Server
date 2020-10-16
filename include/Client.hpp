@@ -4,6 +4,7 @@
 
 #pragma once
 #include <WS2tcpip.h>
+#include "Buffer.h"
 #include <string>
 #include <vector>
 #include <chrono>
@@ -48,6 +49,7 @@ public:
     int GetCarCount();
     void ClearCars();
     int GetStatus();
+    Buffer Handler;
     int GetID();
 };
 struct ClientInterface{

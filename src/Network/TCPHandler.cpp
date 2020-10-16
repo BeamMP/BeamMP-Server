@@ -8,16 +8,24 @@
 
 void TCPSend(Client*c,const std::string&Data){
     if(c == nullptr)return;
-    int BytesSent = send(c->GetTCPSock(), Data.c_str(), int(Data.length())+1, 0);
-    if (BytesSent == 0){
+    std::string Send = "\n" + Data.substr(0,Data.find(char(0))) + "\n";
+    size_t Sent = send(c->GetTCPSock(), Send.c_str(), int(Send.size()), 0);
+    if (Sent == 0){
         if(c->GetStatus() > -1)c->SetStatus(-1);
-    }else if (BytesSent < 0) {
+    }else if (Sent < 0) {
         if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
     }
 }
+void TCPHandle(Client*c,const std::string& data){
+    __try{
+            c->Handler.Handle(c,data);
+    }__except(1){
+        c->Handler.clear();
+    }
+}
 void TCPRcv(Client*c){
-    if(c == nullptr)return;
+    if(c == nullptr || c->GetStatus() < 0)return;
     char buf[4096];
     int len = 4096;
     ZeroMemory(buf, len);
@@ -33,18 +41,18 @@ void TCPRcv(Client*c){
         return;
     }
     std::string Buf(buf,BytesRcv);
-    GParser(c, Buf);
+    TCPHandle(c,Buf);
 }
 void TCPClient(Client*c){
     if(c->GetTCPSock() == -1){
         CI->RemoveClient(c);
         return;
     }
-    info(Sec("Client connected"));
     OnConnect(c);
     while (c->GetStatus() > -1)TCPRcv(c);
-    info(c->GetName() + Sec(" Connection Terminated"));
-    OnDisconnect(c, c->GetStatus() == -2);
+    __try{
+            OnDisconnect(c, c->GetStatus() == -2);
+    }__except(Handle(GetExceptionInformation(),Sec("OnDisconnect"))){}
 }
 void InitClient(Client*c){
     std::thread NewClient(TCPClient,c);

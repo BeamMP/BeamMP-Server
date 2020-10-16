@@ -29,8 +29,10 @@ std::string Rcv(SOCKET TCPSock){
 }
 std::string GetRole(const std::string &DID){
     if(!DID.empty()){
-        std::string a = HttpRequest(Sec("https://beamng-mp.com/entitlement?did=")+DID,443);
-        if(!a.empty()){
+        std::string a = HttpRequest(Sec("https://beammp.com/entitlement?did=")+DID,443);
+        std::string b = HttpRequest(Sec("https://backup1.beammp.com/entitlement?did=")+DID,443);
+        if(!a.empty() || !b.empty()){
+            if(a != b)a = b;
             auto pos = a.find('"');
             if(pos != std::string::npos){
                 return a.substr(pos+1,a.find('"',pos+1)-2);
@@ -63,26 +65,46 @@ void CreateClient(SOCKET TCPSock,const std::string &Name, const std::string &DID
     CI->AddClient(c);
     InitClient(c);
 }
-
+std::pair<int,int> Parse(const std::string& msg){
+    std::stringstream ss(msg);
+    std::string t;
+    std::pair<int,int> a = {0,0}; //N then E
+    while (std::getline(ss, t, 'g')) {
+        if(t.find_first_not_of(Sec("0123456789abcdef")) != std::string::npos)return a;
+        if(a.first == 0){
+            a.first = std::stoi(t, nullptr, 16);
+        }else if(a.second == 0){
+            a.second = std::stoi(t, nullptr, 16);
+        }else return a;
+    }
+    return {0,0};
+}
 std::string GenerateM(RSA*key){
     std::stringstream stream;
     stream << std::hex << key->n << "g" << key->e << "g" << RSA_E(Sec("IDC"),key);
     return stream.str();
 }
 
-void Identification(SOCKET TCPSock,Hold*S,RSA*key){
+void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     S->TCPSock = TCPSock;
     std::thread Timeout(Check,S);
     Timeout.detach();
     std::string Name,DID,Role;
-    if(!Send(TCPSock,GenerateM(key))){
+    if(!Send(TCPSock,GenerateM(Skey))){
         closesocket(TCPSock);
         return;
     }
+    std::string msg = Rcv(TCPSock);
+    auto Keys = Parse(msg);
+    if(!Send(TCPSock,RSA_E("HC",Keys.second,Keys.first))){
+        closesocket(TCPSock);
+        return;
+    }
+
     std::string Res = Rcv(TCPSock);
     std::string Ver = Rcv(TCPSock);
     S->Done = true;
-    Ver = RSA_D(Ver,key);
+    Ver = RSA_D(Ver,Skey);
     if(Ver.size() > 3 && Ver.substr(0,2) == Sec("VC")){
         Ver = Ver.substr(2);
         if(Ver.length() > 4 || Ver != GetCVer()){
@@ -93,7 +115,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*key){
         closesocket(TCPSock);
         return;
     }
-    Res = RSA_D(Res,key);
+    Res = RSA_D(Res,Skey);
     if(Res.size() < 3 || Res.substr(0,2) != Sec("NR")) {
         closesocket(TCPSock);
         return;
@@ -125,11 +147,15 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*key){
 }
 void Identify(SOCKET TCPSock){
     auto* S = new Hold;
-    RSA*key = GenKey();
+    RSA*Skey = GenKey();
     __try{
-        Identification(TCPSock,S,key);
-    }__except(1){}
-    delete key;
+        Identification(TCPSock,S,Skey);
+    }__except(1){
+        if(TCPSock != -1){
+            closesocket(TCPSock);
+        }
+    }
+    delete Skey;
     delete S;
 }
 void TCPServerMain(){

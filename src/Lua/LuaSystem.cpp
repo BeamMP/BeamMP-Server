@@ -9,6 +9,7 @@
 #include "Logger.h"
 #include <iostream>
 #include <future>
+#include <utility>
 
 LuaArg* CreateArg(lua_State *L,int T,int S){
     if(S > T)return nullptr;
@@ -26,6 +27,9 @@ LuaArg* CreateArg(lua_State *L,int T,int S){
     }
     return temp;
 }
+void ClearStack(lua_State *L){
+    lua_settop(L,0);
+}
 Lua* GetScript(lua_State *L){
     for(Lua*Script : PluginEngine){
         if (Script->GetState() == L)return Script;
@@ -35,32 +39,40 @@ Lua* GetScript(lua_State *L){
 void SendError(lua_State *L,const std::string&msg){
     Lua* S = GetScript(L);
     std::string a = S->GetFileName().substr(S->GetFileName().find('\\'));
-    warn(a + Sec(" | Incorrect Call of ") +msg);
+    warn(a + Sec(" | Incorrect Call of ") + msg);
 }
 int Trigger(Lua*lua,const std::string& R, LuaArg*arg){
+    std::lock_guard<std::mutex> lockGuard(lua->Lock);
     std::packaged_task<int()> task([lua,R,arg]{return CallFunction(lua,R,arg);});
     std::future<int> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
-    auto status = f1.wait_for(std::chrono::seconds(3));
+    auto status = f1.wait_for(std::chrono::seconds(5));
     if(status != std::future_status::timeout)return f1.get();
     SendError(lua->GetState(),R + " took too long to respond");
     return 0;
 }
-int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg){
+int FutureWait(Lua*lua,const std::string& R, LuaArg*arg,bool Wait){
+    std::packaged_task<int()> task([lua,R,arg]{return Trigger(lua,R,arg);});
+    std::future<int> f1 = task.get_future();
+    std::thread t(std::move(task));
+    t.detach();
+    int T = 0;
+    if(Wait)T = 6;
+    auto status = f1.wait_for(std::chrono::seconds(T));
+    if(status != std::future_status::timeout)return f1.get();
+    return 0;
+}
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg,bool Wait){
     int R = 0;
     for(Lua*Script : PluginEngine){
         if(Script->IsRegistered(Event)){
             if(local){
                 if (Script->GetPluginName() == Caller->GetPluginName()){
-                    R += Trigger(Script,Script->GetRegistered(Event),arg);
+                    R += FutureWait(Script,Script->GetRegistered(Event),arg,Wait);
                 }
-            }else R += Trigger(Script,Script->GetRegistered(Event), arg);
+            }else R += FutureWait(Script,Script->GetRegistered(Event), arg,Wait);
         }
-    }
-    if(arg != nullptr){
-        delete arg;
-        arg = nullptr;
     }
     return R;
 }
@@ -70,7 +82,7 @@ bool CheckLua(lua_State *L, int r){
         std::string msg = lua_tostring(L, -1);
         Lua * S = GetScript(L);
         std::string a = S->GetFileName().substr(S->GetFileName().find('\\'));
-        warn(a + " | at line " + msg.substr(msg.find(':')+1));
+        warn(a + " | " + msg);
         return false;
     }
     return true;
@@ -89,7 +101,7 @@ int lua_TriggerEventL(lua_State *L){
     Lua* Script = GetScript(L);
     if(Args > 0){
         if(lua_isstring(L,1)){
-            TriggerLuaEvent(lua_tostring(L, 1), true, Script, CreateArg(L,Args,2));
+            TriggerLuaEvent(lua_tostring(L, 1), true, Script, CreateArg(L,Args,2),false);
         }else SendError(L,Sec("TriggerLocalEvent wrong argument [1] need string"));
     }else{
         SendError(L,Sec("TriggerLocalEvent not enough arguments expected 1 got 0"));
@@ -102,7 +114,7 @@ int lua_TriggerEventG(lua_State *L){
     Lua* Script = GetScript(L);
     if(Args > 0){
         if(lua_isstring(L,1)) {
-            TriggerLuaEvent(lua_tostring(L, 1), false, Script, CreateArg(L,Args,2));
+            TriggerLuaEvent(lua_tostring(L, 1), false, Script, CreateArg(L,Args,2),false);
         }else SendError(L,Sec("TriggerGlobalEvent wrong argument [1] need string"));
     }else SendError(L,Sec("TriggerGlobalEvent not enough arguments"));
     return 0;
@@ -110,24 +122,12 @@ int lua_TriggerEventG(lua_State *L){
 
 char* ThreadOrigin(Lua*lua){
     std::string T = "Thread in " + lua->GetFileName().substr(lua->GetFileName().find('\\'));
-    char* Data = new char[T.size()];
-    ZeroMemory(Data,T.size());
+    char* Data = new char[T.size()+1];
+    ZeroMemory(Data,T.size()+1);
     memcpy_s(Data,T.size(),T.c_str(),T.size());
     return Data;
 }
-
-void Lock(Lua* lua,bool thread){
-    bool Lock;
-    do{
-        if(thread){
-            Lock = lua->isExecuting;
-        }else Lock = lua->isThreadExecuting;
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }while(Lock);
-}
-void ExecuteAsync(Lua* lua,const std::string& FuncName){
-    Lock(lua,true);
-    lua->isThreadExecuting = true;
+void SafeExecution(Lua* lua,const std::string& FuncName){
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if(lua_isfunction(luaState, -1)) {
@@ -138,21 +138,20 @@ void ExecuteAsync(Lua* lua,const std::string& FuncName){
         }__except(Handle(GetExceptionInformation(),Origin)){}
         delete [] Origin;
     }
-    lua->isThreadExecuting = false;
+    ClearStack(luaState);
+}
+
+void ExecuteAsync(Lua* lua,const std::string& FuncName){
+    std::lock_guard<std::mutex> lockGuard(lua->Lock);
+    SafeExecution(lua,FuncName);
 }
 void CallAsync(Lua* lua,const std::string& Func,int U){
-    if(lua->HasThread){
-        SendError(lua->GetState(),Sec("CreateThread : There is already a thread running!"));
-        return;
-    }
     lua->StopThread = false;
-    lua->HasThread = true;
     int D = 1000 / U;
     while(!lua->StopThread){
         ExecuteAsync(lua,Func);
         std::this_thread::sleep_for(std::chrono::milliseconds(D));
     }
-    lua->HasThread = false;
 }
 int lua_StopThread(lua_State *L){
     GetScript(L)->StopThread = true;
@@ -329,10 +328,43 @@ int lua_HWID(lua_State *L){
     lua_pushinteger(L, -1);
     return 1;
 }
+int lua_RemoteEvent(lua_State *L){
+    int Args = lua_gettop(L);
+    if(Args != 3){
+        SendError(L,Sec("TriggerClientEvent invalid argument count expected 3 got ") + std::to_string(Args));
+        return 0;
+    }
+    if(!lua_isnumber(L,1)){
+        SendError(L,Sec("TriggerClientEvent invalid argument [1] expected number"));
+        return 0;
+    }
+    if(!lua_isstring(L,2)){
+        SendError(L,Sec("TriggerClientEvent invalid argument [2] expected string"));
+        return 0;
+    }
+    if(!lua_isstring(L,3)){
+        SendError(L,Sec("TriggerClientEvent invalid argument [3] expected string"));
+        return 0;
+    }
+    int ID = int(lua_tointeger(L,1));
+    std::string Packet = "E:" + std::string(lua_tostring(L,2)) + ":" + std::string(lua_tostring(L,3));
+    if(ID == -1){
+        SendToAll(nullptr,Packet,true,true);
+    }else{
+        Client *c = GetClient(ID);
+        if(c == nullptr){
+            SendError(L,Sec("TriggerClientEvent invalid Player ID"));
+            return 0;
+        }
+        Respond(c,Packet,true);
+    }
+    return 0;
+}
 void Lua::Init(){
     luaL_openlibs(luaState);
     lua_register(luaState,"TriggerGlobalEvent",lua_TriggerEventG);
     lua_register(luaState,"TriggerLocalEvent",lua_TriggerEventL);
+    lua_register(luaState,"TriggerClientEvent",lua_RemoteEvent);
     lua_register(luaState,"GetPlayerCount",lua_GetPlayerCount);
     lua_register(luaState,"isPlayerConnected",lua_isConnected);
     lua_register(luaState,"RegisterEvent",lua_RegisterEvent);
@@ -352,7 +384,7 @@ void Lua::Init(){
 
 void Lua::Reload(){
     if(CheckLua(luaState,luaL_dofile(luaState,FileName.c_str()))){
-        CallFunction(this,Sec("onInit"),{});
+        CallFunction(this,Sec("onInit"), nullptr);
     }
 }
 char* Lua::GetOrigin(){
@@ -363,8 +395,6 @@ char* Lua::GetOrigin(){
     return Data;
 }
 int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* Arg){
-    Lock(lua,false);
-    lua->isExecuting = true;
     lua_State*luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if(lua_isfunction(luaState, -1)) {
@@ -372,6 +402,8 @@ int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* Arg){
         if(Arg != nullptr){
             Size = int(Arg->args.size());
             Arg->PushArgs(luaState);
+            delete Arg;
+            Arg = nullptr;
         }
         int R = 0;
         char* Origin = lua->GetOrigin();
@@ -385,7 +417,7 @@ int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* Arg){
         }__except(Handle(GetExceptionInformation(),Origin)){}
         delete [] Origin;
     }
-    lua->isExecuting = false;
+    ClearStack(luaState);
     return 0;
 }
 void Lua::SetPluginName(const std::string&Name){

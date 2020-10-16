@@ -8,6 +8,7 @@
 #include "lua.hpp"
 #include <vector>
 #include <thread>
+#include <mutex>
 #include <set>
 #include <any>
 namespace fs = std::experimental::filesystem;
@@ -50,17 +51,15 @@ public:
     void SetPluginName(const std::string&Name);
     void SetFileName(const std::string&Name);
     fs::file_time_type GetLastWrite();
-    bool isThreadExecuting = false;
     std::string GetPluginName();
     std::string GetFileName();
-    bool isExecuting = false;
     bool StopThread = false;
-    bool HasThread = false;
     lua_State* GetState();
     char* GetOrigin();
+    std::mutex Lock;
     void Reload();
     void Init();
 };
 int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* args);
-int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg);
+int TriggerLuaEvent(const std::string& Event,bool local,Lua*Caller,LuaArg* arg,bool Wait);
 extern std::set<Lua*> PluginEngine;

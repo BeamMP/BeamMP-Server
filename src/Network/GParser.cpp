@@ -7,6 +7,7 @@
 #include "Settings.h"
 #include "Network.h"
 #include "Logger.h"
+#include <sstream>
 
 int FC(const std::string& s,const std::string& p,int n) {
     auto i = s.find(p);
@@ -42,7 +43,7 @@ void VehicleParser(Client*c,const std::string& Pckt){
                 Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+"-"+std::to_string(CarID)+Packet.substr(4);
                 if(c->GetCarCount() >= MaxCars ||
                    TriggerLuaEvent(Sec("onVehicleSpawn"),false,nullptr,
-                                   new LuaArg{{c->GetID(),CarID,Packet.substr(3)}})){
+                                   new LuaArg{{c->GetID(),CarID,Packet.substr(3)}},true)){
                     Respond(c,Packet,true);
                     std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(CarID);
                     Respond(c,Destroy,true);
@@ -62,7 +63,7 @@ void VehicleParser(Client*c,const std::string& Pckt){
             }
             if(PID != -1 && VID != -1 && PID == c->GetID()){
                 if(!TriggerLuaEvent(Sec("onVehicleEdited"),false,nullptr,
-                                    new LuaArg{{c->GetID(),VID,Packet.substr(3)}})) {
+                                    new LuaArg{{c->GetID(),VID,Packet.substr(3)}},true)) {
                     SendToAll(c, Packet, false, true);
                     Apply(c,VID,Packet);
                 }else{
@@ -82,7 +83,7 @@ void VehicleParser(Client*c,const std::string& Pckt){
             if(PID != -1 && VID != -1 && PID == c->GetID()){
                 SendToAll(nullptr,Packet,true,true);
                 TriggerLuaEvent(Sec("onVehicleDeleted"),false,nullptr,
-                                new LuaArg{{c->GetID(),VID}});
+                                new LuaArg{{c->GetID(),VID}},false);
                 c->DeleteCar(VID);
                 debug(c->GetName() + Sec(" deleted car with ID ") + std::to_string(VID));
             }
@@ -96,19 +97,23 @@ void VehicleParser(Client*c,const std::string& Pckt){
 }
 void SyncClient(Client*c){
     if(c->isSynced)return;
+    c->isSynced = true;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     Respond(c,Sec("Sn")+c->GetName(),true);
     SendToAll(c,Sec("JWelcome ")+c->GetName()+"!",false,true);
-    TriggerLuaEvent(Sec("onPlayerJoin"),false,nullptr,new LuaArg{{c->GetID()}});
+    TriggerLuaEvent(Sec("onPlayerJoin"),false,nullptr,new LuaArg{{c->GetID()}},false);
     for (Client*client : CI->Clients) {
         if(client != nullptr){
             if (client != c) {
                 for (VData *v : client->GetAllCars()) {
-                    Respond(c, v->Data, true);
+                    if(v != nullptr){
+                        Respond(c, v->Data, true);
+                        std::this_thread::sleep_for(std::chrono::seconds(2));
+                    }
                 }
             }
         }
     }
-    c->isSynced = true;
     info(c->GetName() + Sec(" is now synced!"));
 }
 void ParseVeh(Client*c, const std::string&Packet){
@@ -117,9 +122,30 @@ void ParseVeh(Client*c, const std::string&Packet){
     }__except(Handle(GetExceptionInformation(),Sec("Vehicle Handler"))){}
 }
 
-void GlobalParser(Client*c, const std::string& Packet){
+void HandleEvent(Client*c ,const std::string&Data){
+    std::stringstream ss(Data);
+    std::string t,Name;
+    int a = 0;
+    while (std::getline(ss, t, ':')) {
+        switch(a){
+            case 1:
+                Name = t;
+                break;
+            case 2:
+                TriggerLuaEvent(Name, false, nullptr,new LuaArg{{c->GetID(),t}},false);
+                break;
+            default:
+                break;
+        }
+        if(a == 2)break;
+        a++;
+    }
+}
+
+void GlobalParser(Client*c, const std::string& Pack){
     static int lastRecv = 0;
-    if(Packet.empty() || c == nullptr)return;
+    if(Pack.empty() || c == nullptr)return;
+    std::string Packet = Pack.substr(0,Pack.find(char(0)));
     std::string pct;
     char Code = Packet.at(0);
 
@@ -150,14 +176,13 @@ void GlobalParser(Client*c, const std::string& Packet){
             return;
         case 'C':
             if(Packet.length() < 4 || Packet.find(':', 3) == -1)break;
-            pct = "C:" + c->GetName() + Packet.substr(Packet.find(':', 3));
-            if (TriggerLuaEvent(Sec("onChatMessage"), false, nullptr,
-                                new LuaArg{{c->GetID(), c->GetName(), pct.substr(pct.find(':', 3) + 1)}}))break;
-            SendToAll(nullptr, pct, true, true);
-            pct.clear();
+            if (TriggerLuaEvent(Sec("onChatMessage"), false, nullptr,new LuaArg{
+                {c->GetID(), c->GetName(), Packet.substr(Packet.find(':', 3) + 1)}
+                },true))break;
+            SendToAll(nullptr, Packet, true, true);
             return;
         case 'E':
-            SendToAll(nullptr,Packet,true,true);
+            HandleEvent(c,Packet);
             return;
         default:
             return;
