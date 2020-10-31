@@ -22,6 +22,12 @@ out/
 #Clion Files
 cmake-build-debug/
 cmake-build-release/
+!/cmake-build-debug/libcurl_a.lib
+!/cmake-build-debug/lua53.lib
+!/cmake-build-debug/zlibstatic.lib
+!/cmake-build-release/libcurl_a.lib
+!/cmake-build-release/lua53.lib
+!/cmake-build-release/zlibstatic.lib
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
