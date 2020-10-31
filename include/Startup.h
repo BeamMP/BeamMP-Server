@@ -3,6 +3,7 @@
 ///
 #pragma once
 void InitServer(int argc, char* argv[]);
+void ConsoleInit();
 void InitConfig();
 void InitLua();
 void InitRes();

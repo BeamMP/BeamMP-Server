@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 void InitLog();
+void ConsoleOut(const std::string& msg);
 void except(const std::string& toPrint);
 void debug(const std::string& toPrint);
 void error(const std::string& toPrint);

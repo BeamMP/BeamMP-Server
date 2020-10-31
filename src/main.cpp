@@ -8,8 +8,11 @@
     }
 }
 int main(int argc, char* argv[]) {
-    std::thread t1(loop);
-    t1.detach();
+    #ifdef DEBUG
+        std::thread t1(loop);
+        t1.detach();
+    #endif
+    ConsoleInit();
     InitServer(argc,argv);
     InitConfig();
     InitLua();

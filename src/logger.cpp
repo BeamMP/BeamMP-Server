@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <chrono>
+#include <mutex>
+
 std::string getDate() {
     typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>::type> days;
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -43,6 +45,7 @@ void InitLog(){
         error(Sec("logger file init failed!"));
     }else LFS.close();
 }
+std::mutex LogLock;
 void addToLog(const std::string& Line){
     std::ofstream LFS;
     LFS.open (Sec("Server.log"), std::ios_base::app);
@@ -50,31 +53,41 @@ void addToLog(const std::string& Line){
     LFS.close();
 }
 void info(const std::string& toPrint) {
+    LogLock.lock();
     std::string Print = getDate() + Sec("[INFO] ") + toPrint + "\n";
-    std::cout << Print;
+    ConsoleOut(Print);
     addToLog(Print);
+    LogLock.unlock();
 }
 void debug(const std::string& toPrint) {
     if(!Debug)return;
+    LogLock.lock();
     std::string Print = getDate() + Sec("[DEBUG] ") + toPrint + "\n";
-    std::cout << Print;
+    ConsoleOut(Print);
     addToLog(Print);
+    LogLock.unlock();
 }
 void warn(const std::string& toPrint){
+    LogLock.lock();
     std::string Print = getDate() + Sec("[WARN] ") + toPrint + "\n";
-    std::cout << Print;
+    ConsoleOut(Print);
     addToLog(Print);
+    LogLock.unlock();
 }
 void error(const std::string& toPrint) {
     static int ECounter = 0;
+    LogLock.lock();
     std::string Print = getDate() + Sec("[ERROR] ") + toPrint + "\n";
-    std::cout << Print;
+    ConsoleOut(Print);
     addToLog(Print);
     if(ECounter > 10)exit(7);
     ECounter++;
+    LogLock.unlock();
 }
 void except(const std::string& toPrint) {
+    LogLock.lock();
     std::string Print = getDate() + Sec("[EXCEP] ") + toPrint + "\n";
-    std::cout << Print;
+    ConsoleOut(Print);
     addToLog(Print);
+    LogLock.unlock();
 }

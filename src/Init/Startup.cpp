@@ -8,7 +8,7 @@
 
 std::string CustomIP;
 std::string GetSVer(){
-    static std::string r = Sec("0.63.5");
+    static std::string r = Sec("0.64");
     return r;
 }
 std::string GetCVer(){

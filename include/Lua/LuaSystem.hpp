@@ -49,11 +49,13 @@ public:
     void SetLastWrite(fs::file_time_type time);
     bool IsRegistered(const std::string&Event);
     void SetPluginName(const std::string&Name);
+    void Execute(const std::string& Command);
     void SetFileName(const std::string&Name);
     fs::file_time_type GetLastWrite();
     std::string GetPluginName();
     std::string GetFileName();
     bool StopThread = false;
+    bool Console = false;
     lua_State* GetState();
     char* GetOrigin();
     std::mutex Lock;
