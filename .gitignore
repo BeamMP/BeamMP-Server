@@ -20,14 +20,16 @@ mono_crash.*
 out/
 
 #Clion Files
-cmake-build-debug/
-cmake-build-release/
-!/cmake-build-debug/libcurl_a.lib
-!/cmake-build-debug/lua53.lib
-!/cmake-build-debug/zlibstatic.lib
-!/cmake-build-release/libcurl_a.lib
-!/cmake-build-release/lua53.lib
-!/cmake-build-release/zlibstatic.lib
+cmake-build-debug/CMakeFiles/
+cmake-build-release/CMakeFiles/
+cmake-build-debug/Resources/
+cmake-build-release/Resources/
+cmake-build-debug/*.*
+cmake-build-release/*.*
+cmake-build-debug/Makefile
+cmake-build-release/Makefile
+!cmake-build-debug/*.lib
+!cmake-build-release/*.lib
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
