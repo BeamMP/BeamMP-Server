@@ -3,11 +3,12 @@
 ///
 #include "Security/Enc.h"
 #include "Settings.h"
-#include <windows.h>
+//#include <windows.h>
 #include "Logger.h"
 #include <sstream>
 #include <thread>
 #include <random>
+#include <cassert>
 
 int Rand(){
     std::random_device r;
@@ -85,9 +86,10 @@ int Dec(int value,int d,int n){
 }
 
 int Handle(EXCEPTION_POINTERS *ep,char* Origin){
+    assert(false);
     std::stringstream R;
     R << Sec("Code : ") << std::hex
-    << ep->ExceptionRecord->ExceptionCode
+    //<< ep->ExceptionRecord->ExceptionCode
     << std::dec << Sec(" Origin : ") << Origin;
     except(R.str());
     return 1;

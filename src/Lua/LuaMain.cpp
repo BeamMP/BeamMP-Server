@@ -8,6 +8,11 @@
 #include "Logger.h"
 #include <thread>
 
+#ifdef __linux
+// we need this for `struct stat`
+#include <sys/stat.h>
+#endif // __linux
+
 std::set<Lua*> PluginEngine;
 bool NewFile(const std::string&Path){
     for(Lua*Script : PluginEngine){

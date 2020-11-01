@@ -2,7 +2,11 @@
 /// Created by Anonymous275 on 7/28/2020
 ///
 #pragma once
+#ifdef __linux
+#define EXCEPTION_POINTERS void
+#else
 #include <WS2tcpip.h>
+#endif
 #include <string>
 #include "Xor.h"
 struct RSA{

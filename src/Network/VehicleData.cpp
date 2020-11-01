@@ -8,14 +8,17 @@
 #include "Settings.h"
 #include "Network.h"
 #include "Logger.h"
+#include "UnixCompat.h"
 #include <sstream>
 #include <vector>
 #include <thread>
 #include <array>
+#include <cmath>
+#include <cstring>
 int FC(const std::string& s,const std::string& p,int n);
 struct PacketData{
     int ID;
-    Client* Client;
+    ::Client* Client;
     std::string Data;
     int Tries;
 };
@@ -38,10 +41,17 @@ void UDPSend(Client*c,std::string Data){
         Data = "ABG:" + CMP;
     }
     int sendOk = sendto(UDPSock, Data.c_str(), int(Data.size()), 0, (sockaddr *) &Addr, AddrSize);
-    if (sendOk == SOCKET_ERROR) {
+#ifdef __WIN32
+    if (sendOk != 0) {
         debug(Sec("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
         if(c->GetStatus() > -1)c->SetStatus(-1);
     }
+#else // unix
+    if (sendOk != 0) {
+        debug(Sec("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
+        if(c->GetStatus() > -1)c->SetStatus(-1);
+    }
+#endif // __WIN32
 }
 
 void AckID(int ID){
@@ -144,9 +154,13 @@ std::string UDPRcvFromClient(sockaddr_in& client){
     int clientLength = sizeof(client);
     ZeroMemory(&client, clientLength);
     std::string Ret(10240,0);
-    int Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, &clientLength);
+    int Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1){
+#ifdef __WIN32
         error(Sec("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
+#else // unix
+        error(Sec("(UDP) Error receiving from Client! Code : ") + std::string(strerror(errno)));
+#endif // __WIN32
         return "";
     }
     return Ret;
@@ -240,6 +254,7 @@ void LOOP(){
     }
 }
 [[noreturn]] void UDPServerMain(){
+#ifdef __WIN32
     WSADATA data;
     if (WSAStartup(514, &data)){
         error(Sec("Can't start Winsock!"));
@@ -286,4 +301,46 @@ void LOOP(){
     /*closesocket(UDPSock);
     WSACleanup();
     return;*/
+#else // unix
+    UDPSock = socket(AF_INET, SOCK_DGRAM, 0);
+    // Create a server hint structure for the server
+    sockaddr_in serverAddr{};
+    serverAddr.sin_addr.s_addr = INADDR_ANY; //Any Local
+    serverAddr.sin_family = AF_INET; // Address format is IPv4
+    serverAddr.sin_port = htons(Port); // Convert from little to big endian
+
+    // Try and bind the socket to the IP and port
+    if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0){
+        error(Sec("Can't bind socket!") + std::string(strerror(errno)));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+        //return;
+    }
+
+    DataAcks.clear();
+    std::thread Ack(LOOP);
+    Ack.detach();
+
+    info(Sec("Vehicle data network online on port ")+std::to_string(Port)+Sec(" with a Max of ")+std::to_string(MaxPlayers)+Sec(" Clients"));
+    while (true){
+        sockaddr_in client{};
+        std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
+        auto Pos = Data.find(':');
+        if(Data.empty() || Pos < 0 || Pos > 2)continue;
+        /*char clientIp[256];
+        ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
+        inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
+        uint8_t ID = Data.at(0)-1;
+        for(Client*c : CI->Clients){
+            if(c != nullptr && c->GetID() == ID){
+                c->SetUDPAddr(client);
+                c->isConnected = true;
+                UDPParser(c,Data.substr(2));
+            }
+        }
+    }
+    /*closesocket(UDPSock); // TODO: Why not this? We did this in TCPServerMain?
+    return;
+     */
+#endif // __WIN32
 }

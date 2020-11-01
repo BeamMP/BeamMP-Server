@@ -3,7 +3,12 @@
 ///
 
 #pragma once
+#ifdef __WIN32
 #include <WS2tcpip.h>
+#else
+#include <arpa/inet.h>
+#define SOCKET int
+#endif
 #include "Buffer.h"
 #include <string>
 #include <vector>

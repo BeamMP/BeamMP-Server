@@ -3,10 +3,14 @@
 ///
 
 #include "Lua/LuaSystem.hpp"
+#ifdef __WIN32
 #include <windows.h>
+#include <conio.h>
+#else // *nix
+typedef unsigned long DWORD, *PDWORD, *LPDWORD;
+#endif // __WIN32
 #include "Logger.h"
 #include <iostream>
-#include <conio.h>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -47,6 +51,7 @@ void ConsoleOut(const std::string& msg){
     }
 }
 void SetupConsole(){
+#ifdef __WIN32
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (stdoutHandle == INVALID_HANDLE_VALUE){
@@ -66,10 +71,11 @@ void SetupConsole(){
         std::this_thread::sleep_for(std::chrono::seconds(3));
         exit(GetLastError());
     }
+#endif // __WIN32
 }
 [[noreturn]] void ReadCin(){
     while (true){
-        int In = _getch();
+        int In = getchar();
         if (In == 13) {
             if(!CInputBuff.empty()) {
                 HandleInput(CInputBuff);

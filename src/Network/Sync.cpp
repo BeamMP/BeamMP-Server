@@ -5,7 +5,13 @@
 #include "Client.hpp"
 #include "Settings.h"
 #include "Logger.h"
+#include "UnixCompat.h"
 #include <fstream>
+
+#ifdef __linux
+// we need this for `struct stat`
+#include <sys/stat.h>
+#endif // __linux
 
 void STCPSend(Client*c,std::string Data){
     if(c == nullptr)return;

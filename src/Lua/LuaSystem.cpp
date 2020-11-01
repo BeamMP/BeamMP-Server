@@ -8,6 +8,7 @@
 #include "Settings.h"
 #include "Network.h"
 #include "Logger.h"
+#include "UnixCompat.h"
 #include <iostream>
 #include <future>
 #include <utility>
@@ -134,7 +135,7 @@ char* ThreadOrigin(Lua*lua){
     std::string T = "Thread in " + lua->GetFileName().substr(lua->GetFileName().find('\\'));
     char* Data = new char[T.size()+1];
     ZeroMemory(Data,T.size()+1);
-    memcpy_s(Data,T.size(),T.c_str(),T.size());
+    memcpy(Data, T.c_str(),T.size());
     return Data;
 }
 void SafeExecution(Lua* lua,const std::string& FuncName){
@@ -142,10 +143,15 @@ void SafeExecution(Lua* lua,const std::string& FuncName){
     lua_getglobal(luaState, FuncName.c_str());
     if(lua_isfunction(luaState, -1)) {
         char* Origin = ThreadOrigin(lua);
+#ifdef __WIN32
         __try{
                 int R = lua_pcall(luaState, 0, 0, 0);
                 CheckLua(luaState, R);
         }__except(Handle(GetExceptionInformation(),Origin)){}
+#else // unix
+        int R = lua_pcall(luaState, 0, 0, 0);
+        CheckLua(luaState, R);
+#endif // __WIN32
         delete [] Origin;
     }
     ClearStack(luaState);
@@ -492,7 +498,7 @@ char* Lua::GetOrigin(){
     std::string T = GetFileName().substr(GetFileName().find('\\'));
     char* Data = new char[T.size()];
     ZeroMemory(Data,T.size());
-    memcpy_s(Data,T.size(),T.c_str(),T.size());
+    memcpy(Data,T.c_str(),T.size());
     return Data;
 }
 int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* Arg){
@@ -508,14 +514,18 @@ int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* Arg){
         }
         int R = 0;
         char* Origin = lua->GetOrigin();
+#ifdef __WIN32
         __try{
+#endif // __WIN32
             R = lua_pcall(luaState, Size, 1, 0);
             if (CheckLua(luaState, R)){
                 if (lua_isnumber(luaState, -1)) {
                     return int(lua_tointeger(luaState, -1));
                 }
             }
+#ifdef __WIN32
         }__except(Handle(GetExceptionInformation(),Origin)){}
+#endif // __WIN32
         delete [] Origin;
     }
     ClearStack(luaState);

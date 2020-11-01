@@ -8,6 +8,10 @@
 #include "Logger.h"
 #include <sstream>
 #include <thread>
+#include <cstring>
+#include "UnixCompat.h"
+
+
 struct Hold{
     SOCKET TCPSock{};
     bool Done = false;
@@ -148,17 +152,31 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
 void Identify(SOCKET TCPSock){
     auto* S = new Hold;
     RSA*Skey = GenKey();
+    // this disgusting ifdef stuff is needed because for some
+    // reason MSVC defines __try and __except and libg++ defines
+    // __try and __catch so its all a big mess if we leave this in or undefine
+    // the macros
+#ifdef __WIN32
     __try{
+#endif // __WIN32
         Identification(TCPSock,S,Skey);
+#ifdef __WIN32
     }__except(1){
+#endif // __WIN32
+
         if(TCPSock != -1){
             closesocket(TCPSock);
         }
+#ifdef __WIN32
     }
+#endif // __WIN32
+
     delete Skey;
     delete S;
 }
+
 void TCPServerMain(){
+#ifdef __WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)){
         error(Sec("Can't start Winsock!"));
@@ -195,4 +213,38 @@ void TCPServerMain(){
 
     closesocket(client);
     WSACleanup();
+#else // unix
+    // wondering why we need slightly different implementations of this?
+    // ask ms.
+    SOCKET client, Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    sockaddr_in addr{};
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(Port);
+    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0){
+        error(Sec("Can't bind socket! ") + std::string(strerror(errno)));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+    }
+    if(Listener == -1){
+        error(Sec("Invalid listening socket"));
+        return;
+    }
+    if(listen(Listener,SOMAXCONN)){
+        error(Sec("listener failed ")+ std::string(strerror(errno)));
+        return;
+    }
+    info(Sec("Vehicle event network online"));
+    do{
+        client = accept(Listener, nullptr, nullptr);
+        if(client == -1){
+            warn(Sec("Got an invalid client socket on connect! Skipping..."));
+            continue;
+        }
+        std::thread ID(Identify,client);
+        ID.detach();
+    }while(client);
+
+    closesocket(client);
+#endif // __WIN32
 }

@@ -4,6 +4,7 @@
 #include "Security/Enc.h"
 #include "Network.h"
 #include "Logger.h"
+#include "UnixCompat.h"
 #include <thread>
 
 void TCPSend(Client*c,const std::string&Data){
@@ -18,11 +19,15 @@ void TCPSend(Client*c,const std::string&Data){
     }
 }
 void TCPHandle(Client*c,const std::string& data){
+#ifdef __WIN32
     __try{
+#endif // __WIN32
             c->Handler.Handle(c,data);
+#ifdef __WIN32
     }__except(1){
         c->Handler.clear();
     }
+#endif // __WIN32
 }
 void TCPRcv(Client*c){
     if(c == nullptr || c->GetStatus() < 0)return;
@@ -35,7 +40,11 @@ void TCPRcv(Client*c){
         if(c->GetStatus() > -1)c->SetStatus(-1);
         return;
     }else if (BytesRcv < 0) {
+#ifdef __WIN32
         debug(Sec("(TCP) recv failed with error: ") + std::to_string(WSAGetLastError()));
+#else // unix
+        debug(Sec("(TCP) recv failed with error: ") + std::string(strerror(errno)));
+#endif // __WIN32
         if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
         return;
@@ -50,9 +59,13 @@ void TCPClient(Client*c){
     }
     OnConnect(c);
     while (c->GetStatus() > -1)TCPRcv(c);
+#ifdef __WIN32
     __try{
+#endif // __WIN32
             OnDisconnect(c, c->GetStatus() == -2);
+#ifdef __WIN32
     }__except(Handle(GetExceptionInformation(),Sec("OnDisconnect"))){}
+#endif // __WIN32
 }
 void InitClient(Client*c){
     std::thread NewClient(TCPClient,c);

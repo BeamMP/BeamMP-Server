@@ -7,7 +7,9 @@
 #include "Settings.h"
 #include "Network.h"
 #include "Logger.h"
+#include "UnixCompat.h"
 #include <sstream>
+
 
 int FC(const std::string& s,const std::string& p,int n) {
     auto i = s.find(p);
@@ -116,10 +118,14 @@ void SyncClient(Client*c){
     }
     info(c->GetName() + Sec(" is now synced!"));
 }
-void ParseVeh(Client*c, const std::string&Packet){
+void ParseVeh(Client*c, const std::string& Packet){
+#ifdef __WIN32
     __try{
             VehicleParser(c,Packet);
     }__except(Handle(GetExceptionInformation(),Sec("Vehicle Handler"))){}
+#else // unix
+    VehicleParser(c,Packet);
+#endif // __WIN32
 }
 
 void HandleEvent(Client*c ,const std::string&Data){
@@ -189,8 +195,12 @@ void GlobalParser(Client*c, const std::string& Pack){
     }
 }
 
-void GParser(Client*c, const std::string&Packet){
+void GParser(Client*c, const std::string& Packet){
+#ifdef __WIN32
     __try{
             GlobalParser(c, Packet);
     }__except(Handle(GetExceptionInformation(),Sec("Global Handler"))){}
+#else
+    GlobalParser(c, Packet);
+#endif // __WIN32
 }
