@@ -7,4 +7,4 @@ file(GLOB source_files "src/*.cpp" "src/*/*.cpp" "include/*.h" "include/*/*.h" "
 add_executable(${PROJECT_NAME} ${source_files})
 target_include_directories(${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "BeamMP-Server")
-target_link_libraries(${PROJECT_NAME} curl lua5.3 z pthread)
+target_link_libraries(${PROJECT_NAME} curl lua5.3 z pthread stdc++fs)
