@@ -24,7 +24,7 @@ std::string Comp(std::string Data){
     deflate(&defstream, Z_SYNC_FLUSH);
     deflate(&defstream, Z_FINISH);
     deflateEnd(&defstream);
-    int TO = defstream.total_out;
+    size_t TO = defstream.total_out;
     std::string Ret(TO,0);
     std::copy_n(C.begin(), TO, Ret.begin());
     return Ret;
@@ -45,7 +45,7 @@ std::string DeComp(std::string Compressed){
     inflate(&infstream, Z_SYNC_FLUSH);
     inflate(&infstream, Z_FINISH);
     inflateEnd(&infstream);
-    int TO = infstream.total_out;
+    size_t TO = infstream.total_out;
     std::string Ret(TO,0);
     std::copy_n(C.begin(), TO, Ret.begin());
     return Ret;

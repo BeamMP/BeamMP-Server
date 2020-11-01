@@ -15,8 +15,7 @@
 
 void STCPSend(Client*c,std::string Data){
     if(c == nullptr)return;
-    int BytesSent;
-    BytesSent = send(c->GetTCPSock(), Data.c_str(), int(Data.size()), 0);
+    ssize_t BytesSent = send(c->GetTCPSock(), Data.c_str(), size_t(Data.size()), 0);
     Data.clear();
     if (BytesSent == 0){
         if(c->GetStatus() > -1)c->SetStatus(-1);
@@ -35,20 +34,22 @@ void SendFile(Client*c,const std::string&Name){
     std::ifstream f(Name.c_str(), std::ios::binary);
     f.seekg(0, std::ios_base::end);
     std::streampos fileSize = f.tellg();
-    size_t Size = fileSize,Sent = 0,Diff;
-    int Split = 64000;
+    size_t Size = size_t(fileSize);
+    size_t Sent = 0;
+    size_t Diff;
+    ssize_t Split = 64000;
     while(c->GetStatus() > -1 && Sent < Size){
         Diff = Size - Sent;
-        if(Diff > Split){
-            std::string Data(Split,0);
-            f.seekg(Sent, std::ios_base::beg);
+        if(Diff > size_t(Split)){
+            std::string Data(size_t(Split),0);
+            f.seekg(ssize_t(Sent), std::ios_base::beg);
             f.read(&Data[0], Split);
             STCPSend(c,Data);
-            Sent += Split;
+            Sent += size_t(Split);
         }else{
             std::string Data(Diff,0);
-            f.seekg(Sent, std::ios_base::beg);
-            f.read(&Data[0], Diff);
+            f.seekg(ssize_t(Sent), std::ios_base::beg);
+            f.read(&Data[0], ssize_t(Diff));
             STCPSend(c,Data);
             Sent += Diff;
         }
@@ -79,9 +80,9 @@ void Parse(Client*c,const std::string&Packet){
 bool STCPRecv(Client*c){
     if(c == nullptr)return false;
     char buf[200];
-    int len = 200;
+    size_t len = 200;
     ZeroMemory(buf, len);
-    int BytesRcv = recv(c->GetTCPSock(), buf, len,0);
+    ssize_t BytesRcv = recv(c->GetTCPSock(), buf, len,0);
     if (BytesRcv == 0){
         if(c->GetStatus() > -1)c->SetStatus(-1);
         closesocket(c->GetTCPSock());
@@ -92,7 +93,7 @@ bool STCPRecv(Client*c){
         return false;
     }
     if(strcmp(buf,"Done") == 0)return false;
-    std::string Ret(buf,BytesRcv);
+    std::string Ret(buf, size_t(BytesRcv));
     Parse(c,Ret);
     return true;
 }

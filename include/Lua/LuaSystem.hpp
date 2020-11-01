@@ -20,17 +20,16 @@ struct LuaArg{
        for(std::any arg : args){
             if(!arg.has_value())return;
             std::string Type = arg.type().name();
-            if(Type.find("bool") != -1){
+            if(Type.find("bool") != std::string::npos){
                 lua_pushboolean(State,std::any_cast<bool>(arg));
             }
-            if(Type.find("basic_string") != -1 || Type.find("char") != -1){
+            if(Type.find("basic_string") != std::string::npos || Type.find("char") != std::string::npos){
                 lua_pushstring(State,std::any_cast<std::string>(arg).c_str());
             }
-            if(Type.find("int") != -1){
+            if(Type.find("int") != std::string::npos){
                 lua_pushinteger(State,std::any_cast<int>(arg));
             }
-            if(Type.find("float") != -1){
-                lua_pushnumber(State,std::any_cast<float>(arg));
+            if(Type.find("float") != std::string::npos){ lua_pushnumber(State,std::any_cast<float>(arg));
             }
        }
     }

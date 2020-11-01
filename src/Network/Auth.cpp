@@ -17,17 +17,17 @@ struct Hold{
     bool Done = false;
 };
 bool Send(SOCKET TCPSock,std::string Data){
-    int BytesSent;
-    BytesSent = send(TCPSock, Data.c_str(), int(Data.size()), 0);
+    ssize_t BytesSent;
+    BytesSent = send(TCPSock, Data.c_str(), size_t(Data.size()), 0);
     Data.clear();
     if (BytesSent <= 0)return false;
     return true;
 }
 std::string Rcv(SOCKET TCPSock){
     char buf[6768];
-    int len = 6768;
+    size_t len = 6768;
     ZeroMemory(buf, len);
-    int BytesRcv = recv(TCPSock, buf, len,0);
+    ssize_t BytesRcv = recv(TCPSock, buf, len,0);
     if (BytesRcv <= 0)return "";
     return std::string(buf);
 }
@@ -131,7 +131,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     Name = Res.substr(2,Res.find(':')-2);
     DID = Res.substr(Res.find(':')+1);
     Role = GetRole(DID);
-    if(Role.empty() || Role.find(Sec("Error")) != -1){
+    if(Role.empty() || Role.find(Sec("Error")) != std::string::npos){
         closesocket(TCPSock);
         return;
     }
@@ -220,7 +220,7 @@ void TCPServerMain(){
     sockaddr_in addr{};
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(Port);
+    addr.sin_port = htons(uint16_t(Port));
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0){
         error(Sec("Can't bind socket! ") + std::string(strerror(errno)));
         std::this_thread::sleep_for(std::chrono::seconds(5));

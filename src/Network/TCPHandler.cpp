@@ -10,7 +10,7 @@
 void TCPSend(Client*c,const std::string&Data){
     if(c == nullptr)return;
     std::string Send = "\n" + Data.substr(0,Data.find(char(0))) + "\n";
-    size_t Sent = send(c->GetTCPSock(), Send.c_str(), int(Send.size()), 0);
+    ssize_t Sent = send(c->GetTCPSock(), Send.c_str(), size_t(Send.size()), 0);
     if (Sent == 0){
         if(c->GetStatus() > -1)c->SetStatus(-1);
     }else if (Sent < 0) {
@@ -32,9 +32,9 @@ void TCPHandle(Client*c,const std::string& data){
 void TCPRcv(Client*c){
     if(c == nullptr || c->GetStatus() < 0)return;
     char buf[4096];
-    int len = 4096;
+    size_t len = 4096;
     ZeroMemory(buf, len);
-    int BytesRcv = recv(c->GetTCPSock(), buf, len,0);
+    ssize_t BytesRcv = recv(c->GetTCPSock(), buf, len,0);
     if (BytesRcv == 0){
         debug(Sec("(TCP) Connection closing..."));
         if(c->GetStatus() > -1)c->SetStatus(-1);
@@ -49,7 +49,7 @@ void TCPRcv(Client*c){
         closesocket(c->GetTCPSock());
         return;
     }
-    std::string Buf(buf,BytesRcv);
+    std::string Buf(buf,(size_t(BytesRcv)));
     TCPHandle(c,Buf);
 }
 void TCPClient(Client*c){

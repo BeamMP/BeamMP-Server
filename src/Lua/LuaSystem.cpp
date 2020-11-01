@@ -375,7 +375,7 @@ int lua_RemoteEvent(lua_State *L){
     }
     return 0;
 }
-int lua_ServerExit(lua_State *L){
+int lua_ServerExit(lua_State *){
     exit(0);
 }
 int lua_Set(lua_State *L){

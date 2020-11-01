@@ -149,7 +149,7 @@ void HandleEvent(Client*c ,const std::string&Data){
 }
 
 void GlobalParser(Client*c, const std::string& Pack){
-    static int lastRecv = 0;
+    [[maybe_unused]] static int lastRecv = 0;
     if(Pack.empty() || c == nullptr)return;
     std::string Packet = Pack.substr(0,Pack.find(char(0)));
     std::string pct;
@@ -181,7 +181,7 @@ void GlobalParser(Client*c, const std::string& Pack){
             SendToAll(c,Packet,false,true);
             return;
         case 'C':
-            if(Packet.length() < 4 || Packet.find(':', 3) == -1)break;
+            if(Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)break;
             if (TriggerLuaEvent(Sec("onChatMessage"), false, nullptr,new LuaArg{
                 {c->GetID(), c->GetName(), Packet.substr(Packet.find(':', 3) + 1)}
                 },true))break;

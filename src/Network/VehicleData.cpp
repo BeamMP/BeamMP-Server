@@ -34,13 +34,13 @@ std::set<SplitData*> SplitPackets;
 void UDPSend(Client*c,std::string Data){
     if(c == nullptr || !c->isConnected || c->GetStatus() < 0)return;
     sockaddr_in Addr = c->GetUDPAddr();
-    int AddrSize = sizeof(c->GetUDPAddr());
+    socklen_t AddrSize = sizeof(c->GetUDPAddr());
     Data = Data.substr(0,Data.find(char(0)));
     if(Data.length() > 400){
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    int sendOk = sendto(UDPSock, Data.c_str(), int(Data.size()), 0, (sockaddr *) &Addr, AddrSize);
+    ssize_t sendOk = sendto(UDPSock, Data.c_str(), Data.size(), 0, (sockaddr *) &Addr, AddrSize);
 #ifdef __WIN32
     if (sendOk != 0) {
         debug(Sec("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
@@ -102,13 +102,13 @@ void SendLarge(Client*c,std::string Data){
     }
 }
 struct HandledC{
-    int Pos = 0;
+    size_t Pos = 0;
     Client *c = nullptr;
     std::array<int, 100> HandledIDs = {-1};
 };
 std::set<HandledC*> HandledIDs;
 void ResetIDs(HandledC*H){
-    for(int C = 0;C < 100;C++){
+    for(size_t C = 0;C < 100;C++){
         H->HandledIDs.at(C) = -1;
     }
 }
@@ -151,10 +151,10 @@ bool Handled(Client*c,int ID){
     return false;
 }
 std::string UDPRcvFromClient(sockaddr_in& client){
-    int clientLength = sizeof(client);
+    size_t clientLength = sizeof(client);
     ZeroMemory(&client, clientLength);
     std::string Ret(10240,0);
-    int Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
+    ssize_t Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1){
 #ifdef __WIN32
         error(Sec("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
@@ -177,13 +177,13 @@ SplitData*GetSplit(int SplitID){
 void HandleChunk(Client*c,const std::string&Data){
     int pos = FC(Data,"|",5);
     if(pos == -1)return;
-    std::stringstream ss(Data.substr(0,pos++));
+    std::stringstream ss(Data.substr(0,size_t(pos++)));
     std::string t;
     int I = -1;
     //Current Max ID SID
     std::vector<int> Num(4,0);
     while (std::getline(ss, t, '|')) {
-        if(I != -1)Num.at(I) = std::stoi(t);
+        if(I >= 0)Num.at(size_t(I)) = std::stoi(t);
         I++;
     }
     std::string ack = "TRG:" + std::to_string(Num.at(2));
@@ -191,12 +191,12 @@ void HandleChunk(Client*c,const std::string&Data){
     if(Handled(c,Num.at(2))){
         return;
     }
-    std::string Packet = Data.substr(pos);
+    std::string Packet = Data.substr(size_t(pos));
     SplitData* SData = GetSplit(Num.at(3));
     SData->Total = Num.at(1);
     SData->ID = Num.at(3);
     SData->Fragments.insert(std::make_pair(Num.at(0),Packet));
-    if(SData->Fragments.size() == SData->Total){
+    if(SData->Fragments.size() == size_t(SData->Total)) {
         std::string ToHandle;
         for(const std::pair<int,std::string>& a : SData->Fragments){
             ToHandle += a.second;
@@ -213,7 +213,7 @@ void UDPParser(Client*c,std::string Packet){
     }
     if(Packet.substr(0,4) == "TRG:"){
         std::string pkt = Packet.substr(4);
-        if(Packet.find_first_not_of("0123456789") == -1){
+        if(Packet.find_first_not_of("0123456789") == std::string::npos){
             AckID(stoi(Packet));
         }
         return;
@@ -307,7 +307,7 @@ void LOOP(){
     sockaddr_in serverAddr{};
     serverAddr.sin_addr.s_addr = INADDR_ANY; //Any Local
     serverAddr.sin_family = AF_INET; // Address format is IPv4
-    serverAddr.sin_port = htons(Port); // Convert from little to big endian
+    serverAddr.sin_port = htons(uint16_t(Port)); // Convert from little to big endian
 
     // Try and bind the socket to the IP and port
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0){
@@ -325,12 +325,12 @@ void LOOP(){
     while (true){
         sockaddr_in client{};
         std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
-        auto Pos = Data.find(':');
-        if(Data.empty() || Pos < 0 || Pos > 2)continue;
+        size_t Pos = Data.find(':');
+        if(Data.empty() || Pos > 2)continue;
         /*char clientIp[256];
         ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
         inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
-        uint8_t ID = Data.at(0)-1;
+        uint8_t ID = uint8_t(Data.at(0)) - 1;
         for(Client*c : CI->Clients){
             if(c != nullptr && c->GetID() == ID){
                 c->SetUDPAddr(client);
