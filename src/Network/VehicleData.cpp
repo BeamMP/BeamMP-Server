@@ -32,6 +32,7 @@ SOCKET UDPSock;
 std::set<PacketData*> DataAcks;
 std::set<SplitData*> SplitPackets;
 void UDPSend(Client* c, std::string Data) {
+    Assert(c);
     if (c == nullptr || !c->isConnected || c->GetStatus() < 0)
         return;
     sockaddr_in Addr = c->GetUDPAddr();
@@ -82,6 +83,7 @@ int SplitID() {
     return SID;
 }
 void SendLarge(Client* c, std::string Data) {
+    Assert(c);
     Data = Data.substr(0, Data.find(char(0)));
     int ID = PacktID();
     std::string Packet;
@@ -118,6 +120,7 @@ void ResetIDs(HandledC* H) {
     }
 }
 HandledC* GetHandled(Client* c) {
+    Assert(c);
     for (HandledC* h : HandledIDs) {
         if (h->c == c) {
             return h;
@@ -126,6 +129,7 @@ HandledC* GetHandled(Client* c) {
     return new HandledC();
 }
 bool Handled(Client* c, int ID) {
+    Assert(c);
     bool handle = false;
     for (HandledC* h : HandledIDs) {
         if (h->c == c) {
@@ -184,6 +188,7 @@ SplitData* GetSplit(int SplitID) {
     return SP;
 }
 void HandleChunk(Client* c, const std::string& Data) {
+    Assert(c);
     int pos = FC(Data, "|", 5);
     if (pos == -1)
         return;
@@ -219,6 +224,7 @@ void HandleChunk(Client* c, const std::string& Data) {
     }
 }
 void UDPParser(Client* c, std::string Packet) {
+    Assert(c);
     if (Packet.substr(0, 4) == "ABG:") {
         Packet = DeComp(Packet.substr(4));
     }
