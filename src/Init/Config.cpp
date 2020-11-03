@@ -3,7 +3,7 @@
 ///
 #include "Security/Enc.h"
 #include "Logger.h"
-#include "Assert.h"
+#include "CustomAssert.h"
 #include <fstream>
 #include <string>
 #include <thread>
