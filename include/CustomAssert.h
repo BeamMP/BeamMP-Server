@@ -40,10 +40,10 @@ static const char* const ANSI_WHITE_BOLD = "\u001b[37;1m";
 static const char* const ANSI_BOLD = "\u001b[1m";
 static const char* const ANSI_UNDERLINE = "\u001b[4m";
 
+#if DEBUG
 inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const char* function, [[maybe_unused]] unsigned line,
     [[maybe_unused]] const char* condition_string, [[maybe_unused]] bool result) {
     if (!result) {
-#if DEBUG
         std::cout << std::flush << "(debug build) TID "
                   << std::this_thread::get_id() << ": ASSERTION FAILED: at "
                   << file << ":" << line << " \n\t-> in "
@@ -51,13 +51,17 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
                   << "Failed Condition: " << condition_string << std::endl;
         std::cout << "... terminating ..." << std::endl;
         abort();
-#else
-        std::cout << "Assertion '" << condition_string << "' failed, ignoring in release build" << std::endl;
-#endif
     }
 }
 
-#ifndef ASSERT
 #define Assert(cond) _assert(__FILE__, __func__, __LINE__, #cond, (cond))
-#endif // ASSERT
 #define AssertNotReachable() _assert(__FILE__, __func__, __LINE__, "reached unreachable code", false)
+#else
+// In release build, these macros turn into NOPs. The compiler will optimize these out.
+#define Assert(x) \
+    do {          \
+    } while (false)
+#define AssertNotReachable() \
+    do {                     \
+    } while (false)
+#endif // DEBUG
