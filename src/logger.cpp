@@ -8,6 +8,13 @@
 #include <sstream>
 #include <chrono>
 #include <mutex>
+#include <thread>
+
+void DebugPrintTIDInternal(const std::string& what, const std::string& func) {
+    std::stringstream ss;
+    ss << "Thread '" << std::this_thread::get_id() << "' in " << func << " is " << what;
+    debug(ss.str());
+}
 
 std::string getDate() {
     typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>::type> days;
