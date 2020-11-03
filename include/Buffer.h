@@ -3,12 +3,13 @@
 ///
 #pragma once
 #include <mutex>
+#include "Assert.h"
 class Client;
 void GParser(Client*c, const std::string&Packet);
 class Buffer{
 public:
     void Handle(Client*c,const std::string& Data){
-        if(c == nullptr)return;
+        Assert(c);
         Buf += Data;
         Manage(c);
     }
@@ -18,6 +19,7 @@ public:
 private:
     std::string Buf;
     void Manage(Client*c){
+        Assert(c);
         if(!Buf.empty()){
             std::string::size_type p;
             if (Buf.at(0) == '\n'){

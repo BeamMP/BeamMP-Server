@@ -163,7 +163,7 @@ void GlobalParser(Client*c, const std::string& Pack){
     }
 
     switch (Code) {
-        case 'P':
+        case 'P': // initial connection
             Respond(c, Sec("P") + std::to_string(c->GetID()),true);
             SyncClient(c);
             return;
