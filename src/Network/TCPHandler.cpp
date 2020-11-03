@@ -56,6 +56,7 @@ void TCPRcv(Client*c){
     TCPHandle(c,Buf);
 }
 void TCPClient(Client*c){
+    DebugPrintTID();
     Assert(c);
     if(c->GetTCPSock() == -1){
         CI->RemoveClient(c);

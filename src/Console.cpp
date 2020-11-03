@@ -47,6 +47,7 @@ void ConsoleOut(const std::string& msg){
 }
 
 [[noreturn]] void OutputRefresh(){
+    DebugPrintTID();
     while(true){
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ProcessOut();
@@ -104,6 +105,7 @@ void SetupConsole(){
 }
 
 [[noreturn]] void ReadCin(){
+    DebugPrintTID();
     while (true){
         int In = _getch();
         if (In == 13 || In == '\n') {

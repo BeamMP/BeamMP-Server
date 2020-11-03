@@ -10,11 +10,11 @@
 #include <mutex>
 #include <thread>
 
-void DebugPrintTIDInternal(const std::string& what, const std::string& func) {
+void DebugPrintTIDInternal(const std::string& func) {
     // we need to print to cout here as we might crash before all console output is handled,
     // due to segfaults or asserts.
 #ifdef DEBUG
-    std::cout << "(debug build) Thread '" << std::this_thread::get_id() << "' in " << func << " is " << what << std::endl;
+    std::cout << "(debug build) Thread '" << std::this_thread::get_id() << "' is " << func << std::endl;
 #endif // DEBUG
 }
 

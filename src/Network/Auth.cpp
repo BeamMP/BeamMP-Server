@@ -178,6 +178,7 @@ void Identify(SOCKET TCPSock){
 }
 
 void TCPServerMain(){
+    DebugPrintTID();
 #ifdef __WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)){

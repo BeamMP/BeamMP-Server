@@ -48,6 +48,7 @@ void FolderList(const std::string& Path,bool HotSwap){
     }
 }
 [[noreturn]]void HotSwaps(const std::string& path){
+    DebugPrintTID();
     while(true){
         for(Lua*Script : PluginEngine){
             struct stat Info{};

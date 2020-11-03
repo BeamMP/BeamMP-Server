@@ -162,6 +162,7 @@ void ExecuteAsync(Lua* lua,const std::string& FuncName){
     SafeExecution(lua,FuncName);
 }
 void CallAsync(Lua* lua,const std::string& Func,int U){
+    DebugPrintTID();
     lua->StopThread = false;
     int D = 1000 / U;
     while(!lua->StopThread){

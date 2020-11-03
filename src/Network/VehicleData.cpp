@@ -245,6 +245,7 @@ void UDPParser(Client* c, std::string Packet) {
     GParser(c, Packet);
 }
 void LOOP() {
+    DebugPrintTID();
     while (UDPSock != -1) {
         for (PacketData* p : DataAcks) {
             if (p != nullptr) {

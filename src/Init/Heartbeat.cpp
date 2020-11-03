@@ -29,6 +29,7 @@ std::string GenerateCall(){
     return ret;
 }
 void Heartbeat(){
+    DebugPrintTID();
     std::string R,T;
     while(true){
         R = GenerateCall();
