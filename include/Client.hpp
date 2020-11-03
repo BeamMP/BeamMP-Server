@@ -3,7 +3,7 @@
 ///
 
 #pragma once
-#ifdef __WIN32
+#ifdef WIN32
 #include <WS2tcpip.h>
 #else
 #include <arpa/inet.h>

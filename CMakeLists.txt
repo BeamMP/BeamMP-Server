@@ -9,6 +9,9 @@ if (UNIX)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og -g")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -s")
 elseif (WIN32)
+    # This might cause issues with old windows headers, but it's worth the trouble to keep the code
+    #   completely cross platform. For fixes to common issues arising from /permissive- visit:
+    #   https://docs.microsoft.com/en-us/cpp/build/reference/permissive-standards-conformance
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /permissive-")
 endif ()
 

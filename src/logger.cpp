@@ -28,11 +28,11 @@ std::string getDate() {
     auto s = std::chrono::duration_cast<std::chrono::seconds>(tp);tp -= s;
     time_t tt = std::chrono::system_clock::to_time_t(now);
     tm local_tm{};
-#ifdef __WIN32
+#ifdef WIN32
     localtime_s(&local_tm,&tt);
 #else // unix
     localtime_r(&tt, &local_tm);
-#endif // __WIN32
+#endif // WIN32
     std::stringstream date;
     int S = local_tm.tm_sec;
     int M = local_tm.tm_min;

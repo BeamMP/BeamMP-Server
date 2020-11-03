@@ -3,14 +3,14 @@
 ///
 
 #include "Lua/LuaSystem.hpp"
-#ifdef __WIN32
+#ifdef WIN32
 #include <windows.h>
 #include <conio.h>
 #else // *nix
 typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include <termios.h>
 #include <unistd.h>
-#endif // __WIN32
+#endif // WIN32
 #include "Logger.h"
 #include <iostream>
 #include <string>
@@ -54,7 +54,7 @@ void ConsoleOut(const std::string& msg){
     }
 }
 
-#ifndef __WIN32
+#ifndef WIN32
 static int _getch()
 {
     char buf = 0;
@@ -77,10 +77,10 @@ static int _getch()
     // no echo printf("%c\n", buf);
     return buf;
 }
-#endif // __WIN32
+#endif // WIN32
 
 void SetupConsole(){
-#ifdef __WIN32
+#ifdef WIN32
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (stdoutHandle == INVALID_HANDLE_VALUE){
@@ -101,7 +101,7 @@ void SetupConsole(){
         exit(GetLastError());
     }
 #else
-#endif // __WIN32
+#endif // WIN32
 }
 
 [[noreturn]] void ReadCin(){

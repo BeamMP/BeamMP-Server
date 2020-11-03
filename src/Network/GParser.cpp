@@ -124,13 +124,13 @@ void SyncClient(Client*c){
 }
 void ParseVeh(Client*c, const std::string& Packet){
     Assert(c);
-#ifdef __WIN32
+#ifdef WIN32
     __try{
             VehicleParser(c,Packet);
     }__except(Handle(GetExceptionInformation(),Sec("Vehicle Handler"))){}
 #else // unix
     VehicleParser(c,Packet);
-#endif // __WIN32
+#endif // WIN32
 }
 
 void HandleEvent(Client*c ,const std::string&Data){
@@ -204,11 +204,11 @@ void GlobalParser(Client*c, const std::string& Pack){
 
 void GParser(Client*c, const std::string& Packet){
     Assert(c);
-#ifdef __WIN32
+#ifdef WIN32
     __try{
             GlobalParser(c, Packet);
     }__except(Handle(GetExceptionInformation(),Sec("Global Handler"))){}
 #else
     GlobalParser(c, Packet);
-#endif // __WIN32
+#endif // WIN32
 }

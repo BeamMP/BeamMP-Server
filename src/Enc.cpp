@@ -85,7 +85,7 @@ int Dec(int value,int d,int n){
     return log_power(value, d, n);
 }
 
-#ifdef __WIN32
+#ifdef WIN32
 int Handle(EXCEPTION_POINTERS *ep,char* Origin){
     assert(false);
     std::stringstream R;
@@ -98,7 +98,7 @@ int Handle(EXCEPTION_POINTERS *ep,char* Origin){
 #else
 // stub
 int Handle(EXCEPTION_POINTERS *, char*) { return 1; }
-#endif // __WIN32
+#endif // WIN32
 
 std::string RSA_E(const std::string& Data, RSA*k){
     std::stringstream stream;

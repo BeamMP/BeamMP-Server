@@ -158,20 +158,20 @@ void Identify(SOCKET TCPSock){
     // reason MSVC defines __try and __except and libg++ defines
     // __try and __catch so its all a big mess if we leave this in or undefine
     // the macros
-#ifdef __WIN32
+#ifdef WIN32
     __try{
-#endif // __WIN32
+#endif // WIN32
         Identification(TCPSock,S,Skey);
-#ifdef __WIN32
+#ifdef WIN32
     }__except(1){
-#endif // __WIN32
+#endif // WIN32
 
         if(TCPSock != -1){
             closesocket(TCPSock);
         }
-#ifdef __WIN32
+#ifdef WIN32
     }
-#endif // __WIN32
+#endif // WIN32
 
     delete Skey;
     delete S;
@@ -179,7 +179,7 @@ void Identify(SOCKET TCPSock){
 
 void TCPServerMain(){
     DebugPrintTID();
-#ifdef __WIN32
+#ifdef WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)){
         error(Sec("Can't start Winsock!"));
@@ -249,5 +249,5 @@ void TCPServerMain(){
     }while(client);
 
     closesocket(client);
-#endif // __WIN32
+#endif // WIN32
 }

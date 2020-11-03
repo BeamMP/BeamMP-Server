@@ -143,7 +143,7 @@ void SafeExecution(Lua* lua,const std::string& FuncName){
     lua_getglobal(luaState, FuncName.c_str());
     if(lua_isfunction(luaState, -1)) {
         char* Origin = ThreadOrigin(lua);
-#ifdef __WIN32
+#ifdef WIN32
         __try{
                 int R = lua_pcall(luaState, 0, 0, 0);
                 CheckLua(luaState, R);
@@ -151,7 +151,7 @@ void SafeExecution(Lua* lua,const std::string& FuncName){
 #else // unix
         int R = lua_pcall(luaState, 0, 0, 0);
         CheckLua(luaState, R);
-#endif // __WIN32
+#endif // WIN32
         delete [] Origin;
     }
     ClearStack(luaState);
@@ -515,18 +515,18 @@ int CallFunction(Lua*lua,const std::string& FuncName,LuaArg* Arg){
         }
         int R = 0;
         char* Origin = lua->GetOrigin();
-#ifdef __WIN32
+#ifdef WIN32
         __try{
-#endif // __WIN32
+#endif // WIN32
             R = lua_pcall(luaState, Size, 1, 0);
             if (CheckLua(luaState, R)){
                 if (lua_isnumber(luaState, -1)) {
                     return int(lua_tointeger(luaState, -1));
                 }
             }
-#ifdef __WIN32
+#ifdef WIN32
         }__except(Handle(GetExceptionInformation(),Origin)){}
-#endif // __WIN32
+#endif // WIN32
         delete [] Origin;
     }
     ClearStack(luaState);

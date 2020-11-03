@@ -43,7 +43,7 @@ void UDPSend(Client* c, std::string Data) {
         Data = "ABG:" + CMP;
     }
     ssize_t sendOk = sendto(UDPSock, Data.c_str(), Data.size(), 0, (sockaddr*)&Addr, AddrSize);
-#ifdef __WIN32
+#ifdef WIN32
     if (sendOk != 0) {
         debug(Sec("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
         if (c->GetStatus() > -1)
@@ -55,7 +55,7 @@ void UDPSend(Client* c, std::string Data) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     }
-#endif // __WIN32
+#endif // WIN32
 }
 
 void AckID(int ID) {
@@ -168,11 +168,11 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
     std::string Ret(10240, 0);
     ssize_t Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1) {
-#ifdef __WIN32
+#ifdef WIN32
         error(Sec("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
 #else // unix
         error(Sec("(UDP) Error receiving from Client! Code : ") + std::string(strerror(errno)));
-#endif // __WIN32
+#endif // WIN32
         return "";
     }
     return Ret;
@@ -272,7 +272,7 @@ void LOOP() {
     }
 }
 [[noreturn]] void UDPServerMain() {
-#ifdef __WIN32
+#ifdef WIN32
     WSADATA data;
     if (WSAStartup(514, &data)) {
         error(Sec("Can't start Winsock!"));
@@ -362,5 +362,5 @@ void LOOP() {
     /*closesocket(UDPSock); // TODO: Why not this? We did this in TCPServerMain?
     return;
      */
-#endif // __WIN32
+#endif // WIN32
 }

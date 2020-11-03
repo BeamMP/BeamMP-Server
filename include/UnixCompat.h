@@ -4,7 +4,7 @@
 
 // This header defines unix equivalents of common win32 functions.
 
-#ifndef __WIN32
+#ifndef WIN32
 
 #include <cassert>
 #include <cstring>
@@ -27,4 +27,4 @@ inline void closesocket(int socket) {
 #define __except(x) /**/
 #endif
 
-#endif // __WIN32
+#endif // WIN32
