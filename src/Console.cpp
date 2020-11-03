@@ -31,6 +31,7 @@ void HandleInput(const std::string& cmd){
 void ProcessOut(){
     static size_t len = 2;
     if(QConsoleOut.empty() && len == CInputBuff.length())return;
+    printf("%c[2K\r", 27);
     for(const std::string& msg : QConsoleOut)
         if(!msg.empty())std::cout << msg;
     MLock.lock();
@@ -120,7 +121,6 @@ void SetupConsole(){
             HandleInput(CInputBuff);
             CInputBuff.clear();
         }else {
-            printf("%c[2K\r", 27);
             CInputBuff += char(In);
         }
     }
