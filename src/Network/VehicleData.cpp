@@ -42,7 +42,15 @@ void UDPSend(Client* c, std::string Data) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    ssize_t sendOk = sendto(UDPSock, Data.c_str(), Data.size(), 0, (sockaddr*)&Addr, AddrSize);
+#ifdef WIN32
+    int sendOk;
+    int len = static_cast<int>(Data.size());
+#else
+    int64_t sendOk;
+    size_t len = Data.size();
+#endif // WIN32
+
+    sendOk = sendto(UDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, AddrSize);
 #ifdef WIN32
     if (sendOk != 0) {
         debug(Sec("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
@@ -166,7 +174,7 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
     size_t clientLength = sizeof(client);
     ZeroMemory(&client, clientLength);
     std::string Ret(10240, 0);
-    ssize_t Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
+    int64_t Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1) {
 #ifdef WIN32
         error(Sec("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));

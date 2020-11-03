@@ -44,23 +44,15 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
     [[maybe_unused]] const char* condition_string, [[maybe_unused]] bool result) {
     if (!result) {
 #if DEBUG
-        std::stringstream ss;
-        ss << std::this_thread::get_id();
-        fprintf(stdout,
-            "(debug build) TID %s: %sASSERTION FAILED%s at %s%s:%u%s in \n\t-> in %s%s%s, Line %u: \n\t\t-> "
-            "Failed Condition: %s%s%s\n",
-            ss.str().c_str(), ANSI_RED_BOLD, ANSI_RESET, ANSI_UNDERLINE, file, line, ANSI_RESET,
-            ANSI_BOLD, function, ANSI_RESET, line, ANSI_RED, condition_string,
-            ANSI_RESET);
-        fprintf(stdout, "%s... terminating with SIGABRT ...%s\n", ANSI_BOLD, ANSI_RESET);
+        std::cout << std::flush << "(debug build) TID "
+                  << std::this_thread::get_id() << ": ASSERTION FAILED: at "
+                  << file << ":" << line << " \n\t-> in "
+                  << function << ", Line " << line << ": \n\t\t-> "
+                  << "Failed Condition: " << condition_string << std::endl;
+        std::cout << "... terminating ..." << std::endl;
         abort();
 #else
-        char buf[2048];
-        sprintf(buf,
-            "%s=> ASSERTION `%s` FAILED IN RELEASE BUILD%s%s -> IGNORING FAILED ASSERTION "
-            "& HOPING IT WON'T CRASH%s",
-            ANSI_RED_BOLD, condition_string, ANSI_RESET, ANSI_RED, ANSI_RESET);
-        error(buf);
+        std::cout << "Assertion '" << condition_string << "' failed, ignoring in release build" << std::endl;
 #endif
     }
 }

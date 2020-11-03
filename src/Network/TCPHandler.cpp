@@ -11,7 +11,14 @@ void TCPSend(Client*c,const std::string&Data){
     Assert(c);
     if(c == nullptr)return;
     std::string Send = "\n" + Data.substr(0,Data.find(char(0))) + "\n";
-    ssize_t Sent = send(c->GetTCPSock(), Send.c_str(), size_t(Send.size()), 0);
+#ifdef WIN32
+    int Sent;
+    int len = static_cast<int>(Send.size());
+#else
+    int64_t Sent;
+    size_t len = Send.size();
+#endif // WIN32
+    Sent = send(c->GetTCPSock(), Send.c_str(), len, 0);
     if (Sent == 0){
         if(c->GetStatus() > -1)c->SetStatus(-1);
     }else if (Sent < 0) {
@@ -37,7 +44,7 @@ void TCPRcv(Client*c){
     char buf[4096];
     size_t len = 4096;
     ZeroMemory(buf, len);
-    ssize_t BytesRcv = recv(c->GetTCPSock(), buf, len,0);
+    int64_t BytesRcv = recv(c->GetTCPSock(), buf, len,0);
     if (BytesRcv == 0){
         debug(Sec("(TCP) Connection closing..."));
         if(c->GetStatus() > -1)c->SetStatus(-1);

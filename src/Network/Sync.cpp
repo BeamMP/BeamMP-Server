@@ -17,7 +17,14 @@ void STCPSend(Client* c, std::string Data) {
     Assert(c);
     if (c == nullptr)
         return;
-    ssize_t BytesSent = send(c->GetTCPSock(), Data.c_str(), size_t(Data.size()), 0);
+#ifdef WIN32
+    int BytesSent;
+    int len = static_cast<int>(Data.size());
+#else
+    int64_t BytesSent;
+    size_t len = Data.size();
+#endif // WIN32
+    BytesSent = send(c->GetTCPSock(), Data.c_str(), len, 0);
     Data.clear();
     if (BytesSent == 0) {
         if (c->GetStatus() > -1)
@@ -42,19 +49,19 @@ void SendFile(Client* c, const std::string& Name) {
     size_t Size = size_t(fileSize);
     size_t Sent = 0;
     size_t Diff;
-    ssize_t Split = 64000;
+    int64_t Split = 64000;
     while (c->GetStatus() > -1 && Sent < Size) {
         Diff = Size - Sent;
         if (Diff > size_t(Split)) {
             std::string Data(size_t(Split), 0);
-            f.seekg(ssize_t(Sent), std::ios_base::beg);
+            f.seekg(int64_t(Sent), std::ios_base::beg);
             f.read(&Data[0], Split);
             STCPSend(c, Data);
             Sent += size_t(Split);
         } else {
             std::string Data(Diff, 0);
-            f.seekg(ssize_t(Sent), std::ios_base::beg);
-            f.read(&Data[0], ssize_t(Diff));
+            f.seekg(int64_t(Sent), std::ios_base::beg);
+            f.read(&Data[0], int64_t(Diff));
             STCPSend(c, Data);
             Sent += Diff;
         }
@@ -93,7 +100,7 @@ bool STCPRecv(Client* c) {
     char buf[200];
     size_t len = 200;
     ZeroMemory(buf, len);
-    ssize_t BytesRcv = recv(c->GetTCPSock(), buf, len, 0);
+    int64_t BytesRcv = recv(c->GetTCPSock(), buf, len, 0);
     if (BytesRcv == 0) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);

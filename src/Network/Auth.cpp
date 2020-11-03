@@ -17,8 +17,14 @@ struct Hold{
     bool Done = false;
 };
 bool Send(SOCKET TCPSock,std::string Data){
-    ssize_t BytesSent;
-    BytesSent = send(TCPSock, Data.c_str(), size_t(Data.size()), 0);
+#ifdef WIN32
+    int BytesSent;
+    int len = static_cast<int>(Data.size());
+#else
+    int64_t BytesSent;
+    size_t len = Data.size();
+#endif // WIN32
+    BytesSent = send(TCPSock, Data.c_str(), len, 0);
     Data.clear();
     if (BytesSent <= 0)return false;
     return true;
@@ -27,7 +33,7 @@ std::string Rcv(SOCKET TCPSock){
     char buf[6768];
     size_t len = 6768;
     ZeroMemory(buf, len);
-    ssize_t BytesRcv = recv(TCPSock, buf, len,0);
+    int64_t BytesRcv = recv(TCPSock, buf, len,0);
     if (BytesRcv <= 0)return "";
     return std::string(buf);
 }
