@@ -3,6 +3,7 @@
 ///
 #include "Security/Enc.h"
 #include "Logger.h"
+#include "Assert.h"
 #include <fstream>
 #include <string>
 #include <thread>
@@ -77,6 +78,7 @@ std::string RemoveComments(const std::string& Line){
     return Return;
 }
 void LoadConfig(std::ifstream& IFS){
+    Assert(IFS.is_open());
     std::string line;
     int index = 1;
     while (getline(IFS, line)) {

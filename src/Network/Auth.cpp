@@ -90,6 +90,8 @@ std::string GenerateM(RSA*key){
 }
 
 void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
+    Assert(S);
+    Assert(Skey);
     S->TCPSock = TCPSock;
     std::thread Timeout(Check,S);
     Timeout.detach();

@@ -1,9 +1,19 @@
 // Author: lionkor
 
+/*
+ * Asserts are to be used anywhere where assumptions about state are made
+ * implicitly. AssertNotReachable is used where code should never go, like in
+ * default switch cases which shouldn't trigger. They make it explicit
+ * that a place cannot normally be reached and make it an error if they do.
+ */
+
 #pragma once
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <sstream>
+#include <thread>
 
 #include "Logger.h"
 
@@ -30,23 +40,25 @@ static const char* const ANSI_WHITE_BOLD = "\u001b[37;1m";
 static const char* const ANSI_BOLD = "\u001b[1m";
 static const char* const ANSI_UNDERLINE = "\u001b[4m";
 
-inline void _assert(const char* file, const char* function, unsigned line,
-    const char* condition_string, bool result) {
+inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const char* function, [[maybe_unused]] unsigned line,
+    [[maybe_unused]] const char* condition_string, [[maybe_unused]] bool result) {
     if (!result) {
 #if DEBUG
-        fprintf(stderr,
-            "%sASSERTION FAILED%s at %s%s:%u%s \n\t-> in %s%s%s, Line %u: \n\t\t-> "
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        fprintf(stdout,
+            "(debug build) TID %s: %sASSERTION FAILED%s at %s%s:%u%s in \n\t-> in %s%s%s, Line %u: \n\t\t-> "
             "Failed Condition: %s%s%s\n",
-            ANSI_RED_BOLD, ANSI_RESET, ANSI_UNDERLINE, file, line, ANSI_RESET,
+            ss.str().c_str(), ANSI_RED_BOLD, ANSI_RESET, ANSI_UNDERLINE, file, line, ANSI_RESET,
             ANSI_BOLD, function, ANSI_RESET, line, ANSI_RED, condition_string,
             ANSI_RESET);
-        fprintf(stderr, "%s... terminating with SIGABRT ...%s\n", ANSI_BOLD, ANSI_RESET);
+        fprintf(stdout, "%s... terminating with SIGABRT ...%s\n", ANSI_BOLD, ANSI_RESET);
         abort();
 #else
         char buf[2048];
         sprintf(buf,
             "%s=> ASSERTION `%s` FAILED IN RELEASE BUILD%s%s -> IGNORING FAILED ASSERTION "
-            "& HOPING IT WON'T CRASH%s\n",
+            "& HOPING IT WON'T CRASH%s",
             ANSI_RED_BOLD, condition_string, ANSI_RESET, ANSI_RED, ANSI_RESET);
         error(buf);
 #endif

@@ -24,6 +24,7 @@ int OpenID(){
     return ID;
 }
 void Respond(Client*c, const std::string& MSG, bool Rel){
+    Assert(c);
     char C = MSG.at(0);
     if(Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E'){
         if(C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
@@ -31,6 +32,7 @@ void Respond(Client*c, const std::string& MSG, bool Rel){
     }else UDPSend(c,MSG);
 }
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
+    Assert(c);
     char C = Data.at(0);
     for(Client*client : CI->Clients){
         if(client != nullptr) {
@@ -55,6 +57,7 @@ void UpdatePlayers(){
     SendToAll(nullptr, Packet,true,true);
 }
 void OnDisconnect(Client*c,bool kicked){
+    Assert(c);
     info(c->GetName() + Sec(" Connection Terminated"));
     if(c == nullptr)return;
     std::string Packet;
@@ -73,6 +76,7 @@ void OnDisconnect(Client*c,bool kicked){
     CI->RemoveClient(c); ///Removes the Client from existence
 }
 void OnConnect(Client*c){
+    Assert(c);
     info(Sec("Client connected"));
     c->SetID(OpenID());
     info(Sec("Assigned ID ") + std::to_string(c->GetID()) + Sec(" to ") + c->GetName());

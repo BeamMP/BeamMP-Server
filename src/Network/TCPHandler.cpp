@@ -8,6 +8,7 @@
 #include <thread>
 
 void TCPSend(Client*c,const std::string&Data){
+    Assert(c);
     if(c == nullptr)return;
     std::string Send = "\n" + Data.substr(0,Data.find(char(0))) + "\n";
     ssize_t Sent = send(c->GetTCPSock(), Send.c_str(), size_t(Send.size()), 0);
@@ -19,6 +20,7 @@ void TCPSend(Client*c,const std::string&Data){
     }
 }
 void TCPHandle(Client*c,const std::string& data){
+    Assert(c);
 #ifdef __WIN32
     __try{
 #endif // __WIN32
@@ -30,6 +32,7 @@ void TCPHandle(Client*c,const std::string& data){
 #endif // __WIN32
 }
 void TCPRcv(Client*c){
+    Assert(c);
     if(c == nullptr || c->GetStatus() < 0)return;
     char buf[4096];
     size_t len = 4096;
@@ -53,6 +56,7 @@ void TCPRcv(Client*c){
     TCPHandle(c,Buf);
 }
 void TCPClient(Client*c){
+    Assert(c);
     if(c->GetTCPSock() == -1){
         CI->RemoveClient(c);
         return;

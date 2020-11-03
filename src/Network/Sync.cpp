@@ -14,6 +14,7 @@
 #endif // __linux
 
 void STCPSend(Client* c, std::string Data) {
+    Assert(c);
     if (c == nullptr)
         return;
     ssize_t BytesSent = send(c->GetTCPSock(), Data.c_str(), size_t(Data.size()), 0);
@@ -28,6 +29,7 @@ void STCPSend(Client* c, std::string Data) {
     }
 }
 void SendFile(Client* c, const std::string& Name) {
+    Assert(c);
     info(c->GetName() + Sec(" requesting : ") + Name.substr(Name.find_last_of('/')));
     struct stat Info {};
     if (stat(Name.c_str(), &Info) != 0) {
@@ -61,6 +63,7 @@ void SendFile(Client* c, const std::string& Name) {
 }
 
 void Parse(Client* c, const std::string& Packet) {
+    Assert(c);
     if (c == nullptr || Packet.empty())
         return;
     char Code = Packet.at(0), SubCode = 0;
@@ -84,6 +87,7 @@ void Parse(Client* c, const std::string& Packet) {
     }
 }
 bool STCPRecv(Client* c) {
+    Assert(c);
     if (c == nullptr)
         return false;
     char buf[200];
@@ -109,6 +113,7 @@ bool STCPRecv(Client* c) {
 }
 
 void SyncResources(Client* c) {
+    Assert(c);
     if (c == nullptr)
         return;
     try {

@@ -11,9 +11,11 @@
 #include <thread>
 
 void DebugPrintTIDInternal(const std::string& what, const std::string& func) {
-    std::stringstream ss;
-    ss << "Thread '" << std::this_thread::get_id() << "' in " << func << " is " << what;
-    debug(ss.str());
+    // we need to print to cout here as we might crash before all console output is handled,
+    // due to segfaults or asserts.
+#ifdef DEBUG
+    std::cout << "(debug build) Thread '" << std::this_thread::get_id() << "' in " << func << " is " << what << std::endl;
+#endif // DEBUG
 }
 
 std::string getDate() {

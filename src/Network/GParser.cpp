@@ -21,6 +21,7 @@ int FC(const std::string& s,const std::string& p,int n) {
     else return -1;
 }
 void Apply(Client*c,int VID,const std::string& pckt){
+    Assert(c);
     std::string Packet = pckt;
     std::string VD = c->GetCarData(VID);
     Packet = Packet.substr(FC(Packet, ",", 2) + 1);
@@ -31,6 +32,7 @@ void Apply(Client*c,int VID,const std::string& pckt){
 }
 
 void VehicleParser(Client*c,const std::string& Pckt){
+    Assert(c);
     if(c == nullptr || Pckt.length() < 4)return;
     std::string Packet = Pckt;
     char Code = Packet.at(1);
@@ -94,10 +96,12 @@ void VehicleParser(Client*c,const std::string& Pckt){
             SendToAll(c,Packet,false,true);
             return;
         default:
+            AssertNotReachable();
             return;
     }
 }
 void SyncClient(Client*c){
+    Assert(c);
     if(c->isSynced)return;
     c->isSynced = true;
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -119,6 +123,7 @@ void SyncClient(Client*c){
     info(c->GetName() + Sec(" is now synced!"));
 }
 void ParseVeh(Client*c, const std::string& Packet){
+    Assert(c);
 #ifdef __WIN32
     __try{
             VehicleParser(c,Packet);
@@ -129,6 +134,7 @@ void ParseVeh(Client*c, const std::string& Packet){
 }
 
 void HandleEvent(Client*c ,const std::string&Data){
+    Assert(c);
     std::stringstream ss(Data);
     std::string t,Name;
     int a = 0;
@@ -149,6 +155,7 @@ void HandleEvent(Client*c ,const std::string&Data){
 }
 
 void GlobalParser(Client*c, const std::string& Pack){
+    Assert(c);
     [[maybe_unused]] static int lastRecv = 0;
     if(Pack.empty() || c == nullptr)return;
     std::string Packet = Pack.substr(0,Pack.find(char(0)));
@@ -196,6 +203,7 @@ void GlobalParser(Client*c, const std::string& Pack){
 }
 
 void GParser(Client*c, const std::string& Packet){
+    Assert(c);
 #ifdef __WIN32
     __try{
             GlobalParser(c, Packet);
