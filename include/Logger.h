@@ -2,8 +2,10 @@
 /// Created by Anonymous275 on 4/2/2020.
 ///
 #pragma once
-#include <string>
 #include <iostream>
+#include <mutex>
+#include <string>
+extern std::mutex MLock;
 void InitLog();
 #define DebugPrintTID() DebugPrintTIDInternal(__func__)
 void DebugPrintTIDInternal(const std::string& func); // prints the current thread id in debug mode, to make tracing of crashes and asserts easier

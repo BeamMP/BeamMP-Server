@@ -4,8 +4,8 @@
 
 #include "Lua/LuaSystem.hpp"
 #ifdef WIN32
-#include <windows.h>
 #include <conio.h>
+#include <windows.h>
 #else // *nix
 typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include <termios.h>
@@ -13,27 +13,30 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #endif // WIN32
 #include "Logger.h"
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
-#include <mutex>
 
 std::vector<std::string> QConsoleOut;
 std::string CInputBuff;
 std::mutex MLock;
 Lua* LuaConsole;
-void HandleInput(const std::string& cmd){
+void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
     if (cmd == "exit") {
         exit(0);
-    }else LuaConsole->Execute(cmd);
+    } else
+        LuaConsole->Execute(cmd);
 }
 
-void ProcessOut(){
+void ProcessOut() {
     static size_t len = 2;
-    if(QConsoleOut.empty() && len == CInputBuff.length())return;
+    if (QConsoleOut.empty() && len == CInputBuff.length())
+        return;
     printf("%c[2K\r", 27);
-    for(const std::string& msg : QConsoleOut)
-        if(!msg.empty())std::cout << msg;
+    for (const std::string& msg : QConsoleOut)
+        if (!msg.empty())
+            std::cout << msg;
     MLock.lock();
     QConsoleOut.clear();
     MLock.unlock();
@@ -41,55 +44,54 @@ void ProcessOut(){
     len = CInputBuff.length();
 }
 
-void ConsoleOut(const std::string& msg){
+void ConsoleOut(const std::string& msg) {
     MLock.lock();
     QConsoleOut.emplace_back(msg);
     MLock.unlock();
 }
 
-[[noreturn]] void OutputRefresh(){
+[[noreturn]] void OutputRefresh() {
     DebugPrintTID();
-    while(true){
+    while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ProcessOut();
     }
 }
 
 #ifndef WIN32
-static int _getch()
-{
+static int _getch() {
     char buf = 0;
     struct termios old;
     fflush(stdout);
-    if(tcgetattr(0, &old) < 0)
+    if (tcgetattr(0, &old) < 0)
         perror("tcsetattr()");
     old.c_lflag &= ~unsigned(ICANON);
     old.c_lflag &= ~unsigned(ECHO);
     old.c_cc[VMIN] = 1;
     old.c_cc[VTIME] = 0;
-    if(tcsetattr(0, TCSANOW, &old) < 0)
+    if (tcsetattr(0, TCSANOW, &old) < 0)
         perror("tcsetattr ICANON");
-    if(read(0, &buf, 1) < 0)
+    if (read(0, &buf, 1) < 0)
         perror("read()");
     old.c_lflag |= ICANON;
     old.c_lflag |= ECHO;
-    if(tcsetattr(0, TCSADRAIN, &old) < 0)
+    if (tcsetattr(0, TCSADRAIN, &old) < 0)
         perror("tcsetattr ~ICANON");
     // no echo printf("%c\n", buf);
     return buf;
 }
 #endif // WIN32
 
-void SetupConsole(){
+void SetupConsole() {
 #ifdef WIN32
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (stdoutHandle == INVALID_HANDLE_VALUE){
+    if (stdoutHandle == INVALID_HANDLE_VALUE) {
         error("Invalid handle");
         std::this_thread::sleep_for(std::chrono::seconds(3));
         exit(GetLastError());
     }
-    if (!GetConsoleMode(stdoutHandle, &outMode)){
+    if (!GetConsoleMode(stdoutHandle, &outMode)) {
         error("Invalid console mode");
         std::this_thread::sleep_for(std::chrono::seconds(3));
         exit(GetLastError());
@@ -105,27 +107,28 @@ void SetupConsole(){
 #endif // WIN32
 }
 
-[[noreturn]] void ReadCin(){
+[[noreturn]] void ReadCin() {
     DebugPrintTID();
-    while (true){
+    while (true) {
         int In = _getch();
         if (In == 13 || In == '\n') {
-            if(!CInputBuff.empty()) {
+            if (!CInputBuff.empty()) {
                 HandleInput(CInputBuff);
                 CInputBuff.clear();
             }
-        }else if(In == 8){
-            if(!CInputBuff.empty())CInputBuff.pop_back();
+        } else if (In == 8) {
+            if (!CInputBuff.empty())
+                CInputBuff.pop_back();
         } else if (In == 4) {
             CInputBuff = "exit";
             HandleInput(CInputBuff);
             CInputBuff.clear();
-        }else {
+        } else {
             CInputBuff += char(In);
         }
     }
 }
-void ConsoleInit(){
+void ConsoleInit() {
     SetupConsole();
     LuaConsole = new Lua();
     LuaConsole->Console = true;
