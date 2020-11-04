@@ -20,7 +20,7 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 std::vector<std::string> QConsoleOut;
 std::string CInputBuff;
 std::mutex MLock;
-Lua* LuaConsole;
+std::unique_ptr<Lua> LuaConsole;
 void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
     if (cmd == "exit") {
@@ -130,7 +130,7 @@ void SetupConsole() {
 }
 void ConsoleInit() {
     SetupConsole();
-    LuaConsole = new Lua(true);
+    LuaConsole = std::make_unique<Lua>(true);
     printf("> ");
     std::thread In(ReadCin);
     In.detach();

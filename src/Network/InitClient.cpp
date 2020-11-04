@@ -71,7 +71,7 @@ void OnDisconnect(Client*c,bool kicked){
     Packet = Sec("L")+c->GetName()+Sec(" Left the server!");
     SendToAll(c, Packet,false,true);
     Packet.clear();
-    TriggerLuaEvent(Sec("onPlayerDisconnect"),false,nullptr,new LuaArg{{c->GetID()}},false);
+    TriggerLuaEvent(Sec("onPlayerDisconnect"),false,nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID()}}),false);
     c->ClearCars();
     CI->RemoveClient(c); ///Removes the Client from existence
 }
@@ -80,10 +80,10 @@ void OnConnect(Client*c){
     info(Sec("Client connected"));
     c->SetID(OpenID());
     info(Sec("Assigned ID ") + std::to_string(c->GetID()) + Sec(" to ") + c->GetName());
-    TriggerLuaEvent(Sec("onPlayerConnecting"),false,nullptr,new LuaArg{{c->GetID()}},false);
+    TriggerLuaEvent(Sec("onPlayerConnecting"),false,nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID()}}),false);
     SyncResources(c);
     if(c->GetStatus() < 0)return;
     Respond(c,"M"+MapName,true); //Send the Map on connect
     info(c->GetName() + Sec(" : Connected"));
-    TriggerLuaEvent(Sec("onPlayerJoining"),false,nullptr,new LuaArg{{c->GetID()}},false);
+    TriggerLuaEvent(Sec("onPlayerJoining"),false,nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID()}}),false);
 }

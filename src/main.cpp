@@ -1,5 +1,6 @@
 #include "Startup.h"
 #include "CustomAssert.h"
+#include "Curl/curl.h"
 #include <thread>
 #include <iostream>
 [[noreturn]] void loop(){
@@ -11,6 +12,8 @@
 }
 int main(int argc, char* argv[]) {
     DebugPrintTID();
+    // curl needs to be initialized to properly deallocate its resources later
+    Assert(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
     #ifdef DEBUG
         std::thread t1(loop);
         t1.detach();
@@ -23,5 +26,7 @@ int main(int argc, char* argv[]) {
     HBInit();
     StatInit();
     NetMain();
+    // clean up curl at the end to be sure
+    curl_global_cleanup();
     return 0;
 }

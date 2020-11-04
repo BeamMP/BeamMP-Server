@@ -7,8 +7,8 @@
 #include <any>
 #include <filesystem>
 #include <iostream>
-#include <mutex>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <thread>
 #include <vector>
@@ -64,7 +64,7 @@ public:
     std::string GetFileName() const;
     lua_State* GetState();
     const lua_State* GetState() const;
-    char* GetOrigin();
+    std::string GetOrigin();
     std::mutex Lock;
     void Reload();
     Lua(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote, bool Console = false);
@@ -73,6 +73,6 @@ public:
     void SetStopThread(bool StopThread) { _StopThread = StopThread; }
     bool GetStopThread() const { return _StopThread; }
 };
-int CallFunction(Lua* lua, const std::string& FuncName, LuaArg* args);
-int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, LuaArg* arg, bool Wait);
+int CallFunction(Lua* lua, const std::string& FuncName, std::unique_ptr<LuaArg> args);
+int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::unique_ptr<LuaArg> arg, bool Wait);
 extern std::set<std::unique_ptr<Lua>> PluginEngine;

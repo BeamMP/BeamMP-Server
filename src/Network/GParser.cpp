@@ -47,7 +47,8 @@ void VehicleParser(Client*c,const std::string& Pckt){
                 Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+"-"+std::to_string(CarID)+Packet.substr(4);
                 if(c->GetCarCount() >= MaxCars ||
                    TriggerLuaEvent(Sec("onVehicleSpawn"),false,nullptr,
-                                   new LuaArg{{c->GetID(),CarID,Packet.substr(3)}},true)){
+                                   std::unique_ptr<LuaArg>(new LuaArg{{c->GetID(),CarID,Packet.substr(3)}}),
+                                   true)){
                     Respond(c,Packet,true);
                     std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(CarID);
                     Respond(c,Destroy,true);
@@ -67,7 +68,8 @@ void VehicleParser(Client*c,const std::string& Pckt){
             }
             if(PID != -1 && VID != -1 && PID == c->GetID()){
                 if(!TriggerLuaEvent(Sec("onVehicleEdited"),false,nullptr,
-                                    new LuaArg{{c->GetID(),VID,Packet.substr(3)}},true)) {
+                                    std::unique_ptr<LuaArg>(new LuaArg{{c->GetID(),VID,Packet.substr(3)}}),
+                                    true)) {
                     SendToAll(c, Packet, false, true);
                     Apply(c,VID,Packet);
                 }else{
@@ -87,7 +89,7 @@ void VehicleParser(Client*c,const std::string& Pckt){
             if(PID != -1 && VID != -1 && PID == c->GetID()){
                 SendToAll(nullptr,Packet,true,true);
                 TriggerLuaEvent(Sec("onVehicleDeleted"),false,nullptr,
-                                new LuaArg{{c->GetID(),VID}},false);
+                                std::unique_ptr<LuaArg>(new LuaArg{{c->GetID(),VID}}),false);
                 c->DeleteCar(VID);
                 debug(c->GetName() + Sec(" deleted car with ID ") + std::to_string(VID));
             }
@@ -107,7 +109,7 @@ void SyncClient(Client*c){
     std::this_thread::sleep_for(std::chrono::seconds(1));
     Respond(c,Sec("Sn")+c->GetName(),true);
     SendToAll(c,Sec("JWelcome ")+c->GetName()+"!",false,true);
-    TriggerLuaEvent(Sec("onPlayerJoin"),false,nullptr,new LuaArg{{c->GetID()}},false);
+    TriggerLuaEvent(Sec("onPlayerJoin"),false,nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID()}}),false);
     for (Client*client : CI->Clients) {
         if(client != nullptr){
             if (client != c) {
@@ -144,7 +146,7 @@ void HandleEvent(Client*c ,const std::string&Data){
                 Name = t;
                 break;
             case 2:
-                TriggerLuaEvent(Name, false, nullptr,new LuaArg{{c->GetID(),t}},false);
+                TriggerLuaEvent(Name, false, nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID(),t}}),false);
                 break;
             default:
                 break;
@@ -189,9 +191,10 @@ void GlobalParser(Client*c, const std::string& Pack){
             return;
         case 'C':
             if(Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)break;
-            if (TriggerLuaEvent(Sec("onChatMessage"), false, nullptr,new LuaArg{
+            if (TriggerLuaEvent(Sec("onChatMessage"), false, nullptr,
+                                std::unique_ptr<LuaArg>(new LuaArg{
                 {c->GetID(), c->GetName(), Packet.substr(Packet.find(':', 3) + 1)}
-                },true))break;
+                }),true))break;
             SendToAll(nullptr, Packet, true, true);
             return;
         case 'E':

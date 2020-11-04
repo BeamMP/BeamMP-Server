@@ -13,10 +13,10 @@
 #include <iostream>
 #include <utility>
 
-LuaArg* CreateArg(lua_State* L, int T, int S) {
+std::unique_ptr<LuaArg> CreateArg(lua_State* L, int T, int S) {
     if (S > T)
         return nullptr;
-    auto* temp = new LuaArg;
+    std::unique_ptr<LuaArg> temp(new LuaArg);
     for (int C = S; C <= T; C++) {
         if (lua_isstring(L, C)) {
             temp->args.emplace_back(std::string(lua_tostring(L, C)));
@@ -52,11 +52,11 @@ void SendError(lua_State* L, const std::string& msg) {
     }
     warn(a + Sec(" | Incorrect Call of ") + msg);
 }
-int Trigger(Lua* lua, const std::string& R, LuaArg* arg) {
+int Trigger(Lua* lua, const std::string& R, std::unique_ptr<LuaArg> arg) {
     std::lock_guard<std::mutex> lockGuard(lua->Lock);
-    std::packaged_task<int()> task([lua, R, arg] { return CallFunction(lua, R, arg); });
+    std::packaged_task<int(std::unique_ptr<LuaArg>)> task([lua, R](std::unique_ptr<LuaArg> arg) { return CallFunction(lua, R, std::move(arg)); });
     std::future<int> f1 = task.get_future();
-    std::thread t(std::move(task));
+    std::thread t(std::move(task), std::move(arg));
     t.detach();
     auto status = f1.wait_for(std::chrono::seconds(5));
     if (status != std::future_status::timeout)
@@ -64,11 +64,11 @@ int Trigger(Lua* lua, const std::string& R, LuaArg* arg) {
     SendError(lua->GetState(), R + " took too long to respond");
     return 0;
 }
-int FutureWait(Lua* lua, const std::string& R, LuaArg* arg, bool Wait) {
+int FutureWait(Lua* lua, const std::string& R, std::unique_ptr<LuaArg> arg, bool Wait) {
     Assert(lua);
-    std::packaged_task<int()> task([lua, R, arg] { return Trigger(lua, R, arg); });
+    std::packaged_task<int(std::unique_ptr<LuaArg>)> task([lua, R](std::unique_ptr<LuaArg> arg) { return Trigger(lua, R, std::move(arg)); });
     std::future<int> f1 = task.get_future();
-    std::thread t(std::move(task));
+    std::thread t(std::move(task), std::move(arg));
     t.detach();
     int T = 0;
     if (Wait)
@@ -78,16 +78,16 @@ int FutureWait(Lua* lua, const std::string& R, LuaArg* arg, bool Wait) {
         return f1.get();
     return 0;
 }
-int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, LuaArg* arg, bool Wait) {
+int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::unique_ptr<LuaArg> arg, bool Wait) {
     int R = 0;
     for (auto& Script : PluginEngine) {
         if (Script->IsRegistered(Event)) {
             if (local) {
                 if (Script->GetPluginName() == Caller->GetPluginName()) {
-                    R += FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
+                    R += FutureWait(Script.get(), Script->GetRegistered(Event), std::move(arg), Wait);
                 }
             } else
-                R += FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
+                R += FutureWait(Script.get(), Script->GetRegistered(Event), std::move(arg), Wait);
         }
     }
     return R;
@@ -553,15 +553,11 @@ void Lua::Reload() {
         CallFunction(this, Sec("onInit"), nullptr);
     }
 }
-char* Lua::GetOrigin() {
-    std::string T = GetFileName().substr(GetFileName().find('\\'));
-    char* Data = new char[T.size()];
-    ZeroMemory(Data, T.size());
-    memcpy(Data, T.c_str(), T.size());
-    return Data;
+std::string Lua::GetOrigin() {
+    return GetFileName().substr(GetFileName().find('\\'));
 }
 
-int CallFunction(Lua* lua, const std::string& FuncName, LuaArg* Arg) {
+int CallFunction(Lua* lua, const std::string& FuncName, std::unique_ptr<LuaArg> Arg) {
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {
@@ -569,11 +565,9 @@ int CallFunction(Lua* lua, const std::string& FuncName, LuaArg* Arg) {
         if (Arg != nullptr) {
             Size = int(Arg->args.size());
             Arg->PushArgs(luaState);
-            delete Arg;
-            Arg = nullptr;
         }
         int R = 0;
-        char* Origin = lua->GetOrigin();
+        std::string Origin = lua->GetOrigin();
 #ifdef WIN32
         __try {
 #endif // WIN32
@@ -584,10 +578,9 @@ int CallFunction(Lua* lua, const std::string& FuncName, LuaArg* Arg) {
                 }
             }
 #ifdef WIN32
-        } __except (Handle(GetExceptionInformation(), Origin)) {
+        } __except (Handle(GetExceptionInformation(), Origin.data())) {
         }
 #endif // WIN32
-        delete[] Origin;
     }
     ClearStack(luaState);
     return 0;
@@ -672,5 +665,6 @@ fs::file_time_type Lua::GetLastWrite() {
 }
 
 Lua::~Lua() {
+    info("closing lua state");
     lua_close(luaState);
 }
