@@ -130,9 +130,7 @@ void SetupConsole() {
 }
 void ConsoleInit() {
     SetupConsole();
-    LuaConsole = new Lua();
-    LuaConsole->Console = true;
-    LuaConsole->Init();
+    LuaConsole = new Lua(true);
     printf("> ");
     std::thread In(ReadCin);
     In.detach();
