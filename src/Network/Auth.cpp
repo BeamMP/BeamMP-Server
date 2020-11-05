@@ -34,7 +34,7 @@ std::string Rcv(SOCKET TCPSock){
     uint32_t RealSize;
     int64_t BytesRcv = recv(TCPSock, &RealSize, sizeof(RealSize), 0);
     if (BytesRcv != sizeof(RealSize)) {
-        error(Sec("invalid packet (1)"));
+        error(std::string(Sec("invalid packet: expected 4, got ")) + std::to_string(BytesRcv));
         return "";
     }
     // RealSize is big-endian, so we convert it to host endianness
