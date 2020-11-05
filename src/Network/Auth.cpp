@@ -39,15 +39,19 @@ std::string Rcv(SOCKET TCPSock){
     }
     // RealSize is big-endian, so we convert it to host endianness
     RealSize = ntohl(RealSize);
+    debug(std::string("got ") + std::to_string(RealSize) + " as size");
     if (RealSize > 7000) {
         error(Sec("Larger than allowed TCP packet received"));
         return "";
     }
-    RealSize = std::min<uint32_t>(RealSize, 7000);
     char buf[7000];
-    std::fill_n(buf, sizeof(buf), 0);
+    std::fill_n(buf, 7000, 0);
     BytesRcv = recv(TCPSock, buf, RealSize, 0);
-    if (BytesRcv <= 0)return "";
+    if (BytesRcv != RealSize) {
+        debug("expected " + std::to_string(RealSize) + " bytes, got " + std::to_string(BytesRcv) + " instead");
+    }
+    if (BytesRcv <= 0)
+        return "";
     return std::string(buf);
 }
 std::string GetRole(const std::string &DID){
