@@ -116,12 +116,14 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     Timeout.detach();
     std::string Name,DID,Role;
     if(!Send(TCPSock,GenerateM(Skey))){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     std::string msg = Rcv(TCPSock);
     auto Keys = Parse(msg);
     if(!Send(TCPSock,RSA_E("HC",Keys.second,Keys.first))){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
@@ -133,19 +135,23 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     if(Ver.size() > 3 && Ver.substr(0,2) == Sec("VC")){
         Ver = Ver.substr(2);
         if(Ver.length() > 4 || Ver != GetCVer()){
+            error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
             closesocket(TCPSock);
             return;
         }
     }else{
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     Res = RSA_D(Res,Skey);
     if(Res.size() < 3 || Res.substr(0,2) != Sec("NR")) {
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     if(Res.find(':') == std::string::npos){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
@@ -153,6 +159,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     DID = Res.substr(Res.find(':')+1);
     Role = GetRole(DID);
     if(Role.empty() || Role.find(Sec("Error")) != std::string::npos){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
@@ -160,6 +167,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     for(Client*c: CI->Clients){
         if(c != nullptr){
             if(c->GetDID() == DID){
+                error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
                 closesocket(c->GetTCPSock());
                 c->SetStatus(-2);
                 break;
@@ -168,7 +176,11 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     }
     if(Role == Sec("MDEV") || CI->Size() < Max()){
         CreateClient(TCPSock,Name,DID,Role);
-    }else closesocket(TCPSock);
+    } else {
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
+        closesocket(TCPSock);
+    }
+    debug("Identification success");
 }
 void Identify(SOCKET TCPSock){
     auto* S = new Hold;
@@ -186,6 +198,7 @@ void Identify(SOCKET TCPSock){
 #endif // WIN32
 
         if(TCPSock != -1){
+            error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
             closesocket(TCPSock);
         }
 #ifdef WIN32
@@ -267,6 +280,7 @@ void TCPServerMain(){
         ID.detach();
     }while(client);
 
+    debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
     closesocket(client);
 #endif // WIN32
 }
