@@ -71,13 +71,7 @@ void TCPClient(Client*c){
     }
     OnConnect(c);
     while (c->GetStatus() > -1)TCPRcv(c);
-#ifdef WIN32
-    __try{
-#endif // WIN32
-            OnDisconnect(c, c->GetStatus() == -2);
-#ifdef WIN32
-    }__except(Handle(GetExceptionInformation(),Sec("OnDisconnect"))){}
-#endif // WIN32
+    OnDisconnect(c, c->GetStatus() == -2);
 }
 void InitClient(Client*c){
     std::thread NewClient(TCPClient,c);

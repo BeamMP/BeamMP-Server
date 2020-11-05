@@ -13,8 +13,6 @@ elseif (WIN32)
     #   completely cross platform. For fixes to common issues arising from /permissive- visit:
     #   https://docs.microsoft.com/en-us/cpp/build/reference/permissive-standards-conformance
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /permissive-")
-    # disables warnings about _s variants of stdc functions
-    add_definitions(_CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_DEPRECATE)
 endif ()
 
 find_package(Boost 1.71.0 REQUIRED COMPONENTS system thread)

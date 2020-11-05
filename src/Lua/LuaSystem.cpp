@@ -12,6 +12,7 @@
 #include <future>
 #include <iostream>
 #include <utility>
+#include <optional>
 
 std::unique_ptr<LuaArg> CreateArg(lua_State* L, int T, int S) {
     if (S > T)
@@ -566,21 +567,13 @@ int CallFunction(Lua* lua, const std::string& FuncName, std::unique_ptr<LuaArg> 
             Size = int(Arg->args.size());
             Arg->PushArgs(luaState);
         }
-        int R = 0;
         std::string Origin = lua->GetOrigin();
-#ifdef WIN32
-        __try {
-#endif // WIN32
-            R = lua_pcall(luaState, Size, 1, 0);
-            if (CheckLua(luaState, R)) {
-                if (lua_isnumber(luaState, -1)) {
-                    return int(lua_tointeger(luaState, -1));
-                }
+        int R = lua_pcall(luaState, Size, 1, 0);
+        if (CheckLua(luaState, R)) {
+            if (lua_isnumber(luaState, -1)) {
+                return int(lua_tointeger(luaState, -1));
             }
-#ifdef WIN32
-        } __except (Handle(GetExceptionInformation(), Origin.data())) {
         }
-#endif // WIN32
     }
     ClearStack(luaState);
     return 0;
