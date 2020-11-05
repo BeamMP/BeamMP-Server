@@ -9,6 +9,7 @@
 #include <sstream>
 #include <thread>
 #include <cstring>
+#include <algorithm>
 #include "UnixCompat.h"
 
 
@@ -30,10 +31,22 @@ bool Send(SOCKET TCPSock,std::string Data){
     return true;
 }
 std::string Rcv(SOCKET TCPSock){
-    char buf[6768];
-    size_t len = 6768;
-    ZeroMemory(buf, len);
-    int64_t BytesRcv = recv(TCPSock, buf, len,0);
+    uint32_t RealSize;
+    int64_t BytesRcv = recv(TCPSock, &RealSize, sizeof(RealSize), 0);
+    if (BytesRcv != sizeof(RealSize)) {
+        error(Sec("invalid packet (1)"));
+        return "";
+    }
+    // RealSize is big-endian, so we convert it to host endianness
+    RealSize = ntohl(RealSize);
+    if (RealSize > 7000) {
+        error(Sec("Larger than allowed TCP packet received"));
+        return "";
+    }
+    RealSize = std::min<uint32_t>(RealSize, 7000);
+    char buf[7000];
+    std::fill_n(buf, sizeof(buf), 0);
+    BytesRcv = recv(TCPSock, buf, RealSize, 0);
     if (BytesRcv <= 0)return "";
     return std::string(buf);
 }
