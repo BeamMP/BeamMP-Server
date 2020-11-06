@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 
+void WebsocketInit();
 std::string GetPlayers(){
     std::string Return;
     for(Client* c : CI->Clients){
@@ -31,6 +32,7 @@ std::string GenerateCall(){
 void Heartbeat(){
     DebugPrintTID();
     std::string R,T;
+    bool isAuth = false;
     while(true){
         R = GenerateCall();
         if(!CustomIP.empty())R+="&ip="+CustomIP;
@@ -51,6 +53,10 @@ void Heartbeat(){
         if(T.length() == 4)info(Sec("Server authenticated"));
         R.clear();
         T.clear();
+        if(!isAuth){
+            WebsocketInit();
+            isAuth = true;
+        }
         std::this_thread::sleep_for(std::chrono::seconds(3));
     }
 }

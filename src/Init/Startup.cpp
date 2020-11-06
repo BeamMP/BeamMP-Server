@@ -9,11 +9,11 @@
 
 std::string CustomIP;
 std::string GetSVer(){
-    static std::string r = Sec("0.64");
+    static std::string r = Sec("1.0");
     return r;
 }
 std::string GetCVer(){
-    static std::string r = Sec("1.63");
+    static std::string r = Sec("1.70");
     return r;
 }
 void Args(int argc, char* argv[]){
