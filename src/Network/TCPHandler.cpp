@@ -41,10 +41,11 @@ void TCPHandle(Client*c,const std::string& data){
 void TCPRcv(Client*c){
     Assert(c);
     if(c == nullptr || c->GetStatus() < 0)return;
-    char buf[4096];
-    size_t len = 4096;
+    #define len 4096
+    char buf[len];
     ZeroMemory(buf, len);
     int64_t BytesRcv = recv(c->GetTCPSock(), buf, len,0);
+    #undef len
     if (BytesRcv == 0){
         debug(Sec("(TCP) Connection closing..."));
         if(c->GetStatus() > -1)c->SetStatus(-1);

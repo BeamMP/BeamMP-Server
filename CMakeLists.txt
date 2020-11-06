@@ -13,6 +13,9 @@ elseif (WIN32)
     #   completely cross platform. For fixes to common issues arising from /permissive- visit:
     #   https://docs.microsoft.com/en-us/cpp/build/reference/permissive-standards-conformance
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /permissive-")
+    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
+    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif ()
 
 find_package(Boost 1.71.0 REQUIRED COMPONENTS system thread)
@@ -24,5 +27,10 @@ target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURREN
 if (UNIX)
     target_link_libraries(BeamMP-Server curl lua5.3 krb5 z pthread stdc++fs ${Boost_LINK_DIRS})
 elseif (WIN32)
-    target_link_libraries(BeamMP-Server libcurl_a urlmon ws2_32 lua53 zlibstatic ${Boost_LINK_DIRS})
+    include(FindLua)
+    find_package(CURL CONFIG REQUIRED)
+    find_package(ZLIB REQUIRED)
+    find_package(Lua REQUIRED)
+    target_include_directories(BeamMP-Server PRIVATE ${LUA_INCLUDE_DIR})
+    target_link_libraries(BeamMP-Server PRIVATE urlmon ws2_32 CURL::libcurl ZLIB::ZLIB ${Boost_LINK_DIRS} ${LUA_LIBRARIES})
 endif ()

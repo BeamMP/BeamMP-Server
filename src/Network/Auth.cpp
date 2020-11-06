@@ -32,7 +32,11 @@ bool Send(SOCKET TCPSock,std::string Data){
 }
 std::string Rcv(SOCKET TCPSock){
     uint32_t RealSize;
-    int64_t BytesRcv = recv(TCPSock, &RealSize, sizeof(RealSize), 0);
+    #ifdef WIN32
+        int64_t BytesRcv = recv(TCPSock, reinterpret_cast<char*>(&RealSize), sizeof(RealSize), 0);
+    #else
+        int64_t BytesRcv = recv(TCPSock, reinterpret_cast<void*>(&RealSize), sizeof(RealSize), 0);
+    #endif
     if (BytesRcv != sizeof(RealSize)) {
         error(std::string(Sec("invalid packet: expected 4, got ")) + std::to_string(BytesRcv));
         return "";
@@ -193,18 +197,18 @@ void Identify(SOCKET TCPSock){
     // reason MSVC defines __try and __except and libg++ defines
     // __try and __catch so its all a big mess if we leave this in or undefine
     // the macros
-#ifdef WIN32
+/*#ifdef WIN32
     __try{
-#endif // WIN32
+#endif // WIN32*/
         Identification(TCPSock,S,Skey);
-#ifdef WIN32
+/*#ifdef WIN32
     }__except(1){
         if(TCPSock != -1){
             error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
             closesocket(TCPSock);
         }
     }
-#endif // WIN32
+#endif // WIN32*/
 
     delete Skey;
     delete S;

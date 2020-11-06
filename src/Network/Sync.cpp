@@ -93,14 +93,16 @@ void Parse(Client* c, const std::string& Packet) {
         return;
     }
 }
+
 bool STCPRecv(Client* c) {
     Assert(c);
     if (c == nullptr)
         return false;
-    char buf[200];
-    size_t len = 200;
+    #define len 200
+    char buf[len];
     ZeroMemory(buf, len);
     int64_t BytesRcv = recv(c->GetTCPSock(), buf, len, 0);
+    #undef len
     if (BytesRcv == 0) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);

@@ -52,8 +52,12 @@ void UDPSend(Client* c, std::string Data) {
 
     sendOk = sendto(UDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, AddrSize);
 #ifdef WIN32
-    if (sendOk != 0) {
+    if (sendOk == -1) {
         debug(Sec("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
+        if (c->GetStatus() > -1)
+            c->SetStatus(-1);
+    } else if (sendOk == 0) {
+        debug(Sec("(UDP) sendto returned 0"));
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     }

@@ -3,7 +3,7 @@
 ///
 
 #pragma once
-#include "lua.hpp"
+#include <lua.hpp>
 #include <any>
 #include <filesystem>
 #include <iostream>

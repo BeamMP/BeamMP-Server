@@ -1,8 +1,8 @@
 ///
 /// Created by Anonymous275 on 4/9/2020
 ///
-#define CURL_STATICLIB
-#include "Curl/curl.h"
+
+#include <curl/curl.h>
 #include "CustomAssert.h"
 #include <iostream>
 static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *userp){

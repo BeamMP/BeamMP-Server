@@ -59,6 +59,7 @@ void UpdatePlayers(){
     SendToAll(nullptr, Packet,true,true);
 }
 void OnDisconnect(Client*c,bool kicked){
+
     Assert(c);
     info(c->GetName() + Sec(" Connection Terminated"));
     if(c == nullptr)return;

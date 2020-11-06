@@ -1,15 +1,15 @@
 ///
 /// Created by Anonymous275 on 7/15/2020
 ///
-#include "Zlib/zlib.h"
+
 #include <iostream>
-#include <cstring>
 #include <algorithm>
+#include <zlib.h>
 #include <array>
 
 #define Biggest 30000
 std::string Comp(std::string Data){
-    std::array<char, Biggest> C;
+    std::array<char, Biggest> C{};
     // obsolete
     C.fill(0);
     z_stream defstream;
@@ -30,7 +30,7 @@ std::string Comp(std::string Data){
     return Ret;
 }
 std::string DeComp(std::string Compressed){
-    std::array<char, Biggest> C;
+    std::array<char, Biggest> C{};
     // not needed
     C.fill(0);
     z_stream infstream;

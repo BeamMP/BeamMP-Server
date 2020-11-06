@@ -83,7 +83,7 @@ static int _getch() {
 #endif // WIN32
 
 void SetupConsole() {
-#ifdef WIN32
+#if defined(WIN32) && !defined(DEBUG)
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (stdoutHandle == INVALID_HANDLE_VALUE) {

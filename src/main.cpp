@@ -1,6 +1,6 @@
 #include "Startup.h"
 #include "CustomAssert.h"
-#include "Curl/curl.h"
+#include <curl/curl.h>
 #include <thread>
 #include <iostream>
 [[noreturn]] void loop(){
