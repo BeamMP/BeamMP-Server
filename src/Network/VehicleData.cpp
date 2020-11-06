@@ -58,8 +58,12 @@ void UDPSend(Client* c, std::string Data) {
             c->SetStatus(-1);
     }
 #else // unix
-    if (sendOk != 0) {
+    if (sendOk == -1) {
         debug(Sec("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
+        if (c->GetStatus() > -1)
+            c->SetStatus(-1);
+    } else if (sendOk == 0) {
+        debug(Sec("(UDP) sendto returned 0"));
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     }
