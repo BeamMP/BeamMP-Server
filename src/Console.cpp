@@ -116,14 +116,17 @@ void SetupConsole() {
                 HandleInput(CInputBuff);
                 CInputBuff.clear();
             }
-        } else if (In == 8) {
+        } else if (In == 8 || In == 127) {
             if (!CInputBuff.empty())
                 CInputBuff.pop_back();
         } else if (In == 4) {
             CInputBuff = "exit";
             HandleInput(CInputBuff);
             CInputBuff.clear();
+        } else if (!isprint(In)) {
+            // ignore
         } else {
+            // info(std::to_string(In));
             CInputBuff += char(In);
         }
     }
