@@ -18,7 +18,7 @@ elseif (WIN32)
     STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif ()
 
-find_package(Boost 1.71.0 REQUIRED COMPONENTS system thread)
+find_package(Boost 1.67.0 REQUIRED COMPONENTS system thread)
 file(GLOB source_files "src/*.cpp" "src/*/*.cpp" "include/*.h" "include/*/*.h" "include/*.hpp" "include/*/*.hpp")
 add_executable(BeamMP-Server ${source_files})
 
