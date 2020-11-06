@@ -32,7 +32,7 @@ void Respond(Client*c, const std::string& MSG, bool Rel){
     }else UDPSend(c,MSG);
 }
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
-    if (Self) {
+    if (!Self) {
         Assert(c);
     }
     char C = Data.at(0);
