@@ -179,12 +179,12 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
         }
     }
     if(Role == Sec("MDEV") || CI->Size() < Max()){
+        debug("Identification success");
         CreateClient(TCPSock,Name,DID,Role);
     } else {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
     }
-    debug("Identification success");
 }
 void Identify(SOCKET TCPSock){
     auto* S = new Hold;
@@ -199,13 +199,10 @@ void Identify(SOCKET TCPSock){
         Identification(TCPSock,S,Skey);
 #ifdef WIN32
     }__except(1){
-#endif // WIN32
-
         if(TCPSock != -1){
             error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
             closesocket(TCPSock);
         }
-#ifdef WIN32
     }
 #endif // WIN32
 
