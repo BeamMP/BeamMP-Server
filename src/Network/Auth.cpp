@@ -8,23 +8,50 @@
 #include "Logger.h"
 #include <sstream>
 #include <thread>
+#include <cstring>
+#include <algorithm>
+#include "UnixCompat.h"
+
+
 struct Hold{
     SOCKET TCPSock{};
     bool Done = false;
 };
 bool Send(SOCKET TCPSock,std::string Data){
+#ifdef WIN32
     int BytesSent;
-    BytesSent = send(TCPSock, Data.c_str(), int(Data.size()), 0);
+    int len = static_cast<int>(Data.size());
+#else
+    int64_t BytesSent;
+    size_t len = Data.size();
+#endif // WIN32
+    BytesSent = send(TCPSock, Data.c_str(), len, 0);
     Data.clear();
     if (BytesSent <= 0)return false;
     return true;
 }
 std::string Rcv(SOCKET TCPSock){
-    char buf[6768];
-    int len = 6768;
-    ZeroMemory(buf, len);
-    int BytesRcv = recv(TCPSock, buf, len,0);
-    if (BytesRcv <= 0)return "";
+    uint32_t RealSize;
+    int64_t BytesRcv = recv(TCPSock, &RealSize, sizeof(RealSize), 0);
+    if (BytesRcv != sizeof(RealSize)) {
+        error(std::string(Sec("invalid packet: expected 4, got ")) + std::to_string(BytesRcv));
+        return "";
+    }
+    // RealSize is big-endian, so we convert it to host endianness
+    RealSize = ntohl(RealSize);
+    debug(std::string("got ") + std::to_string(RealSize) + " as size");
+    if (RealSize > 7000) {
+        error(Sec("Larger than allowed TCP packet received"));
+        return "";
+    }
+    char buf[7000];
+    std::fill_n(buf, 7000, 0);
+    BytesRcv = recv(TCPSock, buf, RealSize, 0);
+    if (BytesRcv != RealSize) {
+        debug("expected " + std::to_string(RealSize) + " bytes, got " + std::to_string(BytesRcv) + " instead");
+    }
+    if (BytesRcv <= 0)
+        return "";
     return std::string(buf);
 }
 std::string GetRole(const std::string &DID){
@@ -86,17 +113,21 @@ std::string GenerateM(RSA*key){
 }
 
 void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
+    Assert(S);
+    Assert(Skey);
     S->TCPSock = TCPSock;
     std::thread Timeout(Check,S);
     Timeout.detach();
     std::string Name,DID,Role;
     if(!Send(TCPSock,GenerateM(Skey))){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     std::string msg = Rcv(TCPSock);
     auto Keys = Parse(msg);
     if(!Send(TCPSock,RSA_E("HC",Keys.second,Keys.first))){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
@@ -108,26 +139,31 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     if(Ver.size() > 3 && Ver.substr(0,2) == Sec("VC")){
         Ver = Ver.substr(2);
         if(Ver.length() > 4 || Ver != GetCVer()){
+            error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
             closesocket(TCPSock);
             return;
         }
     }else{
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     Res = RSA_D(Res,Skey);
     if(Res.size() < 3 || Res.substr(0,2) != Sec("NR")) {
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     if(Res.find(':') == std::string::npos){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
     Name = Res.substr(2,Res.find(':')-2);
     DID = Res.substr(Res.find(':')+1);
     Role = GetRole(DID);
-    if(Role.empty() || Role.find(Sec("Error")) != -1){
+    if(Role.empty() || Role.find(Sec("Error")) != std::string::npos){
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
     }
@@ -135,6 +171,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     for(Client*c: CI->Clients){
         if(c != nullptr){
             if(c->GetDID() == DID){
+                error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
                 closesocket(c->GetTCPSock());
                 c->SetStatus(-2);
                 break;
@@ -142,23 +179,40 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
         }
     }
     if(Role == Sec("MDEV") || CI->Size() < Max()){
+        debug("Identification success");
         CreateClient(TCPSock,Name,DID,Role);
-    }else closesocket(TCPSock);
+    } else {
+        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
+        closesocket(TCPSock);
+    }
 }
 void Identify(SOCKET TCPSock){
     auto* S = new Hold;
     RSA*Skey = GenKey();
+    // this disgusting ifdef stuff is needed because for some
+    // reason MSVC defines __try and __except and libg++ defines
+    // __try and __catch so its all a big mess if we leave this in or undefine
+    // the macros
+#ifdef WIN32
     __try{
+#endif // WIN32
         Identification(TCPSock,S,Skey);
+#ifdef WIN32
     }__except(1){
         if(TCPSock != -1){
+            error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
             closesocket(TCPSock);
         }
     }
+#endif // WIN32
+
     delete Skey;
     delete S;
 }
+
 void TCPServerMain(){
+    DebugPrintTID();
+#ifdef WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)){
         error(Sec("Can't start Winsock!"));
@@ -195,4 +249,39 @@ void TCPServerMain(){
 
     closesocket(client);
     WSACleanup();
+#else // unix
+    // wondering why we need slightly different implementations of this?
+    // ask ms.
+    SOCKET client, Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    sockaddr_in addr{};
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(uint16_t(Port));
+    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0){
+        error(Sec("Can't bind socket! ") + std::string(strerror(errno)));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+    }
+    if(Listener == -1){
+        error(Sec("Invalid listening socket"));
+        return;
+    }
+    if(listen(Listener,SOMAXCONN)){
+        error(Sec("listener failed ")+ std::string(strerror(errno)));
+        return;
+    }
+    info(Sec("Vehicle event network online"));
+    do{
+        client = accept(Listener, nullptr, nullptr);
+        if(client == -1){
+            warn(Sec("Got an invalid client socket on connect! Skipping..."));
+            continue;
+        }
+        std::thread ID(Identify,client);
+        ID.detach();
+    }while(client);
+
+    debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
+    closesocket(client);
+#endif // WIN32
 }

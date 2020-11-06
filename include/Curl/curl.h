@@ -38,7 +38,7 @@
  * Define WIN32 when build target is Win32 API
  */
 
-#if (defined(_WIN32) || defined(__WIN32__)) && \
+#if (defined(_WIN32) || defined(WIN32__)) && \
      !defined(WIN32) && !defined(__SYMBIAN32__)
 #define WIN32
 #endif

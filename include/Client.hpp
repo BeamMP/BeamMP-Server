@@ -3,8 +3,14 @@
 ///
 
 #pragma once
+#ifdef WIN32
 #include <WS2tcpip.h>
+#else
+#include <arpa/inet.h>
+#define SOCKET int
+#endif
 #include "Buffer.h"
+#include "CustomAssert.h"
 #include <string>
 #include <vector>
 #include <chrono>
@@ -60,6 +66,7 @@ struct ClientInterface{
         c = nullptr;
     }
     void AddClient(Client *c){
+        Assert(c);
         Clients.insert(c);
     }
     int Size(){

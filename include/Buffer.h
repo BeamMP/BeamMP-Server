@@ -3,12 +3,13 @@
 ///
 #pragma once
 #include <mutex>
+#include "CustomAssert.h"
 class Client;
 void GParser(Client*c, const std::string&Packet);
 class Buffer{
 public:
     void Handle(Client*c,const std::string& Data){
-        if(c == nullptr)return;
+        Assert(c);
         Buf += Data;
         Manage(c);
     }
@@ -18,11 +19,12 @@ public:
 private:
     std::string Buf;
     void Manage(Client*c){
+        Assert(c);
         if(!Buf.empty()){
             std::string::size_type p;
             if (Buf.at(0) == '\n'){
                 p = Buf.find('\n',1);
-                if(p != -1){
+                if(p != std::string::npos){
                     std::string R = Buf.substr(1,p-1);
                     std::string_view B(R.c_str(),R.find(char(0)));
                     GParser(c, B.data());
@@ -31,7 +33,7 @@ private:
                 }
             }else{
                 p = Buf.find('\n');
-                if(p == -1)Buf.clear();
+                if(p == std::string::npos)Buf.clear();
                 else{
                     Buf = Buf.substr(p);
                     Manage(c);

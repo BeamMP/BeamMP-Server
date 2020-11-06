@@ -5,6 +5,7 @@
 #include <string>
 #include <array>
 #include <cstdarg>
+#include <cstdio>
 
 #define BEGIN_NAMESPACE(x) namespace x {
 #define END_NAMESPACE }
@@ -68,10 +69,10 @@ BEGIN_NAMESPACE(XorCompileTime)
 
     public:
         template <size_t... Is>
-        constexpr __forceinline XorString(const Char* str, std::index_sequence< Is... >) : _key(RandomChar< K >::value), _encrypted{ enc(str[Is])... }
+        constexpr inline XorString(const Char* str, std::index_sequence< Is... >) : _key(RandomChar< K >::value), _encrypted{ enc(str[Is])... }
         {}
 
-        __forceinline decltype(auto) decrypt(){
+        inline decltype(auto) decrypt(){
             for (size_t i = 0; i < N; ++i) {
                 _encrypted[i] = dec(_encrypted[i]);
             }
@@ -83,14 +84,14 @@ BEGIN_NAMESPACE(XorCompileTime)
     static auto w_printf = [](const char* fmt, ...) {
         va_list args;
                 va_start(args, fmt);
-        vprintf_s(fmt, args);
+        vprintf(fmt, args);
                 va_end(args);
     };
 
     static auto w_printf_s = [](const char* fmt, ...) {
         va_list args;
                 va_start(args, fmt);
-        vprintf_s(fmt, args);
+        vprintf(fmt, args);
                 va_end(args);
     };
 
@@ -113,7 +114,7 @@ BEGIN_NAMESPACE(XorCompileTime)
     static auto w_sprintf_s = [](char* buf, size_t buf_size, const char* fmt, ...) {
         va_list args;
                 va_start(args, fmt);
-        vsprintf_s(buf, buf_size, fmt, args);
+        vsnprintf(buf, buf_size, fmt, args);
                 va_end(args);
     };
 
@@ -121,7 +122,7 @@ BEGIN_NAMESPACE(XorCompileTime)
         int ret;
         va_list args;
                 va_start(args, fmt);
-        ret = vsprintf_s(buf, buf_size, fmt, args);
+        ret = vsnprintf(buf, buf_size, fmt, args);
                 va_end(args);
         return ret;
     };

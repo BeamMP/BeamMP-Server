@@ -30,6 +30,7 @@ void Monitor() {
 }
 
 [[noreturn]]void Stat(){
+    DebugPrintTID();
     while(true){
         Monitor();
         std::this_thread::sleep_for(std::chrono::seconds(1));

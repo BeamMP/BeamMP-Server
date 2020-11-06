@@ -6,7 +6,9 @@
 #include "Settings.h"
 #include <algorithm>
 #include "Logger.h"
-namespace fs = std::experimental::filesystem;
+
+namespace fs = std::filesystem;
+
 uint64_t MaxModSize = 0;
 std::string FileSizes;
 std::string FileList;

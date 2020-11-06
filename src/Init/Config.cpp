@@ -3,6 +3,7 @@
 ///
 #include "Security/Enc.h"
 #include "Logger.h"
+#include "CustomAssert.h"
 #include <fstream>
 #include <string>
 #include <thread>
@@ -33,13 +34,13 @@ void SetValues(const std::string& Line, int Index) {
     }
     Data = Data.substr(1);
     std::string::size_type sz;
-    bool Boolean = std::string(Data).find("true") != -1;//searches for "true"
+    bool FoundTrue = std::string(Data).find("true") != std::string::npos;//searches for "true"
     switch (Index) {
         case 1 :
-            Debug = Boolean;//checks and sets the Debug Value
+            Debug = FoundTrue;//checks and sets the Debug Value
             break;
         case 2 :
-            Private = Boolean;//checks and sets the Private Value
+            Private = FoundTrue;//checks and sets the Private Value
             break;
         case 3 :
             Port = std::stoi(Data, &sz);//sets the Port
@@ -77,6 +78,7 @@ std::string RemoveComments(const std::string& Line){
     return Return;
 }
 void LoadConfig(std::ifstream& IFS){
+    Assert(IFS.is_open());
     std::string line;
     int index = 1;
     while (getline(IFS, line)) {

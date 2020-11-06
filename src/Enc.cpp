@@ -3,7 +3,8 @@
 ///
 #include "Security/Enc.h"
 #include "Settings.h"
-#include <windows.h>
+#include "CustomAssert.h"
+//#include <windows.h>
 #include "Logger.h"
 #include <sstream>
 #include <thread>
@@ -84,7 +85,9 @@ int Dec(int value,int d,int n){
     return log_power(value, d, n);
 }
 
+#ifdef WIN32
 int Handle(EXCEPTION_POINTERS *ep,char* Origin){
+    Assert(false);
     std::stringstream R;
     R << Sec("Code : ") << std::hex
     << ep->ExceptionRecord->ExceptionCode
@@ -92,6 +95,10 @@ int Handle(EXCEPTION_POINTERS *ep,char* Origin){
     except(R.str());
     return 1;
 }
+#else
+// stub
+int Handle(EXCEPTION_POINTERS *, char*) { return 1; }
+#endif // WIN32
 
 std::string RSA_E(const std::string& Data, RSA*k){
     std::stringstream stream;

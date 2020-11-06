@@ -5,6 +5,7 @@
 #include "Client.hpp"
 #include "Logger.h"
 #include <string>
+#include <algorithm>
 
 std::string CustomIP;
 std::string GetSVer(){
