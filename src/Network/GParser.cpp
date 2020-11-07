@@ -99,7 +99,9 @@ void VehicleParser(Client*c,const std::string& Pckt){
             SendToAll(c,Packet,false,true);
             return;
         default:
-            AssertNotReachable();
+#ifdef DEBUG
+            warn(std::string(Sec("possibly not implemented: '") + Packet + Sec("'")));
+#endif // DEBUG
             return;
     }
 }

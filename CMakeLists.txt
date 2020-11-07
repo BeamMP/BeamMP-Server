@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 if (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Og -g")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -s")
 elseif (WIN32)
@@ -28,7 +28,6 @@ target_include_directories(BeamMP-Server SYSTEM PUBLIC ${LUA_INCLUDE_DIR} ${Boos
 
 if (UNIX)
     find_package(Lua 5.3 REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE )
     target_link_libraries(BeamMP-Server curl z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES})
 elseif (WIN32)
     include(FindLua)
