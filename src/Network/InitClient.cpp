@@ -75,7 +75,6 @@ void OnDisconnect(Client*c,bool kicked){
     SendToAll(c, Packet,false,true);
     Packet.clear();
     TriggerLuaEvent(Sec("onPlayerDisconnect"),false,nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID()}}),false);
-    c->ClearCars();
     CI->RemoveClient(c); ///Removes the Client from existence
 }
 void OnConnect(Client*c){

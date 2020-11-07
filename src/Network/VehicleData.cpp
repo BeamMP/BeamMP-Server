@@ -269,18 +269,20 @@ void UDPParser(Client* c, std::string Packet) {
 void LOOP() {
     DebugPrintTID();
     while (UDPSock != -1) {
-        for (PacketData* p : DataAcks) {
-            if (p != nullptr) {
-                if (p->Client == nullptr || p->Client->GetTCPSock() == -1) {
-                    DataAcks.erase(p);
-                    break;
-                }
-                if (p->Tries < 15) {
-                    UDPSend(p->Client, p->Data);
-                    p->Tries++;
-                } else {
-                    DataAcks.erase(p);
-                    break;
+        if(!DataAcks.empty()) {
+            for (PacketData *p : DataAcks) {
+                if (p != nullptr) {
+                    if (p->Client == nullptr || p->Client->GetTCPSock() == -1) {
+                        DataAcks.erase(p);
+                        break;
+                    }
+                    if (p->Tries < 15) {
+                        UDPSend(p->Client, p->Data);
+                        p->Tries++;
+                    } else {
+                        DataAcks.erase(p);
+                        break;
+                    }
                 }
             }
         }
@@ -306,7 +308,7 @@ void LOOP() {
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         error(Sec("Can't bind socket!") + std::to_string(WSAGetLastError()));
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
+        _Exit(-1);
         //return;
     }
 
@@ -348,7 +350,7 @@ void LOOP() {
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
         error(Sec("Can't bind socket!") + std::string(strerror(errno)));
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
+        _Exit(-1);
         //return;
     }
 

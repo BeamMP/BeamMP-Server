@@ -24,7 +24,7 @@ std::unique_ptr<Lua> LuaConsole;
 void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
     if (cmd == "exit") {
-        exit(0);
+        _Exit(0);
     } else
         LuaConsole->Execute(cmd);
 }
@@ -89,19 +89,19 @@ void SetupConsole() {
     if (stdoutHandle == INVALID_HANDLE_VALUE) {
         error("Invalid handle");
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        exit(GetLastError());
+        _Exit(GetLastError());
     }
     if (!GetConsoleMode(stdoutHandle, &outMode)) {
         error("Invalid console mode");
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        exit(GetLastError());
+        _Exit(GetLastError());
     }
     // Enable ANSI escape codes
     outMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     if (!SetConsoleMode(stdoutHandle, outMode)) {
         error("failed to set console mode");
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        exit(GetLastError());
+        _Exit(GetLastError());
     }
 #else
 #endif // WIN32

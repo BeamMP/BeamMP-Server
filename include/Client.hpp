@@ -61,6 +61,8 @@ public:
 struct ClientInterface{
     std::set<Client*> Clients;
     void RemoveClient(Client *c){
+        Assert(c);
+        c->ClearCars();
         Clients.erase(c);
         delete c;
         c = nullptr;

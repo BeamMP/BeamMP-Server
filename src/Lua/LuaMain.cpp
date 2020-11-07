@@ -50,19 +50,21 @@ void FolderList(const std::string& Path, bool HotSwap) {
 [[noreturn]] void HotSwaps(const std::string& path) {
     DebugPrintTID();
     while (true) {
-        for (auto& Script : PluginEngine) {
-            struct stat Info {};
-            if (stat(Script->GetFileName().c_str(), &Info) != 0) {
-                Script->SetStopThread(true);
-                PluginEngine.erase(Script);
-                info(Sec("[HOTSWAP] Removed : ") + Script->GetFileName().substr(Script->GetFileName().find('\\')));
-                break;
-            }
-            if (Script->GetLastWrite() != fs::last_write_time(Script->GetFileName())) {
-                Script->SetStopThread(true);
-                info(Sec("[HOTSWAP] Updated : ") + Script->GetFileName().substr(Script->GetFileName().find('\\')));
-                Script->SetLastWrite(fs::last_write_time(Script->GetFileName()));
-                Script->Reload();
+        if(!PluginEngine.empty()) {
+            for (auto &Script : PluginEngine) {
+                struct stat Info{};
+                if (stat(Script->GetFileName().c_str(), &Info) != 0) {
+                    Script->SetStopThread(true);
+                    PluginEngine.erase(Script);
+                    info(Sec("[HOTSWAP] Removed : ") + Script->GetFileName().substr(Script->GetFileName().find('\\')));
+                    break;
+                }
+                if (Script->GetLastWrite() != fs::last_write_time(Script->GetFileName())) {
+                    Script->SetStopThread(true);
+                    info(Sec("[HOTSWAP] Updated : ") + Script->GetFileName().substr(Script->GetFileName().find('\\')));
+                    Script->SetLastWrite(fs::last_write_time(Script->GetFileName()));
+                    Script->Reload();
+                }
             }
         }
         FolderList(path, true);

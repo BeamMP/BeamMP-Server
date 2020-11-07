@@ -87,7 +87,7 @@ void LoadConfig(std::ifstream& IFS){
     if(index-1 < 11){
         error(Sec("Outdated/Incorrect config please remove it server will close in 5 secs"));
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        exit(0);
+        _Exit(0);
     }
     IFS.close();
     IFS.open(Sec("Server.cfg"));
@@ -122,7 +122,7 @@ void Default(){
     GenerateConfig();
     warn(Sec("You are required to input the AuthKey"));
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    exit(0);
+    _Exit(0);
 }
 void DebugData(){
     debug(std::string(Sec("Debug : ")) + (Debug?"true":"false"));
@@ -145,7 +145,7 @@ void InitConfig(){
     if(Key.empty()){
         error(Sec("No AuthKey was found"));
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        exit(0);
+        _Exit(0);
     }
     if(Debug)DebugData();
 }

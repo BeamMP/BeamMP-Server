@@ -10,16 +10,6 @@
 #include <sstream>
 #include <thread>
 
-void DebugPrintTIDInternal(const std::string& func) {
-    // we need to print to cout here as we might crash before all console output is handled,
-    // due to segfaults or asserts.
-#ifdef DEBUG
-    MLock.lock();
-    printf("%c[2K\r", 27);
-    std::cout << "(debug build) Thread '" << std::this_thread::get_id() << "' is " << func << std::endl;
-    MLock.unlock();
-#endif // DEBUG
-}
 
 std::string getDate() {
     typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>::type> days;
@@ -67,6 +57,19 @@ void InitLog() {
         LFS.close();
 }
 std::mutex LogLock;
+
+void DebugPrintTIDInternal(const std::string& func) {
+    // we need to print to cout here as we might crash before all console output is handled,
+    // due to segfaults or asserts.
+#ifdef DEBUG
+    LogLock.lock();
+    std::stringstream Print;
+    Print << "(debug build) Thread '" << std::this_thread::get_id() << "' is " << func << "\n";
+    ConsoleOut(Print.str());
+    LogLock.unlock();
+#endif // DEBUG
+}
+
 void addToLog(const std::string& Line) {
     std::ofstream LFS;
     LFS.open(Sec("Server.log"), std::ios_base::app);
@@ -103,7 +106,7 @@ void error(const std::string& toPrint) {
     ConsoleOut(Print);
     addToLog(Print);
     if (ECounter > 10)
-        exit(7);
+        _Exit(7);
     ECounter++;
     LogLock.unlock();
 }

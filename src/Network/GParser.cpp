@@ -8,6 +8,7 @@
 #include "Network.h"
 #include "Logger.h"
 #include "UnixCompat.h"
+#include <memory>
 #include <sstream>
 
 
@@ -47,7 +48,7 @@ void VehicleParser(Client*c,const std::string& Pckt){
                 Packet = "Os:"+c->GetRole()+":"+c->GetName()+":"+std::to_string(c->GetID())+"-"+std::to_string(CarID)+Packet.substr(4);
                 if(c->GetCarCount() >= MaxCars ||
                    TriggerLuaEvent(Sec("onVehicleSpawn"),false,nullptr,
-                                   std::unique_ptr<LuaArg>(new LuaArg{{c->GetID(),CarID,Packet.substr(3)}}),
+                                   std::make_unique<LuaArg>(LuaArg{{c->GetID(),CarID,Packet.substr(3)}}),
                                    true)){
                     Respond(c,Packet,true);
                     std::string Destroy = "Od:" + std::to_string(c->GetID())+"-"+std::to_string(CarID);

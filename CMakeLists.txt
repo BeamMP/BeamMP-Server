@@ -16,6 +16,7 @@ elseif (WIN32)
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
     STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 endif ()
 
 find_package(Boost 1.70.0 REQUIRED COMPONENTS system thread)
@@ -23,12 +24,12 @@ file(GLOB source_files "src/*.cpp" "src/*/*.cpp" "include/*.h" "include/*/*.h" "
 add_executable(BeamMP-Server ${source_files})
 
 target_include_directories(BeamMP-Server SYSTEM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
-target_include_directories(BeamMP-Server SYSTEM PRIVATE ${LUA_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
+target_include_directories(BeamMP-Server SYSTEM PUBLIC ${LUA_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 
 if (UNIX)
     find_package(Lua 5.3 REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE )
-    target_link_libraries(BeamMP-Server curl krb5 z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES})
+    target_link_libraries(BeamMP-Server curl z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES})
 elseif (WIN32)
     include(FindLua)
     find_package(CURL CONFIG REQUIRED)

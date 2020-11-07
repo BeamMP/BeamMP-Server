@@ -437,7 +437,7 @@ int lua_RemoteEvent(lua_State* L) {
     return 0;
 }
 int lua_ServerExit(lua_State*) {
-    exit(0);
+    _Exit(0);
 }
 int lua_Set(lua_State* L) {
     int Args = lua_gettop(L);

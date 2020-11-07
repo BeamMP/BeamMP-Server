@@ -46,7 +46,7 @@ void SyncData(){
     }catch(std::exception const& e){
         error(e.what());
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        exit(0);
+        _Exit(0);
     }*/
 }
 
