@@ -6,6 +6,7 @@
 #include "Client.hpp"
 #include "Settings.h"
 #include "Logger.h"
+#include <sstream>
 #include <thread>
 #include <chrono>
 #include <future>
@@ -21,14 +22,16 @@ std::string GetPlayers(){
     return Return;
 }
 std::string GenerateCall(){
-    std::string State = Private ? "true" : "false";
-    std::string ret = "uuid=";
-    ret += Key+"&players="+std::to_string(CI->Size())+"&maxplayers="+std::to_string(MaxPlayers)+"&port="
-    + std::to_string(Port) + "&map=" + MapName + "&private="+State+"&version="+GetSVer()+
-    "&clientversion="+GetCVer()+"&name="+ServerName+"&pps="+StatReport+"&modlist="+FileList+
-    "&modstotalsize="+std::to_string(MaxModSize)+"&modstotal="+std::to_string(ModsLoaded)
-    +"&playerslist="+GetPlayers()+"&desc="+ServerDesc;
-    return ret;
+    std::stringstream Ret;
+    Ret << "uuid=" << Key << "&players=" << CI->Size()
+    << "&maxplayers=" << MaxPlayers << "&port=" << Port
+    << "&map=" << MapName << "&private=" << (Private ? "true" : "false")
+    << "&version=" << GetSVer() << "&clientversion=" << GetCVer()
+    << "&name=" << ServerName << "&pps=" << StatReport
+    << "&modlist=" << FileList << "&modstotalsize=" << MaxModSize
+    << "&modstotal=" << ModsLoaded << "&playerslist=" << GetPlayers()
+    << "&desc=" << ServerDesc;
+    return Ret.str();
 }
 std::string RunPromise(const std::string& IP, const std::string& R) {
     std::packaged_task<std::string()> task([&]() { return PostHTTP(IP,R); });

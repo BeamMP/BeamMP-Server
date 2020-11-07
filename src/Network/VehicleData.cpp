@@ -101,28 +101,11 @@ int SplitID() {
 void SendLarge(Client* c, std::string Data) {
     Assert(c);
     Data = Data.substr(0, Data.find(char(0)));
-    int ID = PacktID();
-    std::string Packet;
-    if (Data.length() > 1000) {
-        std::string pckt = Data;
-        int S = 1, Split = int(ceil(float(pckt.length()) / 1000));
-        int SID = SplitID();
-        while (pckt.length() > 1000) {
-            Packet = "SC|" + std::to_string(S) + "|" + std::to_string(Split) + "|" + std::to_string(ID) + "|" + std::to_string(SID) + "|" + pckt.substr(0, 1000);
-            DataAcks.insert(new PacketData { ID, c, Packet, 1 });
-            UDPSend(c, Packet);
-            pckt = pckt.substr(1000);
-            S++;
-            ID = PacktID();
-        }
-        Packet = "SC|" + std::to_string(S) + "|" + std::to_string(Split) + "|" + std::to_string(ID) + "|" + std::to_string(SID) + "|" + pckt;
-        DataAcks.insert(new PacketData { ID, c, Packet, 1 });
-        UDPSend(c, Packet);
-    } else {
-        Packet = "BD:" + std::to_string(ID) + ":" + Data;
-        DataAcks.insert(new PacketData { ID, c, Packet, 1 });
-        UDPSend(c, Packet);
+    if (Data.length() > 400) {
+        std::string CMP(Comp(Data));
+        Data = "ABG:" + CMP;
     }
+    TCPSend(c,Data);
 }
 struct HandledC {
     size_t Pos = 0;

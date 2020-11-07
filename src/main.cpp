@@ -1,8 +1,10 @@
-#include "Startup.h"
+
 #include "CustomAssert.h"
 #include <curl/curl.h>
-#include <thread>
+#include "Startup.h"
 #include <iostream>
+#include <thread>
+
 [[noreturn]] void loop(){
     DebugPrintTID();
     while(true){
@@ -10,6 +12,7 @@
         std::this_thread::sleep_for(std::chrono::milliseconds(600));
     }
 }
+
 int main(int argc, char* argv[]) {
     DebugPrintTID();
     // curl needs to be initialized to properly deallocate its resources later

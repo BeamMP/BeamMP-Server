@@ -9,7 +9,6 @@
 #include <arpa/inet.h>
 #define SOCKET int
 #endif
-#include "Buffer.h"
 #include "CustomAssert.h"
 #include <string>
 #include <vector>
@@ -55,7 +54,6 @@ public:
     int GetCarCount();
     void ClearCars();
     int GetStatus();
-    Buffer Handler;
     int GetID();
 };
 struct ClientInterface{

@@ -30,16 +30,15 @@ void Respond(Client*c, const std::string& MSG, bool Rel){
         if(C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
         else TCPSend(c,MSG);
     }else UDPSend(c,MSG);
+
 }
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
-    if (!Self) {
-        Assert(c);
-    }
+    if (!Self)Assert(c);
     char C = Data.at(0);
     for(Client*client : CI->Clients){
         if(client != nullptr) {
             if (Self || client != c) {
-                if (client->isSynced || (C == 'O' && Data.at(1) == 's')) {
+                if (client->isSynced) {
                     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
                         if (C == 'O' || C == 'T' ||
                         Data.length() > 1000)SendLarge(client, Data);
