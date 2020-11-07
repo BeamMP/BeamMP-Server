@@ -35,6 +35,8 @@ std::string PostHTTP(const std::string& IP,const std::string& Fields){
     Assert(curl);
     if(curl) {
         curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
+        /*curl_easy_setopt(curl, CURLOPT_URL, "95.216.35.232/heartbeatv2");
+        curl_easy_setopt(curl, CURLOPT_PORT, 3600);*/
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, Fields.size());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, Fields.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);

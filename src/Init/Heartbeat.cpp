@@ -38,6 +38,7 @@ void Heartbeat(){
         if(!CustomIP.empty())R+="&ip="+CustomIP;
         std::string link = Sec("https://beammp.com/heartbeatv2");
         T = PostHTTP(link,R);
+
         if(T.find_first_not_of(Sec("20")) != std::string::npos){
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::seconds(10));
