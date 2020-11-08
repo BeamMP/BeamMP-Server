@@ -152,7 +152,7 @@ static void ProcessCompositeInput() {
         CInputBuff += CompositeInput;
     }
     // ensure history doesnt grow too far beyond a max
-    static constexpr size_t MaxHistory = 30;
+    static constexpr size_t MaxHistory = 10;
     if (ConsoleHistory.size() > 2 * MaxHistory) {
         std::vector<std::string> NewHistory(ConsoleHistory.begin() + ConsoleHistory.size() - MaxHistory, ConsoleHistory.end());
         ConsoleHistory = std::move(NewHistory);
