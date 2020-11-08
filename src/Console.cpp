@@ -17,6 +17,7 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include <mutex>
 #include <string>
 #include <thread>
+#include <array>
 
 std::vector<std::string> QConsoleOut;
 std::string CInputBuff;

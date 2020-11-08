@@ -37,7 +37,6 @@ void UDPSend(Client* c, std::string Data) {
         return;
     sockaddr_in Addr = c->GetUDPAddr();
     socklen_t AddrSize = sizeof(c->GetUDPAddr());
-    Data = Data.substr(0, Data.find(char(0)));
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
@@ -100,7 +99,6 @@ int SplitID() {
 }
 void SendLarge(Client* c, std::string Data) {
     Assert(c);
-    Data = Data.substr(0, Data.find(char(0)));
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
@@ -174,7 +172,7 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
 #endif // WIN32
         return "";
     }
-    return Ret;
+    return Ret.substr(0,Rcv);
 }
 
 SplitData* GetSplit(int SplitID) {

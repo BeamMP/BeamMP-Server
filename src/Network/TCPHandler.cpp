@@ -13,19 +13,21 @@ void TCPSend(Client*c,const std::string&Data){
     Assert(c);
     if(c == nullptr)return;
     // Size is BIG ENDIAN now, use only for header!
-    auto Size = htonl(int32_t(Data.size()));
+    //auto Size = htonl(int32_t(Data.size()));
+    ///TODO : BIG ENDIAN for other OS
+    int32_t Size, Sent, Temp;
     std::string Send(4,0);
+    Size = int32_t(Data.size());
     memcpy(&Send[0],&Size,sizeof(Size));
     Send += Data;
-    Size = int32_t(Send.size());
-    int32_t Sent = 0,Temp;
-
+    Sent = 0;
+    Size += 4;
     do {
         Temp = send(c->GetTCPSock(), &Send[Sent], Size - Sent, 0);
         if (Temp == 0) {
             if (c->GetStatus() > -1)c->SetStatus(-1);
             return;
-        } else if (Sent < 0) {
+        } else if (Temp < 0) {
             if (c->GetStatus() > -1)c->SetStatus(-1);
             closesocket(c->GetTCPSock());
             return;
@@ -55,15 +57,14 @@ bool CheckBytes(Client*c,int32_t BytesRcv){
 
 void TCPRcv(Client*c){
     Assert(c);
-    static thread_local int32_t Header,BytesRcv,Temp;
+    int32_t Header,BytesRcv,Temp;
     if(c == nullptr || c->GetStatus() < 0)return;
     #ifdef WIN32
         BytesRcv = recv(c->GetTCPSock(), reinterpret_cast<char*>(&Header), sizeof(Header),0);
     #else
         BytesRcv = recv(c->GetTCPSock(), reinterpret_cast<void*>(&Header), sizeof(Header), 0);
     #endif
-    // convert back to host endianness
-    Header = ntohl(Header);
+
 #ifdef DEBUG
     //debug(std::string(__func__) + Sec(": expecting ") + std::to_string(Header) + Sec(" bytes."));
 #endif // DEBUG
@@ -74,16 +75,15 @@ void TCPRcv(Client*c){
         return;
     }
     // TODO: std::vector
-    char* Data = new char[Header];
-    Assert(Data);
+    std::vector<char> Data(Header);
     BytesRcv = 0;
     do{
-        Temp = recv(c->GetTCPSock(), Data+BytesRcv, Header-BytesRcv,0);
+        Temp = recv(c->GetTCPSock(), &Data[BytesRcv], Header-BytesRcv,0);
         if(!CheckBytes(c,Temp)){
 #ifdef DEBUG
             error(std::string(__func__) + Sec(": failed on CheckBytes in while(BytesRcv < Header)"));
 #endif // DEBUG
-            delete[] Data;
+
             return;
         }
 #ifdef DEBUG
@@ -94,11 +94,14 @@ void TCPRcv(Client*c){
 #ifdef DEBUG
     //debug(std::string(__func__) + Sec(": finished recv with Temp: ") + std::to_string(Temp) + Sec(", BytesRcv: ") + std::to_string(BytesRcv));
 #endif // DEBUG
-    std::string Ret = std::string(Data,Header);
-    delete[] Data;
+    std::string Ret(Data.data(),Header);
+
     if (Ret.substr(0, 4) == "ABG:") {
         Ret = DeComp(Ret.substr(4));
     }
+#ifdef DEBUG
+    //debug("Parsing from " + c->GetName() + " -> " +std::to_string(Ret.size()));
+#endif
     GParser(c,Ret);
 }
 

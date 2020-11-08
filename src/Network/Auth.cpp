@@ -255,7 +255,7 @@ void TCPServerMain(){
         std::thread ID(Identify,client);
         ID.detach();
         } catch (const std::exception& e) {
-            error(Sec("fatal: ") + std::string(e));
+            error(Sec("fatal: ") + std::string(e.what()));
         }
     }while(client);
 

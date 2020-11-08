@@ -87,7 +87,7 @@ int Dec(int value,int d,int n){
 
 #ifdef WIN32
 int Handle(EXCEPTION_POINTERS *ep,char* Origin){
-    Assert(false);
+    //Assert(false);
     std::stringstream R;
     R << Sec("Code : ") << std::hex
     << ep->ExceptionRecord->ExceptionCode
