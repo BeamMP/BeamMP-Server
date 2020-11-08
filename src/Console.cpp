@@ -120,7 +120,6 @@ void SetupConsole() {
 #endif // WIN32
 }
 
-#ifndef WIN32
 static std::vector<std::string> ConsoleHistory {};
 static size_t ConsoleHistoryReadIndex { 0 };
 
@@ -164,14 +163,12 @@ static void ProcessCompositeInput() {
         ConsoleHistoryReadIndex = ConsoleHistory.size();
     }
 }
-#endif // WIN32
 
 [[noreturn]] void ReadCin() {
     DebugPrintTID();
     while (true) {
         int In = _getch();
         //info(std::to_string(In));
-#ifndef WIN32
         if (CompositeInputExpected) {
             CompositeInput += In;
             if (CompositeInput.size() == 2) {
@@ -180,13 +177,10 @@ static void ProcessCompositeInput() {
             }
             continue;
         }
-#endif // WIN32
         if (In == 13 || In == '\n') {
             if (!CInputBuff.empty()) {
                 HandleInput(CInputBuff);
-#ifndef WIN32
                 ConsoleHistoryAdd(CInputBuff);
-#endif // WIN32
                 CInputBuff.clear();
             }
         } else if (In == 8 || In == 127) {
@@ -196,12 +190,10 @@ static void ProcessCompositeInput() {
             CInputBuff = "exit";
             HandleInput(CInputBuff);
             CInputBuff.clear();
-#ifndef WIN32
         } else if (In == 27) {
             // escape char, assume stuff follows
             CompositeInputExpected = true;
             CompositeInput.clear();
-#endif // WIN32
         } else if (!isprint(In)) {
             // ignore
         } else {
