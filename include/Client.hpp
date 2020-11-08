@@ -82,4 +82,4 @@ struct ClientInterface{
     }
 };
 
-extern ClientInterface* CI;
+extern std::unique_ptr<ClientInterface> CI;

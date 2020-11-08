@@ -174,7 +174,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
         closesocket(TCPSock);
         return;
     }
-    DebugPrintTIDInternal(std::string("Client(") + Name + ")");
+    // DebugPrintTIDInternal(std::string("Client(") + Name + ")");
     debug(Sec("Name -> ") + Name + Sec(", Role -> ") + Role +  Sec(", ID -> ") + DID);
     for(auto& c : CI->Clients){
         if(c != nullptr){

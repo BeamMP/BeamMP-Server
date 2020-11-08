@@ -1,6 +1,7 @@
 #include "Network.h"
 #include <thread>
-ClientInterface* CI;
+#include <memory>
+std::unique_ptr<ClientInterface> CI;
 void NetMain(){
     std::thread TCP(TCPServerMain);
     TCP.detach();
