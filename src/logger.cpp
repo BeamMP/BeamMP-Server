@@ -9,7 +9,37 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <shared_mutex>
+#include <unordered_map>
 
+using RWMutex = std::shared_mutex;
+using ReadLock = std::shared_lock<RWMutex>;
+using WriteLock = std::unique_lock<RWMutex>;
+
+static RWMutex ThreadNameMapMutex;
+static std::unordered_map<std::thread::id, std::string> ThreadNameMap;
+
+std::string ThreadName() {
+    ReadLock lock(ThreadNameMapMutex);
+    std::string Name;
+    if (ThreadNameMap.find(std::this_thread::get_id()) != ThreadNameMap.end()) {
+        Name = ThreadNameMap.at(std::this_thread::get_id());
+    } else {
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        Name = ss.str();
+    }
+    lock.unlock();
+    return Name;
+}
+
+void SetThreadName(const std::string& Name, bool overwrite) {
+    WriteLock lock(ThreadNameMapMutex);
+    if (overwrite || ThreadNameMap.find(std::this_thread::get_id()) == ThreadNameMap.end()) {
+        ThreadNameMap[std::this_thread::get_id()] = Name;
+    }
+    lock.unlock();
+}
 
 std::string getDate() {
     typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>::type> days;
@@ -46,14 +76,11 @@ std::string getDate() {
         << Min << ":"
         << Secs
         << "] "
-#ifdef DEBUG
-        << std::this_thread::get_id()
+        << ThreadName()
         << " ";
-#else
-           ;
-#endif
     return date.str();
 }
+
 void InitLog() {
     std::ofstream LFS;
     LFS.open(Sec("Server.log"));
@@ -64,9 +91,10 @@ void InitLog() {
 }
 std::mutex LogLock;
 
-void DebugPrintTIDInternal(const std::string& func) {
+void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
     // we need to print to cout here as we might crash before all console output is handled,
     // due to segfaults or asserts.
+    SetThreadName(func, overwrite);
 #ifdef DEBUG
     LogLock.lock();
     std::stringstream Print;
