@@ -27,6 +27,9 @@ void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
     if (cmd == "exit") {
         _Exit(0);
+    } else if (cmd == "clear" ||  cmd == "cls") {
+        // 2J is clearscreen, H is reset position to top-left
+        ConsoleOut("\x1b[2J\x1b[H");
     } else {
         LuaConsole->Execute(cmd);
     }
@@ -175,7 +178,7 @@ static void ProcessCompositeInput() {
     DebugPrintTID();
     while (true) {
         int In = _getch();
-        //info(std::to_string(In));
+        // info(std::to_string(In));
         if (CompositeInputExpected) {
             CompositeInput += char(In);
 #ifdef WIN32
@@ -199,6 +202,10 @@ static void ProcessCompositeInput() {
                 CInputBuff.pop_back();
         } else if (In == 4) {
             CInputBuff = "exit";
+            HandleInput(CInputBuff);
+            CInputBuff.clear();
+        } else if (In == 12) {
+            CInputBuff = "clear";
             HandleInput(CInputBuff);
             CInputBuff.clear();
 #ifdef WIN32
