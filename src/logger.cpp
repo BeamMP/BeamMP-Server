@@ -45,7 +45,13 @@ std::string getDate() {
         << Hour << ":"
         << Min << ":"
         << Secs
-        << "] ";
+        << "] "
+#ifdef DEBUG
+        << std::this_thread::get_id()
+        << " ";
+#else
+           ;
+#endif
     return date.str();
 }
 void InitLog() {

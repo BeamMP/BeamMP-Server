@@ -42,6 +42,9 @@ void VehicleParser(Client*c,const std::string& Pckt){
     std::string Data = Packet.substr(3),pid,vid;
     switch(Code){ //Spawned Destroyed Switched/Moved NotFound Reset
         case 's':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'Os' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             if(Data.at(0) == '0'){
                 int CarID = c->GetOpenCarID();
                 debug(c->GetName() + Sec(" created a car with ID ") + std::to_string(CarID));
@@ -61,6 +64,9 @@ void VehicleParser(Client*c,const std::string& Pckt){
             }
             return;
         case 'c':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'Oc' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             pid = Data.substr(0,Data.find('-'));
             vid = Data.substr(Data.find('-')+1,Data.find(':',1)-Data.find('-')-1);
             if(pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos){
@@ -81,6 +87,9 @@ void VehicleParser(Client*c,const std::string& Pckt){
             }
             return;
         case 'd':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'Od' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             pid = Data.substr(0,Data.find('-'));
             vid = Data.substr(Data.find('-')+1);
             if(pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos){
@@ -96,11 +105,14 @@ void VehicleParser(Client*c,const std::string& Pckt){
             }
             return;
         case 'r':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'Or' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             SendToAll(c,Packet,false,true);
             return;
         default:
 #ifdef DEBUG
-            warn(std::string(Sec("possibly not implemented: '") + Packet + Sec("'")));
+            warn(std::string(Sec("possibly not implemented: '") + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")")));
 #endif // DEBUG
             return;
     }
@@ -161,9 +173,8 @@ void HandleEvent(Client*c ,const std::string&Data){
 
 void GlobalParser(Client*c, const std::string& Pack){
     Assert(c);
-    [[maybe_unused]] static int lastRecv = 0;
     if(Pack.empty() || c == nullptr)return;
-    std::string Packet = Pack.substr(0,Pack.find(char(0)));
+    std::string Packet = Pack.substr(0,strlen(Pack.c_str()));
     std::string pct;
     char Code = Packet.at(0);
 
@@ -176,6 +187,9 @@ void GlobalParser(Client*c, const std::string& Pack){
 
     switch (Code) {
         case 'P': // initial connection
+#ifdef DEBUG
+            debug(std::string(Sec("got 'P' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             Respond(c, Sec("P") + std::to_string(c->GetID()),true);
             SyncClient(c);
             return;
@@ -190,9 +204,15 @@ void GlobalParser(Client*c, const std::string& Pack){
             ParseVeh(c,Packet);
             return;
         case 'J':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'J' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             SendToAll(c,Packet,false,true);
             return;
         case 'C':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'C' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             if(Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)break;
             if (TriggerLuaEvent(Sec("onChatMessage"), false, nullptr,
                                 std::unique_ptr<LuaArg>(new LuaArg{
@@ -201,6 +221,9 @@ void GlobalParser(Client*c, const std::string& Pack){
             SendToAll(nullptr, Packet, true, true);
             return;
         case 'E':
+#ifdef DEBUG
+            debug(std::string(Sec("got 'E' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
             HandleEvent(c,Packet);
             return;
         default:
