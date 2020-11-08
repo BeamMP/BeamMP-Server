@@ -132,7 +132,7 @@ static bool CompositeInputExpected { false };
 
 static void ProcessCompositeInput() {
 #ifdef WIN32
-    } else if (CompositeInput.size() == 1 && memcmp(CompositeInput.data(), std::array<char, 1> { 'H' }.data(), 1) == 0) {
+    if (CompositeInput.size() == 1 && memcmp(CompositeInput.data(), std::array<char, 1> { 72 }.data(), 1) == 0) {
 #else // unix
     if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 65 }.data(), 2) == 0) {
 #endif // WIN32
@@ -145,7 +145,7 @@ static void ProcessCompositeInput() {
             CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
         }
 #ifdef WIN32
-    } else if (CompositeInput.size() == 1 && memcmp(CompositeInput.data(), std::array<char, 1> { 'P' }.data(), 1) == 0) {
+    } else if (CompositeInput.size() == 1 && memcmp(CompositeInput.data(), std::array<char, 1> { 80 }.data(), 1) == 0) {
 #else // unix
     } else if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 66 }.data(), 2) == 0) {
 #endif // WIN32
@@ -201,7 +201,11 @@ static void ProcessCompositeInput() {
             CInputBuff = "exit";
             HandleInput(CInputBuff);
             CInputBuff.clear();
+#ifdef WIN32
+        } else if (In == 224) {
+#else // unix
         } else if (In == 27) {
+#endif // WIN32
             // escape char, assume stuff follows
             CompositeInputExpected = true;
             CompositeInput.clear();
