@@ -64,31 +64,31 @@ void ConsoleOut(const std::string& msg) {
 static struct termios old, current;
 
 void initTermios(int echo) {
-  tcgetattr(0, &old); /* grab old terminal i/o settings */
-  current = old; /* make new settings same as old settings */
-  current.c_lflag &= ~ICANON; /* disable buffered i/o */
-  if (echo) {
-      current.c_lflag |= ECHO; /* set echo mode */
-  } else {
-      current.c_lflag &= ~ECHO; /* set no echo mode */
-  }
-  tcsetattr(0, TCSANOW, &current); /* use these new terminal i/o settings now */
+    tcgetattr(0, &old); /* grab old terminal i/o settings */
+    current = old; /* make new settings same as old settings */
+    current.c_lflag &= ~ICANON; /* disable buffered i/o */
+    if (echo) {
+        current.c_lflag |= ECHO; /* set echo mode */
+    } else {
+        current.c_lflag &= ~ECHO; /* set no echo mode */
+    }
+    tcsetattr(0, TCSANOW, &current); /* use these new terminal i/o settings now */
 }
 
 void resetTermios(void) {
-  tcsetattr(0, TCSANOW, &old);
+    tcsetattr(0, TCSANOW, &old);
 }
 
 char getch_(int echo) {
-  char ch;
-  initTermios(echo);
-  ch = getchar();
-  resetTermios();
-  return ch;
+    char ch;
+    initTermios(echo);
+    ch = getchar();
+    resetTermios();
+    return ch;
 }
 
 char _getch(void) {
-  return getch_(0);
+    return getch_(0);
 }
 
 #endif // WIN32
@@ -118,14 +118,65 @@ void SetupConsole() {
 #endif // WIN32
 }
 
+static std::vector<std::string> ConsoleHistory {};
+static size_t ConsoleHistoryReadIndex { 0 };
+
+static inline void ConsoleHistoryAdd(const std::string& cmd) {
+    ConsoleHistory.push_back(cmd);
+    ConsoleHistoryReadIndex = ConsoleHistory.size();
+}
+static std::string CompositeInput;
+static bool CompositeInputExpected { false };
+
+static void ProcessCompositeInput() {
+    if (memcmp(CompositeInput.data(), std::array<char, 2> { 91, 65 }.data(), 2) == 0) {
+        // UP ARROW
+        if (!ConsoleHistory.empty()) {
+            if (ConsoleHistoryReadIndex != 0) {
+                ConsoleHistoryReadIndex -= 1;
+            }
+            CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
+        }
+    } else if (memcmp(CompositeInput.data(), std::array<char, 2> { 91, 66 }.data(), 2) == 0) {
+        // DOWN ARROW
+        if (!ConsoleHistory.empty()) {
+            if (ConsoleHistoryReadIndex != ConsoleHistory.size() - 1) {
+                ConsoleHistoryReadIndex += 1;
+                CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
+            } else {
+                CInputBuff = "";
+            }
+        }
+    } else {
+        // not composite input, we made a mistake, so lets just add it to the buffer like usual
+        CInputBuff += CompositeInput;
+    }
+    // ensure history doesnt grow too far beyond a max
+    static constexpr size_t MaxHistory = 30;
+    if (ConsoleHistory.size() > 2 * MaxHistory) {
+        std::vector<std::string> NewHistory(ConsoleHistory.begin() + ConsoleHistory.size() - MaxHistory, ConsoleHistory.end());
+        ConsoleHistory = std::move(NewHistory);
+        ConsoleHistoryReadIndex = ConsoleHistory.size();
+    }
+}
+
 [[noreturn]] void ReadCin() {
     DebugPrintTID();
     while (true) {
         int In = _getch();
-        // info(std::to_string(In));
+        //info(std::to_string(In));
+        if (CompositeInputExpected) {
+            CompositeInput += In;
+            if (CompositeInput.size() == 2) {
+                CompositeInputExpected = false;
+                ProcessCompositeInput();
+            }
+            continue;
+        }
         if (In == 13 || In == '\n') {
             if (!CInputBuff.empty()) {
                 HandleInput(CInputBuff);
+                ConsoleHistoryAdd(CInputBuff);
                 CInputBuff.clear();
             }
         } else if (In == 8 || In == 127) {
@@ -135,6 +186,10 @@ void SetupConsole() {
             CInputBuff = "exit";
             HandleInput(CInputBuff);
             CInputBuff.clear();
+        } else if (In == 27) {
+            // escape char, assume stuff follows
+            CompositeInputExpected = true;
+            CompositeInput.clear();
         } else if (!isprint(In)) {
             // ignore
         } else {
