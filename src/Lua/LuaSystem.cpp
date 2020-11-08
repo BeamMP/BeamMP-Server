@@ -240,9 +240,10 @@ int lua_Sleep(lua_State* L) {
     return 1;
 }
 Client* GetClient(int ID) {
-    for (Client* c : CI->Clients) {
-        if (c != nullptr && c->GetID() == ID)
-            return c;
+    for (auto& c : CI->Clients) {
+        if (c != nullptr && c->GetID() == ID) {
+            return c.get();
+        }
     }
     return nullptr;
 }
@@ -295,7 +296,7 @@ int lua_GetDID(lua_State* L) {
 int lua_GetAllPlayers(lua_State* L) {
     lua_newtable(L);
     int i = 1;
-    for (Client* c : CI->Clients) {
+    for (auto& c : CI->Clients) {
         if (c == nullptr)
             continue;
         lua_pushinteger(L, c->GetID());

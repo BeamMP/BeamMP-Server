@@ -125,9 +125,9 @@ void SyncClient(Client*c){
     Respond(c,Sec("Sn")+c->GetName(),true);
     SendToAll(c,Sec("JWelcome ")+c->GetName()+"!",false,true);
     TriggerLuaEvent(Sec("onPlayerJoin"),false,nullptr,std::unique_ptr<LuaArg>(new LuaArg{{c->GetID()}}),false);
-    for (Client*client : CI->Clients) {
+    for (auto& client : CI->Clients) {
         if(client != nullptr){
-            if (client != c) {
+            if (client.get() != c) {
                 for (VData *v : client->GetAllCars()) {
                     if(v != nullptr){
                         Respond(c, v->Data, true);

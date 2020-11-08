@@ -14,6 +14,7 @@
 #include <vector>
 #include <chrono>
 #include <set>
+#include <algorithm>
 
 struct VData{
     int ID = -1;
@@ -57,17 +58,23 @@ public:
     int GetID();
 };
 struct ClientInterface{
-    std::set<Client*> Clients;
-    void RemoveClient(Client *c){
+    std::set<std::unique_ptr<Client>> Clients;
+    void RemoveClient(Client*& c){
         Assert(c);
         c->ClearCars();
-        Clients.erase(c);
-        delete c;
+        auto Iter = std::find_if(Clients.begin(), Clients.end(), [&](auto& ptr) {
+            return c == ptr.get();
+        });
+        Assert(Iter != Clients.end());
+        if (Iter == Clients.end()) {
+            return;
+        }
+        Clients.erase(Iter);
         c = nullptr;
     }
-    void AddClient(Client *c){
+    void AddClient(Client*&& c){
         Assert(c);
-        Clients.insert(c);
+        Clients.insert(std::move(std::unique_ptr<Client>(c)));
     }
     int Size(){
         return int(Clients.size());

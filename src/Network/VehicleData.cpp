@@ -311,11 +311,11 @@ void LOOP() {
             ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
             inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
             uint8_t ID = Data.at(0) - 1;
-            for (Client* c : CI->Clients) {
+            for (auto& c : CI->Clients) {
                 if (c != nullptr && c->GetID() == ID) {
                     c->SetUDPAddr(client);
                     c->isConnected = true;
-                    UDPParser(c, Data.substr(2));
+                    UDPParser(c.get(), Data.substr(2));
                 }
             }
         } catch (const std::exception& e) {
@@ -357,11 +357,11 @@ void LOOP() {
             ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
             inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
             uint8_t ID = uint8_t(Data.at(0)) - 1;
-            for (Client* c : CI->Clients) {
+            for (auto& c : CI->Clients) {
                 if (c != nullptr && c->GetID() == ID) {
                     c->SetUDPAddr(client);
                     c->isConnected = true;
-                    UDPParser(c, Data.substr(2));
+                    UDPParser(c.get(), Data.substr(2));
                 }
             }
         } catch (const std::exception& e) {

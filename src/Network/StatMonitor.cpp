@@ -14,7 +14,7 @@ void Monitor() {
         StatReport = "-";
         return;
     }
-    for (Client *c : CI->Clients) {
+    for (auto& c : CI->Clients) {
         if (c != nullptr && c->GetCarCount() > 0) {
             C++;
             V += c->GetCarCount();

@@ -14,7 +14,7 @@
 void WebsocketInit();
 std::string GetPlayers(){
     std::string Return;
-    for(Client* c : CI->Clients){
+    for(auto& c : CI->Clients){
         if(c != nullptr){
             Return += c->GetName() + ";";
         }

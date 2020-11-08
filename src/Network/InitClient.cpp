@@ -12,7 +12,7 @@ int OpenID(){
     bool found;
     do {
         found = true;
-        for (Client *c : CI->Clients){
+        for (auto& c : CI->Clients){
             if(c != nullptr){
                if(c->GetID() == ID){
                     found = false;
@@ -35,15 +35,15 @@ void Respond(Client*c, const std::string& MSG, bool Rel){
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     if (!Self)Assert(c);
     char C = Data.at(0);
-    for(Client*client : CI->Clients){
+    for(auto& client : CI->Clients){
         if(client != nullptr) {
-            if (Self || client != c) {
+            if (Self || client.get() != c) {
                 if (client->isSynced) {
                     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
                         if (C == 'O' || C == 'T' ||
-                        Data.length() > 1000)SendLarge(client, Data);
-                        else TCPSend(client, Data);
-                    } else UDPSend(client, Data);
+                        Data.length() > 1000)SendLarge(client.get(), Data);
+                        else TCPSend(client.get(), Data);
+                    } else UDPSend(client.get(), Data);
                 }
             }
         }
@@ -51,7 +51,7 @@ void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
 }
 void UpdatePlayers(){
     std::string Packet = Sec("Ss") + std::to_string(CI->Size())+"/"+std::to_string(MaxPlayers) + ":";
-    for (Client*c : CI->Clients) {
+    for (auto& c : CI->Clients) {
         if(c != nullptr)Packet += c->GetName() + ",";
     }
     Packet = Packet.substr(0,Packet.length()-1);

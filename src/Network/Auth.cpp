@@ -81,7 +81,7 @@ void Check(Hold* S){
 }
 int Max(){
     int M = MaxPlayers;
-    for(Client*c : CI->Clients){
+    for(auto& c : CI->Clients){
         if(c != nullptr){
             if(c->GetRole() == Sec("MDEV"))M++;
         }
@@ -94,8 +94,9 @@ void CreateClient(SOCKET TCPSock,const std::string &Name, const std::string &DID
     c->SetName(Name);
     c->SetRole(Role);
     c->SetDID(DID);
-    CI->AddClient(c);
-    InitClient(c);
+    Client& Client = *c;
+    CI->AddClient(std::move(c));
+    InitClient(&Client);
 }
 std::pair<int,int> Parse(const std::string& msg){
     std::stringstream ss(msg);
@@ -175,7 +176,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     }
     DebugPrintTIDInternal(std::string("Client(") + Name + ")");
     debug(Sec("Name -> ") + Name + Sec(", Role -> ") + Role +  Sec(", ID -> ") + DID);
-    for(Client*c: CI->Clients){
+    for(auto& c : CI->Clients){
         if(c != nullptr){
             if(c->GetDID() == DID){
                 error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
