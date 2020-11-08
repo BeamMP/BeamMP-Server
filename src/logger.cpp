@@ -7,14 +7,10 @@
 #include <chrono>
 #include <fstream>
 #include <mutex>
-#include <shared_mutex>
 #include <sstream>
 #include <thread>
 #include <unordered_map>
-
-using RWMutex = std::shared_mutex;
-using ReadLock = std::shared_lock<RWMutex>;
-using WriteLock = std::unique_lock<RWMutex>;
+#include "RWMutex.h"
 
 static RWMutex ThreadNameMapMutex;
 static std::unordered_map<std::thread::id, std::string> ThreadNameMap;
@@ -29,7 +25,6 @@ std::string ThreadName() {
         ss << std::this_thread::get_id();
         Name = ss.str();
     }
-    lock.unlock();
     return Name;
 }
 
@@ -38,7 +33,6 @@ void SetThreadName(const std::string& Name, bool overwrite) {
     if (overwrite || ThreadNameMap.find(std::this_thread::get_id()) == ThreadNameMap.end()) {
         ThreadNameMap[std::this_thread::get_id()] = Name;
     }
-    lock.unlock();
 }
 
 std::string getDate() {

@@ -27,8 +27,9 @@ void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
     if (cmd == "exit") {
         _Exit(0);
-    } else
+    } else {
         LuaConsole->Execute(cmd);
+    }
 }
 
 void ProcessOut() {
