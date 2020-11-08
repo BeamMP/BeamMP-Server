@@ -12,7 +12,8 @@
 void TCPSend(Client*c,const std::string&Data){
     Assert(c);
     if(c == nullptr)return;
-    auto Size = int32_t(Data.size());
+    // Size is BIG ENDIAN now, use only for header!
+    auto Size = htonl(int32_t(Data.size()));
     std::string Send(4,0);
     memcpy(&Send[0],&Size,sizeof(Size));
     Send += Data;
@@ -61,6 +62,8 @@ void TCPRcv(Client*c){
     #else
         BytesRcv = recv(c->GetTCPSock(), reinterpret_cast<void*>(&Header), sizeof(Header), 0);
     #endif
+    // convert back to host endianness
+    Header = ntohl(Header);
 #ifdef DEBUG
     //debug(std::string(__func__) + Sec(": expecting ") + std::to_string(Header) + Sec(" bytes."));
 #endif // DEBUG
