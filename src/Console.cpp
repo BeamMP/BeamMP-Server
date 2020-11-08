@@ -131,7 +131,11 @@ static std::string CompositeInput;
 static bool CompositeInputExpected { false };
 
 static void ProcessCompositeInput() {
+#ifdef WIN32
+    if (CompositeInput == "H") {
+#else // unix
     if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 65 }.data(), 2) == 0) {
+#endif // WIN32
         // UP ARROW
         info(std::to_string(ConsoleHistoryReadIndex));
         if (!ConsoleHistory.empty()) {
@@ -140,7 +144,11 @@ static void ProcessCompositeInput() {
             }
             CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
         }
+#ifdef WIN32
+    } else if (CompositeInput == "P") {
+#else // unix
     } else if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 66 }.data(), 2) == 0) {
+#endif // WIN32
         // DOWN ARROW
         info(std::to_string(ConsoleHistoryReadIndex));
         if (!ConsoleHistory.empty()) {
@@ -171,7 +179,11 @@ static void ProcessCompositeInput() {
         //info(std::to_string(In));
         if (CompositeInputExpected) {
             CompositeInput += In;
+#ifdef WIN32
+            if (CompositeInput.size() == 1) {
+#else // unix
             if (CompositeInput.size() == 2) {
+#endif // WIN32
                 CompositeInputExpected = false;
                 ProcessCompositeInput();
             }
