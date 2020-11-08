@@ -10,6 +10,7 @@
 #include <thread>
 #include <cstring>
 #include <algorithm>
+#include <string>
 #include "UnixCompat.h"
 
 
@@ -117,6 +118,7 @@ std::string GenerateM(RSA*key){
 }
 
 void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
+    DebugPrintTID();
     Assert(S);
     Assert(Skey);
     S->TCPSock = TCPSock;
@@ -171,6 +173,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
         closesocket(TCPSock);
         return;
     }
+    DebugPrintTIDInternal(std::string("Client(") + Name + ")");
     debug(Sec("Name -> ") + Name + Sec(", Role -> ") + Role +  Sec(", ID -> ") + DID);
     for(Client*c: CI->Clients){
         if(c != nullptr){
@@ -242,6 +245,7 @@ void TCPServerMain(){
     }
     info(Sec("Vehicle event network online"));
     do{
+        try {
         client = accept(Listener, nullptr, nullptr);
         if(client == -1){
             warn(Sec("Got an invalid client socket on connect! Skipping..."));
@@ -249,6 +253,9 @@ void TCPServerMain(){
         }
         std::thread ID(Identify,client);
         ID.detach();
+        } catch (const std::exception& e) {
+            error(Sec("fatal: ") + std::string(e));
+        }
     }while(client);
 
     closesocket(client);
@@ -276,13 +283,17 @@ void TCPServerMain(){
     }
     info(Sec("Vehicle event network online"));
     do{
-        client = accept(Listener, nullptr, nullptr);
-        if(client == -1){
-            warn(Sec("Got an invalid client socket on connect! Skipping..."));
-            continue;
+        try {
+            client = accept(Listener, nullptr, nullptr);
+            if(client == -1){
+                warn(Sec("Got an invalid client socket on connect! Skipping..."));
+                continue;
+            }
+            std::thread ID(Identify,client);
+            ID.detach();
+        } catch (const std::exception& e) {
+            error(Sec("fatal: ") + std::string(e.what()));
         }
-        std::thread ID(Identify,client);
-        ID.detach();
     }while(client);
 
     debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));

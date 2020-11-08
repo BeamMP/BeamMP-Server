@@ -14,6 +14,7 @@
 }
 
 int main(int argc, char* argv[]) {
+    try {
     DebugPrintTID();
     // curl needs to be initialized to properly deallocate its resources later
     Assert(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
@@ -31,5 +32,9 @@ int main(int argc, char* argv[]) {
     NetMain();
     // clean up curl at the end to be sure
     curl_global_cleanup();
+    } catch (const std::exception& e) {
+        error(std::string(e.what()));
+        throw;
+    }
     return 0;
 }

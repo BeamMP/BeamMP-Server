@@ -301,21 +301,25 @@ void LOOP() {
 
     info(Sec("Vehicle data network online on port ") + std::to_string(Port) + Sec(" with a Max of ") + std::to_string(MaxPlayers) + Sec(" Clients"));
     while (true) {
-        sockaddr_in client {};
-        std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
-        auto Pos = Data.find(':');
-        if (Data.empty() || Pos < 0 || Pos > 2)
-            continue;
-        /*char clientIp[256];
-        ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
-        inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
-        uint8_t ID = Data.at(0) - 1;
-        for (Client* c : CI->Clients) {
-            if (c != nullptr && c->GetID() == ID) {
-                c->SetUDPAddr(client);
-                c->isConnected = true;
-                UDPParser(c, Data.substr(2));
+        try {
+            sockaddr_in client {};
+            std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
+            auto Pos = Data.find(':');
+            if (Data.empty() || Pos < 0 || Pos > 2)
+                continue;
+            /*char clientIp[256];
+            ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
+            inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
+            uint8_t ID = Data.at(0) - 1;
+            for (Client* c : CI->Clients) {
+                if (c != nullptr && c->GetID() == ID) {
+                    c->SetUDPAddr(client);
+                    c->isConnected = true;
+                    UDPParser(c, Data.substr(2));
+                }
             }
+        } catch (const std::exception& e) {
+            error(Sec("fatal: ") + std::string(e.what()));
         }
     }
     /*closesocket(UDPSock);
@@ -343,21 +347,25 @@ void LOOP() {
 
     info(Sec("Vehicle data network online on port ") + std::to_string(Port) + Sec(" with a Max of ") + std::to_string(MaxPlayers) + Sec(" Clients"));
     while (true) {
-        sockaddr_in client {};
-        std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
-        size_t Pos = Data.find(':');
-        if (Data.empty() || Pos > 2)
-            continue;
-        /*char clientIp[256];
-        ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
-        inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
-        uint8_t ID = uint8_t(Data.at(0)) - 1;
-        for (Client* c : CI->Clients) {
-            if (c != nullptr && c->GetID() == ID) {
-                c->SetUDPAddr(client);
-                c->isConnected = true;
-                UDPParser(c, Data.substr(2));
+        try {
+            sockaddr_in client {};
+            std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
+            size_t Pos = Data.find(':');
+            if (Data.empty() || Pos > 2)
+                continue;
+            /*char clientIp[256];
+            ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
+            inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
+            uint8_t ID = uint8_t(Data.at(0)) - 1;
+            for (Client* c : CI->Clients) {
+                if (c != nullptr && c->GetID() == ID) {
+                    c->SetUDPAddr(client);
+                    c->isConnected = true;
+                    UDPParser(c, Data.substr(2));
+                }
             }
+        } catch (const std::exception& e) {
+            error(Sec("fatal: ") + std::string(e.what()));
         }
     }
     /*closesocket(UDPSock); // TODO: Why not this? We did this in TCPServerMain?
