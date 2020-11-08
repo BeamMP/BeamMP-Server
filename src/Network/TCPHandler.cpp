@@ -57,13 +57,21 @@ bool CheckBytes(Client*c,int32_t BytesRcv){
 
 void TCPRcv(Client*c){
     Assert(c);
-    int32_t Header,BytesRcv,Temp;
+    int32_t Header,BytesRcv = 0,Temp;
     if(c == nullptr || c->GetStatus() < 0)return;
-    #ifdef WIN32
-        BytesRcv = recv(c->GetTCPSock(), reinterpret_cast<char*>(&Header), sizeof(Header),0);
-    #else
-        BytesRcv = recv(c->GetTCPSock(), reinterpret_cast<void*>(&Header), sizeof(Header), 0);
-    #endif
+
+    std::vector<char> Data(sizeof(Header));
+    do {
+        Temp = recv(c->GetTCPSock(), &Data[BytesRcv], 4-BytesRcv, 0);
+        if(!CheckBytes(c,Temp)){
+#ifdef DEBUG
+            error(std::string(__func__) + Sec(": failed on CheckBytes in while(BytesRcv < 4)"));
+#endif // DEBUG
+            return;
+        }
+        BytesRcv += Temp;
+    }while(BytesRcv < sizeof(Header));
+    memcpy(&Header,&Data[0],sizeof(Header));
 
 #ifdef DEBUG
     //debug(std::string(__func__) + Sec(": expecting ") + std::to_string(Header) + Sec(" bytes."));
@@ -74,8 +82,7 @@ void TCPRcv(Client*c){
 #endif // DEBUG
         return;
     }
-    // TODO: std::vector
-    std::vector<char> Data(Header);
+    Data.resize(Header);
     BytesRcv = 0;
     do{
         Temp = recv(c->GetTCPSock(), &Data[BytesRcv], Header-BytesRcv,0);
