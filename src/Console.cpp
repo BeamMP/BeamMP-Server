@@ -12,6 +12,7 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include <unistd.h>
 #endif // WIN32
 #include "Logger.h"
+#include <cstring>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -59,19 +60,37 @@ void ConsoleOut(const std::string& msg) {
 }
 
 #ifndef WIN32
-static int _getch() {
-    char buf = 0;
-    struct termios old;
-    fflush(stdout);
-    old.c_lflag &= ~unsigned(ICANON);
-    old.c_lflag &= ~unsigned(ECHO);
-    old.c_cc[VMIN] = 1;
-    old.c_cc[VTIME] = 0;
-    old.c_lflag |= ICANON;
-    old.c_lflag |= ECHO;
-    // no echo printf("%c\n", buf);
-    return buf;
+
+static struct termios old, current;
+
+void initTermios(int echo) {
+  tcgetattr(0, &old); /* grab old terminal i/o settings */
+  current = old; /* make new settings same as old settings */
+  current.c_lflag &= ~ICANON; /* disable buffered i/o */
+  if (echo) {
+      current.c_lflag |= ECHO; /* set echo mode */
+  } else {
+      current.c_lflag &= ~ECHO; /* set no echo mode */
+  }
+  tcsetattr(0, TCSANOW, &current); /* use these new terminal i/o settings now */
 }
+
+void resetTermios(void) {
+  tcsetattr(0, TCSANOW, &old);
+}
+
+char getch_(int echo) {
+  char ch;
+  initTermios(echo);
+  ch = getchar();
+  resetTermios();
+  return ch;
+}
+
+char _getch(void) {
+  return getch_(0);
+}
+
 #endif // WIN32
 
 void SetupConsole() {
@@ -103,6 +122,7 @@ void SetupConsole() {
     DebugPrintTID();
     while (true) {
         int In = _getch();
+        // info(std::to_string(In));
         if (In == 13 || In == '\n') {
             if (!CInputBuff.empty()) {
                 HandleInput(CInputBuff);
@@ -118,7 +138,6 @@ void SetupConsole() {
         } else if (!isprint(In)) {
             // ignore
         } else {
-            // info(std::to_string(In));
             CInputBuff += char(In);
         }
     }
