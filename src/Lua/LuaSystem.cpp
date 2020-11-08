@@ -314,7 +314,7 @@ int lua_GetCars(lua_State* L) {
         Client* c = GetClient(ID);
         if (c != nullptr) {
             int i = 1;
-            for (VData* v : c->GetAllCars()) {
+            for (auto& v : c->GetAllCars()) {
                 if (v != nullptr) {
                     lua_pushinteger(L, v->ID);
                     lua_pushstring(L, v->Data.substr(3).c_str());
@@ -519,7 +519,12 @@ extern "C" {
 int lua_Print(lua_State* L) {
     int Arg = lua_gettop(L);
     for (int i = 1; i <= Arg; i++) {
-        ConsoleOut(lua_tostring(L, i) + std::string("\n"));
+        auto str = lua_tostring(L, i);
+        if (str != nullptr) {
+            ConsoleOut(str + std::string(Sec("\n")));
+        } else {
+            ConsoleOut(Sec("nil\n"));
+        }
     }
     return 0;
 }

@@ -63,7 +63,7 @@ void OnDisconnect(Client*c,bool kicked){
     info(c->GetName() + Sec(" Connection Terminated"));
     if(c == nullptr)return;
     std::string Packet;
-    for(VData*v : c->GetAllCars()){
+    for(auto& v : c->GetAllCars()){
         if(v != nullptr) {
             Packet = "Od:" + std::to_string(c->GetID()) + "-" + std::to_string(v->ID);
             SendToAll(c, Packet, false, true);

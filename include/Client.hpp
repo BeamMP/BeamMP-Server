@@ -23,7 +23,7 @@ struct VData{
 
 class Client {
 private:
-    std::set<VData*> VehicleData; //ID and Data;
+    std::set<std::unique_ptr<VData>> VehicleData; //ID and Data;
     std::string Name = "Unknown Client";
     sockaddr_in UDPADDR;
     std::string Role;
@@ -39,7 +39,8 @@ public:
     void SetDID(const std::string& did);
     std::string GetCarData(int ident);
     void SetUDPAddr(sockaddr_in Addr);
-    std::set<VData*> GetAllCars();
+    std::set<std::unique_ptr<VData>>& GetAllCars();
+    const std::set<std::unique_ptr<VData>>& GetAllCars() const;
     void SetTCPSock(SOCKET CSock);
     void SetStatus(int status);
     void DeleteCar(int ident);

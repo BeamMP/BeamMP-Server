@@ -46,22 +46,14 @@ SOCKET Client::GetTCPSock(){
     return TCPSOCK;
 }
 void Client::DeleteCar(int ident){
-    for(VData* v : VehicleData){
+    for(auto& v : VehicleData){
         if(v != nullptr && v->ID == ident){
             VehicleData.erase(v);
-            delete v;
-            v = nullptr;
             break;
         }
     }
 }
 void Client::ClearCars(){
-    for(VData* v : VehicleData){
-        if(v != nullptr){
-            delete v;
-            v = nullptr;
-        }
-    }
     VehicleData.clear();
 }
 int Client::GetOpenCarID(){
@@ -69,7 +61,7 @@ int Client::GetOpenCarID(){
     bool found;
     do {
         found = true;
-        for (VData*v : VehicleData) {
+        for (auto& v : VehicleData) {
             if (v != nullptr && v->ID == OpenID){
                 OpenID++;
                 found = false;
@@ -79,14 +71,19 @@ int Client::GetOpenCarID(){
     return OpenID;
 }
 void Client::AddNewCar(int ident,const std::string& Data){
-    VehicleData.insert(new VData{ident,Data});
+    VehicleData.insert(std::unique_ptr<VData>(new VData{ident,Data}));
 }
 
-std::set<VData*> Client::GetAllCars(){
+std::set<std::unique_ptr<VData>>& Client::GetAllCars(){
     return VehicleData;
 }
+
+const std::set<std::unique_ptr<VData>> &Client::GetAllCars() const {
+    return VehicleData;
+}
+
 std::string Client::GetCarData(int ident){
-    for(VData*v : VehicleData){
+    for(auto& v : VehicleData){
         if(v != nullptr && v->ID == ident){
             return v->Data;
         }
@@ -95,7 +92,7 @@ std::string Client::GetCarData(int ident){
     return "";
 }
 void Client::SetCarData(int ident,const std::string&Data){
-    for(VData*v : VehicleData){
+    for(auto& v : VehicleData){
         if(v != nullptr && v->ID == ident){
             v->Data = Data;
             return;
