@@ -129,7 +129,7 @@ static std::string CompositeInput;
 static bool CompositeInputExpected { false };
 
 static void ProcessCompositeInput() {
-    if (memcmp(CompositeInput.data(), std::array<char, 2> { 91, 65 }.data(), 2) == 0) {
+    if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 65 }.data(), 2) == 0) {
         // UP ARROW
         if (!ConsoleHistory.empty()) {
             if (ConsoleHistoryReadIndex != 0) {
@@ -137,7 +137,7 @@ static void ProcessCompositeInput() {
             }
             CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
         }
-    } else if (memcmp(CompositeInput.data(), std::array<char, 2> { 91, 66 }.data(), 2) == 0) {
+    } else if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 66 }.data(), 2) == 0) {
         // DOWN ARROW
         if (!ConsoleHistory.empty()) {
             if (ConsoleHistoryReadIndex != ConsoleHistory.size() - 1) {
