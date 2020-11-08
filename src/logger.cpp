@@ -7,9 +7,9 @@
 #include <chrono>
 #include <fstream>
 #include <mutex>
+#include <shared_mutex>
 #include <sstream>
 #include <thread>
-#include <shared_mutex>
 #include <unordered_map>
 
 using RWMutex = std::shared_mutex;
@@ -75,9 +75,11 @@ std::string getDate() {
         << Hour << ":"
         << Min << ":"
         << Secs
-        << "] "
-        << ThreadName()
-        << " ";
+        << "] ";
+    if (Debug) {
+        date << ThreadName()
+             << " ";
+    }
     return date.str();
 }
 
