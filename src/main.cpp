@@ -1,9 +1,22 @@
-
 #include "CustomAssert.h"
 #include <curl/curl.h>
 #include "Startup.h"
 #include <iostream>
 #include <thread>
+#include "Security/Xor.h"
+#ifndef WIN32
+#include <signal.h>
+void UnixSignalHandler(int sig) {
+    switch (sig) {
+    case SIGPIPE:
+        warn(Sec("ignored signal SIGPIPE: Pipe broken"));
+        break;
+    default:
+        error(Sec("Signal arrived in handler but was not handled: ") + std::to_string(sig));
+        break;
+    }
+}
+#endif // WIN32
 
 [[noreturn]] void loop(){
     DebugPrintTID();
@@ -15,23 +28,28 @@
 
 int main(int argc, char* argv[]) {
     try {
-    DebugPrintTID();
-    // curl needs to be initialized to properly deallocate its resources later
-    Assert(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
-    #ifdef DEBUG
-        std::thread t1(loop);
-        t1.detach();
-    #endif
-    ConsoleInit();
-    InitServer(argc,argv);
-    InitConfig();
-    InitLua();
-    InitRes();
-    HBInit();
-    StatInit();
-    NetMain();
-    // clean up curl at the end to be sure
-    curl_global_cleanup();
+#ifndef WIN32
+        // ignore SIGPIPE, the signal that is sent for example when a client
+        // disconnects while data is being sent to him ("broken pipe").
+        signal(SIGPIPE, UnixSignalHandler);
+#endif // WIN32
+        DebugPrintTID();
+        // curl needs to be initialized to properly deallocate its resources later
+        Assert(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
+        #ifdef DEBUG
+            std::thread t1(loop);
+            t1.detach();
+        #endif
+        ConsoleInit();
+        InitServer(argc,argv);
+        InitConfig();
+        InitLua();
+        InitRes();
+        HBInit();
+        StatInit();
+        NetMain();
+        // clean up curl at the end to be sure
+        curl_global_cleanup();
     } catch (const std::exception& e) {
         error(std::string(e.what()));
         throw;
