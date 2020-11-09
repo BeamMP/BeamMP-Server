@@ -130,14 +130,10 @@ void warn(const std::string& toPrint) {
     LogLock.unlock();
 }
 void error(const std::string& toPrint) {
-    static int ECounter = 0;
     LogLock.lock();
     std::string Print = getDate() + Sec("[ERROR] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
-    if (ECounter > 10)
-        _Exit(7);
-    ECounter++;
     LogLock.unlock();
 }
 void except(const std::string& toPrint) {
