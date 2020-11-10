@@ -92,11 +92,10 @@ void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
     // due to segfaults or asserts.
     SetThreadName(func, overwrite);
 #ifdef DEBUG
-    LogLock.lock();
+    std::scoped_lock Guard(LogLock);
     std::stringstream Print;
     Print << "(debug build) Thread '" << std::this_thread::get_id() << "' is " << func << "\n";
     ConsoleOut(Print.str());
-    LogLock.unlock();
 #endif // DEBUG
 }
 
@@ -107,39 +106,34 @@ void addToLog(const std::string& Line) {
     LFS.close();
 }
 void info(const std::string& toPrint) {
-    LogLock.lock();
+    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + Sec("[INFO] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
-    LogLock.unlock();
 }
 void debug(const std::string& toPrint) {
     if (!Debug)
         return;
-    LogLock.lock();
+    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + Sec("[DEBUG] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
-    LogLock.unlock();
 }
 void warn(const std::string& toPrint) {
-    LogLock.lock();
+    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + Sec("[WARN] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
-    LogLock.unlock();
 }
 void error(const std::string& toPrint) {
-    LogLock.lock();
+    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + Sec("[ERROR] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
-    LogLock.unlock();
 }
 void except(const std::string& toPrint) {
-    LogLock.lock();
+    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + Sec("[EXCEP] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
-    LogLock.unlock();
 }
