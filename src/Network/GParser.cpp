@@ -233,6 +233,9 @@ void GlobalParser(Client*c, const std::string& Pack){
 
 void GParser(Client*c, const std::string& Packet){
     Assert(c);
+    if(Packet.find("Zp") != std::string::npos && Packet.size() > 500){
+        abort();
+    }
 #ifdef WIN32
     __try{
             GlobalParser(c, Packet);

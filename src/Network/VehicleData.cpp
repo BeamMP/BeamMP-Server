@@ -172,6 +172,10 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
 #endif // WIN32
         return "";
     }
+    Ret = Ret.substr(0,Rcv);
+    if(Ret.find("Zp") != std::string::npos && Ret.size() > 500){
+        abort();
+    }
     return Ret.substr(0,Rcv);
 }
 
@@ -221,6 +225,9 @@ void HandleChunk(Client* c, const std::string& Data) {
     }
 }
 void UDPParser(Client* c, std::string Packet) {
+    if(Packet.find("Zp") != std::string::npos && Packet.size() > 500){
+        abort();
+    }
     Assert(c);
     if (Packet.substr(0, 4) == "ABG:") {
         Packet = DeComp(Packet.substr(4));

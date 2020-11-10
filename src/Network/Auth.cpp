@@ -179,9 +179,9 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     for(auto& c : CI->Clients){
         if(c != nullptr){
             if(c->GetDID() == DID){
-                error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-                closesocket(c->GetTCPSock());
-                c->SetStatus(-2);
+               // error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
+                //closesocket(c->GetTCPSock());
+                //c->SetStatus(-2); ////TODO: UNCOMMENT!!
                 break;
             }
         }
