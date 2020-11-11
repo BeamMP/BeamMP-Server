@@ -264,7 +264,7 @@ void TCPServerMain(){
 #else // unix
     // wondering why we need slightly different implementations of this?
     // ask ms.
-    SOCKET client, Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    SOCKET client = -1, Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
     sockaddr_in addr{};
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <mutex>
 #include <string>
+#include "Security/Xor.h"
 void InitLog();
 #define DebugPrintTID() DebugPrintTIDInternal(__func__, false)
 void DebugPrintTIDInternal(const std::string& func, bool overwrite = true); // prints the current thread id in debug mode, to make tracing of crashes and asserts easier

@@ -24,7 +24,7 @@ struct VData{
 class Client {
 private:
     std::set<std::unique_ptr<VData>> VehicleData; //ID and Data;
-    std::string Name = "Unknown Client";
+    std::string Name = Sec("Unknown Client");
     sockaddr_in UDPADDR;
     std::string Role;
     std::string DID;

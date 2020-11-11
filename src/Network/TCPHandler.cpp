@@ -70,7 +70,7 @@ void TCPRcv(Client*c){
             return;
         }
         BytesRcv += Temp;
-    }while(BytesRcv < sizeof(Header));
+    }while(size_t(BytesRcv) < sizeof(Header));
     memcpy(&Header,&Data[0],sizeof(Header));
 
 #ifdef DEBUG

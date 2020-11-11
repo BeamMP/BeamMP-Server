@@ -12,12 +12,12 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include <unistd.h>
 #endif // WIN32
 #include "Logger.h"
+#include <array>
 #include <cstring>
 #include <iostream>
 #include <mutex>
 #include <string>
 #include <thread>
-#include <array>
 
 std::vector<std::string> QConsoleOut;
 std::string CInputBuff;
@@ -25,11 +25,11 @@ std::mutex MLock;
 std::unique_ptr<Lua> LuaConsole;
 void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
-    if (cmd == "exit") {
+    if (cmd == Sec("exit")) {
         _Exit(0);
-    } else if (cmd == "clear" ||  cmd == "cls") {
+    } else if (cmd == Sec("clear") || cmd == Sec("cls")) {
         // 2J is clearscreen, H is reset position to top-left
-        ConsoleOut("\x1b[2J\x1b[H");
+        ConsoleOut(Sec("\x1b[2J\x1b[H"));
     } else {
         LuaConsole->Execute(cmd);
     }
@@ -99,6 +99,7 @@ char _getch(void) {
 #endif // WIN32
 
 void SetupConsole() {
+    error(__func__);
 #if defined(WIN32) && !defined(DEBUG)
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -139,8 +140,8 @@ static void ProcessCompositeInput() {
 #else // unix
     if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 65 }.data(), 2) == 0) {
 #endif // WIN32
-        // UP ARROW
-        // info(std::to_string(ConsoleHistoryReadIndex));
+    // UP ARROW
+    // info(std::to_string(ConsoleHistoryReadIndex));
         if (!ConsoleHistory.empty()) {
             if (ConsoleHistoryReadIndex != 0) {
                 ConsoleHistoryReadIndex -= 1;
@@ -152,7 +153,7 @@ static void ProcessCompositeInput() {
 #else // unix
     } else if (CompositeInput.size() == 2 && memcmp(CompositeInput.data(), std::array<char, 2> { 91, 66 }.data(), 2) == 0) {
 #endif // WIN32
-        // DOWN ARROW
+    // DOWN ARROW
         if (!ConsoleHistory.empty()) {
             if (ConsoleHistoryReadIndex != ConsoleHistory.size() - 1) {
                 ConsoleHistoryReadIndex += 1;
@@ -213,7 +214,7 @@ static void ProcessCompositeInput() {
 #else // unix
         } else if (In == 27) {
 #endif // WIN32
-            // escape char, assume stuff follows
+    // escape char, assume stuff follows
             CompositeInputExpected = true;
             CompositeInput.clear();
         } else if (!isprint(In)) {

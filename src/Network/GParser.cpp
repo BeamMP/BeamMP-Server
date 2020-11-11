@@ -184,7 +184,6 @@ void GlobalParser(Client*c, const std::string& Pack){
         SendToAll(c,Packet,false,false);
         return;
     }
-
     switch (Code) {
         case 'P': // initial connection
 #ifdef DEBUG
