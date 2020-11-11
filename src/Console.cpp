@@ -100,7 +100,7 @@ char _getch(void) {
 
 void SetupConsole() {
     error(__func__);
-#if defined(WIN32) && !defined(DEBUG)
+#if defined(WIN32) //&& !defined(DEBUG)
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (stdoutHandle == INVALID_HANDLE_VALUE) {
