@@ -128,6 +128,7 @@ void SyncClient(Client* c) {
             if (client.get() != c) {
                 for (auto& v : client->GetAllCars()) {
                     if (v != nullptr) {
+                        if(c->GetStatus() < 0)return;
                         Respond(c, v->Data, true);
                         std::this_thread::sleep_for(std::chrono::seconds(2));
                     }
