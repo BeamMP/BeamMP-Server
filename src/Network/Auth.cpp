@@ -84,6 +84,7 @@ void Check(SOCKET TCPSock, std::reference_wrapper<std::atomic_bool> ok){
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         accum += 100;
         if (accum >= 5000) {
+            error(Sec("Identification timed out (Check accum)"));
             closesocket(TCPSock);
             return;
         }

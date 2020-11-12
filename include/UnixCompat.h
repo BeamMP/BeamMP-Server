@@ -9,6 +9,7 @@
 #include "CustomAssert.h"
 #include <cstring>
 #include <unistd.h>
+#include <sys/socket.h>
 
 // ZeroMemory is just a {0} or a memset(addr, 0, len), and it's a macro on MSVC
 inline void ZeroMemory(void* dst, size_t len) {
@@ -16,6 +17,7 @@ inline void ZeroMemory(void* dst, size_t len) {
 }
 // provides unix equivalent of closesocket call in win32
 inline void closesocket(int socket) {
+    shutdown(socket, SHUT_RDWR);
     close(socket);
 }
 
