@@ -39,7 +39,7 @@ void STCPSend(Client* c, std::string Data) {
 void SendFile(Client* c, const std::string& Name) {
     Assert(c);
     info(c->GetName() + Sec(" requesting : ") + Name.substr(Name.find_last_of('/')));
-    struct stat Info {};
+    struct stat Info { };
     if (stat(Name.c_str(), &Info) != 0) {
         STCPSend(c, Sec("Cannot Open"));
         return;
@@ -99,11 +99,11 @@ bool STCPRecv(Client* c) {
     Assert(c);
     if (c == nullptr)
         return false;
-    #define len 200
+#define len 200
     char buf[len];
     ZeroMemory(buf, len);
     int64_t BytesRcv = recv(c->GetTCPSock(), buf, len, 0);
-    #undef len
+#undef len
     if (BytesRcv == 0) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);

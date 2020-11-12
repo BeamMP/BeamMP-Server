@@ -8,8 +8,8 @@
 
 #include "CustomAssert.h"
 #include <cstring>
-#include <unistd.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 // ZeroMemory is just a {0} or a memset(addr, 0, len), and it's a macro on MSVC
 inline void ZeroMemory(void* dst, size_t len) {
@@ -26,7 +26,7 @@ inline void closesocket(int socket) {
 #endif
 
 #ifndef __except
-#define __except(x) /**/
+#define __except (x) /**/
 #endif
 
 #endif // WIN32

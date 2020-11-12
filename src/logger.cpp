@@ -2,6 +2,7 @@
 /// Created by Anonymous275 on 7/17/2020
 ///
 #include "Logger.h"
+#include "RWMutex.h"
 #include "Security/Enc.h"
 #include "Settings.h"
 #include <chrono>
@@ -10,7 +11,6 @@
 #include <sstream>
 #include <thread>
 #include <unordered_map>
-#include "RWMutex.h"
 
 static RWMutex ThreadNameMapMutex;
 static std::unordered_map<std::thread::id, std::string> ThreadNameMap;

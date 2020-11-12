@@ -1,9 +1,9 @@
 #include "CustomAssert.h"
-#include <curl/curl.h>
+#include "Security/Xor.h"
 #include "Startup.h"
+#include <curl/curl.h>
 #include <iostream>
 #include <thread>
-#include "Security/Xor.h"
 #ifndef WIN32
 #include <signal.h>
 void UnixSignalHandler(int sig) {
@@ -18,9 +18,9 @@ void UnixSignalHandler(int sig) {
 }
 #endif // WIN32
 
-[[noreturn]] void loop(){
+[[noreturn]] void loop() {
     DebugPrintTID();
-    while(true){
+    while (true) {
         std::cout.flush();
         std::this_thread::sleep_for(std::chrono::milliseconds(600));
     }
@@ -36,12 +36,12 @@ int main(int argc, char* argv[]) {
         DebugPrintTID();
         // curl needs to be initialized to properly deallocate its resources later
         Assert(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
-        #ifdef DEBUG
-            std::thread t1(loop);
-            t1.detach();
-        #endif
+#ifdef DEBUG
+        std::thread t1(loop);
+        t1.detach();
+#endif
         ConsoleInit();
-        InitServer(argc,argv);
+        InitServer(argc, argv);
         InitConfig();
         InitLua();
         InitRes();

@@ -50,9 +50,9 @@ void FolderList(const std::string& Path, bool HotSwap) {
 [[noreturn]] void HotSwaps(const std::string& path) {
     DebugPrintTID();
     while (true) {
-        if(!PluginEngine.empty()) {
-            for (auto &Script : PluginEngine) {
-                struct stat Info{};
+        if (!PluginEngine.empty()) {
+            for (auto& Script : PluginEngine) {
+                struct stat Info { };
                 if (stat(Script->GetFileName().c_str(), &Info) != 0) {
                     Script->SetStopThread(true);
                     PluginEngine.erase(Script);

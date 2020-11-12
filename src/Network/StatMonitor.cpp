@@ -1,8 +1,8 @@
 ///
 /// Created by Anonymous275 on 6/18/2020
 ///
-#include "Security/Enc.h"
 #include "Client.hpp"
+#include "Security/Enc.h"
 #include <iostream>
 #include <string>
 #include <thread>
@@ -10,7 +10,7 @@ std::string StatReport;
 int PPS = 0;
 void Monitor() {
     int R, C = 0, V = 0;
-    if (CI->Clients.empty()){
+    if (CI->Clients.empty()) {
         StatReport = "-";
         return;
     }
@@ -29,15 +29,15 @@ void Monitor() {
     PPS = 0;
 }
 
-[[noreturn]]void Stat(){
+[[noreturn]] void Stat() {
     DebugPrintTID();
-    while(true){
+    while (true) {
         Monitor();
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
-void StatInit(){
+void StatInit() {
     StatReport = "-";
     std::thread Init(Stat);
     Init.detach();

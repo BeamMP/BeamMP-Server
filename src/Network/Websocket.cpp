@@ -2,14 +2,14 @@
 /// Created by Anonymous275 on 11/6/2020
 ///
 /*#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
+#include "Logger.h"
+#include "Security/Enc.h"
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>*/
-#include "Security/Enc.h"
+#include <boost/beast/websocket.hpp>
 #include <iostream>
-#include "Logger.h"
-#include <thread>
 #include <string>
+#include <thread>
 
 /*namespace beast = boost::beast;
 namespace http = beast::http;
@@ -21,7 +21,7 @@ std::string GetRes(const beast::flat_buffer& buff) {
     return (char*)buff.data().data();
 }*/
 
-void SyncData(){
+void SyncData() {
     /*DebugPrintTID();
     try {
         std::string const host = Sec("95.216.35.232");
@@ -50,9 +50,7 @@ void SyncData(){
     }*/
 }
 
-
-void WebsocketInit(){
+void WebsocketInit() {
     /*std::thread t1(SyncData);
     t1.detach();*/
 }
-

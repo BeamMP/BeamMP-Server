@@ -17,4 +17,3 @@ using ReadLock = std::shared_lock<RWMutex>;
 // Construct with an RWMutex as a non-const reference.
 // locks the mutex for writing. Construction may be blocking. Destruction is guaranteed to release the lock.
 using WriteLock = std::unique_lock<RWMutex>;
-

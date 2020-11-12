@@ -103,7 +103,7 @@ void SendLarge(Client* c, std::string Data) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    TCPSend(c,Data);
+    TCPSend(c, Data);
 }
 struct HandledC {
     size_t Pos = 0;
@@ -172,7 +172,7 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
 #endif // WIN32
         return "";
     }
-    return Ret.substr(0,Rcv);
+    return Ret.substr(0, Rcv);
 }
 
 SplitData* GetSplit(int SplitID) {
@@ -221,7 +221,7 @@ void HandleChunk(Client* c, const std::string& Data) {
     }
 }
 void UDPParser(Client* c, std::string Packet) {
-    if(Packet.find("Zp") != std::string::npos && Packet.size() > 500){
+    if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
         abort();
     }
     Assert(c);
@@ -253,8 +253,8 @@ void UDPParser(Client* c, std::string Packet) {
 void LOOP() {
     DebugPrintTID();
     while (UDPSock != -1) {
-        if(!DataAcks.empty()) {
-            for (PacketData *p : DataAcks) {
+        if (!DataAcks.empty()) {
+            for (PacketData* p : DataAcks) {
                 if (p != nullptr) {
                     if (p->Client == nullptr || p->Client->GetTCPSock() == -1) {
                         DataAcks.erase(p);
