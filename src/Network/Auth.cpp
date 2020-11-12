@@ -11,13 +11,10 @@
 #include <cstring>
 #include <algorithm>
 #include <string>
+#include <atomic>
 #include "UnixCompat.h"
 
 
-struct Hold{
-    SOCKET TCPSock{};
-    bool Done = false;
-};
 bool Send(SOCKET TCPSock,std::string Data){
 #ifdef WIN32
     int BytesSent;
@@ -80,10 +77,15 @@ std::string GetRole(const std::string &DID){
     }
     return "";
 }
-void Check(Hold* S){
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    if(S != nullptr){
-        if(!S->Done)closesocket(S->TCPSock);
+void Check(SOCKET TCPSock, std::reference_wrapper<std::atomic_bool> ok){
+    size_t accum = 0;
+    while (!ok.get()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        accum += 100;
+        if (accum >= 5000) {
+            closesocket(TCPSock);
+            return;
+        }
     }
 }
 int Max(){
@@ -125,13 +127,12 @@ std::string GenerateM(RSA*key){
     return stream.str();
 }
 
-void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
+void Identification(SOCKET TCPSock, RSA*Skey){
     DebugPrintTID();
-    Assert(S);
     Assert(Skey);
-    S->TCPSock = TCPSock;
-    //std::thread Timeout(Check,S);
-    //Timeout.detach();
+    std::atomic_bool ok { false };
+    std::thread Timeout(Check, TCPSock, std::ref<std::atomic_bool>(ok));
+    Timeout.detach();
     std::string Name,DID,Role;
     if(!Send(TCPSock,GenerateM(Skey))) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
@@ -148,7 +149,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
 
     std::string Res = Rcv(TCPSock);
     std::string Ver = Rcv(TCPSock);
-    S->Done = true;
+    ok = true;
     Ver = RSA_D(Ver,Skey);
     if(Ver.size() > 3 && Ver.substr(0,2) == Sec("VC")){
         Ver = Ver.substr(2);
@@ -202,7 +203,6 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     }
 }
 void Identify(SOCKET TCPSock){
-    auto* S = new Hold;
     RSA*Skey = GenKey();
     // this disgusting ifdef stuff is needed because for some
     // reason MSVC defines __try and __except and libg++ defines
@@ -211,7 +211,7 @@ void Identify(SOCKET TCPSock){
 /*#ifdef WIN32
     __try{
 #endif // WIN32*/
-        Identification(TCPSock,S,Skey);
+        Identification(TCPSock, Skey);
 /*#ifdef WIN32
     }__except(1){
         if(TCPSock != -1){
@@ -222,7 +222,6 @@ void Identify(SOCKET TCPSock){
 #endif // WIN32*/
 
     delete Skey;
-    delete S;
 }
 
 void TCPServerMain(){
