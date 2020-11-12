@@ -78,10 +78,10 @@ std::string GetRole(const std::string& DID) {
     }
     return "";
 }
-void Check(SOCKET TCPSock, std::reference_wrapper<std::atomic_bool> ok) {
+void Check(SOCKET TCPSock, std::shared_ptr<std::atomic_bool> ok) {
     DebugPrintTID();
     size_t accum = 0;
-    while (!ok.get()) {
+    while (!*ok) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         accum += 100;
         if (accum >= 5000) {
@@ -136,8 +136,8 @@ std::string GenerateM(RSA* key) {
 void Identification(SOCKET TCPSock, RSA* Skey) {
     DebugPrintTID();
     Assert(Skey);
-    std::atomic_bool ok { false };
-    std::thread Timeout(Check, TCPSock, std::ref<std::atomic_bool>(ok));
+    std::shared_ptr<std::atomic_bool> ok = std::make_shared<std::atomic_bool>(false);
+    std::thread Timeout(Check, TCPSock, ok);
     Timeout.detach();
     std::string Name, DID, Role;
     if (!Send(TCPSock, GenerateM(Skey))) {
@@ -155,7 +155,7 @@ void Identification(SOCKET TCPSock, RSA* Skey) {
 
     std::string Res = Rcv(TCPSock);
     std::string Ver = Rcv(TCPSock);
-    ok = true;
+    *ok = true;
     Ver = RSA_D(Ver, Skey);
     if (Ver.size() > 3 && Ver.substr(0, 2) == Sec("VC")) {
         Ver = Ver.substr(2);
