@@ -28,7 +28,12 @@ bool Send(SOCKET TCPSock,std::string Data){
 #endif // WIN32
     BytesSent = send(TCPSock, Data.c_str(), len, 0);
     Data.clear();
-    if (BytesSent <= 0)return false;
+    if (BytesSent <= 0) {
+#ifndef WIN32
+        error(__func__ + std::string(strerror(errno)));
+#endif // WIN32
+        return false;
+    }
     return true;
 }
 std::string Rcv(SOCKET TCPSock){
