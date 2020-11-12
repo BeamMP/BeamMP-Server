@@ -113,7 +113,7 @@ void TCPRcv(Client*c){
 }
 
 void TCPClient(Client*c){
-    DebugPrintTIDInternal(c->GetName(), true);
+    DebugPrintTIDInternal(Sec("Client(") + c->GetName() + Sec(")"), true);
     Assert(c);
     if(c->GetTCPSock() == -1){
         CI->RemoveClient(c);
