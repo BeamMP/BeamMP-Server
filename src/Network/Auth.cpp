@@ -78,6 +78,7 @@ std::string GetRole(const std::string &DID){
     return "";
 }
 void Check(SOCKET TCPSock, std::reference_wrapper<std::atomic_bool> ok){
+    DebugPrintTID();
     size_t accum = 0;
     while (!ok.get()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
