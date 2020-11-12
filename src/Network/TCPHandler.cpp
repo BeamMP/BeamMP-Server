@@ -29,6 +29,7 @@ void TCPSend(Client*c,const std::string&Data){
             return;
         } else if (Temp < 0) {
             if (c->GetStatus() > -1)c->SetStatus(-1);
+            info(Sec("Closing socket, Temp < 0"));
             closesocket(c->GetTCPSock());
             return;
         }
@@ -49,6 +50,7 @@ bool CheckBytes(Client*c,int32_t BytesRcv){
             debug(Sec("(TCP) recv failed with error: ") + std::string(strerror(errno)));
         #endif // WIN32
         if(c->GetStatus() > -1)c->SetStatus(-1);
+        info(Sec("Closing socket in CheckBytes, BytesRcv < 0"));
         closesocket(c->GetTCPSock());
         return false;
     }
