@@ -273,6 +273,9 @@ void TCPServerMain(){
     // wondering why we need slightly different implementations of this?
     // ask ms.
     SOCKET client = -1, Listener = socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+    int optval = 1;
+    setsockopt(Listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+    // TODO: check optval or return value idk
     sockaddr_in addr{};
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;
