@@ -130,8 +130,8 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     Assert(S);
     Assert(Skey);
     S->TCPSock = TCPSock;
-    std::thread Timeout(Check,S);
-    Timeout.detach();
+    //std::thread Timeout(Check,S);
+    //Timeout.detach();
     std::string Name,DID,Role;
     if(!Send(TCPSock,GenerateM(Skey))) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
