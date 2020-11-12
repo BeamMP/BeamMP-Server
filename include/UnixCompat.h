@@ -17,13 +17,8 @@ inline void ZeroMemory(void* dst, size_t len) {
 }
 // provides unix equivalent of closesocket call in win32
 inline void CloseSocketProper(int socket) {
-#ifndef WIN32
     shutdown(socket, SHUT_RDWR);
     close(socket);
-#else // WIN32
-    shutdown(socket, SD_BOTH);
-    closesocket(socket);
-#endif // WIN32
 }
 
 #ifndef __try
@@ -34,4 +29,10 @@ inline void CloseSocketProper(int socket) {
 #define __except (x) /**/
 #endif
 
+#else // win32
+
+inline void CloseSocketProper(uint64_t socket) {
+    shutdown(socket, SD_BOTH);
+    closesocket(socket);
+}
 #endif // WIN32
