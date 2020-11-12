@@ -323,7 +323,7 @@ void LOOP() {
             error(Sec("fatal: ") + std::string(e.what()));
         }
     }
-    /*closesocket(UDPSock);
+    /*CloseSocketProper(UDPSock);
     WSACleanup();
     return;*/
 #else // unix
@@ -369,7 +369,7 @@ void LOOP() {
             error(Sec("fatal: ") + std::string(e.what()));
         }
     }
-    /*closesocket(UDPSock); // TODO: Why not this? We did this in TCPServerMain?
+    /*CloseSocketProper(UDPSock); // TODO: Why not this? We did this in TCPServerMain?
     return;
      */
 #endif // WIN32

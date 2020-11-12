@@ -348,7 +348,7 @@ int lua_dropPlayer(lua_State* L) {
         Respond(c, "C:Server:You have been Kicked from the server! " + Reason, true);
         c->SetStatus(-2);
         info(Sec("Closing socket due to kick"));
-        closesocket(c->GetTCPSock());
+        CloseSocketProper(c->GetTCPSock());
 
     } else
         SendError(L, Sec("DropPlayer not enough arguments"));

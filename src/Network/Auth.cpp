@@ -86,7 +86,7 @@ void Check(SOCKET TCPSock, std::reference_wrapper<std::atomic_bool> ok) {
         accum += 100;
         if (accum >= 5000) {
             error(Sec("Identification timed out (Check accum)"));
-            closesocket(TCPSock);
+            CloseSocketProper(TCPSock);
             return;
         }
     }
@@ -142,14 +142,14 @@ void Identification(SOCKET TCPSock, RSA* Skey) {
     std::string Name, DID, Role;
     if (!Send(TCPSock, GenerateM(Skey))) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
         return;
     }
     std::string msg = Rcv(TCPSock);
     auto Keys = Parse(msg);
     if (!Send(TCPSock, RSA_E("HC", Keys.second, Keys.first))) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
         return;
     }
 
@@ -161,23 +161,23 @@ void Identification(SOCKET TCPSock, RSA* Skey) {
         Ver = Ver.substr(2);
         if (Ver.length() > 4 || Ver != GetCVer()) {
             error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-            closesocket(TCPSock);
+            CloseSocketProper(TCPSock);
             return;
         }
     } else {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
         return;
     }
     Res = RSA_D(Res, Skey);
     if (Res.size() < 3 || Res.substr(0, 2) != Sec("NR")) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
         return;
     }
     if (Res.find(':') == std::string::npos) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
         return;
     }
     Name = Res.substr(2, Res.find(':') - 2);
@@ -185,7 +185,7 @@ void Identification(SOCKET TCPSock, RSA* Skey) {
     Role = GetRole(DID);
     if (Role.empty() || Role.find(Sec("Error")) != std::string::npos) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
         return;
     }
     // DebugPrintTIDInternal(std::string("Client(") + Name + ")");
@@ -194,7 +194,7 @@ void Identification(SOCKET TCPSock, RSA* Skey) {
         if (c != nullptr) {
             if (c->GetDID() == DID) {
                 error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-                closesocket(c->GetTCPSock());
+                CloseSocketProper(c->GetTCPSock());
                 c->SetStatus(-2);
                 break;
             }
@@ -205,7 +205,7 @@ void Identification(SOCKET TCPSock, RSA* Skey) {
         CreateClient(TCPSock, Name, DID, Role);
     } else {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        closesocket(TCPSock);
+        CloseSocketProper(TCPSock);
     }
 }
 void Identify(SOCKET TCPSock) {
@@ -222,7 +222,7 @@ void Identify(SOCKET TCPSock) {
     }__except(1){
         if(TCPSock != -1){
             error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-            closesocket(TCPSock);
+            CloseSocketProper(TCPSock);
         }
     }
 #endif // WIN32*/
@@ -271,7 +271,7 @@ void TCPServerMain() {
         }
     } while (client);
 
-    closesocket(client);
+    CloseSocketProper(client);
     WSACleanup();
 #else // unix
     // wondering why we need slightly different implementations of this?
@@ -313,6 +313,6 @@ void TCPServerMain() {
     } while (client);
 
     debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
-    closesocket(client);
+    CloseSocketProper(client);
 #endif // WIN32
 }

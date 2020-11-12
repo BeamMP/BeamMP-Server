@@ -32,7 +32,7 @@ void TCPSend(Client* c, const std::string& Data) {
             if (c->GetStatus() > -1)
                 c->SetStatus(-1);
             // info(Sec("Closing socket, Temp < 0"));
-            closesocket(c->GetTCPSock());
+            CloseSocketProper(c->GetTCPSock());
             return;
         }
         Sent += Temp;
@@ -55,7 +55,7 @@ bool CheckBytes(Client* c, int32_t BytesRcv) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
         info(Sec("Closing socket in CheckBytes, BytesRcv < 0"));
-        closesocket(c->GetTCPSock());
+        CloseSocketProper(c->GetTCPSock());
         return false;
     }
     return true;

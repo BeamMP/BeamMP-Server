@@ -33,7 +33,7 @@ void STCPSend(Client* c, std::string Data) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
         info(Sec("Closing socket, BytesSent < 0"));
-        closesocket(c->GetTCPSock());
+        CloseSocketProper(c->GetTCPSock());
     }
 }
 void SendFile(Client* c, const std::string& Name) {
@@ -108,13 +108,13 @@ bool STCPRecv(Client* c) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
         info(Sec("Closing socket in STCP receive, BytesRcv == 0"));
-        closesocket(c->GetTCPSock());
+        CloseSocketProper(c->GetTCPSock());
         return false;
     } else if (BytesRcv < 0) {
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
         info(Sec("Closing socket in STCP receive, BytesRcv < 0"));
-        closesocket(c->GetTCPSock());
+        CloseSocketProper(c->GetTCPSock());
         return false;
     }
     if (strcmp(buf, "Done") == 0)
