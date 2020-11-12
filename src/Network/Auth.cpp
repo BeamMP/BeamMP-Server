@@ -30,7 +30,9 @@ bool Send(SOCKET TCPSock,std::string Data){
     Data.clear();
     if (BytesSent <= 0) {
 #ifndef WIN32
-        error(__func__ + std::string(strerror(errno)));
+        error(__func__ + std::string(" ") + strerror(errno));
+#else
+        error(__func__ + std::string(" ") + std::to_string(WSAGetLastError()));
 #endif // WIN32
         return false;
     }
@@ -131,7 +133,7 @@ void Identification(SOCKET TCPSock,Hold*S,RSA*Skey){
     std::thread Timeout(Check,S);
     Timeout.detach();
     std::string Name,DID,Role;
-    if(!Send(TCPSock,GenerateM(Skey))){
+    if(!Send(TCPSock,GenerateM(Skey))) {
         error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
         closesocket(TCPSock);
         return;
