@@ -99,7 +99,6 @@ char _getch(void) {
 #endif // WIN32
 
 void SetupConsole() {
-    error(__func__);
 #if defined(WIN32) //&& !defined(DEBUG)
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
