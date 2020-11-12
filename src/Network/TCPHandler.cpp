@@ -31,7 +31,7 @@ void TCPSend(Client* c, const std::string& Data) {
         } else if (Temp < 0) {
             if (c->GetStatus() > -1)
                 c->SetStatus(-1);
-            info(Sec("Closing socket, Temp < 0"));
+            // info(Sec("Closing socket, Temp < 0"));
             closesocket(c->GetTCPSock());
             return;
         }
