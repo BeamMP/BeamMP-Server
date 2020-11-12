@@ -23,14 +23,18 @@ int OpenID(){
     }while (!found);
     return ID;
 }
-void Respond(Client*c, const std::string& MSG, bool Rel){
+void Respond(Client* c, const std::string& MSG, bool Rel) {
     Assert(c);
     char C = MSG.at(0);
-    if(Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E'){
-        if(C == 'O' || C == 'T' || MSG.length() > 1000)SendLarge(c,MSG);
-        else TCPSend(c,MSG);
-    }else UDPSend(c,MSG);
-
+    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
+        if (C == 'O' || C == 'T' || MSG.length() > 1000) {
+            SendLarge(c, MSG);
+        } else {
+            TCPSend(c, MSG);
+        }
+    } else {
+        UDPSend(c, MSG);
+    }
 }
 void SendToAll(Client*c, const std::string& Data, bool Self, bool Rel){
     if (!Self)Assert(c);

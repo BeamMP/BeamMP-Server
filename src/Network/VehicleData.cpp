@@ -172,10 +172,6 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
 #endif // WIN32
         return "";
     }
-    Ret = Ret.substr(0,Rcv);
-    if(Ret.find("Zp") != std::string::npos && Ret.size() > 500){
-        abort();
-    }
     return Ret.substr(0,Rcv);
 }
 
