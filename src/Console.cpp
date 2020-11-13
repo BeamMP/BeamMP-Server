@@ -161,6 +161,7 @@ static void ProcessCompositeInput() {
                 CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
             } else {
                 CInputBuff = "";
+                ConsoleHistoryReadIndex = ConsoleHistory.size();
             }
         }
     } else {
