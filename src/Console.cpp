@@ -87,7 +87,7 @@ void resetTermios(void) {
 char getch_(int echo) {
     char ch;
     initTermios(echo);
-    ch = getchar();
+    read(STDIN_FILENO, &ch, 1);
     resetTermios();
     return ch;
 }
