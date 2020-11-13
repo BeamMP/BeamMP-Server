@@ -560,7 +560,7 @@ void Lua::Reload() {
     }
 }
 std::string Lua::GetOrigin() {
-    return GetFileName().substr(GetFileName().find('\\'));
+    return fs::path(GetFileName()).filename().string();
 }
 
 int CallFunction(Lua* lua, const std::string& FuncName, std::unique_ptr<LuaArg> Arg) {
