@@ -112,7 +112,7 @@ void GenerateConfig() {
     FileStream.open(Sec("Server.cfg"));
     FileStream << Sec("# This is the BeamMP Server Configuration File v0.60\n"
                       "Debug = false # true or false to enable debug console output\n"
-                      "Private = false # Private?\n"
+                      "Private = true # Private?\n"
                       "Port = 30814 # Port to run the server on UDP and TCP\n"
                       "Cars = 1 # Max cars for every player\n"
                       "MaxPlayers = 10 # Maximum Amount of Clients\n"
@@ -126,7 +126,7 @@ void GenerateConfig() {
 void Default() {
     info(Sec("Config not found generating default"));
     GenerateConfig();
-    warn(Sec("You are required to input the AuthKey"));
+    error(Sec("You are required to input the AuthKey"));
     std::this_thread::sleep_for(std::chrono::seconds(3));
     _Exit(0);
 }
