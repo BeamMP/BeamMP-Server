@@ -33,6 +33,7 @@ void RegisterFiles(const std::string& Path, bool HotSwap) {
                 std::unique_ptr<Lua> ScriptToInsert(new Lua(Name, FileName, fs::last_write_time(FileName)));
                 auto& Script = *ScriptToInsert;
                 PluginEngine.insert(std::move(ScriptToInsert));
+                Script.Init();
                 if (HotSwap)
                     info(Sec("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
             }

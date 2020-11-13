@@ -107,7 +107,7 @@ bool CheckLua(lua_State* L, int r) {
         auto MaybeS = GetScript(L);
         if (MaybeS.has_value()) {
             Lua& S = MaybeS.value();
-            std::string a = S.GetFileName().substr(S.GetFileName().find('\\'));
+            std::string a = fs::path(S.GetFileName()).filename().string();
             warn(a + " | " + msg);
             return false;
         }
@@ -160,7 +160,7 @@ int lua_TriggerEventG(lua_State* L) {
 }
 
 char* ThreadOrigin(Lua* lua) {
-    std::string T = "Thread in " + lua->GetFileName().substr(lua->GetFileName().find('\\'));
+    std::string T = "Thread in " + fs::path(lua->GetFileName()).filename().string();
     char* Data = new char[T.size() + 1];
     ZeroMemory(Data, T.size() + 1);
     memcpy(Data, T.c_str(), T.size());
@@ -542,13 +542,11 @@ Lua::Lua(const std::string& PluginName, const std::string& FileName, fs::file_ti
     }
     SetLastWrite(LastWrote);
     _Console = Console;
-    Init();
 }
 
 Lua::Lua(bool Console)
     : luaState(luaL_newstate()) {
     _Console = Console;
-    Init();
 }
 
 void Lua::Execute(const std::string& Command) {

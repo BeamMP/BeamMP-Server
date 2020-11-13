@@ -3,10 +3,10 @@
 ///
 
 #pragma once
-#include <lua.hpp>
 #include <any>
 #include <filesystem>
 #include <iostream>
+#include <lua.hpp>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -43,14 +43,13 @@ private:
     std::set<std::pair<std::string, std::string>> _RegisteredEvents;
     lua_State* luaState { nullptr };
     fs::file_time_type _LastWrote;
-    std::string _PluginName;
-    std::string _FileName;
+    std::string _PluginName {};
+    std::string _FileName {};
     bool _StopThread = false;
     bool _Console = false;
-    // this is called by the ctor to ensure RAII
-    void Init();
 
 public:
+    void Init();
     void RegisterEvent(const std::string& Event, const std::string& FunctionName);
     std::string GetRegistered(const std::string& Event) const;
     void UnRegisterEvent(const std::string& Event);
