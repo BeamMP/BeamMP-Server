@@ -49,7 +49,7 @@ void SendError(lua_State* L, const std::string& msg) {
         a = Sec("_Console");
     } else {
         Lua& S = MaybeS.value();
-        a = S.GetFileName().substr(S.GetFileName().find('\\'));
+        a = "\\" + fs::path(S.GetFileName()).filename().string();
     }
     warn(a + Sec(" | Incorrect Call of ") + msg);
 }
@@ -107,7 +107,7 @@ bool CheckLua(lua_State* L, int r) {
         auto MaybeS = GetScript(L);
         if (MaybeS.has_value()) {
             Lua& S = MaybeS.value();
-            std::string a = fs::path(S.GetFileName()).filename().string();
+            std::string a = "\\" + fs::path(S.GetFileName()).filename().string();
             warn(a + " | " + msg);
             return false;
         }
@@ -160,7 +160,7 @@ int lua_TriggerEventG(lua_State* L) {
 }
 
 char* ThreadOrigin(Lua* lua) {
-    std::string T = "Thread in " + fs::path(lua->GetFileName()).filename().string();
+    std::string T = "Thread in \\" + fs::path(lua->GetFileName()).filename().string();
     char* Data = new char[T.size() + 1];
     ZeroMemory(Data, T.size() + 1);
     memcpy(Data, T.c_str(), T.size());
