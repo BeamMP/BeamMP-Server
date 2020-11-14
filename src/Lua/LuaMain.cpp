@@ -57,12 +57,12 @@ void FolderList(const std::string& Path, bool HotSwap) {
                 if (stat(Script->GetFileName().c_str(), &Info) != 0) {
                     Script->SetStopThread(true);
                     PluginEngine.erase(Script);
-                    info(Sec("[HOTSWAP] Removed : ") + Script->GetFileName().substr(Script->GetFileName().find('\\')));
+                    info(Sec("[HOTSWAP] Removed removed script due to delete"));
                     break;
                 }
                 if (Script->GetLastWrite() != fs::last_write_time(Script->GetFileName())) {
                     Script->SetStopThread(true);
-                    info(Sec("[HOTSWAP] Updated : ") + Script->GetFileName().substr(Script->GetFileName().find('\\')));
+                    info(Sec("[HOTSWAP] Updated Scripts due to edit"));
                     Script->SetLastWrite(fs::last_write_time(Script->GetFileName()));
                     Script->Reload();
                 }
