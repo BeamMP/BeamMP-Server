@@ -107,6 +107,12 @@ void VehicleParser(Client* c, const std::string& Pckt) {
 #endif
         SendToAll(c, Packet, false, true);
         return;
+    case 't':
+#ifdef DEBUG
+        debug(std::string(Sec("got 'Ot' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+#endif
+        SendToAll(c, Packet, false, true);
+        return;
     default:
 #ifdef DEBUG
         warn(std::string(Sec("possibly not implemented: '") + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")")));
