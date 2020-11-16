@@ -20,15 +20,16 @@ elseif (WIN32)
 endif ()
 
 find_package(Boost 1.70.0 REQUIRED COMPONENTS system thread)
+
 file(GLOB source_files "src/*.cpp" "src/*/*.cpp" "include/*.h" "include/*/*.h" "include/*.hpp" "include/*/*.hpp")
 add_executable(BeamMP-Server ${source_files})
-
+    
 target_include_directories(BeamMP-Server SYSTEM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 find_package(Lua 5.3 REQUIRED)
 target_include_directories(BeamMP-Server SYSTEM PUBLIC ${LUA_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server curl z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES})
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} lua curl dl)
 elseif (WIN32)
     include(FindLua)
     find_package(CURL CONFIG REQUIRED)
