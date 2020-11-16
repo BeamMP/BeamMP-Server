@@ -14,10 +14,10 @@
 #include <optional>
 #include <utility>
 
-std::unique_ptr<LuaArg> CreateArg(lua_State* L, int T, int S) {
+std::shared_ptr<LuaArg> CreateArg(lua_State* L, int T, int S) {
     if (S > T)
         return nullptr;
-    std::unique_ptr<LuaArg> temp(new LuaArg);
+    std::shared_ptr<LuaArg> temp(new LuaArg);
     for (int C = S; C <= T; C++) {
         if (lua_isstring(L, C)) {
             temp->args.emplace_back(std::string(lua_tostring(L, C)));
@@ -53,11 +53,11 @@ void SendError(lua_State* L, const std::string& msg) {
     }
     warn(a + Sec(" | Incorrect Call of ") + msg);
 }
-int Trigger(Lua* lua, const std::string& R, std::unique_ptr<LuaArg> arg) {
+int Trigger(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg) {
     std::lock_guard<std::mutex> lockGuard(lua->Lock);
-    std::packaged_task<int(std::unique_ptr<LuaArg>)> task([lua, R](std::unique_ptr<LuaArg> arg) { return CallFunction(lua, R, std::move(arg)); });
+    std::packaged_task<int(std::shared_ptr<LuaArg>)> task([lua, R](std::shared_ptr<LuaArg> arg) { return CallFunction(lua, R, arg); });
     std::future<int> f1 = task.get_future();
-    std::thread t(std::move(task), std::move(arg));
+    std::thread t(std::move(task), arg);
     t.detach();
     auto status = f1.wait_for(std::chrono::seconds(5));
     if (status != std::future_status::timeout)
@@ -65,11 +65,11 @@ int Trigger(Lua* lua, const std::string& R, std::unique_ptr<LuaArg> arg) {
     SendError(lua->GetState(), R + " took too long to respond");
     return 0;
 }
-int FutureWait(Lua* lua, const std::string& R, std::unique_ptr<LuaArg> arg, bool Wait) {
+int FutureWait(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg, bool Wait) {
     Assert(lua);
-    std::packaged_task<int(std::unique_ptr<LuaArg>)> task([lua, R](std::unique_ptr<LuaArg> arg) { return Trigger(lua, R, std::move(arg)); });
+    std::packaged_task<int(std::shared_ptr<LuaArg>)> task([lua, R](std::shared_ptr<LuaArg> arg) { return Trigger(lua, R, arg); });
     std::future<int> f1 = task.get_future();
-    std::thread t(std::move(task), std::move(arg));
+    std::thread t(std::move(task), arg);
     t.detach();
     int T = 0;
     if (Wait)
@@ -79,16 +79,16 @@ int FutureWait(Lua* lua, const std::string& R, std::unique_ptr<LuaArg> arg, bool
         return f1.get();
     return 0;
 }
-int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::unique_ptr<LuaArg> arg, bool Wait) {
+int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::shared_ptr<LuaArg> arg, bool Wait) {
     int R = 0;
     for (auto& Script : PluginEngine) {
         if (Script->IsRegistered(Event)) {
             if (local) {
                 if (Script->GetPluginName() == Caller->GetPluginName()) {
-                    R += FutureWait(Script.get(), Script->GetRegistered(Event), std::move(arg), Wait);
+                    R += FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
                 }
             } else
-                R += FutureWait(Script.get(), Script->GetRegistered(Event), std::move(arg), Wait);
+                R += FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
         }
     }
     return R;
@@ -563,7 +563,7 @@ std::string Lua::GetOrigin() {
     return fs::path(GetFileName()).filename().string();
 }
 
-int CallFunction(Lua* lua, const std::string& FuncName, std::unique_ptr<LuaArg> Arg) {
+int CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<LuaArg> Arg) {
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {

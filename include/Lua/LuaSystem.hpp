@@ -72,6 +72,6 @@ public:
     void SetStopThread(bool StopThread) { _StopThread = StopThread; }
     bool GetStopThread() const { return _StopThread; }
 };
-int CallFunction(Lua* lua, const std::string& FuncName, std::unique_ptr<LuaArg> args);
-int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::unique_ptr<LuaArg> arg, bool Wait);
+int CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<LuaArg> args);
+int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::shared_ptr<LuaArg> arg, bool Wait);
 extern std::set<std::unique_ptr<Lua>> PluginEngine;
