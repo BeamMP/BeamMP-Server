@@ -230,6 +230,7 @@ static void ProcessCompositeInput() {
 void ConsoleInit() {
     SetupConsole();
     LuaConsole = std::make_unique<Lua>(true);
+    LuaConsole->Init();
     printf("> ");
     std::thread In(ReadCin);
     In.detach();
