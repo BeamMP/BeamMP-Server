@@ -10,7 +10,6 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
-#include <unistd.h>
 #include <unordered_map>
 
 static RWMutex ThreadNameMapMutex;
@@ -95,7 +94,7 @@ void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
 #ifdef DEBUG
     std::scoped_lock Guard(LogLock);
     std::stringstream Print;
-    Print << "(debug build) Thread '" << std::this_thread::get_id() << "' / '" << gettid() << "' is " << func << "\n";
+    Print << "(debug build) Thread '" << std::this_thread::get_id() << "' is " << func << "\n";
     ConsoleOut(Print.str());
 #endif // DEBUG
 }

@@ -43,6 +43,7 @@ std::string PostHTTP(const std::string& IP, const std::string& Fields) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
         res = curl_easy_perform(curl);
         curl_easy_cleanup(curl);
         if (res != CURLE_OK)

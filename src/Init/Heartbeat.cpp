@@ -34,7 +34,7 @@ std::string GenerateCall() {
     return Ret.str();
 }
 std::string RunPromise(const std::string& IP, const std::string& R) {
-    std::packaged_task<std::string()> task([&]() { return PostHTTP(IP, R); });
+    std::packaged_task<std::string()> task([&] { return PostHTTP(IP, R); });
     std::future<std::string> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
