@@ -179,11 +179,11 @@ void ReadCin() {
     size_t null_byte_counter = 0;
     while (true) {
         int In = _getch();
-        info(std::to_string(In));
+        //info(std::to_string(In));
         if (In == 0) {
             ++null_byte_counter;
-            if (null_byte_counter > 0) {
-                info("too many null bytes in input, this is now assumed to be a background thread - console input is now disabled");
+            if (null_byte_counter > 50) {
+                info(Sec("too many null bytes in input, this is now assumed to be a background thread - console input is now disabled"));
                 break;
             }
         }
