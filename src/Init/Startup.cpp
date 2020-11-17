@@ -9,7 +9,7 @@
 
 std::string CustomIP;
 std::string GetSVer() {
-    return std::string(Sec("1.11"));
+    return std::string(Sec("1.12"));
 }
 std::string GetCVer() {
     return std::string(Sec("1.70"));

@@ -99,25 +99,22 @@ char _getch(void) {
 #endif // WIN32
 
 void SetupConsole() {
-#if defined(WIN32) && !defined(DEBUG)
+#if defined(WIN32)
     DWORD outMode = 0;
     HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (stdoutHandle == INVALID_HANDLE_VALUE) {
-        error("Invalid handle");
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        _Exit(GetLastError());
+        error("Invalid console handle! Inputs will not work properly");
+        return;
     }
     if (!GetConsoleMode(stdoutHandle, &outMode)) {
-        error("Invalid console mode");
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        _Exit(GetLastError());
+        error("Invalid console mode! Inputs will not work properly");
+        return;
     }
     // Enable ANSI escape codes
     outMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     if (!SetConsoleMode(stdoutHandle, outMode)) {
-        error("failed to set console mode");
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-        _Exit(GetLastError());
+        error("failed to set console mode! Inputs will not work properly");
+        return;
     }
 #else
 #endif // WIN32
