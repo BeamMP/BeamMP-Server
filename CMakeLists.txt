@@ -12,6 +12,7 @@ elseif (WIN32)
     # This might cause issues with old windows headers, but it's worth the trouble to keep the code
     #   completely cross platform. For fixes to common issues arising from /permissive- visit:
     #   https://docs.microsoft.com/en-us/cpp/build/reference/permissive-standards-conformance
+    message(${CMAKE_CXX_FLAGS_RELEASE})
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /permissive-")
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
