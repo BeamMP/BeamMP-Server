@@ -16,21 +16,8 @@
 #include <thread>
 #include <vector>
 int FC(const std::string& s, const std::string& p, int n);
-struct PacketData {
-    int ID;
-    ::Client* Client;
-    std::string Data;
-    int Tries;
-};
-struct SplitData {
-    int Total {};
-    int ID {};
-    std::set<std::pair<int, std::string>> Fragments;
-};
 
 SOCKET UDPSock;
-std::set<PacketData*> DataAcks;
-std::set<SplitData*> SplitPackets;
 void UDPSend(Client* c, std::string Data) {
     Assert(c);
     if (c == nullptr || !c->isConnected || c->GetStatus() < 0)
@@ -73,30 +60,7 @@ void UDPSend(Client* c, std::string Data) {
 #endif // WIN32
 }
 
-void AckID(int ID) {
-    for (PacketData* p : DataAcks) {
-        if (p != nullptr && p->ID == ID) {
-            DataAcks.erase(p);
-            break;
-        }
-    }
-}
-int PacktID() {
-    static int ID = -1;
-    if (ID > 999999)
-        ID = 0;
-    else
-        ID++;
-    return ID;
-}
-int SplitID() {
-    static int SID = -1;
-    if (SID > 999999)
-        SID = 0;
-    else
-        SID++;
-    return SID;
-}
+
 void SendLarge(Client* c, std::string Data) {
     Assert(c);
     if (Data.length() > 400) {
@@ -105,60 +69,7 @@ void SendLarge(Client* c, std::string Data) {
     }
     TCPSend(c, Data);
 }
-struct HandledC {
-    size_t Pos = 0;
-    Client* c = nullptr;
-    std::array<int, 100> HandledIDs = { -1 };
-};
-std::set<HandledC*> HandledIDs;
-void ResetIDs(HandledC* H) {
-    for (size_t C = 0; C < 100; C++) {
-        H->HandledIDs.at(C) = -1;
-    }
-}
-HandledC* GetHandled(Client* c) {
-    Assert(c);
-    for (HandledC* h : HandledIDs) {
-        if (h->c == c) {
-            return h;
-        }
-    }
-    return new HandledC();
-}
-bool Handled(Client* c, int ID) {
-    Assert(c);
-    bool handle = false;
-    for (HandledC* h : HandledIDs) {
-        if (h->c == c) {
-            for (int id : h->HandledIDs) {
-                if (id == ID)
-                    return true;
-            }
-            if (h->Pos > 99)
-                h->Pos = 0;
-            h->HandledIDs.at(h->Pos) = ID;
-            h->Pos++;
-            handle = true;
-        }
-    }
-    for (HandledC* h : HandledIDs) {
-        if (h->c == nullptr || !h->c->isConnected) {
-            HandledIDs.erase(h);
-            break;
-        }
-    }
-    if (!handle) {
-        HandledC* h = GetHandled(c);
-        ResetIDs(h);
-        if (h->Pos > 99)
-            h->Pos = 0;
-        h->HandledIDs.at(h->Pos) = ID;
-        h->Pos++;
-        h->c = c;
-        HandledIDs.insert(h);
-    }
-    return false;
-}
+
 std::string UDPRcvFromClient(sockaddr_in& client) {
     size_t clientLength = sizeof(client);
     ZeroMemory(&client, clientLength);
@@ -175,51 +86,7 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
     return Ret.substr(0, Rcv);
 }
 
-SplitData* GetSplit(int SplitID) {
-    for (SplitData* a : SplitPackets) {
-        if (a->ID == SplitID)
-            return a;
-    }
-    auto* SP = new SplitData();
-    SplitPackets.insert(SP);
-    return SP;
-}
-void HandleChunk(Client* c, const std::string& Data) {
-    Assert(c);
-    int pos = FC(Data, "|", 5);
-    if (pos == -1)
-        return;
-    std::stringstream ss(Data.substr(0, size_t(pos++)));
-    std::string t;
-    int I = -1;
-    //Current Max ID SID
-    std::vector<int> Num(4, 0);
-    while (std::getline(ss, t, '|')) {
-        if (I >= 0)
-            Num.at(size_t(I)) = std::stoi(t);
-        I++;
-    }
-    std::string ack = "TRG:" + std::to_string(Num.at(2));
-    UDPSend(c, ack);
-    if (Handled(c, Num.at(2))) {
-        return;
-    }
-    std::string Packet = Data.substr(size_t(pos));
-    SplitData* SData = GetSplit(Num.at(3));
-    SData->Total = Num.at(1);
-    SData->ID = Num.at(3);
-    SData->Fragments.insert(std::make_pair(Num.at(0), Packet));
-    if (SData->Fragments.size() == size_t(SData->Total)) {
-        std::string ToHandle;
-        for (const std::pair<int, std::string>& a : SData->Fragments) {
-            ToHandle += a.second;
-        }
-        GParser(c, ToHandle);
-        SplitPackets.erase(SData);
-        delete SData;
-        SData = nullptr;
-    }
-}
+
 void UDPParser(Client* c, std::string Packet) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
         abort();
@@ -228,51 +95,9 @@ void UDPParser(Client* c, std::string Packet) {
     if (Packet.substr(0, 4) == "ABG:") {
         Packet = DeComp(Packet.substr(4));
     }
-    if (Packet.substr(0, 4) == "TRG:") {
-        std::string pkt = Packet.substr(4);
-        if (Packet.find_first_not_of("0123456789") == std::string::npos) {
-            AckID(stoi(Packet));
-        }
-        return;
-    } else if (Packet.substr(0, 3) == "BD:") {
-        auto pos = Packet.find(':', 4);
-        int ID = stoi(Packet.substr(3, pos - 3));
-        std::string pkt = "TRG:" + std::to_string(ID);
-        UDPSend(c, pkt);
-        if (!Handled(c, ID)) {
-            pkt = Packet.substr(pos + 1);
-            GParser(c, pkt);
-        }
-        return;
-    } else if (Packet.substr(0, 2) == "SC") {
-        HandleChunk(c, Packet);
-        return;
-    }
     GParser(c, Packet);
 }
-void LOOP() {
-    DebugPrintTID();
-    while (UDPSock != -1) {
-        if (!DataAcks.empty()) {
-            for (PacketData* p : DataAcks) {
-                if (p != nullptr) {
-                    if (p->Client == nullptr || p->Client->GetTCPSock() == -1) {
-                        DataAcks.erase(p);
-                        break;
-                    }
-                    if (p->Tries < 15) {
-                        UDPSend(p->Client, p->Data);
-                        p->Tries++;
-                    } else {
-                        DataAcks.erase(p);
-                        break;
-                    }
-                }
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    }
-}
+
 [[noreturn]] void UDPServerMain() {
 #ifdef WIN32
     WSADATA data;
@@ -295,10 +120,6 @@ void LOOP() {
         _Exit(-1);
         //return;
     }
-
-    DataAcks.clear();
-    std::thread Ack(LOOP);
-    Ack.detach();
 
     info(Sec("Vehicle data network online on port ") + std::to_string(Port) + Sec(" with a Max of ") + std::to_string(MaxPlayers) + Sec(" Clients"));
     while (true) {
@@ -341,10 +162,6 @@ void LOOP() {
         _Exit(-1);
         //return;
     }
-
-    DataAcks.clear();
-    std::thread Ack(LOOP);
-    Ack.detach();
 
     info(Sec("Vehicle data network online on port ") + std::to_string(Port) + Sec(" with a Max of ") + std::to_string(MaxPlayers) + Sec(" Clients"));
     while (true) {
