@@ -3,22 +3,18 @@
 ///
 #include "Client.hpp"
 
+#include <memory>
+
 std::string Client::GetName() {
     return Name;
 }
 void Client::SetName(const std::string& name) {
     Name = name;
 }
-void Client::SetDID(const std::string& did) {
-    DID = did;
-}
-std::string Client::GetDID() {
-    return DID;
-}
-void Client::SetRole(const std::string& role) {
+void Client::SetRoles(const std::string& role) {
     Role = role;
 }
-std::string Client::GetRole() {
+std::string Client::GetRoles() {
     return Role;
 }
 int Client::GetID() {
@@ -71,14 +67,10 @@ int Client::GetOpenCarID() {
     return OpenID;
 }
 void Client::AddNewCar(int ident, const std::string& Data) {
-    VehicleData.insert(std::unique_ptr<VData>(new VData { ident, Data }));
+    VehicleData.insert(std::make_unique<VData>(VData { ident, Data }));
 }
 
 std::set<std::unique_ptr<VData>>& Client::GetAllCars() {
-    return VehicleData;
-}
-
-const std::set<std::unique_ptr<VData>>& Client::GetAllCars() const {
     return VehicleData;
 }
 

@@ -1,233 +1,109 @@
 ///
 /// Created by Anonymous275 on 7/31/2020
 ///
-#include "Curl/Http.h"
-#include "Logger.h"
-#include "Network.h"
+
+#include <Lua/LuaSystem.hpp>
 #include "Security/Enc.h"
-#include "Settings.h"
 #include "UnixCompat.h"
-#include <algorithm>
-#include <atomic>
+#include "Curl/Http.h"
+#include "Settings.h"
+#include "Network.h"
+#include "Logger.h"
 #include <cstring>
-#include <sstream>
 #include <string>
 #include <thread>
+#include "Json.h"
 
-bool Send(SOCKET TCPSock, std::string Data) {
-#ifdef WIN32
-    int BytesSent;
-    int len = static_cast<int>(Data.size());
-#else
-    int64_t BytesSent;
-    size_t len = Data.size();
-#endif // WIN32
-    BytesSent = send(TCPSock, Data.c_str(), len, 0);
-    Data.clear();
-    if (BytesSent <= 0) {
-#ifndef WIN32
-        error(__func__ + std::string(" ") + strerror(errno));
-#else
-        error(__func__ + std::string(" ") + std::to_string(WSAGetLastError()));
-#endif // WIN32
-        return false;
-    }
-    return true;
-}
-std::string Rcv(SOCKET TCPSock) {
-    uint32_t RealSize;
-#ifdef WIN32
-    int64_t BytesRcv = recv(TCPSock, reinterpret_cast<char*>(&RealSize), sizeof(RealSize), 0);
-#else
-    int64_t BytesRcv = recv(TCPSock, reinterpret_cast<void*>(&RealSize), sizeof(RealSize), 0);
-#endif
-    if (BytesRcv != sizeof(RealSize)) {
-        error(std::string(Sec("invalid packet: expected 4, got ")) + std::to_string(BytesRcv));
-        return "";
-    }
-    // RealSize is big-endian, so we convert it to host endianness
-    RealSize = ntohl(RealSize);
-    debug(std::string("got ") + std::to_string(RealSize) + " as size");
-    if (RealSize > 7000) {
-        error(Sec("Larger than allowed TCP packet received"));
-        return "";
-    }
-    char buf[7000];
-    std::fill_n(buf, 7000, 0);
-    BytesRcv = recv(TCPSock, buf, RealSize, 0);
-    if (BytesRcv != RealSize) {
-        debug("expected " + std::to_string(RealSize) + " bytes, got " + std::to_string(BytesRcv) + " instead");
-    }
-    if (BytesRcv <= 0)
-        return "";
-    return std::string(buf);
-}
-std::string GetRole(const std::string& DID) {
-    if (!DID.empty()) {
-        std::string a = HttpRequest(Sec("https://beammp.com/entitlement?did=") + DID, 443);
-        std::string b = HttpRequest(Sec("https://backup1.beammp.com/entitlement?did=") + DID, 443);
-        if (!a.empty() || !b.empty()) {
-            if (a != b)
-                a = b;
-            auto pos = a.find('"');
-            if (pos != std::string::npos) {
-                return a.substr(pos + 1, a.find('"', pos + 1) - 2);
-            } else if (a == "[]")
-                return Sec("Member");
-        }
+
+std::string GetClientInfo(const std::string& PK) {
+    if (!PK.empty()) {
+       return PostHTTP("https://auth.beammp.com/pkToUser", R"({"key":")"+PK+"\"}",true);;
     }
     return "";
 }
-void Check(SOCKET TCPSock, std::shared_ptr<std::atomic_bool> ok) {
-    DebugPrintTID();
-    size_t accum = 0;
-    while (!*ok) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        accum += 100;
-        if (accum >= 5000) {
-            error(Sec("Identification timed out (Check accum)"));
-            CloseSocketProper(TCPSock);
-            return;
-        }
-    }
-}
-int Max() {
-    int M = MaxPlayers;
-    for (auto& c : CI->Clients) {
-        if (c != nullptr) {
-            if (c->GetRole() == Sec("MDEV"))
-                M++;
-        }
-    }
-    return M;
-}
-void CreateClient(SOCKET TCPSock, const std::string& Name, const std::string& DID, const std::string& Role) {
+
+Client* CreateClient(SOCKET TCPSock) {
     auto* c = new Client;
     c->SetTCPSock(TCPSock);
-    c->SetName(Name);
-    c->SetRole(Role);
-    c->SetDID(DID);
-    Client& Client = *c;
-    CI->AddClient(std::move(c));
-    InitClient(&Client);
-}
-std::pair<int, int> Parse(const std::string& msg) {
-    std::stringstream ss(msg);
-    std::string t;
-    std::pair<int, int> a = { 0, 0 }; //N then E
-    while (std::getline(ss, t, 'g')) {
-        if (t.find_first_not_of(Sec("0123456789abcdef")) != std::string::npos)
-            return a;
-        if (a.first == 0) {
-            a.first = std::stoi(t, nullptr, 16);
-        } else if (a.second == 0) {
-            a.second = std::stoi(t, nullptr, 16);
-        } else
-            return a;
-    }
-    return { 0, 0 };
-}
-std::string GenerateM(RSA* key) {
-    std::stringstream stream;
-    stream << std::hex << key->n << "g" << key->e << "g" << RSA_E(Sec("IDC"), key);
-    return stream.str();
+    //c->SetRoles(Roles);
+    //c->isGuest = Guest;
+    //c->SetName(Name);
+    return c;
 }
 
-void Identification(SOCKET TCPSock, RSA* Skey) {
+void ClientKick(Client* c, const std::string& R){
+    info("Client kicked: " + R);
+    TCPSend(c, "E" + R);
+    CloseSocketProper(c->GetTCPSock());
+}
+
+
+void Identification(SOCKET TCPSock) {
     DebugPrintTID();
-    Assert(Skey);
-    std::shared_ptr<std::atomic_bool> ok = std::make_shared<std::atomic_bool>(false);
-    std::thread Timeout(Check, TCPSock, ok);
-    Timeout.detach();
-    std::string Name, DID, Role;
-    if (!Send(TCPSock, GenerateM(Skey))) {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
-        return;
-    }
-    std::string msg = Rcv(TCPSock);
-    auto Keys = Parse(msg);
-    if (!Send(TCPSock, RSA_E("HC", Keys.second, Keys.first))) {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
-        return;
-    }
+    auto* c = CreateClient(TCPSock);
 
-    std::string Res = Rcv(TCPSock);
-    std::string Ver = Rcv(TCPSock);
-    *ok = true;
-    Ver = RSA_D(Ver, Skey);
-    if (Ver.size() > 3 && Ver.substr(0, 2) == Sec("VC")) {
-        Ver = Ver.substr(2);
-        if (Ver.length() > 4 || Ver != GetCVer()) {
-            error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-            CloseSocketProper(TCPSock);
+    info("Identifying new client...");
+    std::string Rc = TCPRcv(c);
+
+    if (Rc.size() > 3 && Rc.substr(0, 2) == "VC") {
+        Rc = Rc.substr(2);
+        if (Rc.length() > 4 || Rc != GetCVer()) {
+            ClientKick(c,"Outdated Version!");
             return;
         }
     } else {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
+        ClientKick(c,"Invalid version header!");
         return;
     }
-    Res = RSA_D(Res, Skey);
-    if (Res.size() < 3 || Res.substr(0, 2) != Sec("NR")) {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
+    TCPSend(c, "S");
+
+    Rc = TCPRcv(c);
+
+    if(Rc.size() > 50){
+        ClientKick(c,"Invalid Key!");
         return;
     }
-    if (Res.find(':') == std::string::npos) {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
+
+    Rc = GetClientInfo(Rc);
+    json::Document d;
+    d.Parse(Rc.c_str());
+    if(Rc == "-1" || d.HasParseError()){
+        ClientKick(c,"Invalid key!");
         return;
     }
-    Name = Res.substr(2, Res.find(':') - 2);
-    DID = Res.substr(Res.find(':') + 1);
-    Role = GetRole(DID);
-    if (Role.empty() || Role.find(Sec("Error")) != std::string::npos) {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
+
+    if(d["username"].IsString() && d["roles"].IsString() && d["guest"].IsBool()){
+        c->SetName(d["username"].GetString());
+        c->SetRoles(d["roles"].GetString());
+        c->isGuest = d["guest"].GetBool();
+    }else{
+        ClientKick(c,"Invalid authentication data!");
         return;
     }
-    // DebugPrintTIDInternal(std::string("Client(") + Name + ")");
-    debug(Sec("Name -> ") + Name + Sec(", Role -> ") + Role + Sec(", ID -> ") + DID);
-    for (auto& c : CI->Clients) {
-        if (c != nullptr) {
-            if (c->GetDID() == DID) {
-                error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-                CloseSocketProper(c->GetTCPSock());
-                c->SetStatus(-2);
+
+    debug("Name -> " + c->GetName() + ", Guest -> " + std::to_string(c->isGuest) + ", Roles -> " + c->GetRoles());
+    for (auto& Cl : CI->Clients) {
+        if (Cl != nullptr) {
+            if (Cl->GetName() == c->GetName()) {
+                info("Old client (" +Cl->GetName()+ ") kicked: Reconnecting");
+                CloseSocketProper(Cl->GetTCPSock());
+                Cl->SetStatus(-2);
                 break;
             }
         }
     }
-    if (Role == Sec("MDEV") || CI->Size() < Max()) {
-        debug("Identification success");
-        CreateClient(TCPSock, Name, DID, Role);
-    } else {
-        error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-        CloseSocketProper(TCPSock);
+    auto arg = std::make_unique<LuaArg>(LuaArg{{c->GetName(),c->GetRoles(),c->isGuest}});
+    int Res = TriggerLuaEvent("onPlayerAuth",false,nullptr, std::move(arg), true);
+    if(Res){
+        ClientKick(c,"you are not allowed on the server!");
+        return;
     }
-}
-void Identify(SOCKET TCPSock) {
-    RSA* Skey = GenKey();
-    // this disgusting ifdef stuff is needed because for some
-    // reason MSVC defines __try and __except and libg++ defines
-    // __try and __catch so its all a big mess if we leave this in or undefine
-    // the macros
-    /*#ifdef WIN32
-    __try{
-#endif // WIN32*/
-    Identification(TCPSock, Skey);
-    /*#ifdef WIN32
-    }__except(1){
-        if(TCPSock != -1){
-            error("died on " + std::string(__func__) + ":" + std::to_string(__LINE__));
-            CloseSocketProper(TCPSock);
-        }
-    }
-#endif // WIN32*/
-
-    delete Skey;
+    if (CI->Size() < MaxPlayers) {
+        info("Identification success");
+        Client& Client = *c;
+        CI->AddClient(std::move(c));
+        InitClient(&Client);
+    } else ClientKick(c,"Server full!");
 }
 
 void TCPServerMain() {
@@ -264,7 +140,7 @@ void TCPServerMain() {
                 warn(Sec("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
-            std::thread ID(Identify, client);
+            std::thread ID(Identification, client);
             ID.detach();
         } catch (const std::exception& e) {
             error(Sec("fatal: ") + std::string(e.what()));

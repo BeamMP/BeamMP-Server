@@ -8,10 +8,10 @@
 #include "UnixCompat.h"
 #include <thread>
 
-void TCPSend(Client* c, const std::string& Data) {
+bool TCPSend(Client* c, const std::string& Data) {
     Assert(c);
     if (c == nullptr)
-        return;
+        return false;
     // Size is BIG ENDIAN now, use only for header!
     //auto Size = htonl(int32_t(Data.size()));
     ///TODO : BIG ENDIAN for other OS
@@ -27,16 +27,17 @@ void TCPSend(Client* c, const std::string& Data) {
         if (Temp == 0) {
             if (c->GetStatus() > -1)
                 c->SetStatus(-1);
-            return;
+            return false;
         } else if (Temp < 0) {
             if (c->GetStatus() > -1)
                 c->SetStatus(-1);
             // info(Sec("Closing socket, Temp < 0"));
             CloseSocketProper(c->GetTCPSock());
-            return;
+            return false;
         }
         Sent += Temp;
     } while (Sent < Size);
+    return true;
 }
 
 bool CheckBytes(Client* c, int32_t BytesRcv) {
@@ -61,11 +62,11 @@ bool CheckBytes(Client* c, int32_t BytesRcv) {
     return true;
 }
 
-void TCPRcv(Client* c) {
+std::string TCPRcv(Client* c) {
     Assert(c);
     int32_t Header, BytesRcv = 0, Temp;
     if (c == nullptr || c->GetStatus() < 0)
-        return;
+        return "";
 
     std::vector<char> Data(sizeof(Header));
     do {
@@ -74,7 +75,7 @@ void TCPRcv(Client* c) {
 #ifdef DEBUG
             error(std::string(__func__) + Sec(": failed on CheckBytes in while(BytesRcv < 4)"));
 #endif // DEBUG
-            return;
+            return "";
         }
         BytesRcv += Temp;
     } while (size_t(BytesRcv) < sizeof(Header));
@@ -87,7 +88,7 @@ void TCPRcv(Client* c) {
 #ifdef DEBUG
         error(std::string(__func__) + Sec(": failed on CheckBytes"));
 #endif // DEBUG
-        return;
+        return "";
     }
     Data.resize(Header);
     BytesRcv = 0;
@@ -98,7 +99,7 @@ void TCPRcv(Client* c) {
             error(std::string(__func__) + Sec(": failed on CheckBytes in while(BytesRcv < Header)"));
 #endif // DEBUG
 
-            return;
+            return "";
         }
 #ifdef DEBUG
         //debug(std::string(__func__) + Sec(": Temp: ") + std::to_string(Temp) + Sec(", BytesRcv: ") + std::to_string(BytesRcv));
@@ -116,7 +117,8 @@ void TCPRcv(Client* c) {
 #ifdef DEBUG
     //debug("Parsing from " + c->GetName() + " -> " +std::to_string(Ret.size()));
 #endif
-    GParser(c, Ret);
+
+    return Ret;
 }
 
 void TCPClient(Client* c) {
@@ -127,8 +129,9 @@ void TCPClient(Client* c) {
         return;
     }
     OnConnect(c);
-    while (c->GetStatus() > -1)
-        TCPRcv(c);
+    while (c->GetStatus() > -1){
+        GParser(c, TCPRcv(c));
+    }
     OnDisconnect(c, c->GetStatus() == -2);
 }
 void InitClient(Client* c) {

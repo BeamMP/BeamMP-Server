@@ -1,53 +1,30 @@
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
-#include "Client.hpp"
-#include "Logger.h"
 #include "Security/Enc.h"
-#include "Settings.h"
 #include "UnixCompat.h"
+#include "Settings.h"
+#include "Client.hpp"
+#include "Network.h"
+#include "Logger.h"
 #include <fstream>
-
 #ifdef __linux
 // we need this for `struct stat`
 #include <sys/stat.h>
 #endif // __linux
 
-void STCPSend(Client* c, std::string Data) {
-    Assert(c);
-    if (c == nullptr)
-        return;
-#ifdef WIN32
-    int BytesSent;
-    int len = static_cast<int>(Data.size());
-#else
-    int64_t BytesSent;
-    size_t len = Data.size();
-#endif // WIN32
-    BytesSent = send(c->GetTCPSock(), Data.c_str(), len, 0);
-    Data.clear();
-    if (BytesSent == 0) {
-        if (c->GetStatus() > -1)
-            c->SetStatus(-1);
-    } else if (BytesSent < 0) {
-        if (c->GetStatus() > -1)
-            c->SetStatus(-1);
-        info(Sec("Closing socket, BytesSent < 0"));
-        CloseSocketProper(c->GetTCPSock());
-    }
-}
 void SendFile(Client* c, const std::string& Name) {
     Assert(c);
-    info(c->GetName() + Sec(" requesting : ") + Name.substr(Name.find_last_of('/')));
+    info(c->GetName() + " requesting : " + Name.substr(Name.find_last_of('/')));
     struct stat Info { };
     if (stat(Name.c_str(), &Info) != 0) {
-        STCPSend(c, Sec("Cannot Open"));
+        TCPSend(c, "Cannot Open");
         return;
     }
     std::ifstream f(Name.c_str(), std::ios::binary);
     f.seekg(0, std::ios_base::end);
     std::streampos fileSize = f.tellg();
-    size_t Size = size_t(fileSize);
+    auto Size = size_t(fileSize);
     size_t Sent = 0;
     size_t Diff;
     int64_t Split = 64000;
@@ -57,13 +34,13 @@ void SendFile(Client* c, const std::string& Name) {
             std::string Data(size_t(Split), 0);
             f.seekg(int64_t(Sent), std::ios_base::beg);
             f.read(&Data[0], Split);
-            STCPSend(c, Data);
+            TCPSend(c, Data);
             Sent += size_t(Split);
         } else {
             std::string Data(Diff, 0);
             f.seekg(int64_t(Sent), std::ios_base::beg);
             f.read(&Data[0], int64_t(Diff));
-            STCPSend(c, Data);
+            TCPSend(c, Data);
             Sent += Diff;
         }
     }
@@ -87,7 +64,7 @@ void Parse(Client* c, const std::string& Packet) {
             std::string ToSend = FileList + FileSizes;
             if (ToSend.empty())
                 ToSend = "-";
-            STCPSend(c, ToSend);
+            TCPSend(c, ToSend);
         }
         return;
     default:
@@ -95,45 +72,19 @@ void Parse(Client* c, const std::string& Packet) {
     }
 }
 
-bool STCPRecv(Client* c) {
-    Assert(c);
-    if (c == nullptr)
-        return false;
-#define len 200
-    char buf[len];
-    ZeroMemory(buf, len);
-    int64_t BytesRcv = recv(c->GetTCPSock(), buf, len, 0);
-#undef len
-    if (BytesRcv == 0) {
-        if (c->GetStatus() > -1)
-            c->SetStatus(-1);
-        info(Sec("Closing socket in STCP receive, BytesRcv == 0"));
-        CloseSocketProper(c->GetTCPSock());
-        return false;
-    } else if (BytesRcv < 0) {
-        if (c->GetStatus() > -1)
-            c->SetStatus(-1);
-        info(Sec("Closing socket in STCP receive, BytesRcv < 0"));
-        CloseSocketProper(c->GetTCPSock());
-        return false;
-    }
-    if (strcmp(buf, "Done") == 0)
-        return false;
-    std::string Ret(buf, size_t(BytesRcv));
-    Parse(c, Ret);
-    return true;
-}
-
 void SyncResources(Client* c) {
     Assert(c);
-    if (c == nullptr)
-        return;
+    if (c == nullptr)return;
     try {
-        STCPSend(c, Sec("WS"));
-        while (c->GetStatus() > -1 && STCPRecv(c))
-            ;
+        TCPSend(c, "WS");
+        std::string Data;
+        while (c->GetStatus() > -1){
+            Data = TCPRcv(c);
+            if(Data == "Done")break;
+            Parse(c, Data);
+        }
     } catch (std::exception& e) {
-        except(Sec("Exception! : ") + std::string(e.what()));
+        except("Exception! : " + std::string(e.what()));
         c->SetStatus(-1);
     }
 }

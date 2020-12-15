@@ -34,7 +34,7 @@ std::string GenerateCall() {
     return Ret.str();
 }
 std::string RunPromise(const std::string& IP, const std::string& R) {
-    std::packaged_task<std::string()> task([&] { return PostHTTP(IP, R); });
+    std::packaged_task<std::string()> task([&] { return PostHTTP(IP, R, false); });
     std::future<std::string> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
@@ -46,7 +46,7 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
     _Exit(0);
 }
 
-void Heartbeat() {
+[[noreturn]] void Heartbeat() {
     DebugPrintTID();
     std::string R, T;
     bool isAuth = false;
@@ -54,17 +54,16 @@ void Heartbeat() {
         R = GenerateCall();
         if (!CustomIP.empty())
             R += "&ip=" + CustomIP;
-        std::string link = Sec("https://beammp.com/heartbeatv2");
+        std::string link ="https://beammp.com/heartbeatv2";
         T = RunPromise(link, R);
-        if (T.find_first_not_of(Sec("20")) != std::string::npos) {
+
+        if (T.substr(0,2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::seconds(10));
-            std::string Backup = Sec("https://backup1.beammp.com/heartbeatv2");
+            std::string Backup = "https://backup1.beammp.com/heartbeatv2";
             T = RunPromise(Backup, R);
-            if (T.find_first_not_of(Sec("20")) != std::string::npos) {
-                error(Sec("Backend system refused server! Check your AuthKey"));
-                std::this_thread::sleep_for(std::chrono::seconds(3));
-                _Exit(-1);
+            if (T.substr(0,2) != "20") {
+                warn("Backend system refused server! Server might not show in the public list");
             }
         }
         //Server Authenticated
@@ -76,7 +75,7 @@ void Heartbeat() {
             WebsocketInit();
             isAuth = true;
         }
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 void HBInit() {

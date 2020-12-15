@@ -279,16 +279,14 @@ int lua_GetPlayerCount(lua_State* L) {
     lua_pushinteger(L, CI->Size());
     return 1;
 }
-int lua_GetDID(lua_State* L) {
+int lua_GetGuest(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
         Client* c = GetClient(ID);
-        if (c != nullptr)
-            lua_pushstring(L, c->GetDID().c_str());
-        else
-            return 0;
+        if (c != nullptr)lua_pushboolean(L, c->isGuest);
+        else return 0;
     } else {
-        SendError(L, Sec("GetDID not enough arguments"));
+        SendError(L, "GetGuest not enough arguments");
         return 0;
     }
     return 1;
@@ -338,8 +336,6 @@ int lua_dropPlayer(lua_State* L) {
         int ID = int(lua_tonumber(L, 1));
         Client* c = GetClient(ID);
         if (c == nullptr)
-            return 0;
-        if (c->GetRole() == Sec("MDEV"))
             return 0;
         std::string Reason;
         if (Args > 1 && lua_isstring(L, 2)) {
@@ -391,8 +387,6 @@ int lua_RemoveVehicle(lua_State* L) {
             SendError(L, Sec("RemoveVehicle invalid Player ID"));
             return 0;
         }
-        if (c->GetRole() == "MDEV")
-            return 0;
         if (!c->GetCarData(VID).empty()) {
             std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
             SendToAll(nullptr, Destroy, true, true);
@@ -589,6 +583,19 @@ void Lua::SetPluginName(const std::string& Name) {
 void Lua::SetFileName(const std::string& Name) {
     _FileName = Name;
 }
+int lua_TempFix(lua_State*L) {
+    if (lua_isnumber(L, 1)) {
+        int ID = int(lua_tonumber(L, 1));
+        Client* c = GetClient(ID);
+        if (c == nullptr)return 0;
+        std::string Ret;
+        if(c->isGuest){
+            Ret = "Guest-" + c->GetName();
+        }else Ret = c->GetName();
+        lua_pushstring(L,Ret.c_str());
+    } else SendError(L, "GetDID not enough arguments");
+    return 1;
+}
 void Lua::Init() {
     Assert(luaState);
     luaL_openlibs(luaState);
@@ -600,11 +607,12 @@ void Lua::Init() {
     lua_register(luaState, "RegisterEvent", lua_RegisterEvent);
     lua_register(luaState, "GetPlayerName", lua_GetPlayerName);
     lua_register(luaState, "RemoveVehicle", lua_RemoveVehicle);
-    lua_register(luaState, "GetPlayerDiscordID", lua_GetDID);
-    lua_register(luaState, "GetPlayerVehicles", lua_GetCars);
+    lua_register(luaState, "GetPlayerDiscordID", lua_TempFix);
     lua_register(luaState, "CreateThread", lua_CreateThread);
+    lua_register(luaState, "GetPlayerVehicles", lua_GetCars);
     lua_register(luaState, "SendChatMessage", lua_sendChat);
     lua_register(luaState, "GetPlayers", lua_GetAllPlayers);
+    lua_register(luaState, "GetPlayerGuest", lua_GetGuest);
     lua_register(luaState, "StopThread", lua_StopThread);
     lua_register(luaState, "DropPlayer", lua_dropPlayer);
     lua_register(luaState, "GetPlayerHWID", lua_HWID);

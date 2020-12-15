@@ -28,7 +28,10 @@ std::string HttpRequest(const std::string& IP, int port) {
     return readBuffer;
 }
 
-std::string PostHTTP(const std::string& IP, const std::string& Fields) {
+std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json) {
+    static auto *header = new curl_slist{(char*)"Content-Type: application/json"};
+    static std::mutex Lock;
+    std::scoped_lock Guard(Lock);
     CURL* curl;
     CURLcode res;
     std::string readBuffer;
@@ -36,6 +39,7 @@ std::string PostHTTP(const std::string& IP, const std::string& Fields) {
     Assert(curl);
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
+        if(json)curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, Fields.size());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, Fields.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);

@@ -34,22 +34,20 @@ private:
 public:
     void AddNewCar(int ident,const std::string& Data);
     void SetCarData(int ident,const std::string&Data);
+    std::set<std::unique_ptr<VData>>& GetAllCars();
     void SetName(const std::string& name);
-    void SetRole(const std::string& role);
-    void SetDID(const std::string& did);
+    void SetRoles(const std::string& role);
     std::string GetCarData(int ident);
     void SetUDPAddr(sockaddr_in Addr);
-    std::set<std::unique_ptr<VData>>& GetAllCars();
-    const std::set<std::unique_ptr<VData>>& GetAllCars() const;
     void SetTCPSock(SOCKET CSock);
     void SetStatus(int status);
     void DeleteCar(int ident);
     sockaddr_in GetUDPAddr();
     bool isConnected = false;
-    std::string GetRole();
+    std::string GetRoles();
     std::string GetName();
     bool isSynced = false;
-    std::string GetDID();
+    bool isGuest = false;
     SOCKET GetTCPSock();
     void SetID(int ID);
     int GetOpenCarID();

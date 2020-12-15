@@ -48,7 +48,7 @@ void VehicleParser(Client* c, const std::string& Pckt) {
         if (Data.at(0) == '0') {
             int CarID = c->GetOpenCarID();
             debug(c->GetName() + Sec(" created a car with ID ") + std::to_string(CarID));
-            Packet = "Os:" + c->GetRole() + ":" + c->GetName() + ":" + std::to_string(c->GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
+            Packet = "Os:" + c->GetRoles() + ":" + c->GetName() + ":" + std::to_string(c->GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
             if (c->GetCarCount() >= MaxCars || TriggerLuaEvent(Sec("onVehicleSpawn"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID(), CarID, Packet.substr(3) } }), true)) {
                 Respond(c, Packet, true);
                 std::string Destroy = "Od:" + std::to_string(c->GetID()) + "-" + std::to_string(CarID);
