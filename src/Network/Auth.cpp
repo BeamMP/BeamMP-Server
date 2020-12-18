@@ -25,9 +25,6 @@ std::string GetClientInfo(const std::string& PK) {
 Client* CreateClient(SOCKET TCPSock) {
     auto* c = new Client;
     c->SetTCPSock(TCPSock);
-    //c->SetRoles(Roles);
-    //c->isGuest = Guest;
-    //c->SetName(Name);
     return c;
 }
 
@@ -38,7 +35,7 @@ void ClientKick(Client* c, const std::string& R){
 }
 
 
-void Identification(SOCKET TCPSock) {
+void Authentication(SOCKET TCPSock) {
     DebugPrintTID();
     auto* c = CreateClient(TCPSock);
 
@@ -84,7 +81,7 @@ void Identification(SOCKET TCPSock) {
     debug("Name -> " + c->GetName() + ", Guest -> " + std::to_string(c->isGuest) + ", Roles -> " + c->GetRoles());
     for (auto& Cl : CI->Clients) {
         if (Cl != nullptr) {
-            if (Cl->GetName() == c->GetName()) {
+            if (Cl->GetName() == c->GetName() && Cl->isGuest == c->isGuest) {
                 info("Old client (" +Cl->GetName()+ ") kicked: Reconnecting");
                 CloseSocketProper(Cl->GetTCPSock());
                 Cl->SetStatus(-2);
@@ -92,18 +89,50 @@ void Identification(SOCKET TCPSock) {
             }
         }
     }
+
     auto arg = std::make_unique<LuaArg>(LuaArg{{c->GetName(),c->GetRoles(),c->isGuest}});
-    int Res = TriggerLuaEvent("onPlayerAuth",false,nullptr, std::move(arg), true);
-    if(Res){
+    std::any Res = TriggerLuaEvent("onPlayerAuth",false,nullptr, std::move(arg), true);
+    std::string Type = Res.type().name();
+    if(Type.find("int") != std::string::npos && std::any_cast<int>(Res)){
         ClientKick(c,"you are not allowed on the server!");
+        return;
+    }else if(Type.find("string") != std::string::npos){
+        ClientKick(c,std::any_cast<std::string>(Res));
         return;
     }
     if (CI->Size() < MaxPlayers) {
         info("Identification success");
         Client& Client = *c;
         CI->AddClient(std::move(c));
-        InitClient(&Client);
+        TCPClient(&Client);
     } else ClientKick(c,"Server full!");
+}
+
+void HandleDownload(SOCKET TCPSock){
+    char D;
+    if(recv(TCPSock,&D,1,0) != 1){
+        CloseSocketProper(TCPSock);
+        return;
+    }
+    auto ID = uint8_t(D);
+    for(auto& c : CI->Clients){
+        if(c->GetID() == ID){
+            c->SetDownSock(TCPSock);
+        }
+    }
+}
+
+void Identify(SOCKET TCPSock){
+    char Code;
+    if(recv(TCPSock,&Code,1,0) != 1) {
+        CloseSocketProper(TCPSock);
+        return;
+    }
+    if(Code == 'C'){
+        Authentication(TCPSock);
+    }else if(Code == 'D'){
+        HandleDownload(TCPSock);
+    }else CloseSocketProper(TCPSock);
 }
 
 void TCPServerMain() {
@@ -111,7 +140,7 @@ void TCPServerMain() {
 #ifdef WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)) {
-        error(Sec("Can't start Winsock!"));
+        error("Can't start Winsock!");
         return;
     }
     SOCKET client, Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -120,30 +149,30 @@ void TCPServerMain() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(Port);
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        error(Sec("Can't bind socket! ") + std::to_string(WSAGetLastError()));
+        error("Can't bind socket! " + std::to_string(WSAGetLastError()));
         std::this_thread::sleep_for(std::chrono::seconds(5));
         _Exit(-1);
     }
     if (Listener == -1) {
-        error(Sec("Invalid listening socket"));
+        error("Invalid listening socket");
         return;
     }
     if (listen(Listener, SOMAXCONN)) {
-        error(Sec("listener failed ") + std::to_string(GetLastError()));
+        error("listener failed " + std::to_string(GetLastError()));
         return;
     }
-    info(Sec("Vehicle event network online"));
+    info("Vehicle event network online");
     do {
         try {
             client = accept(Listener, nullptr, nullptr);
             if (client == -1) {
-                warn(Sec("Got an invalid client socket on connect! Skipping..."));
+                warn("Got an invalid client socket on connect! Skipping...");
                 continue;
             }
-            std::thread ID(Identification, client);
+            std::thread ID(Identify, client);
             ID.detach();
         } catch (const std::exception& e) {
-            error(Sec("fatal: ") + std::string(e.what()));
+            error("fatal: " + std::string(e.what()));
         }
     } while (client);
 

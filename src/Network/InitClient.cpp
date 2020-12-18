@@ -1,14 +1,16 @@
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
-#include "Client.hpp"
-
-#include <memory>
-#include "Logger.h"
 #include "Lua/LuaSystem.hpp"
-#include "Network.h"
-#include "Security/Enc.h"
+#include "Client.hpp"
+#include "UnixCompat.h"
 #include "Settings.h"
+#include "Network.h"
+#include "Logger.h"
+#include <memory>
+
+
+
 int OpenID() {
     int ID = 0;
     bool found;
@@ -83,18 +85,19 @@ void OnDisconnect(Client* c, bool kicked) {
     SendToAll(c, Packet, false, true);
     Packet.clear();
     TriggerLuaEvent(Sec("onPlayerDisconnect"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
+    if(c->GetTCPSock())CloseSocketProper(c->GetTCPSock());
+    if(c->GetDownSock())CloseSocketProper(c->GetDownSock());
     CI->RemoveClient(c); ///Removes the Client from existence
 }
 void OnConnect(Client* c) {
     Assert(c);
-    info(Sec("Client connected"));
+    info("Client connected");
     c->SetID(OpenID());
-    info(Sec("Assigned ID ") + std::to_string(c->GetID()) + Sec(" to ") + c->GetName());
-    TriggerLuaEvent(Sec("onPlayerConnecting"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
+    info("Assigned ID " + std::to_string(c->GetID()) +" to " + c->GetName());
+    TriggerLuaEvent("onPlayerConnecting", false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
     SyncResources(c);
-    if (c->GetStatus() < 0)
-        return;
+    if (c->GetStatus() < 0)return;
     Respond(c, "M" + MapName, true); //Send the Map on connect
-    info(c->GetName() + Sec(" : Connected"));
-    TriggerLuaEvent(Sec("onPlayerJoining"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
+    info(c->GetName() +" : Connected");
+    TriggerLuaEvent("onPlayerJoining", false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
 }

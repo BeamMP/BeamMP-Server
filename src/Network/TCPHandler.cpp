@@ -1,20 +1,17 @@
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
-#include "Compressor.h"
-#include "Logger.h"
-#include "Network.h"
 #include "Security/Enc.h"
 #include "UnixCompat.h"
+#include "Compressor.h"
+#include "Network.h"
+#include "Logger.h"
 #include <thread>
 
 bool TCPSend(Client* c, const std::string& Data) {
     Assert(c);
-    if (c == nullptr)
-        return false;
-    // Size is BIG ENDIAN now, use only for header!
-    //auto Size = htonl(int32_t(Data.size()));
-    ///TODO : BIG ENDIAN for other OS
+    if (c == nullptr)return false;
+
     int32_t Size, Sent, Temp;
     std::string Send(4, 0);
     Size = int32_t(Data.size());
@@ -31,7 +28,6 @@ bool TCPSend(Client* c, const std::string& Data) {
         } else if (Temp < 0) {
             if (c->GetStatus() > -1)
                 c->SetStatus(-1);
-            // info(Sec("Closing socket, Temp < 0"));
             CloseSocketProper(c->GetTCPSock());
             return false;
         }
@@ -43,7 +39,7 @@ bool TCPSend(Client* c, const std::string& Data) {
 bool CheckBytes(Client* c, int32_t BytesRcv) {
     Assert(c);
     if (BytesRcv == 0) {
-        debug(Sec("(TCP) Connection closing..."));
+        debug("(TCP) Connection closing...");
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
         return false;
@@ -122,7 +118,7 @@ std::string TCPRcv(Client* c) {
 }
 
 void TCPClient(Client* c) {
-    DebugPrintTIDInternal(Sec("Client(") + c->GetName() + Sec(")"), true);
+    DebugPrintTIDInternal("Client(" + c->GetName() + ")", true);
     Assert(c);
     if (c->GetTCPSock() == -1) {
         CI->RemoveClient(c);
@@ -133,8 +129,4 @@ void TCPClient(Client* c) {
         GParser(c, TCPRcv(c));
     }
     OnDisconnect(c, c->GetStatus() == -2);
-}
-void InitClient(Client* c) {
-    std::thread NewClient(TCPClient, c);
-    NewClient.detach();
 }

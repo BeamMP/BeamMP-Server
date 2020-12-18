@@ -32,15 +32,23 @@ int Client::GetStatus() {
 void Client::SetUDPAddr(sockaddr_in Addr) {
     UDPADDR = Addr;
 }
+
+void Client::SetDownSock(SOCKET CSock){
+    SOCK[1] = CSock;
+}
+SOCKET Client::GetDownSock(){
+    return SOCK[1];
+}
 sockaddr_in Client::GetUDPAddr() {
     return UDPADDR;
 }
 void Client::SetTCPSock(SOCKET CSock) {
-    TCPSOCK = CSock;
+    SOCK[0] = CSock;
 }
 SOCKET Client::GetTCPSock() {
-    return TCPSOCK;
+    return SOCK[0];
 }
+
 void Client::DeleteCar(int ident) {
     for (auto& v : VehicleData) {
         if (v != nullptr && v->ID == ident) {

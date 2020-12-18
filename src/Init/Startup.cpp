@@ -9,10 +9,10 @@
 
 std::string CustomIP;
 std::string GetSVer() {
-    return std::string(Sec("1.20"));
+    return "1.20";
 }
 std::string GetCVer() {
-    return std::string(Sec("1.71"));
+    return "1.72";
 }
 void Args(int argc, char* argv[]) {
     info("BeamMP Server Running version " + GetSVer());

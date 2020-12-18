@@ -53,10 +53,10 @@ void SendError(lua_State* L, const std::string& msg) {
     }
     warn(a + Sec(" | Incorrect Call of ") + msg);
 }
-int Trigger(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg) {
+std::any Trigger(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg) {
     std::lock_guard<std::mutex> lockGuard(lua->Lock);
-    std::packaged_task<int(std::shared_ptr<LuaArg>)> task([lua, R](std::shared_ptr<LuaArg> arg) { return CallFunction(lua, R, arg); });
-    std::future<int> f1 = task.get_future();
+    std::packaged_task<std::any(std::shared_ptr<LuaArg>)> task([lua, R](std::shared_ptr<LuaArg> arg) { return CallFunction(lua, R, arg); });
+    std::future<std::any> f1 = task.get_future();
     std::thread t(std::move(task), arg);
     t.detach();
     auto status = f1.wait_for(std::chrono::seconds(5));
@@ -65,10 +65,10 @@ int Trigger(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg) {
     SendError(lua->GetState(), R + " took too long to respond");
     return 0;
 }
-int FutureWait(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg, bool Wait) {
+std::any FutureWait(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg, bool Wait) {
     Assert(lua);
-    std::packaged_task<int(std::shared_ptr<LuaArg>)> task([lua, R](std::shared_ptr<LuaArg> arg) { return Trigger(lua, R, arg); });
-    std::future<int> f1 = task.get_future();
+    std::packaged_task<std::any(std::shared_ptr<LuaArg>)> task([lua, R](std::shared_ptr<LuaArg> arg) { return Trigger(lua, R, arg); });
+    std::future<std::any> f1 = task.get_future();
     std::thread t(std::move(task), arg);
     t.detach();
     int T = 0;
@@ -79,19 +79,30 @@ int FutureWait(Lua* lua, const std::string& R, std::shared_ptr<LuaArg> arg, bool
         return f1.get();
     return 0;
 }
-int TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::shared_ptr<LuaArg> arg, bool Wait) {
-    int R = 0;
+std::any TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std::shared_ptr<LuaArg> arg, bool Wait) {
+    std::any R;
+    std::string Type;
+    int Ret = 0;
     for (auto& Script : PluginEngine) {
         if (Script->IsRegistered(Event)) {
             if (local) {
                 if (Script->GetPluginName() == Caller->GetPluginName()) {
-                    R += FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
+                    R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
+                    Type = R.type().name();
+                    if(Type.find("int") != std::string::npos){
+                        if(std::any_cast<int>(R))Ret++;
+                    }else if(Event == "onPlayerAuth") return R;
                 }
-            } else
-                R += FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
+            }else{
+                R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
+                Type = R.type().name();
+                if(Type.find("int") != std::string::npos){
+                    if(std::any_cast<int>(R))Ret++;
+                }else if(Event == "onPlayerAuth") return R;
+            }
         }
     }
-    return R;
+    return Ret;
 }
 bool ConsoleCheck(lua_State* L, int r) {
     if (r != LUA_OK) {
@@ -345,9 +356,7 @@ int lua_dropPlayer(lua_State* L) {
         c->SetStatus(-2);
         info(Sec("Closing socket due to kick"));
         CloseSocketProper(c->GetTCPSock());
-
-    } else
-        SendError(L, Sec("DropPlayer not enough arguments"));
+    } else SendError(L, Sec("DropPlayer not enough arguments"));
     return 0;
 }
 int lua_sendChat(lua_State* L) {
@@ -432,7 +441,12 @@ int lua_RemoteEvent(lua_State* L) {
     }
     return 0;
 }
-int lua_ServerExit(lua_State*) {
+int lua_ServerExit(lua_State*L) {
+    if(lua_gettop(L) > 0){
+        if(lua_isnumber(L,1)){
+            _Exit(int(lua_tointeger(L, 1)));
+        }
+    }
     _Exit(0);
 }
 int lua_Set(lua_State* L) {
@@ -557,7 +571,7 @@ std::string Lua::GetOrigin() {
     return fs::path(GetFileName()).filename().string();
 }
 
-int CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<LuaArg> Arg) {
+std::any CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<LuaArg> Arg) {
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {
@@ -571,6 +585,8 @@ int CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<LuaArg> 
         if (CheckLua(luaState, R)) {
             if (lua_isnumber(luaState, -1)) {
                 return int(lua_tointeger(luaState, -1));
+            }else if(lua_isstring(luaState,-1)){
+                return std::string(lua_tostring(luaState,-1));
             }
         }
     }

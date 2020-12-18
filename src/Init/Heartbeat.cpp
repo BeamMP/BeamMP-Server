@@ -4,7 +4,6 @@
 #include "Client.hpp"
 #include "Curl/Http.h"
 #include "Logger.h"
-#include "Security/Enc.h"
 #include "Settings.h"
 #include <chrono>
 #include <future>
@@ -38,12 +37,11 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
     std::future<std::string> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
-    auto status = f1.wait_for(std::chrono::seconds(10));
+    auto status = f1.wait_for(std::chrono::seconds(15));
     if (status != std::future_status::timeout)
         return f1.get();
-    error(Sec("Backend system Timeout please try again later"));
-    std::this_thread::sleep_for(std::chrono::seconds(3));
-    _Exit(0);
+    error("Backend system Timeout please try again later");
+    return "";
 }
 
 [[noreturn]] void Heartbeat() {
@@ -75,7 +73,7 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
             WebsocketInit();
             isAuth = true;
         }
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
 void HBInit() {
