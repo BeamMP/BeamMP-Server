@@ -1,4 +1,4 @@
-# BeamNG-MP-Server
+# BeamMP-Server
 
 ## Unix specific build instructions
 
