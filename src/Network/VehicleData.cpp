@@ -1,20 +1,24 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 5/8/2020
 ///
-///UDP
-#include "Client.hpp"
-#include "Compressor.h"
-#include "Logger.h"
-#include "Network.h"
+
 #include "Security/Enc.h"
-#include "Settings.h"
+#include "Compressor.h"
 #include "UnixCompat.h"
-#include <array>
-#include <cmath>
+#include "Client.hpp"
+#include "Settings.h"
+#include "Network.h"
+#include "Logger.h"
 #include <cstring>
 #include <sstream>
 #include <thread>
 #include <vector>
+#include <cmath>
+
 int FC(const std::string& s, const std::string& p, int n);
 
 SOCKET UDPSock;
@@ -39,21 +43,21 @@ void UDPSend(Client* c, std::string Data) {
     sendOk = sendto(UDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, AddrSize);
 #ifdef WIN32
     if (sendOk == -1) {
-        debug(Sec("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
+        debug(("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     } else if (sendOk == 0) {
-        debug(Sec("(UDP) sendto returned 0"));
+        debug(("(UDP) sendto returned 0"));
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     }
 #else // unix
     if (sendOk == -1) {
-        debug(Sec("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
+        debug(("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     } else if (sendOk == 0) {
-        debug(Sec("(UDP) sendto returned 0"));
+        debug(("(UDP) sendto returned 0"));
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
     }
@@ -77,9 +81,9 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
     int64_t Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1) {
 #ifdef WIN32
-        error(Sec("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
+        error(("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
 #else // unix
-        error(Sec("(UDP) Error receiving from Client! Code : ") + std::string(strerror(errno)));
+        error(("(UDP) Error receiving from Client! Code : ") + std::string(strerror(errno)));
 #endif // WIN32
         return "";
     }
@@ -102,7 +106,7 @@ void UDPParser(Client* c, std::string Packet) {
 #ifdef WIN32
     WSADATA data;
     if (WSAStartup(514, &data)) {
-        error(Sec("Can't start Winsock!"));
+        error(("Can't start Winsock!"));
         //return;
     }
 
@@ -115,13 +119,13 @@ void UDPParser(Client* c, std::string Packet) {
 
     // Try and bind the socket to the IP and port
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        error(Sec("Can't bind socket!") + std::to_string(WSAGetLastError()));
+        error(("Can't bind socket!") + std::to_string(WSAGetLastError()));
         std::this_thread::sleep_for(std::chrono::seconds(5));
         _Exit(-1);
         //return;
     }
 
-    info(Sec("Vehicle data network online on port ") + std::to_string(Port) + Sec(" with a Max of ") + std::to_string(MaxPlayers) + Sec(" Clients"));
+    info(("Vehicle data network online on port ") + std::to_string(Port) + (" with a Max of ") + std::to_string(MaxPlayers) + (" Clients"));
     while (true) {
         try {
             sockaddr_in client {};
@@ -141,7 +145,7 @@ void UDPParser(Client* c, std::string Packet) {
                 }
             }
         } catch (const std::exception& e) {
-            error(Sec("fatal: ") + std::string(e.what()));
+            error(("fatal: ") + std::string(e.what()));
         }
     }
     /*CloseSocketProper(UDPSock);
@@ -157,13 +161,13 @@ void UDPParser(Client* c, std::string Packet) {
 
     // Try and bind the socket to the IP and port
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
-        error(Sec("Can't bind socket!") + std::string(strerror(errno)));
+        error(("Can't bind socket!") + std::string(strerror(errno)));
         std::this_thread::sleep_for(std::chrono::seconds(5));
         _Exit(-1);
         //return;
     }
 
-    info(Sec("Vehicle data network online on port ") + std::to_string(Port) + Sec(" with a Max of ") + std::to_string(MaxPlayers) + Sec(" Clients"));
+    info(("Vehicle data network online on port ") + std::to_string(Port) + (" with a Max of ") + std::to_string(MaxPlayers) + (" Clients"));
     while (true) {
         try {
             sockaddr_in client {};
@@ -183,7 +187,7 @@ void UDPParser(Client* c, std::string Packet) {
                 }
             }
         } catch (const std::exception& e) {
-            error(Sec("fatal: ") + std::string(e.what()));
+            error(("fatal: ") + std::string(e.what()));
         }
     }
     /*CloseSocketProper(UDPSock); // TODO: Why not this? We did this in TCPServerMain?

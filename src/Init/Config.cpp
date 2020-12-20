@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 7/28/2020
 ///
@@ -91,13 +95,13 @@ void LoadConfig(std::ifstream& IFS) {
         index++;
     }
     if (index - 1 < 11) {
-        error(Sec("Outdated/Incorrect config please remove it server will close in 5 secs"));
+        error(("Outdated/Incorrect config please remove it server will close in 5 secs"));
         std::this_thread::sleep_for(std::chrono::seconds(3));
         _Exit(0);
     }
     IFS.close();
-    IFS.open(Sec("Server.cfg"));
-    info(Sec("Config found updating values"));
+    IFS.open(("Server.cfg"));
+    info(("Config found updating values"));
     index = 1;
     while (getline(IFS, line)) {
         if (line.rfind('#', 0) != 0 && line.rfind(' ', 0) != 0) { //Checks if it starts as Comment
@@ -109,8 +113,8 @@ void LoadConfig(std::ifstream& IFS) {
 }
 void GenerateConfig() {
     std::ofstream FileStream;
-    FileStream.open(Sec("Server.cfg"));
-    FileStream << Sec("# This is the BeamMP Server Configuration File v0.60\n"
+    FileStream.open(("Server.cfg"));
+    FileStream << ("# This is the BeamMP Server Configuration File v0.60\n"
                       "Debug = false # true or false to enable debug console output\n"
                       "Private = true # Private?\n"
                       "Port = 30814 # Port to run the server on UDP and TCP\n"
@@ -124,27 +128,27 @@ void GenerateConfig() {
     FileStream.close();
 }
 void Default() {
-    info(Sec("Config not found generating default"));
+    info(("Config not found generating default"));
     GenerateConfig();
-    error(Sec("You are required to input the AuthKey"));
+    error(("You are required to input the AuthKey"));
     std::this_thread::sleep_for(std::chrono::seconds(3));
     _Exit(0);
 }
 void DebugData() {
-    debug(std::string(Sec("Debug : ")) + (Debug ? "true" : "false"));
-    debug(std::string(Sec("Private : ")) + (Private ? "true" : "false"));
-    debug(Sec("Port : ") + std::to_string(Port));
-    debug(Sec("Max Cars : ") + std::to_string(MaxCars));
-    debug(Sec("MaxPlayers : ") + std::to_string(MaxPlayers));
-    debug(Sec("MapName : ") + MapName);
-    debug(Sec("ServerName : ") + ServerName);
-    debug(Sec("ServerDesc : ") + ServerDesc);
-    debug(Sec("File : ") + Resource);
-    debug(Sec("Key length: ") + std::to_string(Key.length()));
+    debug(std::string(("Debug : ")) + (Debug ? "true" : "false"));
+    debug(std::string(("Private : ")) + (Private ? "true" : "false"));
+    debug(("Port : ") + std::to_string(Port));
+    debug(("Max Cars : ") + std::to_string(MaxCars));
+    debug(("MaxPlayers : ") + std::to_string(MaxPlayers));
+    debug(("MapName : ") + MapName);
+    debug(("ServerName : ") + ServerName);
+    debug(("ServerDesc : ") + ServerDesc);
+    debug(("File : ") + Resource);
+    debug(("Key length: ") + std::to_string(Key.length()));
 }
 void InitConfig() {
     std::ifstream IFS;
-    IFS.open(Sec("Server.cfg"));
+    IFS.open(("Server.cfg"));
     if (IFS.good())
         LoadConfig(IFS);
     else
@@ -152,7 +156,7 @@ void InitConfig() {
     if (IFS.is_open())
         IFS.close();
     if (Key.empty()) {
-        error(Sec("No AuthKey was found"));
+        error(("No AuthKey was found"));
         std::this_thread::sleep_for(std::chrono::seconds(3));
         _Exit(0);
     }

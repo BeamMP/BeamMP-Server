@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 5/20/2020
 ///
@@ -24,9 +28,9 @@ bool NewFile(const std::string& Path) {
 void RegisterFiles(const std::string& Path, bool HotSwap) {
     std::string Name = Path.substr(Path.find_last_of('\\') + 1);
     if (!HotSwap)
-        info(Sec("Loading plugin : ") + Name);
+        info(("Loading plugin : ") + Name);
     for (const auto& entry : fs::directory_iterator(Path)) {
-        auto pos = entry.path().string().find(Sec(".lua"));
+        auto pos = entry.path().string().find((".lua"));
         if (pos != std::string::npos && entry.path().string().length() - pos == 4) {
             if (!HotSwap || NewFile(entry.path().string())) {
                 auto FileName = entry.path().string();
@@ -35,7 +39,7 @@ void RegisterFiles(const std::string& Path, bool HotSwap) {
                 PluginEngine.insert(std::move(ScriptToInsert));
                 Script.Init();
                 if (HotSwap)
-                    info(Sec("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
+                    info(("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
             }
         }
     }
@@ -57,12 +61,12 @@ void FolderList(const std::string& Path, bool HotSwap) {
                 if (stat(Script->GetFileName().c_str(), &Info) != 0) {
                     Script->SetStopThread(true);
                     PluginEngine.erase(Script);
-                    info(Sec("[HOTSWAP] Removed removed script due to delete"));
+                    info(("[HOTSWAP] Removed removed script due to delete"));
                     break;
                 }
                 if (Script->GetLastWrite() != fs::last_write_time(Script->GetFileName())) {
                     Script->SetStopThread(true);
-                    info(Sec("[HOTSWAP] Updated Scripts due to edit"));
+                    info(("[HOTSWAP] Updated Scripts due to edit"));
                     Script->SetLastWrite(fs::last_write_time(Script->GetFileName()));
                     Script->Reload();
                 }
@@ -77,12 +81,12 @@ void InitLua() {
     if (!fs::exists(Resource)) {
         fs::create_directory(Resource);
     }
-    std::string Path = Resource + Sec("/Server");
+    std::string Path = Resource + ("/Server");
     if (!fs::exists(Path)) {
         fs::create_directory(Path);
     }
     FolderList(Path, false);
     std::thread t1(HotSwaps, Path);
     t1.detach();
-    info(Sec("Lua system online"));
+    info(("Lua system online"));
 }

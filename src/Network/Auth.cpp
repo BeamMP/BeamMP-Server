@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 7/31/2020
 ///
@@ -190,30 +194,30 @@ void TCPServerMain() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Port));
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        error(Sec("Can't bind socket! ") + std::string(strerror(errno)));
+        error(("Can't bind socket! ") + std::string(strerror(errno)));
         std::this_thread::sleep_for(std::chrono::seconds(5));
         _Exit(-1);
     }
     if (Listener == -1) {
-        error(Sec("Invalid listening socket"));
+        error(("Invalid listening socket"));
         return;
     }
     if (listen(Listener, SOMAXCONN)) {
-        error(Sec("listener failed ") + std::string(strerror(errno)));
+        error(("listener failed ") + std::string(strerror(errno)));
         return;
     }
-    info(Sec("Vehicle event network online"));
+    info(("Vehicle event network online"));
     do {
         try {
             client = accept(Listener, nullptr, nullptr);
             if (client == -1) {
-                warn(Sec("Got an invalid client socket on connect! Skipping..."));
+                warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
             std::thread ID(Identify, client);
             ID.detach();
         } catch (const std::exception& e) {
-            error(Sec("fatal: ") + std::string(e.what()));
+            error(("fatal: ") + std::string(e.what()));
         }
     } while (client);
 

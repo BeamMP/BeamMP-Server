@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 10/29/2020
 ///
@@ -25,11 +29,11 @@ std::mutex MLock;
 std::unique_ptr<Lua> LuaConsole;
 void HandleInput(const std::string& cmd) {
     std::cout << std::endl;
-    if (cmd == Sec("exit")) {
+    if (cmd == ("exit")) {
         _Exit(0);
-    } else if (cmd == Sec("clear") || cmd == Sec("cls")) {
+    } else if (cmd == ("clear") || cmd == ("cls")) {
         // 2J is clearscreen, H is reset position to top-left
-        ConsoleOut(Sec("\x1b[2J\x1b[H"));
+        ConsoleOut(("\x1b[2J\x1b[H"));
     } else {
         LuaConsole->Execute(cmd);
     }
@@ -183,7 +187,7 @@ void ReadCin() {
         if (In == 0) {
             ++null_byte_counter;
             if (null_byte_counter > 50) {
-                info(Sec("too many null bytes in input, this is now assumed to be a background thread - console input is now disabled"));
+                info(("too many null bytes in input, this is now assumed to be a background thread - console input is now disabled"));
                 break;
             }
         }

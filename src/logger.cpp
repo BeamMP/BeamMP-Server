@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 7/17/2020
 ///
@@ -79,9 +83,9 @@ std::string getDate() {
 
 void InitLog() {
     std::ofstream LFS;
-    LFS.open(Sec("Server.log"));
+    LFS.open(("Server.log"));
     if (!LFS.is_open()) {
-        error(Sec("logger file init failed!"));
+        error(("logger file init failed!"));
     } else
         LFS.close();
 }
@@ -101,13 +105,13 @@ void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
 
 void addToLog(const std::string& Line) {
     std::ofstream LFS;
-    LFS.open(Sec("Server.log"), std::ios_base::app);
+    LFS.open(("Server.log"), std::ios_base::app);
     LFS << Line.c_str();
     LFS.close();
 }
 void info(const std::string& toPrint) {
     std::scoped_lock Guard(LogLock);
-    std::string Print = getDate() + Sec("[INFO] ") + toPrint + "\n";
+    std::string Print = getDate() + ("[INFO] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
@@ -115,25 +119,25 @@ void debug(const std::string& toPrint) {
     if (!Debug)
         return;
     std::scoped_lock Guard(LogLock);
-    std::string Print = getDate() + Sec("[DEBUG] ") + toPrint + "\n";
+    std::string Print = getDate() + ("[DEBUG] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void warn(const std::string& toPrint) {
     std::scoped_lock Guard(LogLock);
-    std::string Print = getDate() + Sec("[WARN] ") + toPrint + "\n";
+    std::string Print = getDate() + ("[WARN] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void error(const std::string& toPrint) {
     std::scoped_lock Guard(LogLock);
-    std::string Print = getDate() + Sec("[ERROR] ") + toPrint + "\n";
+    std::string Print = getDate() + ("[ERROR] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void except(const std::string& toPrint) {
     std::scoped_lock Guard(LogLock);
-    std::string Print = getDate() + Sec("[EXCEP] ") + toPrint + "\n";
+    std::string Print = getDate() + ("[EXCEP] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }

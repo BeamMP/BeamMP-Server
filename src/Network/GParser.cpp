@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
@@ -43,18 +47,18 @@ void VehicleParser(Client* c, const std::string& Pckt) {
     switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'Os' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         if (Data.at(0) == '0') {
             int CarID = c->GetOpenCarID();
-            debug(c->GetName() + Sec(" created a car with ID ") + std::to_string(CarID));
+            debug(c->GetName() + (" created a car with ID ") + std::to_string(CarID));
             Packet = "Os:" + c->GetRoles() + ":" + c->GetName() + ":" + std::to_string(c->GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
-            auto Res = TriggerLuaEvent(Sec("onVehicleSpawn"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID(), CarID, Packet.substr(3) } }), true);
+            auto Res = TriggerLuaEvent(("onVehicleSpawn"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID(), CarID, Packet.substr(3) } }), true);
             if (c->GetCarCount() >= MaxCars || std::any_cast<int>(Res)) {
                 Respond(c, Packet, true);
                 std::string Destroy = "Od:" + std::to_string(c->GetID()) + "-" + std::to_string(CarID);
                 Respond(c, Destroy, true);
-                debug(c->GetName() + Sec(" (force : car limit/lua) removed ID ") + std::to_string(CarID));
+                debug(c->GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
             } else {
                 c->AddNewCar(CarID, Packet);
                 SendToAll(nullptr, Packet, true, true);
@@ -63,7 +67,7 @@ void VehicleParser(Client* c, const std::string& Pckt) {
         return;
     case 'c':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'Oc' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         pid = Data.substr(0, Data.find('-'));
         vid = Data.substr(Data.find('-') + 1, Data.find(':', 1) - Data.find('-') - 1);
@@ -72,7 +76,7 @@ void VehicleParser(Client* c, const std::string& Pckt) {
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c->GetID()) {
-            auto Res = TriggerLuaEvent(Sec("onVehicleEdited"), false, nullptr,
+            auto Res = TriggerLuaEvent(("onVehicleEdited"), false, nullptr,
                                        std::make_unique<LuaArg>(LuaArg { { c->GetID(), VID, Packet.substr(3) } }),
                                        true);
             if (!std::any_cast<int>(Res)) {
@@ -87,7 +91,7 @@ void VehicleParser(Client* c, const std::string& Pckt) {
         return;
     case 'd':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'Od' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         pid = Data.substr(0, Data.find('-'));
         vid = Data.substr(Data.find('-') + 1);
@@ -97,27 +101,27 @@ void VehicleParser(Client* c, const std::string& Pckt) {
         }
         if (PID != -1 && VID != -1 && PID == c->GetID()) {
             SendToAll(nullptr, Packet, true, true);
-            TriggerLuaEvent(Sec("onVehicleDeleted"), false, nullptr,
+            TriggerLuaEvent(("onVehicleDeleted"), false, nullptr,
                 std::make_unique<LuaArg>(LuaArg { { c->GetID(), VID } }), false);
             c->DeleteCar(VID);
-            debug(c->GetName() + Sec(" deleted car with ID ") + std::to_string(VID));
+            debug(c->GetName() + (" deleted car with ID ") + std::to_string(VID));
         }
         return;
     case 'r':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'Or' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         SendToAll(c, Packet, false, true);
         return;
     case 't':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'Ot' packet: '")) + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         SendToAll(c, Packet, false, true);
         return;
     default:
 #ifdef DEBUG
-        warn(std::string(Sec("possibly not implemented: '") + Packet + Sec("' (") + std::to_string(Packet.size()) + Sec(")")));
+        warn(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
 #endif // DEBUG
         return;
     }
@@ -128,9 +132,9 @@ void SyncClient(Client* c) {
         return;
     c->isSynced = true;
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    Respond(c, Sec("Sn") + c->GetName(), true);
-    SendToAll(c, Sec("JWelcome ") + c->GetName() + "!", false, true);
-    TriggerLuaEvent(Sec("onPlayerJoin"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
+    Respond(c, ("Sn") + c->GetName(), true);
+    SendToAll(c, ("JWelcome ") + c->GetName() + "!", false, true);
+    TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
     for (auto& client : CI->Clients) {
         if (client != nullptr) {
             if (client.get() != c) {
@@ -144,14 +148,14 @@ void SyncClient(Client* c) {
             }
         }
     }
-    info(c->GetName() + Sec(" is now synced!"));
+    info(c->GetName() + (" is now synced!"));
 }
 void ParseVeh(Client* c, const std::string& Packet) {
     Assert(c);
 #ifdef WIN32
     __try {
         VehicleParser(c, Packet);
-    } __except (Handle(GetExceptionInformation(), Sec("Vehicle Handler"))) { }
+    } __except (Handle(GetExceptionInformation(), ("Vehicle Handler"))) { }
 #else // unix
     VehicleParser(c, Packet);
 #endif // WIN32
@@ -202,24 +206,24 @@ void GlobalParser(Client* c, const std::string& Pack) {
         SyncClient(c);
         return;
     case 'p':
-        Respond(c, Sec("p"), false);
+        Respond(c, ("p"), false);
         UpdatePlayers();
         return;
     case 'O':
         if (Packet.length() > 1000) {
-            debug(Sec("Received data from: ") + c->GetName() + Sec(" Size: ") + std::to_string(Packet.length()));
+            debug(("Received data from: ") + c->GetName() + (" Size: ") + std::to_string(Packet.length()));
         }
         ParseVeh(c, Packet);
         return;
     case 'J':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'J' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'J' packet: '")) + Pack + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         SendToAll(c, Packet, false, true);
         return;
     case 'C':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'C' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'C' packet: '")) + Pack + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
@@ -231,7 +235,7 @@ void GlobalParser(Client* c, const std::string& Pack) {
         return;
     case 'E':
 #ifdef DEBUG
-        debug(std::string(Sec("got 'E' packet: '")) + Pack + Sec("' (") + std::to_string(Packet.size()) + Sec(")"));
+        debug(std::string(("got 'E' packet: '")) + Pack + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         HandleEvent(c, Packet);
         return;
@@ -248,7 +252,7 @@ void GParser(Client* c, const std::string& Packet) {
 #ifdef WIN32
     __try {
         GlobalParser(c, Packet);
-    } __except (Handle(GetExceptionInformation(), Sec("Global Handler"))) { }
+    } __except (Handle(GetExceptionInformation(), ("Global Handler"))) { }
 #else
     GlobalParser(c, Packet);
 #endif // WIN32

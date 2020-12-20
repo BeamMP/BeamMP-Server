@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 7/28/2020
 ///
@@ -19,8 +23,8 @@ void Args(int argc, char* argv[]) {
     if (argc > 1) {
         CustomIP = argv[1];
         size_t n = std::count(CustomIP.begin(), CustomIP.end(), '.');
-        auto p = CustomIP.find_first_not_of(Sec(".0123456789"));
-        if (p != std::string::npos || n != 3 || CustomIP.substr(0, 3) == Sec("127")) {
+        auto p = CustomIP.find_first_not_of((".0123456789"));
+        if (p != std::string::npos || n != 3 || CustomIP.substr(0, 3) == ("127")) {
             CustomIP.clear();
             warn("IP Specified is invalid! Ignoring");
         } else info("Server started with custom IP");

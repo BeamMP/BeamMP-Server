@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
@@ -8,8 +12,6 @@
 #include "Network.h"
 #include "Logger.h"
 #include <memory>
-
-
 
 int OpenID() {
     int ID = 0;
@@ -61,7 +63,7 @@ void SendToAll(Client* c, const std::string& Data, bool Self, bool Rel) {
     }
 }
 void UpdatePlayers() {
-    std::string Packet = Sec("Ss") + std::to_string(CI->Size()) + "/" + std::to_string(MaxPlayers) + ":";
+    std::string Packet = ("Ss") + std::to_string(CI->Size()) + "/" + std::to_string(MaxPlayers) + ":";
     for (auto& c : CI->Clients) {
         if (c != nullptr)
             Packet += c->GetName() + ",";
@@ -71,7 +73,7 @@ void UpdatePlayers() {
 }
 void OnDisconnect(Client* c, bool kicked) {
     Assert(c);
-    info(c->GetName() + Sec(" Connection Terminated"));
+    info(c->GetName() + (" Connection Terminated"));
     std::string Packet;
     for (auto& v : c->GetAllCars()) {
         if (v != nullptr) {
@@ -80,14 +82,14 @@ void OnDisconnect(Client* c, bool kicked) {
         }
     }
     if (kicked)
-        Packet = Sec("L") + c->GetName() + Sec(" was kicked!");
-    Packet = Sec("L") + c->GetName() + Sec(" Left the server!");
+        Packet = ("L") + c->GetName() + (" was kicked!");
+    Packet = ("L") + c->GetName() + (" Left the server!");
     SendToAll(c, Packet, false, true);
     Packet.clear();
-    TriggerLuaEvent(Sec("onPlayerDisconnect"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
+    TriggerLuaEvent(("onPlayerDisconnect"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
     if(c->GetTCPSock())CloseSocketProper(c->GetTCPSock());
     if(c->GetDownSock())CloseSocketProper(c->GetDownSock());
-    CI->RemoveClient(c); ///Removes the Client from existence
+    CI->RemoveClient(c);
 }
 void OnConnect(Client* c) {
     Assert(c);

@@ -1,3 +1,7 @@
+// Copyright (c) 2020 Anonymous275.
+// BeamMP Server code is not in the public domain and is not free software.
+// One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries.
+// Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
@@ -45,13 +49,13 @@ bool CheckBytes(Client* c, int32_t BytesRcv) {
         return false;
     } else if (BytesRcv < 0) {
 #ifdef WIN32
-        debug(Sec("(TCP) recv failed with error: ") + std::to_string(WSAGetLastError()));
+        debug(("(TCP) recv failed with error: ") + std::to_string(WSAGetLastError()));
 #else // unix
-        debug(Sec("(TCP) recv failed with error: ") + std::string(strerror(errno)));
+        debug(("(TCP) recv failed with error: ") + std::string(strerror(errno)));
 #endif // WIN32
         if (c->GetStatus() > -1)
             c->SetStatus(-1);
-        info(Sec("Closing socket in CheckBytes, BytesRcv < 0"));
+        info(("Closing socket in CheckBytes, BytesRcv < 0"));
         CloseSocketProper(c->GetTCPSock());
         return false;
     }
@@ -69,7 +73,7 @@ std::string TCPRcv(Client* c) {
         Temp = recv(c->GetTCPSock(), &Data[BytesRcv], 4 - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
 #ifdef DEBUG
-            error(std::string(__func__) + Sec(": failed on CheckBytes in while(BytesRcv < 4)"));
+            error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < 4)"));
 #endif // DEBUG
             return "";
         }
@@ -78,11 +82,11 @@ std::string TCPRcv(Client* c) {
     memcpy(&Header, &Data[0], sizeof(Header));
 
 #ifdef DEBUG
-    //debug(std::string(__func__) + Sec(": expecting ") + std::to_string(Header) + Sec(" bytes."));
+    //debug(std::string(__func__) + (": expecting ") + std::to_string(Header) + (" bytes."));
 #endif // DEBUG
     if (!CheckBytes(c, BytesRcv)) {
 #ifdef DEBUG
-        error(std::string(__func__) + Sec(": failed on CheckBytes"));
+        error(std::string(__func__) + (": failed on CheckBytes"));
 #endif // DEBUG
         return "";
     }
@@ -92,18 +96,18 @@ std::string TCPRcv(Client* c) {
         Temp = recv(c->GetTCPSock(), &Data[BytesRcv], Header - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
 #ifdef DEBUG
-            error(std::string(__func__) + Sec(": failed on CheckBytes in while(BytesRcv < Header)"));
+            error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < Header)"));
 #endif // DEBUG
 
             return "";
         }
 #ifdef DEBUG
-        //debug(std::string(__func__) + Sec(": Temp: ") + std::to_string(Temp) + Sec(", BytesRcv: ") + std::to_string(BytesRcv));
+        //debug(std::string(__func__) + (": Temp: ") + std::to_string(Temp) + (", BytesRcv: ") + std::to_string(BytesRcv));
 #endif // DEBUG
         BytesRcv += Temp;
     } while (BytesRcv < Header);
 #ifdef DEBUG
-    //debug(std::string(__func__) + Sec(": finished recv with Temp: ") + std::to_string(Temp) + Sec(", BytesRcv: ") + std::to_string(BytesRcv));
+    //debug(std::string(__func__) + (": finished recv with Temp: ") + std::to_string(Temp) + (", BytesRcv: ") + std::to_string(BytesRcv));
 #endif // DEBUG
     std::string Ret(Data.data(), Header);
 

@@ -1,5 +1,5 @@
 #include "CustomAssert.h"
-#include "Security/Xor.h"
+
 #include "Startup.h"
 #include <curl/curl.h>
 #include <iostream>
@@ -9,10 +9,10 @@
 void UnixSignalHandler(int sig) {
     switch (sig) {
     case SIGPIPE:
-        warn(Sec("ignored signal SIGPIPE: Pipe broken"));
+        warn(("ignored signal SIGPIPE: Pipe broken"));
         break;
     default:
-        error(Sec("Signal arrived in handler but was not handled: ") + std::to_string(sig));
+        error(("Signal arrived in handler but was not handled: ") + std::to_string(sig));
         break;
     }
 }
