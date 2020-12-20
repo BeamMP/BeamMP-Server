@@ -36,10 +36,9 @@ void SplitLoad(Client*c,int64_t Sent,int64_t Size, bool D,const std::string& Nam
     char* Data;
     if(Size > Split)Data = new char[Split];
     else Data = new char[Size];
-    SOCKET TCPSock = c->GetTCPSock();
-    if(D){
-        TCPSock = c->GetDownSock();
-    }
+    SOCKET TCPSock;
+    if(D)TCPSock = c->GetDownSock();
+    else TCPSock = c->GetTCPSock();
     info("Split load Socket " + std::to_string(TCPSock));
     while (c->GetStatus() > -1 && Sent < Size) {
         Diff = Size - Sent;
