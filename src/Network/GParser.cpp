@@ -14,25 +14,36 @@
 #include "UnixCompat.h"
 #include <memory>
 #include <sstream>
+#include "Json.h"
 
-int FC(const std::string& s, const std::string& p, int n) {
-    auto i = s.find(p);
-    int j;
-    for (j = 1; j < n && i != std::string::npos; ++j) {
-        i = s.find(p, i + 1);
-    }
-    if (j == n)
-        return int(i);
-    else
-        return -1;
-}
 void Apply(Client* c, int VID, const std::string& pckt) {
     Assert(c);
-    std::string Packet = pckt;
-    std::string VD = c->GetCarData(VID);
-    Packet = Packet.substr(FC(Packet, ",", 2) + 1);
-    Packet = VD.substr(0, FC(VD, ",", 2) + 1) + Packet.substr(0, Packet.find_last_of('"') + 1) + VD.substr(FC(VD, ",\"", 7));
-    c->SetCarData(VID, Packet);
+    std::string Packet = pckt.substr(pckt.find('{')), VD = c->GetCarData(VID);
+    std::string Header = VD.substr(0,VD.find('{'));
+    VD = VD.substr(VD.find('{'));
+    rapidjson::Document Veh, Pack;
+    Veh.Parse(VD.c_str());
+    if(Veh.HasParseError()){
+        error("Could not get vehicle config!");
+        return;
+    }
+    Pack.Parse(Packet.c_str());
+    if(Pack.HasParseError() || Pack.IsNull()){
+        error("Could not get active vehicle config!");
+        return;
+    }
+
+    for(auto& M : Pack.GetObjectA()){
+        if(Veh[M.name].IsNull()){
+            Veh.AddMember(M.name,M.value,Veh.GetAllocator());
+        }else{
+            Veh[M.name] = Pack[M.name];
+        }
+    }
+    rapidjson::StringBuffer Buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(Buffer);
+    Veh.Accept(writer);
+    c->SetCarData(VID, Header + Buffer.GetString());
 }
 
 void VehicleParser(Client* c, const std::string& Pckt) {

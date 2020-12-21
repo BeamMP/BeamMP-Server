@@ -16,7 +16,7 @@ std::string GetSVer() {
     return "1.20";
 }
 std::string GetCVer() {
-    return "1.72";
+    return "1.80";
 }
 void Args(int argc, char* argv[]) {
     info("BeamMP Server Running version " + GetSVer());

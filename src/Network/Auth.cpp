@@ -69,7 +69,7 @@ void Authentication(SOCKET TCPSock) {
     json::Document d;
     d.Parse(Rc.c_str());
     if(Rc == "-1" || d.HasParseError()){
-        ClientKick(c,"Invalid key!");
+        ClientKick(c,"Invalid key! Please restart your game.");
         return;
     }
 

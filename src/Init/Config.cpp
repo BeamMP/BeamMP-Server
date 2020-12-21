@@ -135,18 +135,20 @@ void Default() {
     _Exit(0);
 }
 void DebugData() {
-    debug(std::string(("Debug : ")) + (Debug ? "true" : "false"));
-    debug(std::string(("Private : ")) + (Private ? "true" : "false"));
-    debug(("Port : ") + std::to_string(Port));
-    debug(("Max Cars : ") + std::to_string(MaxCars));
-    debug(("MaxPlayers : ") + std::to_string(MaxPlayers));
-    debug(("MapName : ") + MapName);
-    debug(("ServerName : ") + ServerName);
-    debug(("ServerDesc : ") + ServerDesc);
-    debug(("File : ") + Resource);
-    debug(("Key length: ") + std::to_string(Key.length()));
+    debug(std::string("Debug : ") + (Debug ? "true" : "false"));
+    debug(std::string("Private : ") + (Private ? "true" : "false"));
+    debug("Port : " + std::to_string(Port));
+    debug("Max Cars : " + std::to_string(MaxCars));
+    debug("MaxPlayers : " + std::to_string(MaxPlayers));
+    debug("MapName : " + MapName);
+    debug("ServerName : " + ServerName);
+    debug("ServerDesc : " + ServerDesc);
+    debug("File : " + Resource);
+    debug("Key length: " + std::to_string(Key.length()));
 }
 void InitConfig() {
+    ////TODO: Move to json after update 4
+
     std::ifstream IFS;
     IFS.open(("Server.cfg"));
     if (IFS.good())

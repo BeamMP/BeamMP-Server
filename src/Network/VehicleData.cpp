@@ -19,8 +19,6 @@
 #include <vector>
 #include <cmath>
 
-int FC(const std::string& s, const std::string& p, int n);
-
 SOCKET UDPSock;
 void UDPSend(Client* c, std::string Data) {
     Assert(c);
