@@ -37,10 +37,10 @@ void Client::SetUDPAddr(sockaddr_in Addr) {
     UDPADDR = Addr;
 }
 
-void Client::SetDownSock(SOCKET CSock){
+void Client::SetDownSock(SOCKET CSock) {
     SOCK[1] = CSock;
 }
-SOCKET Client::GetDownSock(){
+SOCKET Client::GetDownSock() {
     return SOCK[1];
 }
 sockaddr_in Client::GetUDPAddr() {

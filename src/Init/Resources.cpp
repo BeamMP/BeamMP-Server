@@ -34,5 +34,6 @@ void InitRes() {
         }
     }
     std::replace(FileList.begin(), FileList.end(), '\\', '/');
-    if(ModsLoaded)info("Loaded " + std::to_string(ModsLoaded) + " Mods");
+    if (ModsLoaded)
+        info("Loaded " + std::to_string(ModsLoaded) + " Mods");
 }

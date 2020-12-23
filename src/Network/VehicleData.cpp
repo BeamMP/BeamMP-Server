@@ -6,18 +6,18 @@
 /// Created by Anonymous275 on 5/8/2020
 ///
 
-#include "Security/Enc.h"
-#include "Compressor.h"
-#include "UnixCompat.h"
 #include "Client.hpp"
-#include "Settings.h"
-#include "Network.h"
+#include "Compressor.h"
 #include "Logger.h"
+#include "Network.h"
+#include "Security/Enc.h"
+#include "Settings.h"
+#include "UnixCompat.h"
+#include <cmath>
 #include <cstring>
 #include <sstream>
 #include <thread>
 #include <vector>
-#include <cmath>
 
 SOCKET UDPSock;
 void UDPSend(Client* c, std::string Data) {
@@ -62,7 +62,6 @@ void UDPSend(Client* c, std::string Data) {
 #endif // WIN32
 }
 
-
 void SendLarge(Client* c, std::string Data) {
     Assert(c);
     if (Data.length() > 400) {
@@ -87,7 +86,6 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
     }
     return Ret.substr(0, Rcv);
 }
-
 
 void UDPParser(Client* c, std::string Packet) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {

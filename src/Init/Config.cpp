@@ -115,16 +115,16 @@ void GenerateConfig() {
     std::ofstream FileStream;
     FileStream.open(("Server.cfg"));
     FileStream << ("# This is the BeamMP Server Configuration File v0.60\n"
-                      "Debug = false # true or false to enable debug console output\n"
-                      "Private = true # Private?\n"
-                      "Port = 30814 # Port to run the server on UDP and TCP\n"
-                      "Cars = 1 # Max cars for every player\n"
-                      "MaxPlayers = 10 # Maximum Amount of Clients\n"
-                      "Map = \"/levels/gridmap/info.json\" # Default Map\n"
-                      "Name = \"BeamMP New Server\" # Server Name\n"
-                      "Desc = \"BeamMP Default Description\" # Server Description\n"
-                      "use = \"Resources\" # Resource file name\n"
-                      "AuthKey = \"\" # Auth Key");
+                   "Debug = false # true or false to enable debug console output\n"
+                   "Private = true # Private?\n"
+                   "Port = 30814 # Port to run the server on UDP and TCP\n"
+                   "Cars = 1 # Max cars for every player\n"
+                   "MaxPlayers = 10 # Maximum Amount of Clients\n"
+                   "Map = \"/levels/gridmap/info.json\" # Default Map\n"
+                   "Name = \"BeamMP New Server\" # Server Name\n"
+                   "Desc = \"BeamMP Default Description\" # Server Description\n"
+                   "use = \"Resources\" # Resource file name\n"
+                   "AuthKey = \"\" # Auth Key");
     FileStream.close();
 }
 void Default() {

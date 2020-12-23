@@ -5,16 +5,17 @@
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
+#include "Compressor.h"
+#include "Logger.h"
+#include "Network.h"
 #include "Security/Enc.h"
 #include "UnixCompat.h"
-#include "Compressor.h"
-#include "Network.h"
-#include "Logger.h"
 #include <thread>
 
 bool TCPSend(Client* c, const std::string& Data) {
     Assert(c);
-    if (c == nullptr)return false;
+    if (c == nullptr)
+        return false;
 
     int32_t Size, Sent, Temp;
     std::string Send(4, 0);
@@ -129,7 +130,7 @@ void TCPClient(Client* c) {
         return;
     }
     OnConnect(c);
-    while (c->GetStatus() > -1){
+    while (c->GetStatus() > -1) {
         GParser(c, TCPRcv(c));
     }
     OnDisconnect(c, c->GetStatus() == -2);

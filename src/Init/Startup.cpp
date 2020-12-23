@@ -27,7 +27,8 @@ void Args(int argc, char* argv[]) {
         if (p != std::string::npos || n != 3 || CustomIP.substr(0, 3) == ("127")) {
             CustomIP.clear();
             warn("IP Specified is invalid! Ignoring");
-        } else info("Server started with custom IP");
+        } else
+            info("Server started with custom IP");
     }
 }
 void InitServer(int argc, char* argv[]) {

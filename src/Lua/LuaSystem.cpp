@@ -93,16 +93,20 @@ std::any TriggerLuaEvent(const std::string& Event, bool local, Lua* Caller, std:
                 if (Script->GetPluginName() == Caller->GetPluginName()) {
                     R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
                     Type = R.type().name();
-                    if(Type.find("int") != std::string::npos){
-                        if(std::any_cast<int>(R))Ret++;
-                    }else if(Event == "onPlayerAuth") return R;
+                    if (Type.find("int") != std::string::npos) {
+                        if (std::any_cast<int>(R))
+                            Ret++;
+                    } else if (Event == "onPlayerAuth")
+                        return R;
                 }
-            }else{
+            } else {
                 R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
                 Type = R.type().name();
-                if(Type.find("int") != std::string::npos){
-                    if(std::any_cast<int>(R))Ret++;
-                }else if(Event == "onPlayerAuth") return R;
+                if (Type.find("int") != std::string::npos) {
+                    if (std::any_cast<int>(R))
+                        Ret++;
+                } else if (Event == "onPlayerAuth")
+                    return R;
             }
         }
     }
@@ -298,8 +302,10 @@ int lua_GetGuest(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
         Client* c = GetClient(ID);
-        if (c != nullptr)lua_pushboolean(L, c->isGuest);
-        else return 0;
+        if (c != nullptr)
+            lua_pushboolean(L, c->isGuest);
+        else
+            return 0;
     } else {
         SendError(L, "GetGuest not enough arguments");
         return 0;
@@ -360,7 +366,8 @@ int lua_dropPlayer(lua_State* L) {
         c->SetStatus(-2);
         info(("Closing socket due to kick"));
         CloseSocketProper(c->GetTCPSock());
-    } else SendError(L, ("DropPlayer not enough arguments"));
+    } else
+        SendError(L, ("DropPlayer not enough arguments"));
     return 0;
 }
 int lua_sendChat(lua_State* L) {
@@ -445,9 +452,9 @@ int lua_RemoteEvent(lua_State* L) {
     }
     return 0;
 }
-int lua_ServerExit(lua_State*L) {
-    if(lua_gettop(L) > 0){
-        if(lua_isnumber(L,1)){
+int lua_ServerExit(lua_State* L) {
+    if (lua_gettop(L) > 0) {
+        if (lua_isnumber(L, 1)) {
             _Exit(int(lua_tointeger(L, 1)));
         }
     }
@@ -589,8 +596,8 @@ std::any CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<Lua
         if (CheckLua(luaState, R)) {
             if (lua_isnumber(luaState, -1)) {
                 return int(lua_tointeger(luaState, -1));
-            }else if(lua_isstring(luaState,-1)){
-                return std::string(lua_tostring(luaState,-1));
+            } else if (lua_isstring(luaState, -1)) {
+                return std::string(lua_tostring(luaState, -1));
             }
         }
     }
@@ -603,17 +610,20 @@ void Lua::SetPluginName(const std::string& Name) {
 void Lua::SetFileName(const std::string& Name) {
     _FileName = Name;
 }
-int lua_TempFix(lua_State*L) {
+int lua_TempFix(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
         Client* c = GetClient(ID);
-        if (c == nullptr)return 0;
+        if (c == nullptr)
+            return 0;
         std::string Ret;
-        if(c->isGuest){
+        if (c->isGuest) {
             Ret = "Guest-" + c->GetName();
-        }else Ret = c->GetName();
-        lua_pushstring(L,Ret.c_str());
-    } else SendError(L, "GetDID not enough arguments");
+        } else
+            Ret = c->GetName();
+        lua_pushstring(L, Ret.c_str());
+    } else
+        SendError(L, "GetDID not enough arguments");
     return 1;
 }
 void Lua::Init() {

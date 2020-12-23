@@ -19,24 +19,24 @@
 void Apply(Client* c, int VID, const std::string& pckt) {
     Assert(c);
     std::string Packet = pckt.substr(pckt.find('{')), VD = c->GetCarData(VID);
-    std::string Header = VD.substr(0,VD.find('{'));
+    std::string Header = VD.substr(0, VD.find('{'));
     VD = VD.substr(VD.find('{'));
     rapidjson::Document Veh, Pack;
     Veh.Parse(VD.c_str());
-    if(Veh.HasParseError()){
+    if (Veh.HasParseError()) {
         error("Could not get vehicle config!");
         return;
     }
     Pack.Parse(Packet.c_str());
-    if(Pack.HasParseError() || Pack.IsNull()){
+    if (Pack.HasParseError() || Pack.IsNull()) {
         error("Could not get active vehicle config!");
         return;
     }
 
-    for(auto& M : Pack.GetObject()){
-        if(Veh[M.name].IsNull()){
-            Veh.AddMember(M.name,M.value,Veh.GetAllocator());
-        }else{
+    for (auto& M : Pack.GetObject()) {
+        if (Veh[M.name].IsNull()) {
+            Veh.AddMember(M.name, M.value, Veh.GetAllocator());
+        } else {
             Veh[M.name] = Pack[M.name];
         }
     }
@@ -88,8 +88,8 @@ void VehicleParser(Client* c, const std::string& Pckt) {
         }
         if (PID != -1 && VID != -1 && PID == c->GetID()) {
             auto Res = TriggerLuaEvent(("onVehicleEdited"), false, nullptr,
-                                       std::make_unique<LuaArg>(LuaArg { { c->GetID(), VID, Packet.substr(3) } }),
-                                       true);
+                std::make_unique<LuaArg>(LuaArg { { c->GetID(), VID, Packet.substr(3) } }),
+                true);
             if (!std::any_cast<int>(Res)) {
                 SendToAll(c, Packet, false, true);
                 Apply(c, VID, Packet);
@@ -151,7 +151,8 @@ void SyncClient(Client* c) {
             if (client.get() != c) {
                 for (auto& v : client->GetAllCars()) {
                     if (v != nullptr) {
-                        if(c->GetStatus() < 0)return;
+                        if (c->GetStatus() < 0)
+                            return;
                         Respond(c, v->Data, true);
                         std::this_thread::sleep_for(std::chrono::seconds(2));
                     }
@@ -238,8 +239,7 @@ void GlobalParser(Client* c, const std::string& Pack) {
 #endif
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
-        Res = TriggerLuaEvent("onChatMessage", false, nullptr,std::make_unique<LuaArg>(LuaArg {
-                                           { c->GetID(), c->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }),true);
+        Res = TriggerLuaEvent("onChatMessage", false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID(), c->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }), true);
         if (std::any_cast<int>(Res))
             break;
         SendToAll(nullptr, Packet, true, true);

@@ -56,15 +56,15 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
         R = GenerateCall();
         if (!CustomIP.empty())
             R += "&ip=" + CustomIP;
-        std::string link ="https://beammp.com/heartbeatv2";
+        std::string link = "https://beammp.com/heartbeatv2";
         T = RunPromise(link, R);
 
-        if (T.substr(0,2) != "20") {
+        if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::seconds(10));
             std::string Backup = "https://backup1.beammp.com/heartbeatv2";
             T = RunPromise(Backup, R);
-            if (T.substr(0,2) != "20") {
+            if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
             }
         }
