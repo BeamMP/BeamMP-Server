@@ -7,11 +7,11 @@
 ///
 #include "Security/Enc.h"
 #include "CustomAssert.h"
-#include <WS2tcpip.h>
 #include "Logger.h"
 #include <sstream>
 
 #ifdef WIN32
+#include <WS2tcpip.h>
 int Handle(EXCEPTION_POINTERS* ep, char* Origin) {
     Assert(false);
     std::stringstream R;
