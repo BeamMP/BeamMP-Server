@@ -591,7 +591,6 @@ std::any CallFunction(Lua* lua, const std::string& FuncName, std::shared_ptr<Lua
             Size = int(Arg->args.size());
             Arg->PushArgs(luaState);
         }
-        std::string Origin = lua->GetOrigin();
         int R = lua_pcall(luaState, Size, 1, 0);
         if (CheckLua(luaState, R)) {
             if (lua_isnumber(luaState, -1)) {

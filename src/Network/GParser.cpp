@@ -201,7 +201,6 @@ void GlobalParser(Client* c, const std::string& Pack) {
         return;
     std::any Res;
     std::string Packet = Pack.substr(0, strlen(Pack.c_str()));
-    std::string pct;
     char Code = Packet.at(0);
 
     //V to Z
