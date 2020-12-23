@@ -17,7 +17,7 @@ bool TCPSend(Client* c, const std::string& Data) {
     if (c == nullptr)
         return false;
 
-    int32_t Size, Sent, Temp;
+    int32_t Size, Sent;
     std::string Send(4, 0);
     Size = int32_t(Data.size());
     memcpy(&Send[0], &Size, sizeof(Size));
@@ -25,7 +25,7 @@ bool TCPSend(Client* c, const std::string& Data) {
     Sent = 0;
     Size += 4;
     do {
-        Temp = send(c->GetTCPSock(), &Send[Sent], Size - Sent, 0);
+        int32_t Temp = send(c->GetTCPSock(), &Send[Sent], Size - Sent, 0);
         if (Temp == 0) {
             if (c->GetStatus() > -1)
                 c->SetStatus(-1);

@@ -13,7 +13,7 @@
 std::string StatReport;
 int PPS = 0;
 void Monitor() {
-    int R, C = 0, V = 0;
+    int C = 0, V = 0;
     if (CI->Clients.empty()) {
         StatReport = "-";
         return;
@@ -27,7 +27,7 @@ void Monitor() {
     if (C == 0 || PPS == 0) {
         StatReport = "-";
     } else {
-        R = (PPS / C) / V;
+        int R = (PPS / C) / V;
         StatReport = std::to_string(R);
     }
     PPS = 0;

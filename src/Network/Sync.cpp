@@ -16,9 +16,9 @@
 #include <fstream>
 
 bool TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
-    int64_t Sent = 0, Temp;
+    int64_t Sent = 0;
     do {
-        Temp = send(C, &Data[Sent], int(Size - Sent), 0);
+        int64_t Temp = send(C, &Data[Sent], int(Size - Sent), 0);
         if (Temp < 1) {
             info("Socket Closed! " + std::to_string(C));
             CloseSocketProper(C);
