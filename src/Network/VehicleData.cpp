@@ -127,7 +127,7 @@ void UDPParser(Client* c, std::string Packet) {
             sockaddr_in client {};
             std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
             auto Pos = Data.find(':');
-            if (Data.empty() || Pos < 0 || Pos > 2)
+            if (Data.empty() || Pos > 2)
                 continue;
             /*char clientIp[256];
             ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
