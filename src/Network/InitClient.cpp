@@ -83,7 +83,8 @@ void OnDisconnect(Client* c, bool kicked) {
     }
     if (kicked)
         Packet = ("L") + c->GetName() + (" was kicked!");
-    Packet = ("L") + c->GetName() + (" Left the server!");
+    else
+        Packet = ("L") + c->GetName() + (" left the server!");
     SendToAll(c, Packet, false, true);
     Packet.clear();
     TriggerLuaEvent(("onPlayerDisconnect"), false, nullptr, std::make_unique<LuaArg>(LuaArg { { c->GetID() } }), false);
