@@ -8,6 +8,8 @@
 #pragma once
 #ifdef __linux
 #define EXCEPTION_POINTERS void
+#else
+#include <WS2tcpip.h>
 #endif
 #include <string>
-int Handle(void* ep, char* Origin);
+int Handle(EXCEPTION_POINTERS* ep, char* Origin);

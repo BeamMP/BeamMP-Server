@@ -7,10 +7,9 @@
 ///
 #include "Security/Enc.h"
 #include "CustomAssert.h"
+#include <WS2tcpip.h>
 #include "Logger.h"
 #include <sstream>
-#include <thread>
-
 
 #ifdef WIN32
 int Handle(EXCEPTION_POINTERS* ep, char* Origin) {

@@ -30,7 +30,6 @@ inline void CloseSocketProper(int socket) {
 #endif
 
 #else // win32
-
 inline void CloseSocketProper(uint64_t socket) {
     shutdown(socket, SD_BOTH);
     closesocket(socket);
