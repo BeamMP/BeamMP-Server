@@ -1,5 +1,8 @@
 # BeamMP-Server
 
+The Server is the way we link client to each other and handle authentication, compression, and data management. It also allows lua plugins, that system is always being reviewed and improved with detailed instructions on wiki.beammp.com.
+
+
 ## Unix specific build instructions
 
 1. You need boost >= 1.70.0
@@ -34,3 +37,6 @@ Example:
 ...
 ~/src/Server $ make -C bin -j 5
 ```
+
+
+Copyright (c) 2019-present Anonymous275. BeamMP Server code is not in the public domain and is not free software. One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries. Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
