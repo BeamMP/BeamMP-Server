@@ -34,7 +34,8 @@ int main(int argc, char* argv[]) {
 #endif // WIN32
     DebugPrintTID();
     // curl needs to be initialized to properly deallocate its resources later
-    Assert(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
+    auto ret = curl_global_init(CURL_GLOBAL_DEFAULT);
+    Assert(ret == CURLE_OK);
 #ifdef DEBUG
     std::thread t1(loop);
     t1.detach();
