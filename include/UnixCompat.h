@@ -13,7 +13,7 @@
 
 // ZeroMemory is just a {0} or a memset(addr, 0, len), and it's a macro on MSVC
 inline void ZeroMemory([[maybe_unused]] void* dst, [[maybe_unused]] size_t len) {
-    auto res = std::memset(dst, 0, len);
+    [[maybe_unused]] auto res = std::memset(dst, 0, len);
     Assert(res != nullptr);
 }
 // provides unix equivalent of closesocket call in win32
