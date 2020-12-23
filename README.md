@@ -39,4 +39,4 @@ Example:
 ```
 
 
-Copyright (c) 2019-present Anonymous275. BeamMP Server code is not in the public domain and is not free software. One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries. Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
+Copyright (c) 2019-present Anonymous275. BeamMP Server code is not in the public domain and is not free software. One must be granted explicit permission by the copyright holder in order to modify or distribute any part of the source or binaries, the only permission that has been granted is to use the software in its compiled form as distributed from the BeamMP.com website. Anything else is prohibited. Modified works may not be published and have be upstreamed to the official repository.
