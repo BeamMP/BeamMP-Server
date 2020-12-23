@@ -14,13 +14,13 @@
 #define SOCKET int
 #endif
 #include "CustomAssert.h"
-#include <string>
-#include <vector>
+#include <algorithm>
 #include <chrono>
 #include <set>
-#include <algorithm>
+#include <string>
+#include <vector>
 
-struct VData{
+struct VData {
     int ID = -1;
     std::string Data;
 };
@@ -29,15 +29,16 @@ class Client {
 private:
     std::set<std::unique_ptr<VData>> VehicleData; //ID and Data;
     std::string Name = "Unknown Client";
-    SOCKET SOCK[2]{SOCKET(-1)};
+    SOCKET SOCK[2] { SOCKET(-1) };
     sockaddr_in UDPADDR;
     std::string Role;
     std::string DID;
     int Status = 0;
     int ID = -1;
+
 public:
-    void AddNewCar(int ident,const std::string& Data);
-    void SetCarData(int ident,const std::string&Data);
+    void AddNewCar(int ident, const std::string& Data);
+    void SetCarData(int ident, const std::string& Data);
     std::set<std::unique_ptr<VData>>& GetAllCars();
     void SetName(const std::string& name);
     void SetRoles(const std::string& role);
@@ -62,9 +63,9 @@ public:
     int GetStatus();
     int GetID();
 };
-struct ClientInterface{
+struct ClientInterface {
     std::set<std::unique_ptr<Client>> Clients;
-    void RemoveClient(Client*& c){
+    void RemoveClient(Client*& c) {
         Assert(c);
         c->ClearCars();
         auto Iter = std::find_if(Clients.begin(), Clients.end(), [&](auto& ptr) {
@@ -77,11 +78,11 @@ struct ClientInterface{
         Clients.erase(Iter);
         c = nullptr;
     }
-    void AddClient(Client*&& c){
+    void AddClient(Client*&& c) {
         Assert(c);
         Clients.insert(std::move(std::unique_ptr<Client>(c)));
     }
-    int Size(){
+    int Size() {
         return int(Clients.size());
     }
 };
