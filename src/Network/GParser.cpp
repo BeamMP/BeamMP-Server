@@ -5,6 +5,7 @@
 ///
 /// Created by Anonymous275 on 8/1/2020
 ///
+
 #include "Client.hpp"
 #include "Logger.h"
 #include "Lua/LuaSystem.hpp"
@@ -12,8 +13,7 @@
 #include "Security/Enc.h"
 #include "Settings.h"
 #include "UnixCompat.h"
-#include <memory>
-#include <sstream>
+#undef GetObject //to fix microsoft bs
 #include "Json.h"
 
 void Apply(Client* c, int VID, const std::string& pckt) {
@@ -33,7 +33,7 @@ void Apply(Client* c, int VID, const std::string& pckt) {
         return;
     }
 
-    for(auto& M : Pack.GetObjectA()){
+    for(auto& M : Pack.GetObject()){
         if(Veh[M.name].IsNull()){
             Veh.AddMember(M.name,M.value,Veh.GetAllocator());
         }else{

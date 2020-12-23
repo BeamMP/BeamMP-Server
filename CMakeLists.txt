@@ -26,9 +26,9 @@ file(GLOB source_files "src/*.cpp" "include/*.h" "include/*/*.h" "include/*/*/*.
 add_executable(BeamMP-Server ${source_files})
     
 target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
-find_package(Lua 5.3 REQUIRED)
+
+find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC ${LUA_INCLUDE_DIR})
-# ${Boost_INCLUDE_DIRS}
 
 if (UNIX)
     target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} lua curl dl)
@@ -36,6 +36,8 @@ elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
     find_package(CURL CONFIG REQUIRED)
+    find_package(RapidJSON CONFIG REQUIRED)
+    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
     target_link_libraries(BeamMP-Server PRIVATE ws2_32 CURL::libcurl ZLIB::ZLIB ${LUA_LIBRARIES})
     #${Boost_LINK_DIRS}
 endif ()
