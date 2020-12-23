@@ -40,17 +40,7 @@ void SetThreadName(const std::string& Name, bool overwrite) {
 }
 
 std::string getDate() {
-    typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<24>>::type> days;
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    std::chrono::system_clock::duration tp = now.time_since_epoch();
-    days d = std::chrono::duration_cast<days>(tp);
-    tp -= d;
-    auto h = std::chrono::duration_cast<std::chrono::hours>(tp);
-    tp -= h;
-    auto m = std::chrono::duration_cast<std::chrono::minutes>(tp);
-    tp -= m;
-    auto s = std::chrono::duration_cast<std::chrono::seconds>(tp);
-    tp -= s;
     time_t tt = std::chrono::system_clock::to_time_t(now);
     tm local_tm {};
 #ifdef WIN32
