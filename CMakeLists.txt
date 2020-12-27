@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.13)
 project(Server)
 set(CMAKE_CXX_STANDARD 17)
 
@@ -31,7 +31,7 @@ find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC ${LUA_INCLUDE_DIR})
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} lua curl dl)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} curl dl)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
