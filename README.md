@@ -5,7 +5,7 @@ The Server is the way we link client to each other and handle authentication, co
 
 ## Linux / POSIX specific build instructions
 
-Currently only linux and windows are supported (generally). 
+Currently only linux and windows are supported (generally). On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
 
 ### Prerequisites
 
