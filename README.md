@@ -33,7 +33,7 @@ All package names are ones found in debian's (debian 10 stable) repositories, bu
 5. Run `make`
 6. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server`. Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
-*tip: to run the server in the background, simply (in bash, zsh, etc) run: `nohup ./BeamMP-Server &`!`.*
+*tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
 ## Copyright
 
