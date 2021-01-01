@@ -5,7 +5,7 @@
 #include <iostream>
 #include <thread>
 #ifndef WIN32
-#include <signal.h>
+#include <csignal>
 void UnixSignalHandler(int sig) {
     switch (sig) {
     case SIGPIPE:
