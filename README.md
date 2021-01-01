@@ -6,6 +6,7 @@ The Server is the way we link client to each other and handle authentication, co
 
 The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we only distribute windows binaries and instructions to build on Debian 10 (stable). For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support ARM or any big-endian architectures. 
 
+Recommended compilers: MSVC, GCC. 
 
 ## Linux / POSIX specific build instructions
 
