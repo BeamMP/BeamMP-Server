@@ -9,50 +9,6 @@
 
 #include <memory>
 
-std::string Client::GetName() {
-    return Name;
-}
-void Client::SetName(const std::string& name) {
-    Name = name;
-}
-void Client::SetRoles(const std::string& role) {
-    Role = role;
-}
-std::string Client::GetRoles() {
-    return Role;
-}
-int Client::GetID() {
-    return ID;
-}
-void Client::SetID(int id) {
-    ID = id;
-}
-void Client::SetStatus(int state) {
-    Status = state;
-}
-int Client::GetStatus() {
-    return Status;
-}
-void Client::SetUDPAddr(sockaddr_in Addr) {
-    UDPADDR = Addr;
-}
-
-void Client::SetDownSock(SOCKET CSock) {
-    SOCK[1] = CSock;
-}
-SOCKET Client::GetDownSock() {
-    return SOCK[1];
-}
-sockaddr_in Client::GetUDPAddr() {
-    return UDPADDR;
-}
-void Client::SetTCPSock(SOCKET CSock) {
-    SOCK[0] = CSock;
-}
-SOCKET Client::GetTCPSock() {
-    return SOCK[0];
-}
-
 void Client::DeleteCar(int ident) {
     for (auto& v : VehicleData) {
         if (v != nullptr && v->ID == ident) {
@@ -95,6 +51,7 @@ std::string Client::GetCarData(int ident) {
     DeleteCar(ident);
     return "";
 }
+
 void Client::SetCarData(int ident, const std::string& Data) {
     for (auto& v : VehicleData) {
         if (v != nullptr && v->ID == ident) {
