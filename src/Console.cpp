@@ -18,6 +18,7 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include "Logger.h"
 #include <array>
 #include <cstring>
+#include <deque>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -40,9 +41,6 @@ void HandleInput(const std::string& cmd) {
 }
 
 void ProcessOut() {
-    static size_t len = 2;
-    if (QConsoleOut.empty() && len == CInputBuff.length())
-        return;
     printf("%c[2K\r", 27);
     for (const std::string& msg : QConsoleOut)
         if (!msg.empty())
@@ -51,7 +49,6 @@ void ProcessOut() {
     QConsoleOut.clear();
     MLock.unlock();
     std::cout << "> " << CInputBuff << std::flush;
-    len = CInputBuff.length();
 }
 
 void ConsoleOut(const std::string& msg) {
@@ -125,12 +122,34 @@ void SetupConsole() {
 }
 
 static std::vector<std::string> ConsoleHistory {};
+// buffer used to revert back to what we were writing when we go all the way forward in history
+static std::string LastInputBuffer {};
 static size_t ConsoleHistoryReadIndex { 0 };
 
 static inline void ConsoleHistoryAdd(const std::string& cmd) {
+    LastInputBuffer.clear();
     ConsoleHistory.push_back(cmd);
     ConsoleHistoryReadIndex = ConsoleHistory.size();
 }
+
+static inline void ConsoleHistoryEnsureBounds() {
+    if (ConsoleHistoryReadIndex >= ConsoleHistory.size()) {
+        ConsoleHistoryReadIndex = ConsoleHistory.size() - 1;
+    }
+}
+
+static inline void ConsoleHistoryGoBack() {
+    if (ConsoleHistoryReadIndex > 0) {
+        --ConsoleHistoryReadIndex;
+        ConsoleHistoryEnsureBounds();
+    }
+}
+
+static inline void ConsoleHistoryGoForward() {
+    ++ConsoleHistoryReadIndex;
+    ConsoleHistoryEnsureBounds();
+}
+
 static std::string CompositeInput;
 static bool CompositeInputExpected { false };
 
@@ -142,11 +161,8 @@ static void ProcessCompositeInput() {
 #endif // WIN32
 
         // UP ARROW
-        // info(std::to_string(ConsoleHistoryReadIndex));
         if (!ConsoleHistory.empty()) {
-            if (ConsoleHistoryReadIndex != 0) {
-                ConsoleHistoryReadIndex -= 1;
-            }
+            ConsoleHistoryGoBack();
             CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
         }
 #ifdef WIN32
@@ -157,12 +173,11 @@ static void ProcessCompositeInput() {
 
         // DOWN ARROW
         if (!ConsoleHistory.empty()) {
-            if (ConsoleHistoryReadIndex != ConsoleHistory.size() - 1) {
-                ConsoleHistoryReadIndex += 1;
-                CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
+            if (ConsoleHistoryReadIndex == ConsoleHistory.size() - 1) {
+                CInputBuff = LastInputBuffer;
             } else {
-                CInputBuff = "";
-                ConsoleHistoryReadIndex = ConsoleHistory.size();
+                ConsoleHistoryGoForward();
+                CInputBuff = ConsoleHistory.at(ConsoleHistoryReadIndex);
             }
         }
     } else {
@@ -172,7 +187,7 @@ static void ProcessCompositeInput() {
     // ensure history doesnt grow too far beyond a max
     static constexpr size_t MaxHistory = 10;
     if (ConsoleHistory.size() > 2 * MaxHistory) {
-        std::vector<std::string> NewHistory(ConsoleHistory.begin() + ConsoleHistory.size() - MaxHistory, ConsoleHistory.end());
+        decltype(ConsoleHistory) NewHistory(ConsoleHistory.begin() + ConsoleHistory.size() - MaxHistory, ConsoleHistory.end());
         ConsoleHistory = std::move(NewHistory);
         ConsoleHistoryReadIndex = ConsoleHistory.size();
     }
@@ -233,6 +248,7 @@ void ReadCin() {
             // ignore
         } else {
             CInputBuff += char(In);
+            LastInputBuffer = CInputBuff;
         }
     }
 }
