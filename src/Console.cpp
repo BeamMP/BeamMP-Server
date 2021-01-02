@@ -18,7 +18,6 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include "Logger.h"
 #include <array>
 #include <cstring>
-#include <deque>
 #include <iostream>
 #include <mutex>
 #include <string>
