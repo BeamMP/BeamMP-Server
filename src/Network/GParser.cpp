@@ -195,12 +195,11 @@ void HandleEvent(Client* c, const std::string& Data) {
     }
 }
 
-void GlobalParser(Client* c, const std::string& Pack) {
+void GlobalParser(Client* c, const std::string& Packet) {
     Assert(c);
-    if (Pack.empty() || c == nullptr)
+    if (Packet.empty() || c == nullptr)
         return;
     std::any Res;
-    std::string Packet = Pack.substr(0, strlen(Pack.c_str()));
     char Code = Packet.at(0);
 
     //V to Z
@@ -212,7 +211,7 @@ void GlobalParser(Client* c, const std::string& Pack) {
     switch (Code) {
     case 'H': // initial connection
 #ifdef DEBUG
-        debug(std::string("got 'H' packet: '") + Pack + "' (" + std::to_string(Packet.size()) + ")");
+        debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
 #endif
         SyncClient(c);
         return;
@@ -228,13 +227,13 @@ void GlobalParser(Client* c, const std::string& Pack) {
         return;
     case 'J':
 #ifdef DEBUG
-        debug(std::string(("got 'J' packet: '")) + Pack + ("' (") + std::to_string(Packet.size()) + (")"));
+        debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         SendToAll(c, Packet, false, true);
         return;
     case 'C':
 #ifdef DEBUG
-        debug(std::string(("got 'C' packet: '")) + Pack + ("' (") + std::to_string(Packet.size()) + (")"));
+        debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
@@ -245,7 +244,7 @@ void GlobalParser(Client* c, const std::string& Pack) {
         return;
     case 'E':
 #ifdef DEBUG
-        debug(std::string(("got 'E' packet: '")) + Pack + ("' (") + std::to_string(Packet.size()) + (")"));
+        debug(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         HandleEvent(c, Packet);
         return;
