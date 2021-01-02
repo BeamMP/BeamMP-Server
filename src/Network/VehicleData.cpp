@@ -73,9 +73,8 @@ void SendLarge(Client* c, std::string Data) {
 
 std::string UDPRcvFromClient(sockaddr_in& client) {
     size_t clientLength = sizeof(client);
-    ZeroMemory(&client, clientLength);
-    std::string Ret(10240, 0);
-    int64_t Rcv = recvfrom(UDPSock, &Ret[0], 10240, 0, (sockaddr*)&client, (socklen_t*)&clientLength);
+    std::array<char, 1024> Ret;
+    int64_t Rcv = recvfrom(UDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1) {
 #ifdef WIN32
         error(("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
@@ -84,7 +83,7 @@ std::string UDPRcvFromClient(sockaddr_in& client) {
 #endif // WIN32
         return "";
     }
-    return Ret.substr(0, Rcv);
+    return std::string(Ret.begin(), Ret.begin() + Rcv);
 }
 
 void UDPParser(Client* c, std::string Packet) {
