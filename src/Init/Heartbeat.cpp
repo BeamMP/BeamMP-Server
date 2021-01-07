@@ -69,7 +69,6 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
             }
         }
         //Server Authenticated
-        info(T);
         if (!isAuth) {
             WebsocketInit();
             if (T.length() == 4)info(("Authenticated!"));
