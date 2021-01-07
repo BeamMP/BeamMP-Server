@@ -18,6 +18,7 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+#include <array>
 
 SOCKET UDPSock;
 void UDPSend(Client* c, std::string Data) {
@@ -73,7 +74,7 @@ void SendLarge(Client* c, std::string Data) {
 
 std::string UDPRcvFromClient(sockaddr_in& client) {
     size_t clientLength = sizeof(client);
-    std::array<char, 1024> Ret;
+    std::array<char, 1024> Ret{};
     int64_t Rcv = recvfrom(UDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1) {
 #ifdef WIN32

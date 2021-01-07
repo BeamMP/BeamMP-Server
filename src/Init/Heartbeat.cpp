@@ -69,15 +69,14 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
             }
         }
         //Server Authenticated
-        if (T.length() == 4)
-            info(("Server authenticated"));
-        R.clear();
-        T.clear();
+        info(T);
         if (!isAuth) {
             WebsocketInit();
+            if (T.length() == 4)info(("Authenticated!"));
+            else info(("Resumed authenticated session!"));
             isAuth = true;
         }
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        //std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
 void HBInit() {

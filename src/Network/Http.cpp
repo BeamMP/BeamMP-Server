@@ -9,15 +9,31 @@
 #include "CustomAssert.h"
 #include <curl/curl.h>
 #include <iostream>
+
+class CurlManager{
+public:
+    CurlManager(){
+        curl = curl_easy_init();
+    }
+    ~CurlManager(){
+        curl_easy_cleanup(curl);
+    }
+    inline CURL* Get(){
+        return curl;
+    }
+private:
+    CURL *curl;
+};
+
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 std::string HttpRequest(const std::string& IP, int port) {
-    CURL* curl;
-    CURLcode res;
+    static thread_local CurlManager M;
     std::string readBuffer;
-    curl = curl_easy_init();
+    CURL* curl = M.Get();
+    CURLcode res;
     Assert(curl);
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
@@ -25,7 +41,6 @@ std::string HttpRequest(const std::string& IP, int port) {
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
         if (res != CURLE_OK)
             return "-1";
     }
@@ -33,13 +48,14 @@ std::string HttpRequest(const std::string& IP, int port) {
 }
 
 std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json) {
-    static auto* header = new curl_slist { (char*)"Content-Type: application/json" };
+    auto header = curl_slist { (char*)"Content-Type: application/json" };
+    static thread_local CurlManager M;
     static std::mutex Lock;
     std::scoped_lock Guard(Lock);
-    CURL* curl;
+    CURL* curl = M.Get();
     CURLcode res;
     std::string readBuffer;
-    curl = curl_easy_init();
+
     Assert(curl);
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
@@ -52,7 +68,6 @@ std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
         res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
         if (res != CURLE_OK)
             return "-1";
     }
