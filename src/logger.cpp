@@ -94,10 +94,8 @@ void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
 }
 
 void addToLog(const std::string& Line) {
-    std::ofstream LFS;
-    LFS.open(("Server.log"), std::ios_base::app);
+    std::ofstream LFS("Server.log", std::ios_base::app);
     LFS << Line.c_str();
-    LFS.close();
 }
 void info(const std::string& toPrint) {
     std::scoped_lock Guard(LogLock);
