@@ -8,6 +8,8 @@ The code itself supports (latest stable) Linux and Windows. In terms of actual b
 
 Recommended compilers: MSVC, GCC. 
 
+You can find precompiled binaries under [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
+
 ## Linux / POSIX specific build instructions
 
 Currently only linux and windows are supported (generally). On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
