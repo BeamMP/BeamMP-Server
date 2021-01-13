@@ -54,9 +54,8 @@ std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json
     CurlManager M;
     CURL* curl = M.Get();
     CURLcode res;
-    std::string readBuffer;
-    readBuffer.resize(1000, 0);
-
+    char readBuffer[5000];
+    
     Assert(curl);
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
@@ -65,7 +64,7 @@ std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, Fields.size());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, Fields.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer[0]);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
         res = curl_easy_perform(curl);
