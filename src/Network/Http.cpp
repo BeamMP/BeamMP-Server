@@ -10,25 +10,27 @@
 #include <curl/curl.h>
 #include <iostream>
 
-class CurlManager{
+class CurlManager {
 public:
-    CurlManager(){
+    CurlManager() {
         curl = curl_easy_init();
     }
-    ~CurlManager(){
+    ~CurlManager() {
         curl_easy_cleanup(curl);
     }
-    inline CURL* Get(){
+    inline CURL* Get() {
         return curl;
     }
+
 private:
-    CURL *curl;
+    CURL* curl;
 };
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    ((std::string*)userp)->append((char*)contents, size * nmemb);
+    std::string((char*)userp).append((char*)contents, size * nmemb);
     return size * nmemb;
 }
+
 std::string HttpRequest(const std::string& IP, int port) {
     CurlManager M;
     std::string readBuffer;
@@ -55,7 +57,7 @@ std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json
     CURL* curl = M.Get();
     CURLcode res;
     char readBuffer[5000];
-    
+
     Assert(curl);
     if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
