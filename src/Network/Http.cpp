@@ -30,7 +30,7 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
     return size * nmemb;
 }
 std::string HttpRequest(const std::string& IP, int port) {
-    static thread_local CurlManager M;
+    CurlManager M;
     std::string readBuffer;
     CURL* curl = M.Get();
     CURLcode res;
@@ -49,9 +49,9 @@ std::string HttpRequest(const std::string& IP, int port) {
 
 std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json) {
     auto header = curl_slist { (char*)"Content-Type: application/json" };
-    static thread_local CurlManager M;
     static std::mutex Lock;
     std::scoped_lock Guard(Lock);
+    CurlManager M;
     CURL* curl = M.Get();
     CURLcode res;
     std::string readBuffer;
