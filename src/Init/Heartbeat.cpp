@@ -13,6 +13,7 @@
 #include <future>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
 
 void WebsocketInit();
 std::string GetPlayers() {
@@ -24,20 +25,25 @@ std::string GetPlayers() {
     }
     return Return;
 }
-std::string GenerateCall() {
-    std::stringstream Ret;
-    Ret << "uuid=" << Key << "&players=" << CI->Size()
-        << "&maxplayers=" << MaxPlayers << "&port=" << Port
-        << "&map=" << MapName << "&private=" << (Private ? "true" : "false")
-        << "&version=" << GetSVer() << "&clientversion=" << GetCVer()
-        << "&name=" << ServerName << "&pps=" << StatReport
-        << "&modlist=" << FileList << "&modstotalsize=" << MaxModSize
-        << "&modstotal=" << ModsLoaded << "&playerslist=" << GetPlayers()
-        << "&desc=" << ServerDesc;
-    return Ret.str();
+std::unordered_map<std::string, std::string> GenerateCall() {
+    return { { "uuid", Key },
+        { "players", std::to_string(CI->Size()) },
+        { "maxplayers", std::to_string(MaxPlayers) },
+        { "port", std::to_string(Port) },
+        { "map", MapName },
+        { "private", (Private ? "true" : "false") },
+        { "version", GetSVer() },
+        { "clientversion", GetCVer() },
+        { "name", ServerName },
+        { "pps", StatReport },
+        { "modlist", FileList },
+        { "modstotalsize", std::to_string(MaxModSize) },
+        { "modstotal", std::to_string(ModsLoaded) },
+        { "playerslist", GetPlayers() },
+        { "desc", ServerDesc } };
 }
-std::string RunPromise(const std::string& host, const std::string& target, const std::string& R) {
-    std::packaged_task<std::string()> task([&] { return PostHTTP(host, 443, target, R, false); });
+std::string RunPromise(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& R) {
+    std::packaged_task<std::string()> task([&] { return PostHTTP(host, target, R, "", false); });
     std::future<std::string> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
@@ -50,12 +56,13 @@ std::string RunPromise(const std::string& host, const std::string& target, const
 
 [[noreturn]] void Heartbeat() {
     DebugPrintTID();
-    std::string R, T;
+    std::unordered_map<std::string, std::string> R;
+    std::string T;
     bool isAuth = false;
     while (true) {
         R = GenerateCall();
         if (!CustomIP.empty())
-            R += "&ip=" + CustomIP;
+            R.insert({ "ip", CustomIP });
         T = RunPromise("beammp.com", "/heartbeatv2", R);
 
         if (T.substr(0, 2) != "20") {
@@ -69,8 +76,10 @@ std::string RunPromise(const std::string& host, const std::string& target, const
         //Server Authenticated
         if (!isAuth) {
             WebsocketInit();
-            if (T.length() == 4)info(("Authenticated!"));
-            else info(("Resumed authenticated session!"));
+            if (T.length() == 4)
+                info(("Authenticated!"));
+            else
+                info(("Resumed authenticated session!"));
             isAuth = true;
         }
         //std::this_thread::sleep_for(std::chrono::seconds(5));

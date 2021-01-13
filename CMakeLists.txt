@@ -25,13 +25,13 @@ endif ()
 file(GLOB source_files "src/*.cpp" "include/*.h" "include/*/*.h" "include/*/*/*.h" "include/*.hpp" "include/*/*.hpp" "src/*/*.cpp")
 add_executable(BeamMP-Server ${source_files})
     
-target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> cpp-httplib)
+target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
 find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC ${LUA_INCLUDE_DIR})
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} curl dl)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} curl dl crypto ssl)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)

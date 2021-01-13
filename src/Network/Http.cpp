@@ -11,17 +11,22 @@
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl/error.hpp>
+#include <boost/asio/ssl/stream.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/lexical_cast.hpp>
 #include <cstdlib>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
 namespace net = boost::asio; // from <boost/asio.hpp>
+namespace ssl = net::ssl; // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
 // UNUSED?!
@@ -63,48 +68,69 @@ std::string HttpRequest(const std::string& host, int port, const std::string& ta
     }
 }
 
-std::string PostHTTP(const std::string& host, int port, const std::string& target, const std::string& Fields, bool json) {
-    try {
-        net::io_context io;
-        tcp::resolver resolver(io);
-        beast::tcp_stream stream(io);
-        auto const results = resolver.resolve(host, std::to_string(port));
-        stream.connect(results);
+std::string PostHTTP(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json) {
+    //try {
+    net::io_context io;
 
-        http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
+    // The SSL context is required, and holds certificates
+    ssl::context ctx(ssl::context::tlsv13_client);
 
-        req.set(http::field::host, host);
+    ctx.set_verify_mode(ssl::verify_none);
+
+    tcp::resolver resolver(io);
+    beast::ssl_stream<beast::tcp_stream> stream(io, ctx);
+    auto const results = resolver.resolve(host, std::to_string(443));
+    if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
+        boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
+        throw boost::system::system_error { ec };
+    }
+    beast::get_lowest_layer(stream).connect(results);
+    stream.handshake(ssl::stream_base::client);
+
+    http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
+
+    req.set(http::field::host, host);
+    req.set("X-Forwarded-For", HttpRequest("api.ipify.org", 80, "/"));
+    if (!body.empty()) {
         if (json) {
             req.set(http::field::content_type, "application/json");
         }
-        req.set(http::field::content_length, boost::lexical_cast<std::string>(Fields.size()));
-        req.set(http::field::body, Fields.c_str());
-        // tell the server what we are (boost beast)
-        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-        req.prepare_payload();
+        req.set(http::field::content_length, boost::lexical_cast<std::string>(body.size()));
+        req.set(http::field::body, body);
+    }
+    for (const auto& pair : fields) {
+        info("setting " + pair.first + " to " + pair.second);
+        req.set(pair.first, pair.second);
+    }
+    // tell the server what we are (boost beast)
+    req.prepare_payload();
 
-        stream.expires_after(std::chrono::seconds(5));
+    std::stringstream oss;
+    oss << req;
+    warn(oss.str());
 
-        http::write(stream, req);
+    beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(5));
 
-        // used for reading
-        beast::flat_buffer buffer;
-        http::response<http::string_body> response;
+    http::write(stream, req);
 
-        http::read(stream, buffer, response);
+    // used for reading
+    beast::flat_buffer buffer;
+    http::response<http::dynamic_body> response;
 
-        std::string result(response.body());
+    http::read(stream, buffer, response);
 
-        beast::error_code ec;
-        stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-        if (ec && ec != beast::errc::not_connected) {
-            throw beast::system_error { ec }; // goes down to `return "-1"` anyways
-        }
+    std::stringstream result;
+    result << response;
 
-        return result;
+    beast::error_code ec;
+    stream.shutdown(ec);
+    // IGNORING ec
 
-    } catch (const std::exception& e) {
+    info(result.str());
+    return result.str();
+
+    /*} catch (const std::exception& e) {
         error(e.what());
         return "-1";
-    }
+    }*/
 }

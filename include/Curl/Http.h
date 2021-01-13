@@ -7,5 +7,6 @@
 ///
 #pragma once
 #include <string>
+#include <unordered_map>
 std::string HttpRequest(const std::string& host, int port, const std::string& target);
-std::string PostHTTP(const std::string& host, int port, const std::string& target, const std::string& Fields, bool json);
+std::string PostHTTP(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json);
