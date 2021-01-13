@@ -25,7 +25,7 @@ endif ()
 file(GLOB source_files "src/*.cpp" "include/*.h" "include/*/*.h" "include/*/*/*.h" "include/*.hpp" "include/*/*.hpp" "src/*/*.cpp")
 add_executable(BeamMP-Server ${source_files})
     
-target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> cpp-httplib)
 
 find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC ${LUA_INCLUDE_DIR})

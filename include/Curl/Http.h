@@ -7,5 +7,5 @@
 ///
 #pragma once
 #include <string>
-std::string HttpRequest(const std::string& IP, int port);
-std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json);
+std::string HttpRequest(const std::string& host, int port, const std::string& target);
+std::string PostHTTP(const std::string& host, int port, const std::string& target, const std::string& Fields, bool json);

@@ -7,71 +7,104 @@
 ///
 
 #include "CustomAssert.h"
-#include <curl/curl.h>
 #include <iostream>
 
-class CurlManager {
-public:
-    CurlManager() {
-        curl = curl_easy_init();
-    }
-    ~CurlManager() {
-        curl_easy_cleanup(curl);
-    }
-    inline CURL* Get() {
-        return curl;
-    }
+#include <boost/asio/connect.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/version.hpp>
+#include <boost/lexical_cast.hpp>
+#include <cstdlib>
+#include <iostream>
+#include <string>
 
-private:
-    CURL* curl;
-};
+namespace beast = boost::beast; // from <boost/beast.hpp>
+namespace http = beast::http; // from <boost/beast/http.hpp>
+namespace net = boost::asio; // from <boost/asio.hpp>
+using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
-static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-    std::string((char*)userp).append((char*)contents, size * nmemb);
-    return size * nmemb;
+// UNUSED?!
+std::string HttpRequest(const std::string& host, int port, const std::string& target) {
+    try {
+        net::io_context io;
+        tcp::resolver resolver(io);
+        beast::tcp_stream stream(io);
+        auto const results = resolver.resolve(host, std::to_string(port));
+        stream.connect(results);
+
+        http::request<http::string_body> req { http::verb::get, target, 11 /* http 1.1 */ };
+
+        req.set(http::field::host, host);
+        // tell the server what we are (boost beast)
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+        http::write(stream, req);
+
+        // used for reading
+        beast::flat_buffer buffer;
+        http::response<http::string_body> response;
+
+        http::read(stream, buffer, response);
+
+        std::string result(response.body());
+
+        beast::error_code ec;
+        stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+        if (ec && ec != beast::errc::not_connected) {
+            throw beast::system_error { ec }; // goes down to `return "-1"` anyways
+        }
+
+        return result;
+
+    } catch (const std::exception& e) {
+        error(e.what());
+        return "-1";
+    }
 }
 
-std::string HttpRequest(const std::string& IP, int port) {
-    CurlManager M;
-    std::string readBuffer;
-    CURL* curl = M.Get();
-    CURLcode res;
-    Assert(curl);
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
-        curl_easy_setopt(curl, CURLOPT_PORT, port);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-        res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
-            return "-1";
-    }
-    return readBuffer;
-}
+std::string PostHTTP(const std::string& host, int port, const std::string& target, const std::string& Fields, bool json) {
+    try {
+        net::io_context io;
+        tcp::resolver resolver(io);
+        beast::tcp_stream stream(io);
+        auto const results = resolver.resolve(host, std::to_string(port));
+        stream.connect(results);
 
-std::string PostHTTP(const std::string& IP, const std::string& Fields, bool json) {
-    auto header = curl_slist { (char*)"Content-Type: application/json", nullptr };
-    static std::mutex Lock;
-    std::scoped_lock Guard(Lock);
-    CurlManager M;
-    CURL* curl = M.Get();
-    CURLcode res;
-    char readBuffer[5000];
+        http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
 
-    Assert(curl);
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, IP.c_str());
-        if (json)
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, Fields.size());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, Fields.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5);
-        res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
-            return "-1";
+        req.set(http::field::host, host);
+        if (json) {
+            req.set(http::field::content_type, "application/json");
+        }
+        req.set(http::field::content_length, boost::lexical_cast<std::string>(Fields.size()));
+        req.set(http::field::body, Fields.c_str());
+        // tell the server what we are (boost beast)
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+        req.prepare_payload();
+
+        stream.expires_after(std::chrono::seconds(5));
+
+        http::write(stream, req);
+
+        // used for reading
+        beast::flat_buffer buffer;
+        http::response<http::string_body> response;
+
+        http::read(stream, buffer, response);
+
+        std::string result(response.body());
+
+        beast::error_code ec;
+        stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+        if (ec && ec != beast::errc::not_connected) {
+            throw beast::system_error { ec }; // goes down to `return "-1"` anyways
+        }
+
+        return result;
+
+    } catch (const std::exception& e) {
+        error(e.what());
+        return "-1";
     }
-    return readBuffer;
 }
