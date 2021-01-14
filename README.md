@@ -31,10 +31,11 @@ All package names are ones found in debian's (debian 10 stable) repositories, bu
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
 2. Clone the repository in a location of your choice with `git clone --recursive https://github.com/BeamMP/BeamMP-Server`
-3. `cd` into it with `cd BeamMP-Server`
-4. Run `cmake .` (with `.`)
-5. Run `make`
-6. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server`. Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
+3. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20.
+4. `cd` into it with `cd BeamMP-Server`
+5. Run `cmake .` (with `.`)
+6. Run `make`
+7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server`. Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
 *tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
