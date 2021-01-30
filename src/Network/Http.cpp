@@ -137,7 +137,7 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
 
     // used for reading
     beast::flat_buffer buffer;
-    http::response<http::dynamic_body> response;
+    http::response<http::string_body> response;
 
     http::read(stream, buffer, response);
 
@@ -152,7 +152,7 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
     std::string debug_response_str;
     std::getline(result, debug_response_str);
     debug("POST " + host + target + ": " + debug_response_str);
-    return result.str();
+    return std::string(response.body());
 
     /*} catch (const std::exception& e) {
         error(e.what());
