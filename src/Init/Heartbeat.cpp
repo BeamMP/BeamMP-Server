@@ -53,16 +53,29 @@ std::string RunPromise(const std::string& host, const std::string& target, const
     DebugPrintTID();
     std::string R;
     std::string T;
+
+    // these are "hot-change" related variables
+    static std::string LastR = "";
+
+    static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
     while (true) {
         R = GenerateCall();
+        // a hot-change occurs when a setting has changed, to update the backend of that change.
+        auto Now = std::chrono::high_resolution_clock::now();
+        if (LastR == R && (Now - LastNormalUpdateTime) < std::chrono::seconds(30)) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        }
+        LastR = R;
+        LastNormalUpdateTime = Now;
         if (!CustomIP.empty())
             R += "&ip=" + CustomIP;
         T = RunPromise("beammp.com", "/heartbeatv2", {}, R);
 
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
-            std::this_thread::sleep_for(std::chrono::seconds(10));
+            std::this_thread::sleep_for(std::chrono::seconds(5));
             T = RunPromise("backup1.beammp.com", "/heartbeatv2", {}, R);
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
@@ -77,7 +90,6 @@ std::string RunPromise(const std::string& host, const std::string& target, const
                 info(("Resumed authenticated session!"));
             isAuth = true;
         }
-        std::this_thread::sleep_for(std::chrono::seconds(10));
     }
 }
 void HBInit() {
