@@ -1,7 +1,7 @@
 # BeamMP-Server
 
-![CMake Windows Build](https://github.com/lionkor/BeamMP-Server/workflows/CMake%20Windows%20Build/badge.svg?branch=master)
-![CMake Linux Build](https://github.com/lionkor/BeamMP-Server/workflows/CMake%20Linux%20Build/badge.svg?branch=master)
+![CMake Windows Build](https://github.com/BeamMP/BeamMP-Server/workflows/CMake%20Windows%20Build/badge.svg?branch=master)
+![CMake Linux Build](https://github.com/BeamMP/BeamMP-Server/workflows/CMake%20Linux%20Build/badge.svg?branch=master)
 
 The Server is the way we link client to each other and handle authentication, compression, and data management. It also allows lua plugins, that system is always being reviewed and improved with detailed instructions on wiki.beammp.com.
 
