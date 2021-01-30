@@ -82,19 +82,31 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
     tcp::resolver resolver(io);
     beast::ssl_stream<beast::tcp_stream> stream(io, ctx);
     decltype(resolver)::results_type results;
-    try {
-        results = resolver.resolve(tcp::v6(), host, std::to_string(443));
-    } catch (const boost::system::system_error&) {
-        error("ipv6 not supported!");
+    auto try_connect_with_protocol = [&](tcp protocol) {
+        try {
+            results = resolver.resolve(protocol, host, std::to_string(443));
+            if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
+                boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
+                // FIXME: we could throw and crash, if we like
+                // throw boost::system::system_error { ec };
+                debug("POST " + host + target + " failed.");
+                return false;
+            }
+            beast::get_lowest_layer(stream).connect(results);
+        } catch (const boost::system::system_error&) {
+            return false;
+        }
+        return true;
+    };
+    bool ok = try_connect_with_protocol(tcp::v6());
+    if (!ok) {
+        debug("IPv6 connect failed, trying IPv4");
+        ok = try_connect_with_protocol(tcp::v4());
+        if (!ok) {
+            error("failed to resolve or connect in POST " + host + target);
+            return "-1";
+        }
     }
-    if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
-        boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
-        // FIXME: we could throw and crash, if we like
-        // throw boost::system::system_error { ec };
-        debug("POST " + host + target + " failed.");
-        return "-1";
-    }
-    beast::get_lowest_layer(stream).connect(results);
     stream.handshake(ssl::stream_base::client);
     http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
 
