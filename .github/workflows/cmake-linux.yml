@@ -1,6 +1,6 @@
 name: CMake Linux Build
 
-on: [push, pull_request]
+on: [push, pull_request, pull_request_review_comment]
 
 env:
   BUILD_TYPE: Release
