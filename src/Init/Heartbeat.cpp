@@ -25,25 +25,20 @@ std::string GetPlayers() {
     }
     return Return;
 }
-std::unordered_map<std::string, std::string> GenerateCall() {
-    return { { "uuid", Key },
-        { "players", std::to_string(CI->Size()) },
-        { "maxplayers", std::to_string(MaxPlayers) },
-        { "port", std::to_string(Port) },
-        { "map", MapName },
-        { "private", (Private ? "true" : "false") },
-        { "version", GetSVer() },
-        { "clientversion", GetCVer() },
-        { "name", ServerName },
-        { "pps", StatReport },
-        { "modlist", FileList },
-        { "modstotalsize", std::to_string(MaxModSize) },
-        { "modstotal", std::to_string(ModsLoaded) },
-        { "playerslist", GetPlayers() },
-        { "desc", ServerDesc } };
+std::string GenerateCall() {
+    std::stringstream Ret;
+    Ret << "uuid=" << Key << "&players=" << CI->Size()
+        << "&maxplayers=" << MaxPlayers << "&port=" << Port
+        << "&map=" << MapName << "&private=" << (Private ? "true" : "false")
+        << "&version=" << GetSVer() << "&clientversion=" << GetCVer()
+        << "&name=" << ServerName << "&pps=" << StatReport
+        << "&modlist=" << FileList << "&modstotalsize=" << MaxModSize
+        << "&modstotal=" << ModsLoaded << "&playerslist=" << GetPlayers()
+        << "&desc=" << ServerDesc;
+    return Ret.str();
 }
-std::string RunPromise(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& R) {
-    std::packaged_task<std::string()> task([&] { return PostHTTP(host, target, R, "", false); });
+std::string RunPromise(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& R, const std::string& body) {
+    std::packaged_task<std::string()> task([&] { DebugPrintTIDInternal("Heartbeat_POST"); return PostHTTP(host, target, R, body, false); });
     std::future<std::string> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
@@ -56,19 +51,19 @@ std::string RunPromise(const std::string& host, const std::string& target, const
 
 [[noreturn]] void Heartbeat() {
     DebugPrintTID();
-    std::unordered_map<std::string, std::string> R;
+    std::string R;
     std::string T;
     bool isAuth = false;
     while (true) {
         R = GenerateCall();
         if (!CustomIP.empty())
-            R.insert({ "ip", CustomIP });
-        T = RunPromise("beammp.com", "/heartbeatv2", R);
+            R += "&ip=" + CustomIP;
+        T = RunPromise("beammp.com", "/heartbeatv2", {}, R);
 
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::seconds(10));
-            T = RunPromise("backup1.beammp.com", "/heartbeatv2", R);
+            T = RunPromise("backup1.beammp.com", "/heartbeatv2", {}, R);
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
             }

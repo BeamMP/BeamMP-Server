@@ -31,6 +31,8 @@ using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
 // UNUSED?!
 std::string HttpRequest(const std::string& host, int port, const std::string& target) {
+    // FIXME: this is likely not very well written.
+    // if it causes issues, yell at me and I'll fix it asap. - Lion
     try {
         net::io_context io;
         tcp::resolver resolver(io);
@@ -73,41 +75,45 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
     net::io_context io;
 
     // The SSL context is required, and holds certificates
-    ssl::context ctx(ssl::context::tlsv13_client);
+    ssl::context ctx(ssl::context::tlsv13);
 
     ctx.set_verify_mode(ssl::verify_none);
 
     tcp::resolver resolver(io);
     beast::ssl_stream<beast::tcp_stream> stream(io, ctx);
-    auto const results = resolver.resolve(host, std::to_string(443));
+    auto const results = resolver.resolve(tcp::v6(), host, std::to_string(443));
     if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
         boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
-        throw boost::system::system_error { ec };
+        // FIXME: we could throw and crash, if we like
+        // throw boost::system::system_error { ec };
+        debug("POST " + host + target + " failed.");
+        return "-1";
     }
     beast::get_lowest_layer(stream).connect(results);
     stream.handshake(ssl::stream_base::client);
-
     http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
 
     req.set(http::field::host, host);
     req.set("X-Forwarded-For", HttpRequest("api.ipify.org", 80, "/"));
     if (!body.empty()) {
         if (json) {
+            // FIXME: json is untested.
             req.set(http::field::content_type, "application/json");
+        } else {
+            req.set(http::field::content_type, "application/x-www-form-urlencoded");
         }
         req.set(http::field::content_length, boost::lexical_cast<std::string>(body.size()));
-        req.set(http::field::body, body);
+        req.body() = body;
+        // info("body is " + body + " (" + req.body() + ")");
+        // info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");
     }
     for (const auto& pair : fields) {
-        info("setting " + pair.first + " to " + pair.second);
+        // info("setting " + pair.first + " to " + pair.second);
         req.set(pair.first, pair.second);
     }
-    // tell the server what we are (boost beast)
-    req.prepare_payload();
 
     std::stringstream oss;
     oss << req;
-    warn(oss.str());
 
     beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(5));
 
@@ -126,7 +132,10 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
     stream.shutdown(ec);
     // IGNORING ec
 
-    info(result.str());
+    // info(result.str());
+    std::string debug_response_str;
+    std::getline(result, debug_response_str);
+    debug("POST " + host + target + ": " + debug_response_str);
     return result.str();
 
     /*} catch (const std::exception& e) {
