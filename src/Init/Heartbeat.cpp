@@ -77,7 +77,7 @@ std::string RunPromise(const std::string& host, const std::string& target, const
                 info(("Resumed authenticated session!"));
             isAuth = true;
         }
-        //std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
 void HBInit() {
