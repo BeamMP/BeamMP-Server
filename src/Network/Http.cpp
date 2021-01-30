@@ -81,7 +81,12 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
 
     tcp::resolver resolver(io);
     beast::ssl_stream<beast::tcp_stream> stream(io, ctx);
-    auto const results = resolver.resolve(tcp::v6(), host, std::to_string(443));
+    decltype(resolver)::results_type results;
+    try {
+        results = resolver.resolve(tcp::v6(), host, std::to_string(443));
+    } catch (const boost::system::system_error&) {
+        error("ipv6 not supported!");
+    }
     if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
         boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
         // FIXME: we could throw and crash, if we like
@@ -94,7 +99,6 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
     http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
 
     req.set(http::field::host, host);
-    req.set("X-Forwarded-For", HttpRequest("api.ipify.org", 80, "/"));
     if (!body.empty()) {
         if (json) {
             // FIXME: json is untested.
