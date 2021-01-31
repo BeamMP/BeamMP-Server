@@ -1,6 +1,6 @@
 name: CMake Windows Build
 
-on: [push, pull_request, pull_request_review_comment]
+on: [push, pull_request]
 
 env:
   BUILD_TYPE: Release
