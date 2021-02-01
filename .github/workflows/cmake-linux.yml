@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: Install Dependencies
-      run: sudo apt-get update && sudo apt-get install -y libz-dev rapidjson-dev libcurl4-openssl-dev liblua5.3
+      run: sudo apt-get update && sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libboost-dev libssl-dev
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{github.workspace}}/build-linux
