@@ -11,13 +11,8 @@
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/error.hpp>
-#include <boost/asio/ssl/stream.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
+#include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
-#include <boost/beast/version.hpp>
-#include <boost/lexical_cast.hpp>
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
@@ -118,7 +113,7 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
             } else {
                 req.set(http::field::content_type, "application/x-www-form-urlencoded");
             }
-            req.set(http::field::content_length, boost::lexical_cast<std::string>(body.size()));
+            req.set(http::field::content_length, std::to_string(body.size()));
             req.body() = body;
             // info("body is " + body + " (" + req.body() + ")");
             // info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");

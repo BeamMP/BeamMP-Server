@@ -1,7 +1,6 @@
 #include "CustomAssert.h"
 
 #include "Startup.h"
-#include <curl/curl.h>
 #include <iostream>
 #include <thread>
 #ifndef WIN32
@@ -33,9 +32,6 @@ int main(int argc, char* argv[]) {
     signal(SIGPIPE, UnixSignalHandler);
 #endif // WIN32
     DebugPrintTID();
-    // curl needs to be initialized to properly deallocate its resources later
-    [[maybe_unused]] auto ret = curl_global_init(CURL_GLOBAL_DEFAULT);
-    Assert(ret == CURLE_OK);
 #ifdef DEBUG
     std::thread t1(loop);
     t1.detach();
@@ -48,7 +44,5 @@ int main(int argc, char* argv[]) {
     HBInit();
     StatInit();
     NetMain();
-    // clean up curl at the end to be sure
-    curl_global_cleanup();
     return 0;
 }

@@ -20,7 +20,7 @@ elseif (WIN32)
     #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 endif ()
 
-#find_package(Boost 1.70.0 REQUIRED COMPONENTS system thread)
+find_package(Boost REQUIRED COMPONENTS system thread)
 
 file(GLOB source_files "src/*.cpp" "include/*.h" "include/*/*.h" "include/*/*/*.h" "include/*.hpp" "include/*/*.hpp" "src/*/*.cpp")
 add_executable(BeamMP-Server ${source_files})
@@ -28,16 +28,16 @@ add_executable(BeamMP-Server ${source_files})
 target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
 find_package(Lua REQUIRED)
-target_include_directories(BeamMP-Server PUBLIC ${LUA_INCLUDE_DIR})
+target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR})
+
+find_package(OpenSSL REQUIRED)
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} curl dl crypto ssl)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} dl crypto ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
-    find_package(CURL CONFIG REQUIRED)
     find_package(RapidJSON CONFIG REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE ws2_32 CURL::libcurl ZLIB::ZLIB ${LUA_LIBRARIES})
-    #${Boost_LINK_DIRS}
+    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
 endif ()
