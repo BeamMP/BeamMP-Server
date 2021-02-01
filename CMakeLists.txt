@@ -20,7 +20,7 @@ elseif (WIN32)
     #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 endif ()
 
-find_package(Boost REQUIRED COMPONENTS system beast asio thread)
+find_package(Boost REQUIRED COMPONENTS system thread)
 
 file(GLOB source_files "src/*.cpp" "include/*.h" "include/*/*.h" "include/*/*/*.h" "include/*.hpp" "include/*/*.hpp" "src/*/*.cpp")
 add_executable(BeamMP-Server ${source_files})
