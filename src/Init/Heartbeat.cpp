@@ -13,6 +13,7 @@
 #include <future>
 #include <sstream>
 #include <thread>
+#include <unordered_map>
 
 void WebsocketInit();
 std::string GetPlayers() {
@@ -36,8 +37,8 @@ std::string GenerateCall() {
         << "&desc=" << ServerDesc;
     return Ret.str();
 }
-std::string RunPromise(const std::string& IP, const std::string& R) {
-    std::packaged_task<std::string()> task([&] { return PostHTTP(IP, R, false); });
+std::string RunPromise(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& R, const std::string& body) {
+    std::packaged_task<std::string()> task([&] { DebugPrintTIDInternal("Heartbeat_POST"); return PostHTTP(host, target, R, body, false); });
     std::future<std::string> f1 = task.get_future();
     std::thread t(std::move(task));
     t.detach();
@@ -50,20 +51,32 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
 
 [[noreturn]] void Heartbeat() {
     DebugPrintTID();
-    std::string R, T;
+    std::string R;
+    std::string T;
+
+    // these are "hot-change" related variables
+    static std::string LastR = "";
+
+    static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
     while (true) {
         R = GenerateCall();
+        // a hot-change occurs when a setting has changed, to update the backend of that change.
+        auto Now = std::chrono::high_resolution_clock::now();
+        if (LastR == R && (Now - LastNormalUpdateTime) < std::chrono::seconds(30)) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            continue;
+        }
+        LastR = R;
+        LastNormalUpdateTime = Now;
         if (!CustomIP.empty())
             R += "&ip=" + CustomIP;
-        std::string link = "https://beammp.com/heartbeatv2";
-        T = RunPromise(link, R);
+        T = RunPromise("beammp.com", "/heartbeatv2", {}, R);
 
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
-            std::this_thread::sleep_for(std::chrono::seconds(10));
-            std::string Backup = "https://backup1.beammp.com/heartbeatv2";
-            T = RunPromise(Backup, R);
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            T = RunPromise("backup1.beammp.com", "/heartbeatv2", {}, R);
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
             }
@@ -71,11 +84,12 @@ std::string RunPromise(const std::string& IP, const std::string& R) {
         //Server Authenticated
         if (!isAuth) {
             WebsocketInit();
-            if (T.length() == 4)info(("Authenticated!"));
-            else info(("Resumed authenticated session!"));
+            if (T.length() == 4)
+                info(("Authenticated!"));
+            else
+                info(("Resumed authenticated session!"));
             isAuth = true;
         }
-        //std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }
 void HBInit() {

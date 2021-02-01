@@ -20,8 +20,7 @@
 
 std::string GetClientInfo(const std::string& PK) {
     if (!PK.empty()) {
-        return PostHTTP("https://auth.beammp.com/pkToUser", R"({"key":")" + PK + "\"}", true);
-        ;
+        return PostHTTP("auth.beammp.com", "/pkToUser", {}, R"({"key":")" + PK + "\"}", true);
     }
     return "";
 }
