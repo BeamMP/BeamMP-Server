@@ -17,7 +17,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev
           sudo add-apt-repository ppa:mhier/libboost-latest
-          sudo apt-get install -y libboost1.68-dev libboost1.68
+          sudo apt-get install -y libboost1.71-dev libboost1.71
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{github.workspace}}/build-linux
