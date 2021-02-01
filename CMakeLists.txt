@@ -28,7 +28,7 @@ add_executable(BeamMP-Server ${source_files})
 target_include_directories(BeamMP-Server PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
 find_package(Lua REQUIRED)
-target_include_directories(BeamMP-Server ${Boost_INCLUDE_DIRS} PUBLIC ${LUA_INCLUDE_DIR})
+target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR})
 
 if (UNIX)
     target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} dl crypto ssl boost)
