@@ -31,7 +31,7 @@ find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server ${Boost_INCLUDE_DIRS} PUBLIC ${LUA_INCLUDE_DIR})
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} curl dl crypto ssl)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} dl crypto ssl boost)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
