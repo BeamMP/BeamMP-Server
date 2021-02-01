@@ -71,91 +71,91 @@ std::string HttpRequest(const std::string& host, int port, const std::string& ta
 }
 
 std::string PostHTTP(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json) {
-    //try {
-    net::io_context io;
+    try {
+        net::io_context io;
 
-    // The SSL context is required, and holds certificates
-    ssl::context ctx(ssl::context::tlsv13);
+        // The SSL context is required, and holds certificates
+        ssl::context ctx(ssl::context::tlsv13);
 
-    ctx.set_verify_mode(ssl::verify_none);
+        ctx.set_verify_mode(ssl::verify_none);
 
-    tcp::resolver resolver(io);
-    beast::ssl_stream<beast::tcp_stream> stream(io, ctx);
-    decltype(resolver)::results_type results;
-    auto try_connect_with_protocol = [&](tcp protocol) {
-        try {
-            results = resolver.resolve(protocol, host, std::to_string(443));
-            if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
-                boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
-                // FIXME: we could throw and crash, if we like
-                // throw boost::system::system_error { ec };
-                debug("POST " + host + target + " failed.");
+        tcp::resolver resolver(io);
+        beast::ssl_stream<beast::tcp_stream> stream(io, ctx);
+        decltype(resolver)::results_type results;
+        auto try_connect_with_protocol = [&](tcp protocol) {
+            try {
+                results = resolver.resolve(protocol, host, std::to_string(443));
+                if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
+                    boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
+                    // FIXME: we could throw and crash, if we like
+                    // throw boost::system::system_error { ec };
+                    debug("POST " + host + target + " failed.");
+                    return false;
+                }
+                beast::get_lowest_layer(stream).connect(results);
+            } catch (const boost::system::system_error&) {
                 return false;
             }
-            beast::get_lowest_layer(stream).connect(results);
-        } catch (const boost::system::system_error&) {
-            return false;
-        }
-        return true;
-    };
-    bool ok = try_connect_with_protocol(tcp::v6());
-    if (!ok) {
-        debug("IPv6 connect failed, trying IPv4");
-        ok = try_connect_with_protocol(tcp::v4());
+            return true;
+        };
+        bool ok = try_connect_with_protocol(tcp::v6());
         if (!ok) {
-            error("failed to resolve or connect in POST " + host + target);
-            return "-1";
+            debug("IPv6 connect failed, trying IPv4");
+            ok = try_connect_with_protocol(tcp::v4());
+            if (!ok) {
+                error("failed to resolve or connect in POST " + host + target);
+                return "-1";
+            }
         }
-    }
-    stream.handshake(ssl::stream_base::client);
-    http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
+        stream.handshake(ssl::stream_base::client);
+        http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
 
-    req.set(http::field::host, host);
-    if (!body.empty()) {
-        if (json) {
-            // FIXME: json is untested.
-            req.set(http::field::content_type, "application/json");
-        } else {
-            req.set(http::field::content_type, "application/x-www-form-urlencoded");
+        req.set(http::field::host, host);
+        if (!body.empty()) {
+            if (json) {
+                // FIXME: json is untested.
+                req.set(http::field::content_type, "application/json");
+            } else {
+                req.set(http::field::content_type, "application/x-www-form-urlencoded");
+            }
+            req.set(http::field::content_length, boost::lexical_cast<std::string>(body.size()));
+            req.body() = body;
+            // info("body is " + body + " (" + req.body() + ")");
+            // info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");
         }
-        req.set(http::field::content_length, boost::lexical_cast<std::string>(body.size()));
-        req.body() = body;
-        // info("body is " + body + " (" + req.body() + ")");
-        // info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");
-    }
-    for (const auto& pair : fields) {
-        // info("setting " + pair.first + " to " + pair.second);
-        req.set(pair.first, pair.second);
-    }
+        for (const auto& pair : fields) {
+            // info("setting " + pair.first + " to " + pair.second);
+            req.set(pair.first, pair.second);
+        }
 
-    std::stringstream oss;
-    oss << req;
+        std::stringstream oss;
+        oss << req;
 
-    beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(5));
+        beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(5));
 
-    http::write(stream, req);
+        http::write(stream, req);
 
-    // used for reading
-    beast::flat_buffer buffer;
-    http::response<http::string_body> response;
+        // used for reading
+        beast::flat_buffer buffer;
+        http::response<http::string_body> response;
 
-    http::read(stream, buffer, response);
+        http::read(stream, buffer, response);
 
-    std::stringstream result;
-    result << response;
+        std::stringstream result;
+        result << response;
 
-    beast::error_code ec;
-    stream.shutdown(ec);
-    // IGNORING ec
+        beast::error_code ec;
+        stream.shutdown(ec);
+        // IGNORING ec
 
-    // info(result.str());
-    std::string debug_response_str;
-    std::getline(result, debug_response_str);
-    debug("POST " + host + target + ": " + debug_response_str);
-    return std::string(response.body());
+        // info(result.str());
+        std::string debug_response_str;
+        std::getline(result, debug_response_str);
+        debug("POST " + host + target + ": " + debug_response_str);
+        return std::string(response.body());
 
-    /*} catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         error(e.what());
         return "-1";
-    }*/
+    }
 }
