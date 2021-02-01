@@ -17,7 +17,7 @@ jobs:
         uses: lukka/run-vcpkg@main
         id: runvcpkg
         with:
-          vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio'
+          vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl'
           vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
           vcpkgGitCommitId: '30124253eecff36bc90f73341edbfb4f845e2a1e'
           vcpkgTriplet: 'x64-windows-static'
