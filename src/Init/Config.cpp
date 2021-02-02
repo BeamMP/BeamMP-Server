@@ -21,6 +21,7 @@ bool Private;
 int MaxCars;
 bool Debug;
 int Port;
+std::chrono::time_point<std::chrono::high_resolution_clock> StartTime;
 
 void SetValues(const std::string& Line, int Index) {
     int state = 0;
