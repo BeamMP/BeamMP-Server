@@ -1,5 +1,6 @@
 #include "CustomAssert.h"
 
+#include "Settings.h"
 #include "Startup.h"
 #include <iostream>
 #include <thread>
@@ -24,6 +25,7 @@ int main(int argc, char* argv[]) {
     signal(SIGPIPE, UnixSignalHandler);
 #endif // WIN32
     DebugPrintTID();
+    StartTime = std::chrono::high_resolution_clock::now();
     ConsoleInit();
     InitServer(argc, argv);
     InitConfig();

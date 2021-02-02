@@ -7,6 +7,7 @@
 ///
 #pragma once
 #include <mutex>
+#include <chrono>
 #include <string>
 
 extern std::string ServerName;
@@ -25,6 +26,7 @@ extern int MaxPlayers;
 extern int ModsLoaded;
 extern bool Private;
 extern int MaxCars;
+extern bool Debug;
 extern int Port;
 extern int PPS;
 
@@ -33,6 +35,11 @@ static inline std::mutex _DebugModeEnabledMutex;
 
 inline bool IsDebugModeEnabled() {
     std::unique_lock Lock(_DebugModeEnabledMutex);
+extern std::chrono::time_point<std::chrono::high_resolution_clock> StartTime;
+inline std::chrono::seconds GetUptimeInSeconds() {
+    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - StartTime);
+}
+
     return _DebugModeEnabled;
 }
 inline void SetDebugModeEnabled(bool NewMode) {
