@@ -7,15 +7,10 @@
 ///
 
 #include "CustomAssert.h"
-#include <iostream>
-
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
-#include <cstdlib>
-#include <iostream>
-#include <sstream>
 #include <string>
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
