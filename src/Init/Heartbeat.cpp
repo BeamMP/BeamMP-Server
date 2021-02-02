@@ -71,12 +71,12 @@ std::string RunPromise(const std::string& host, const std::string& target, const
         LastNormalUpdateTime = Now;
         if (!CustomIP.empty())
             R += "&ip=" + CustomIP;
-        T = RunPromise("beammp.com", "/heartbeatv2", {}, R);
+        T = RunPromise("backend.beammp.com", "/heartbeat", {}, R);
 
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = RunPromise("backup1.beammp.com", "/heartbeatv2", {}, R);
+            T = RunPromise("backend.beammp.com", "/heartbeat", {}, R);
             // TODO backup2 + HTTP flag (no TSL)
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
