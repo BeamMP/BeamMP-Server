@@ -88,15 +88,15 @@ std::string PostHTTP(const std::string& host, const std::string& target, const s
             }
             return true;
         };
-        bool ok = try_connect_with_protocol(tcp::v6());
+        //bool ok = try_connect_with_protocol(tcp::v6());
+        //if (!ok) {
+        //debug("IPv6 connect failed, trying IPv4");
+        bool ok = try_connect_with_protocol(tcp::v4());
         if (!ok) {
-            debug("IPv6 connect failed, trying IPv4");
-            ok = try_connect_with_protocol(tcp::v4());
-            if (!ok) {
-                error("failed to resolve or connect in POST " + host + target);
-                return "-1";
-            }
+            error("failed to resolve or connect in POST " + host + target);
+            return "-1";
         }
+        //}
         stream.handshake(ssl::stream_base::client);
         http::request<http::string_body> req { http::verb::post, target, 11 /* http 1.1 */ };
 
