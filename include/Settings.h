@@ -6,6 +6,7 @@
 /// Created by Anonymous275 on 7/28/2020
 ///
 #pragma once
+#include <chrono>
 #include <string>
 extern std::string ServerName;
 extern std::string ServerDesc;
@@ -26,3 +27,8 @@ extern int MaxCars;
 extern bool Debug;
 extern int Port;
 extern int PPS;
+
+extern std::chrono::time_point<std::chrono::high_resolution_clock> StartTime;
+inline std::chrono::seconds GetUptimeInSeconds() {
+    return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::high_resolution_clock::now() - StartTime);
+}

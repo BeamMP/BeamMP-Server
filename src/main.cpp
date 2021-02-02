@@ -1,5 +1,6 @@
 #include "CustomAssert.h"
 
+#include "Settings.h"
 #include "Startup.h"
 #include <iostream>
 #include <thread>
@@ -36,6 +37,7 @@ int main(int argc, char* argv[]) {
     std::thread t1(loop);
     t1.detach();
 #endif
+    StartTime = std::chrono::high_resolution_clock::now();
     ConsoleInit();
     InitServer(argc, argv);
     InitConfig();
