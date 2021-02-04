@@ -19,15 +19,26 @@ Currently only linux and windows are supported (generally). On systems to which 
 
 ### Prerequisites
 
-All package names are ones found in debian's (debian 10 stable) repositories, but will exist under similar names in other distros. Feel free to PR your own guide for a different distro.
+## Windows
+
+Please use the prepackaged binaries in [releases]().
+
+Dependencies for windows can be installed with `vkpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, `boost-beast`, `boost-asio` and `openssl`.
+
+## Linux / \*nix
+
+These package names are in the debian / ubuntu style. Feel free to PR your own guide for a different distro.
 
 - `git`
 - `make`
 - `cmake`
 - `g++`
   
-  Must support ISO C++17
-- `liblua5.3`
+  Must support ISO C++17. If your distro's `g++` doesn't support C++17, chances are that it has a `g++-8` or `g++-10` package that does. If this is the case. you just need to run CMake with `-DCMAKE_CXX_COMPILER=g++-10` (replace `g++-10` with your compiler's name).
+- `liblua5.3` 
+  
+  Any 5.x version should work, but 5.3 is what we officially use. Any other version might break in the future.
+  You can also use any version of `libluajit`, but the same applies regarding the version.
 - `libz-dev`
 - `rapidjson-dev`
 - `libboost1.70-dev` 
