@@ -19,13 +19,13 @@ Currently only linux and windows are supported (generally). On systems to which 
 
 ### Prerequisites
 
-## Windows
+#### Windows
 
 Please use the prepackaged binaries in [releases]().
 
 Dependencies for windows can be installed with `vkpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, `boost-beast`, `boost-asio` and `openssl`.
 
-## Linux / \*nix
+#### Linux / \*nix
 
 These package names are in the debian / ubuntu style. Feel free to PR your own guide for a different distro.
 
