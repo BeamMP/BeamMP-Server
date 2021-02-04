@@ -24,11 +24,20 @@ All package names are ones found in debian's (debian 10 stable) repositories, bu
 - `git`
 - `make`
 - `cmake`
-- `g++` (must support ISO C++17)
+- `g++`
+  
+  Must support ISO C++17
 - `liblua5.3`
 - `libz-dev`
 - `rapidjson-dev`
-- `libcurl4-openssl-dev` (or other `libcurl4-*-dev`)
+- `libboost1.70-dev` 
+  
+  If your distro doesn't have 1.7x version of libboost, you'll have to compile it from source. For Ubuntu, you can use 
+  ```
+  sudo add-apt-repository ppa:mhier/libboost-latest
+  sudo apt-get install -y libboost1.70-dev libboost1.70
+  ```
+- `libopenssl-dev`
 
 ### How to build
 
