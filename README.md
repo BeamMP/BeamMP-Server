@@ -13,9 +13,9 @@ Recommended compilers: MSVC, GCC.
 
 You can find precompiled binaries under [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
-## Linux / POSIX specific build instructions
+## Build Instructions
 
-Currently only linux and windows are supported (generally). On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
+Currently only linux and windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
 
 ### Prerequisites
 
@@ -52,13 +52,15 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 
 ### How to build
 
+On windows. use git-bash for these commands.
+
 1. Make sure you have all [prerequisites](#prerequisites) installed
 2. Clone the repository in a location of your choice with `git clone --recursive https://github.com/BeamMP/BeamMP-Server`
 3. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20.
 4. `cd` into it with `cd BeamMP-Server`
 5. Run `cmake .` (with `.`)
 6. Run `make`
-7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server`. Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
+7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
 *tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
