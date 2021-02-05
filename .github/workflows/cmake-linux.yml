@@ -15,7 +15,25 @@ jobs:
     - name: Install Dependencies
       run: |
           sudo apt-get update
-          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libasio-dev libboost1.67-all-dev
+          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libasio-dev
+
+    - name: Cache Boost 1.75.0
+      id: cache-boost
+      uses: actions/cache@v2
+      with:
+          path: boost_1_75_0
+          key: ${{ runner.os }}-boost
+      
+    - name: Install Boost 1.75.0
+      if: steps.cache-boost.outputs.cache-hit != 'true'
+      run: |
+          wget https://dl.bintray.com/boostorg/release/1.75.0/source/boost_1_75_0.tar.gz
+          tar xzf boost_1_75_0.tar.gz
+          pushd boost_1_75_0
+          ./bootstrap.sh
+          ./b2 --build-dir=/tmp/build-boost toolset=gcc --with-system --with-thread
+          popd
+          rm -f boost_1_75_0.tar.gz
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{github.workspace}}/build-linux
