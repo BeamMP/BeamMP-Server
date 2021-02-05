@@ -15,9 +15,7 @@ jobs:
     - name: Install Dependencies
       run: |
           sudo apt-get update
-          sudo add-apt-repository ppa:mhier/libboost-latest
-          sudo apt-get install -y libboost1.70-dev libboost1.70
-          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libasio-dev
+          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libasio-dev libboost1.67-all-dev
 
     - name: Create Build Environment
       run: cmake -E make_directory ${{github.workspace}}/build-linux
