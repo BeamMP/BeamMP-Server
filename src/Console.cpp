@@ -55,6 +55,7 @@ void HandleInput(const std::string& cmd) {
     } else {
         LuaConsole->Execute(cmd);
     }
+    std::cout << std::flush;
 }
 
 void ProcessOut() {

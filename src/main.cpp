@@ -24,9 +24,9 @@ int main(int argc, char* argv[]) {
     signal(SIGPIPE, UnixSignalHandler);
 #endif // WIN32
     DebugPrintTID();
-    InitConfig();
     ConsoleInit();
     InitServer(argc, argv);
+    InitConfig();
     InitLua();
     InitRes();
     HBInit();

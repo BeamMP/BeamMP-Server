@@ -132,7 +132,7 @@ void Default() {
     GenerateConfig();
     error(("You are required to input the AuthKey"));
     std::this_thread::sleep_for(std::chrono::seconds(3));
-    _Exit(0);
+    exit(0);
 }
 void DebugData() {
     debug(std::string("Debug : ") + (IsDebugModeEnabled() ? "true" : "false"));
@@ -160,7 +160,7 @@ void InitConfig() {
     if (Key.empty()) {
         error(("No AuthKey was found"));
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        _Exit(0);
+        exit(0);
     }
     if (IsDebugModeEnabled())
         DebugData();

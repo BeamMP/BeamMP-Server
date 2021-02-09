@@ -13,12 +13,12 @@
 #include "Security/Enc.h"
 #include "Settings.h"
 #include "UnixCompat.h"
+#include <array>
 #include <cmath>
 #include <cstring>
 #include <sstream>
 #include <thread>
 #include <vector>
-#include <array>
 
 SOCKET UDPSock;
 void UDPSend(Client* c, std::string Data) {
@@ -74,7 +74,7 @@ void SendLarge(Client* c, std::string Data) {
 
 std::string UDPRcvFromClient(sockaddr_in& client) {
     size_t clientLength = sizeof(client);
-    std::array<char, 1024> Ret{};
+    std::array<char, 1024> Ret {};
     int64_t Rcv = recvfrom(UDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
     if (Rcv == -1) {
 #ifdef WIN32
@@ -117,7 +117,7 @@ void UDPParser(Client* c, std::string Packet) {
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
         error(("Can't bind socket!") + std::to_string(WSAGetLastError()));
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        _Exit(-1);
+        exit(-1);
         //return;
     }
 
@@ -159,7 +159,7 @@ void UDPParser(Client* c, std::string Packet) {
     if (bind(UDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
         error(("Can't bind socket!") + std::string(strerror(errno)));
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        _Exit(-1);
+        exit(-1);
         //return;
     }
 

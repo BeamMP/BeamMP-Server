@@ -71,9 +71,6 @@ std::string getDate() {
     return date.str();
 }
 
-static std::mutex LogFileMutex;
-static std::ofstream LogFile("Server.log", std::ios::app);
-
 void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
 #ifdef DEBUG
     // we need to print to cout here as we might crash before all console output is handled,
@@ -86,6 +83,8 @@ void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
 }
 
 void addToLog(const std::string& Line) {
+    static std::mutex LogFileMutex;
+    static std::ofstream LogFile("Server.log", std::ios::trunc);
     std::unique_lock Lock(LogFileMutex);
     LogFile << Line.c_str();
 }

@@ -164,7 +164,7 @@ void TCPServerMain() {
         if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
             error("Can't bind socket! " + std::to_string(WSAGetLastError()));
             std::this_thread::sleep_for(std::chrono::seconds(5));
-            _Exit(-1);
+            exit(-1);
         }
         if (Listener == -1) {
             error("Invalid listening socket");
@@ -218,7 +218,7 @@ void TCPServerMain() {
         if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
             error(("Can't bind socket! ") + std::string(strerror(errno)));
             std::this_thread::sleep_for(std::chrono::seconds(5));
-            _Exit(-1);
+            exit(-1);
         }
         if (Listener == -1) {
             error(("Invalid listening socket"));
