@@ -64,29 +64,21 @@ std::string getDate() {
         << Min << ":"
         << Secs
         << "] ";
-    if (Debug) {
+    if (IsDebugModeEnabled()) {
         date << ThreadName()
              << " ";
     }
     return date.str();
 }
 
-void InitLog() {
-    std::ofstream LFS;
-    LFS.open(("Server.log"));
-    if (!LFS.is_open()) {
-        error(("logger file init failed!"));
-    } else
-        LFS.close();
-}
-std::mutex LogLock;
+static std::mutex LogFileMutex;
+static std::ofstream LogFile("Server.log", std::ios::app);
 
 void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
+#ifdef DEBUG
     // we need to print to cout here as we might crash before all console output is handled,
     // due to segfaults or asserts.
     SetThreadName(func, overwrite);
-#ifdef DEBUG
-    std::scoped_lock Guard(LogLock);
     std::stringstream Print;
     Print << "(debug build) Thread '" << std::this_thread::get_id() << "' is " << func << "\n";
     ConsoleOut(Print.str());
@@ -94,38 +86,35 @@ void DebugPrintTIDInternal(const std::string& func, bool overwrite) {
 }
 
 void addToLog(const std::string& Line) {
-    std::ofstream LFS("Server.log", std::ios_base::app);
-    LFS << Line.c_str();
+    std::unique_lock Lock(LogFileMutex);
+    LogFile << Line.c_str();
 }
+
 void info(const std::string& toPrint) {
-    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + ("[INFO] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void debug(const std::string& toPrint) {
-    if (!Debug)
+    if (!IsDebugModeEnabled())
         return;
-    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + ("[DEBUG] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void warn(const std::string& toPrint) {
-    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + ("[WARN] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void error(const std::string& toPrint) {
-    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + ("[ERROR] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
 void except(const std::string& toPrint) {
-    std::scoped_lock Guard(LogLock);
     std::string Print = getDate() + ("[EXCEP] ") + toPrint + "\n";
     ConsoleOut(Print);
     addToLog(Print);
 }
+

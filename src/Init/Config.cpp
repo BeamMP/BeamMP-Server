@@ -8,6 +8,7 @@
 #include "CustomAssert.h"
 #include "Logger.h"
 #include "Security/Enc.h"
+#include "Settings.h"
 #include <fstream>
 #include <string>
 #include <thread>
@@ -19,7 +20,6 @@ std::string Key;
 int MaxPlayers;
 bool Private;
 int MaxCars;
-bool Debug;
 int Port;
 
 void SetValues(const std::string& Line, int Index) {
@@ -46,7 +46,7 @@ void SetValues(const std::string& Line, int Index) {
     bool FoundTrue = std::string(Data).find("true") != std::string::npos; //searches for "true"
     switch (Index) {
     case 1:
-        Debug = FoundTrue; //checks and sets the Debug Value
+        SetDebugModeEnabled(FoundTrue); //checks and sets the Debug Value
         break;
     case 2:
         Private = FoundTrue; //checks and sets the Private Value
@@ -135,7 +135,7 @@ void Default() {
     _Exit(0);
 }
 void DebugData() {
-    debug(std::string("Debug : ") + (Debug ? "true" : "false"));
+    debug(std::string("Debug : ") + (IsDebugModeEnabled() ? "true" : "false"));
     debug(std::string("Private : ") + (Private ? "true" : "false"));
     debug("Port : " + std::to_string(Port));
     debug("Max Cars : " + std::to_string(MaxCars));
@@ -162,6 +162,6 @@ void InitConfig() {
         std::this_thread::sleep_for(std::chrono::seconds(3));
         _Exit(0);
     }
-    if (Debug)
+    if (IsDebugModeEnabled())
         DebugData();
 }

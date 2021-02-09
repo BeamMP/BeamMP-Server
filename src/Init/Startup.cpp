@@ -32,7 +32,6 @@ void Args(int argc, char* argv[]) {
     }
 }
 void InitServer(int argc, char* argv[]) {
-    InitLog();
     Args(argc, argv);
     CI = std::make_unique<ClientInterface>();
 }

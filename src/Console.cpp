@@ -23,11 +23,29 @@ typedef unsigned long DWORD, *PDWORD, *LPDWORD;
 #include <string>
 #include <thread>
 
-std::vector<std::string> QConsoleOut;
+template <typename T>
+struct MutexLocked {
+    T& data;
+    std::unique_lock<std::mutex> lock;
+
+    MutexLocked(const MutexLocked&) = delete;
+};
+
+namespace detail {
+static std::vector<std::string> ConsoleOutQueue;
+static std::mutex ConsoleOutQueueMutex;
+}
+
+MutexLocked<std::vector<std::string>> LockedConsoleOutQueue() {
+    return { detail::ConsoleOutQueue, std::unique_lock(detail::ConsoleOutQueueMutex) };
+}
+
+std::mutex StdoutMutex;
 std::string CInputBuff;
-std::mutex MLock;
 std::unique_ptr<Lua> LuaConsole;
+
 void HandleInput(const std::string& cmd) {
+    std::unique_lock Lock(StdoutMutex);
     std::cout << std::endl;
     if (cmd == ("exit")) {
         _Exit(0);
@@ -40,20 +58,20 @@ void HandleInput(const std::string& cmd) {
 }
 
 void ProcessOut() {
+    std::unique_lock Lock(StdoutMutex);
     printf("%c[2K\r", 27);
-    for (const std::string& msg : QConsoleOut)
-        if (!msg.empty())
+    auto ConsoleOutQueue = LockedConsoleOutQueue();
+    for (const std::string& msg : ConsoleOutQueue.data) {
+        if (!msg.empty()) {
             std::cout << msg;
-    MLock.lock();
-    QConsoleOut.clear();
-    MLock.unlock();
+        }
+    }
+    ConsoleOutQueue.data.clear();
     std::cout << "> " << CInputBuff << std::flush;
 }
 
 void ConsoleOut(const std::string& msg) {
-    MLock.lock();
-    QConsoleOut.emplace_back(msg);
-    MLock.unlock();
+    LockedConsoleOutQueue().data.emplace_back(msg);
 }
 
 [[noreturn]] void OutputRefresh() {
@@ -255,7 +273,10 @@ void ConsoleInit() {
     SetupConsole();
     LuaConsole = std::make_unique<Lua>(true);
     LuaConsole->Init();
-    printf("> ");
+    { // stdout locked scope
+        std::unique_lock Lock(StdoutMutex);
+        printf("> ");
+    }
     std::thread In(ReadCin);
     In.detach();
     std::thread Out(OutputRefresh);

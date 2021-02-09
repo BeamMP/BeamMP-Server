@@ -17,14 +17,6 @@ void UnixSignalHandler(int sig) {
 }
 #endif // WIN32
 
-[[noreturn]] void loop() {
-    DebugPrintTID();
-    while (true) {
-        std::cout.flush();
-        std::this_thread::sleep_for(std::chrono::milliseconds(600));
-    }
-}
-
 int main(int argc, char* argv[]) {
 #ifndef WIN32
     // ignore SIGPIPE, the signal that is sent for example when a client
@@ -32,13 +24,9 @@ int main(int argc, char* argv[]) {
     signal(SIGPIPE, UnixSignalHandler);
 #endif // WIN32
     DebugPrintTID();
-#ifdef DEBUG
-    std::thread t1(loop);
-    t1.detach();
-#endif
+    InitConfig();
     ConsoleInit();
     InitServer(argc, argv);
-    InitConfig();
     InitLua();
     InitRes();
     HBInit();

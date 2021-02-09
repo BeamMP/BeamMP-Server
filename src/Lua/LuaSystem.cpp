@@ -481,8 +481,8 @@ int lua_Set(lua_State* L) {
     switch (C) {
     case 0: //debug
         if (lua_isboolean(L, 2)) {
-            Debug = lua_toboolean(L, 2);
-            info(Name + (" | Debug -> ") + (Debug ? "true" : "false"));
+            SetDebugModeEnabled(lua_toboolean(L, 2));
+            info(Name + (" | Debug -> ") + (IsDebugModeEnabled() ? "true" : "false"));
         } else
             SendError(L, ("set invalid argument [2] expected boolean for ID : 0"));
         break;

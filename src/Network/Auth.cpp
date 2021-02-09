@@ -125,18 +125,22 @@ void HandleDownload(SOCKET TCPSock) {
     }
 }
 
-void Identify(SOCKET TCPSock) {
+void Identify(SOCKET TCPSock, std::reference_wrapper<std::mutex> TCPSockMutex) {
     char Code;
-    if (recv(TCPSock, &Code, 1, 0) != 1) {
+    if (std::unique_lock Lock(TCPSockMutex.get()); recv(TCPSock, &Code, 1, 0) != 1) {
         CloseSocketProper(TCPSock);
         return;
     }
     if (Code == 'C') {
+        std::unique_lock Lock(TCPSockMutex.get());
         Authentication(TCPSock);
     } else if (Code == 'D') {
+        std::unique_lock Lock(TCPSockMutex.get());
         HandleDownload(TCPSock);
-    } else
+    } else {
+        std::unique_lock Lock(TCPSockMutex.get());
         CloseSocketProper(TCPSock);
+    }
 }
 
 void TCPServerMain() {
@@ -147,74 +151,96 @@ void TCPServerMain() {
         error("Can't start Winsock!");
         return;
     }
+    std::mutex clientMutex;
     SOCKET client, Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    std::mutex ListenerMutex;
     sockaddr_in addr {};
     addr.sin_addr.S_un.S_addr = ADDR_ANY;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(Port);
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        error("Can't bind socket! " + std::to_string(WSAGetLastError()));
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        _Exit(-1);
-    }
-    if (Listener == -1) {
-        error("Invalid listening socket");
-        return;
-    }
-    if (listen(Listener, SOMAXCONN)) {
-        error("listener failed " + std::to_string(GetLastError()));
-        return;
+    { // Listener lock scope
+        std::unique_lock Lock(ListenerMutex);
+
+        if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+            error("Can't bind socket! " + std::to_string(WSAGetLastError()));
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            _Exit(-1);
+        }
+        if (Listener == -1) {
+            error("Invalid listening socket");
+            return;
+        }
+        if (listen(Listener, SOMAXCONN)) {
+            error("listener failed " + std::to_string(GetLastError()));
+            return;
+        }
     }
     info("Vehicle event network online");
     do {
         try {
-            client = accept(Listener, nullptr, nullptr);
-            if (client == -1) {
-                warn("Got an invalid client socket on connect! Skipping...");
-                continue;
+            { // client mutex lock scope
+                std::unique_lock Lock(clientMutex);
+                client = accept(Listener, nullptr, nullptr);
+                if (client == -1) {
+                    warn("Got an invalid client socket on connect! Skipping...");
+                    continue;
+                }
             }
-            std::thread ID(Identify, client);
+            std::thread ID(Identify, client, std::ref(clientMutex));
             ID.detach();
         } catch (const std::exception& e) {
             error("fatal: " + std::string(e.what()));
         }
     } while (client);
 
+    std::unique_lock Lock(clientMutex);
     CloseSocketProper(client);
     WSACleanup();
 #else // unix
     // wondering why we need slightly different implementations of this?
     // ask ms.
-    SOCKET client = -1, Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    SOCKET client = -1;
+    std::mutex clientMutex;
+    SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    std::mutex ListenerMutex;
     int optval = 1;
-    setsockopt(Listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+    { // Listener lock scope
+        std::unique_lock Lock(ListenerMutex);
+        setsockopt(Listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+    }
     // TODO: check optval or return value idk
     sockaddr_in addr {};
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Port));
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        error(("Can't bind socket! ") + std::string(strerror(errno)));
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        _Exit(-1);
-    }
-    if (Listener == -1) {
-        error(("Invalid listening socket"));
-        return;
-    }
-    if (listen(Listener, SOMAXCONN)) {
-        error(("listener failed ") + std::string(strerror(errno)));
-        return;
-    }
+    { // Listener lock scope
+        std::unique_lock Lock(ListenerMutex);
+        if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
+            error(("Can't bind socket! ") + std::string(strerror(errno)));
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            _Exit(-1);
+        }
+        if (Listener == -1) {
+            error(("Invalid listening socket"));
+            return;
+        }
+        if (listen(Listener, SOMAXCONN)) {
+            error(("listener failed ") + std::string(strerror(errno)));
+            return;
+        }
+    } // end Listener lock scope
     info(("Vehicle event network online"));
     do {
         try {
-            client = accept(Listener, nullptr, nullptr);
-            if (client == -1) {
-                warn(("Got an invalid client socket on connect! Skipping..."));
-                continue;
-            }
-            std::thread ID(Identify, client);
+            { // client mutex lock scope
+                std::unique_lock Lock(clientMutex);
+                client = accept(Listener, nullptr, nullptr);
+                if (client == -1) {
+                    warn(("Got an invalid client socket on connect! Skipping..."));
+                    continue;
+                }
+            } // end client mutex lock scope
+            std::thread ID(Identify, client, std::ref(clientMutex));
             ID.detach();
         } catch (const std::exception& e) {
             error(("fatal: ") + std::string(e.what()));
@@ -222,6 +248,8 @@ void TCPServerMain() {
     } while (client);
 
     debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
+
+    std::unique_lock Lock(clientMutex);
     CloseSocketProper(client);
 #endif // WIN32
 }

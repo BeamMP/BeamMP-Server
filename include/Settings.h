@@ -6,7 +6,9 @@
 /// Created by Anonymous275 on 7/28/2020
 ///
 #pragma once
+#include <mutex>
 #include <string>
+
 extern std::string ServerName;
 extern std::string ServerDesc;
 extern std::string StatReport;
@@ -23,6 +25,17 @@ extern int MaxPlayers;
 extern int ModsLoaded;
 extern bool Private;
 extern int MaxCars;
-extern bool Debug;
 extern int Port;
 extern int PPS;
+
+static inline bool _DebugModeEnabled;
+static inline std::mutex _DebugModeEnabledMutex;
+
+inline bool IsDebugModeEnabled() {
+    std::unique_lock Lock(_DebugModeEnabledMutex);
+    return _DebugModeEnabled;
+}
+inline void SetDebugModeEnabled(bool NewMode) {
+    std::unique_lock Lock(_DebugModeEnabledMutex);
+    _DebugModeEnabled = NewMode;
+}
