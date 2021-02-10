@@ -9,6 +9,7 @@
 #include "Curl/Http.h"
 #include "Logger.h"
 #include "Settings.h"
+#include "SocketIO.h"
 #include <chrono>
 #include <future>
 #include <sstream>
@@ -84,7 +85,7 @@ std::string RunPromise(const std::string& host, const std::string& target, const
         }
         //Server Authenticated
         if (!isAuth) {
-            WebsocketInit();
+            // WebsocketInit();
             if (T.length() == 4)
                 info(("Authenticated!"));
             else
