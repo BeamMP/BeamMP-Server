@@ -43,7 +43,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{github.workspace}}/build-linux
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DCMAKE_CXX_FLAGS="-I${{github.workspace}}/boost_1_75_0 -L${{github.workspace}}/boost_1_75_0/stage/lib"
 
     - name: Build
       working-directory: ${{github.workspace}}/build-linux
