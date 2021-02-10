@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 include_directories("asio/asio/include")
 include_directories("rapidjson/include")
+add_subdirectory("websocketpp")
 add_subdirectory("socket.io-client-cpp")
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
