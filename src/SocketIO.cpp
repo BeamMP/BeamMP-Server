@@ -1,16 +1,17 @@
 #include "SocketIO.h"
 #include "Logger.h"
 
+#include <signal.h>
+
 SocketIO::SocketIO()
     : _Thread(std::bind(&SocketIO::ThreadMain, this)) {
-    _Client.connect("example.com");
+    _Client.connect("url goes here");
+    _Client.set_logs_quiet();
 }
 
 SocketIO::~SocketIO() {
     _CloseThread.store(true);
-    if (_Thread.joinable()) {
-        _Thread.join();
-    }
+    _Thread.join();
 }
 
 void SocketIO::Emit(const std::string& EventName, const std::string& Data) {
@@ -38,9 +39,11 @@ void SocketIO::ThreadMain() {
                 NameDataPair = _Queue.front();
                 _Queue.pop_front();
             } // end queue lock scope
+            debug("sending " + NameDataPair.first);
             _Client.socket()->emit(NameDataPair.first, NameDataPair.second);
+            debug("sent " + NameDataPair.first);
         }
     }
-    debug("closing " + std::string(__func__));
+    std::cout << "closing " + std::string(__func__) << std::endl;
     _Client.close();
 }

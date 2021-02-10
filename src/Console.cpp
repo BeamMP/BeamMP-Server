@@ -48,7 +48,7 @@ void HandleInput(const std::string& cmd) {
     std::unique_lock Lock(StdoutMutex);
     std::cout << std::endl;
     if (cmd == ("exit")) {
-        _Exit(0);
+        exit(0);
     } else if (cmd == ("clear") || cmd == ("cls")) {
         // 2J is clearscreen, H is reset position to top-left
         ConsoleOut(("\x1b[2J\x1b[H"));
