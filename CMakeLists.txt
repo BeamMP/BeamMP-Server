@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 include_directories("asio/asio/include")
+include_directories("rapidjson/include")
 add_subdirectory("socket.io-client-cpp")
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -43,7 +44,6 @@ if (UNIX)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
-    find_package(RapidJSON CONFIG REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+    target_include_directories(BeamMP-Server PRIVATE ${Boost_INCLUDE_DIRS})
     target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} sioclient_tls)
 endif ()
