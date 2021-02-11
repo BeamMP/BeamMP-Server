@@ -87,10 +87,11 @@ std::string RunPromise(const std::string& host, const std::string& target, const
         if (!isAuth) {
             if (T == "2000") {
                 info(("Authenticated!"));
+                isAuth = true;
             } else if (T == "200") {
                 info(("Resumed authenticated session!"));
+                isAuth = true;
             }
-            isAuth = true;
         }
     }
 }
