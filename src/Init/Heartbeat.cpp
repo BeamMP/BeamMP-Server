@@ -83,13 +83,13 @@ std::string RunPromise(const std::string& host, const std::string& target, const
                 warn("Backend system refused server! Server might not show in the public list");
             }
         }
-        //Server Authenticated
+
         if (!isAuth) {
-            // WebsocketInit();
-            if (T.length() == 4)
+            if (T == "2000") {
                 info(("Authenticated!"));
-            else
+            } else if (T == "200") {
                 info(("Resumed authenticated session!"));
+            }
             isAuth = true;
         }
     }
