@@ -74,7 +74,7 @@ void SocketIO::ThreadMain() {
             } // end queue lock scope
             debug("sending \"" + TheEvent.Name + "\" event");
             std::string Room = "/" + Key;
-            if (TheEvent.Room != SocketIORoom::None) {
+            if (!TheEvent.Room.empty()) {
                 Room += "/" + TheEvent.Room;
             }
             _Client.socket(Room)->emit(TheEvent.Name, TheEvent.Data);
