@@ -7,6 +7,7 @@
 ///
 
 #include "Lua/LuaSystem.hpp"
+#include "SocketIO.h"
 #ifdef WIN32
 #include <conio.h>
 #include <windows.h>
@@ -73,6 +74,7 @@ void ProcessOut() {
 
 void ConsoleOut(const std::string& msg) {
     LockedConsoleOutQueue().data.emplace_back(msg);
+    SocketIO::Get().Emit(SocketIORoom::Console, SocketIOEvent::ConsoleOut, msg);
 }
 
 [[noreturn]] void OutputRefresh() {

@@ -6,15 +6,44 @@
 #include <sio_client.h>
 #include <thread>
 
+/*
+ * We send relevant server events over socket.io to the backend.
+ *
+ * We send all events to `backend.beammp.com`, to the room `/key` 
+ * where `key` is the currently active auth-key. 
+ */
+
+enum class SocketIOEvent {
+    ConsoleOut,
+    CPUUsage,
+    MemoryUsage,
+    NetworkUsage,
+    PlayerList,
+};
+
+enum class SocketIORoom {
+    None,
+    Stats,
+    Player,
+    Info,
+    Console,
+};
+
 class SocketIO final {
+private:
+    struct Event;
+
 public:
+    enum class EventType {
+    };
+
     // Singleton pattern
     static SocketIO& Get() {
         static SocketIO SocketIOInstance;
         return SocketIOInstance;
     }
 
-    void Emit(const std::string& EventName, const std::string& Data);
+    void Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data);
 
 private:
     SocketIO();
@@ -22,10 +51,16 @@ private:
 
     void ThreadMain();
 
+    struct Event {
+        std::string Room;
+        std::string Name;
+        std::string Data;
+    };
+
     sio::client _Client;
     std::thread _Thread;
     std::atomic_bool _CloseThread { false };
     std::mutex _QueueMutex;
-    std::deque<std::pair<std::string, std::string>> _Queue;
+    std::deque<Event> _Queue;
 };
 
