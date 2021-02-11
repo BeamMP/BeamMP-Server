@@ -39,7 +39,7 @@ public:
 
     // Singleton pattern
     static SocketIO& Get() {
-        static SocketIO SocketIOInstance;
+        static SocketIO SocketIOInstance {};
         return SocketIOInstance;
     }
 

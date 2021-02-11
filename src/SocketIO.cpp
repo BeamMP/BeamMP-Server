@@ -7,6 +7,9 @@
 
 SocketIO::SocketIO()
     : _Thread(std::bind(&SocketIO::ThreadMain, this)) {
+    _Client.socket("/")->on("Hello", [&](sio::event&) {
+        info("Got 'Hello' from backend socket-io!");
+    });
     _Client.connect("https://backend.beammp.com");
     _Client.set_logs_quiet();
 }
@@ -28,6 +31,9 @@ static constexpr auto RoomNameFromEnum(SocketIORoom Room) {
         return "player";
     case SocketIORoom::Stats:
         return "stats";
+    default:
+        error("unreachable code reached (developer error)");
+        abort();
     }
 }
 
@@ -43,6 +49,9 @@ static constexpr auto EventNameFromEnum(SocketIOEvent Event) {
         return "network usage";
     case SocketIOEvent::PlayerList:
         return "player list";
+    default:
+        error("unreachable code reached (developer error)");
+        abort();
     }
 }
 void SocketIO::Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data) {
@@ -73,14 +82,12 @@ void SocketIO::ThreadMain() {
                 _Queue.pop_front();
             } // end queue lock scope
             debug("sending \"" + TheEvent.Name + "\" event");
-            std::string Room = "/" + Key;
-            if (!TheEvent.Room.empty()) {
-                Room += "/" + TheEvent.Room;
-            }
-            _Client.socket(Room)->emit(TheEvent.Name, TheEvent.Data);
+            auto Room = "/" + TheEvent.Room;
+            _Client.socket("/")->emit(TheEvent.Name, TheEvent.Data);
             debug("sent \"" + TheEvent.Name + "\" event");
         }
     }
     std::cout << "closing " + std::string(__func__) << std::endl;
+    _Client.sync_close();
     _Client.close();
 }
