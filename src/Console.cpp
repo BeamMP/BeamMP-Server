@@ -74,7 +74,6 @@ void ProcessOut() {
 
 void ConsoleOut(const std::string& msg) {
     LockedConsoleOutQueue().data.emplace_back(msg);
-    SocketIO::Get().Emit(SocketIORoom::Console, SocketIOEvent::ConsoleOut, msg);
 }
 
 [[noreturn]] void OutputRefresh() {
