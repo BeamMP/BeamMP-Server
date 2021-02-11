@@ -81,6 +81,8 @@ std::string RunPromise(const std::string& host, const std::string& target, const
             // TODO backup2 + HTTP flag (no TSL)
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
+                debug("server returned \"" + T + "\"");
+                isAuth = false;
             }
         }
 
