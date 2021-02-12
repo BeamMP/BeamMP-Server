@@ -19,6 +19,7 @@ void UnixSignalHandler(int sig) {
 }
 #endif // WIN32
 
+
 int main(int argc, char* argv[]) {
 #ifndef WIN32
     // ignore SIGPIPE, the signal that is sent for example when a client

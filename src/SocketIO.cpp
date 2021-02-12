@@ -1,9 +1,6 @@
 #include "SocketIO.h"
 #include "Logger.h"
-
 #include "Settings.h"
-
-#include <signal.h>
 
 static std::unique_ptr<SocketIO> SocketIOInstance = std::make_unique<SocketIO>();
 
@@ -12,7 +9,7 @@ SocketIO& SocketIO::Get() {
 }
 
 SocketIO::SocketIO()
-    : _Thread(std::bind(&SocketIO::ThreadMain, this)) {
+    : _Thread([this] { ThreadMain(); }) {
     _Client.socket("/")->on("Hello", [&](sio::event&) {
         DebugPrintTIDInternal("Hello-handler");
         info("Got 'Hello' from backend socket-io!");
@@ -104,6 +101,9 @@ void SocketIO::ThreadMain() {
         }
     }
     std::cout << "closing " + std::string(__func__) << std::endl;
+
     _Client.sync_close();
-    _Client.close();
+    _Client.clear_con_listeners();
+    std::cout << "closed" << std::endl;
+
 }
