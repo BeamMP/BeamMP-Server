@@ -27,9 +27,7 @@ int main(int argc, char* argv[]) {
 #endif // WIN32
     DebugPrintTID();
     StartTime = std::chrono::high_resolution_clock::now();
-
     ConsoleInit();
-    (void)SocketIO::Get(); // call to be sure it initializes
     InitServer(argc, argv);
     InitConfig();
     InitLua();

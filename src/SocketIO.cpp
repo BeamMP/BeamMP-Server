@@ -5,9 +5,16 @@
 
 #include <signal.h>
 
+static std::unique_ptr<SocketIO> SocketIOInstance = std::make_unique<SocketIO>();
+
+SocketIO& SocketIO::Get() {
+    return *SocketIOInstance;
+}
+
 SocketIO::SocketIO()
     : _Thread(std::bind(&SocketIO::ThreadMain, this)) {
     _Client.socket("/")->on("Hello", [&](sio::event&) {
+        DebugPrintTIDInternal("Hello-handler");
         info("Got 'Hello' from backend socket-io!");
     });
     _Client.connect("https://backend.beammp.com");
@@ -54,7 +61,12 @@ static constexpr auto EventNameFromEnum(SocketIOEvent Event) {
         abort();
     }
 }
+
 void SocketIO::Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data) {
+    if (!_Authenticated) {
+        debug("trying to emit a socket.io event when not yet authenticated");
+        return;
+    }
     std::string RoomName = RoomNameFromEnum(Room);
     std::string EventName = EventNameFromEnum(Event);
     debug("emitting event \"" + EventName + "\" with data: \"" + Data + "\" in room \"/key/" + RoomName + "\"");
@@ -64,8 +76,12 @@ void SocketIO::Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& D
 }
 
 void SocketIO::ThreadMain() {
-    DebugPrintTID();
+    bool FirstTime = true;
     while (!_CloseThread.load()) {
+        if (_Authenticated && FirstTime) {
+            FirstTime = false;
+            DebugPrintTID();
+        }
         bool empty = false;
         { // queue lock scope
             std::unique_lock Lock(_QueueMutex);

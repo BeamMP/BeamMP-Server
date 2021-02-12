@@ -38,16 +38,16 @@ public:
     };
 
     // Singleton pattern
-    static SocketIO& Get() {
-        static SocketIO SocketIOInstance {};
-        return SocketIOInstance;
-    }
+    static SocketIO& Get();
 
     void Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data);
 
+    ~SocketIO();
+
+    void SetAuthenticated(bool auth) { _Authenticated = auth; }
+
 private:
     SocketIO();
-    ~SocketIO();
 
     void ThreadMain();
 
@@ -57,10 +57,13 @@ private:
         std::string Data;
     };
 
+    bool _Authenticated { false };
     sio::client _Client;
     std::thread _Thread;
     std::atomic_bool _CloseThread { false };
     std::mutex _QueueMutex;
     std::deque<Event> _Queue;
+
+    friend std::unique_ptr<SocketIO> std::make_unique<SocketIO>();
 };
 

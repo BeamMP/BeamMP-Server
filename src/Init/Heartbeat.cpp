@@ -95,6 +95,8 @@ std::string RunPromise(const std::string& host, const std::string& target, const
                 isAuth = true;
             }
         }
+
+        SocketIO::Get().SetAuthenticated(isAuth);
     }
 }
 void HBInit() {
