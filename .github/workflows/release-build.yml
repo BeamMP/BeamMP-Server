@@ -25,6 +25,10 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false 
+          body: |
+              Files included in this release:
+              - `BeamMP-Server.exe` is the windows build
+              - `BeamMP-Server-linux` is a ubuntu build, so you need the dependencies listed in README.md to run it. For any other distros please build from source as described in README.md.
 
   upload-release-files-linux:
     name: Upload Linux Release Files
