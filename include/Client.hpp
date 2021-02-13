@@ -41,6 +41,13 @@ public:
     bool isSynced = false;
     bool isGuest = false;
 
+    Client() {
+        debug("client created");
+    }
+    ~Client() {
+        debug("client \"" + GetName() + "\" created");
+    }
+
     void AddNewCar(int ident, const std::string& Data);
     void SetCarData(int ident, const std::string& Data);
     std::set<std::unique_ptr<VData>>& GetAllCars();
@@ -64,9 +71,11 @@ public:
     int GetStatus() { return Status; }
     int GetID() { return ID; }
 };
+
 struct ClientInterface {
     std::set<std::unique_ptr<Client>> Clients;
     void RemoveClient(Client*& c) {
+        debug("removing client \"" + c->GetName() + "\"");
         Assert(c);
         c->ClearCars();
         auto Iter = std::find_if(Clients.begin(), Clients.end(), [&](auto& ptr) {
@@ -74,13 +83,16 @@ struct ClientInterface {
         });
         Assert(Iter != Clients.end());
         if (Iter == Clients.end()) {
+            debug("client \"" + c->GetName() + "\" not found, can't remove");
             return;
         }
         Clients.erase(Iter);
         c = nullptr;
+        debug("client \"" + c->GetName() + "\" removed");
     }
     void AddClient(Client*&& c) {
         Assert(c);
+        debug("adding client \"" + c->GetName() + "\"");
         Clients.insert(std::unique_ptr<Client>(c));
     }
     int Size() {

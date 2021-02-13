@@ -19,3 +19,4 @@ void debug(const std::string& toPrint);
 void error(const std::string& toPrint);
 void info(const std::string& toPrint);
 void warn(const std::string& toPrint);
+
