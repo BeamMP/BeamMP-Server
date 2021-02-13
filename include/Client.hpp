@@ -45,7 +45,7 @@ public:
         debug("client created");
     }
     ~Client() {
-        debug("client \"" + GetName() + "\" created");
+        debug("client \"" + GetName() + "\" destroyed");
     }
 
     void AddNewCar(int ident, const std::string& Data);
@@ -75,6 +75,7 @@ public:
 struct ClientInterface {
     std::set<std::unique_ptr<Client>> Clients;
     void RemoveClient(Client*& c) {
+        debug("now known clients: " + std::to_string(Size()));
         debug("removing client \"" + c->GetName() + "\"");
         Assert(c);
         c->ClearCars();
@@ -86,14 +87,16 @@ struct ClientInterface {
             debug("client \"" + c->GetName() + "\" not found, can't remove");
             return;
         }
+        debug("client \"" + c->GetName() + "\" removed");
         Clients.erase(Iter);
         c = nullptr;
-        debug("client \"" + c->GetName() + "\" removed");
+        debug("now known clients: " + std::to_string(Size()));
     }
     void AddClient(Client*&& c) {
         Assert(c);
         debug("adding client \"" + c->GetName() + "\"");
         Clients.insert(std::unique_ptr<Client>(c));
+        debug("now known clients: " + std::to_string(Size()));
     }
     int Size() {
         return int(Clients.size());
