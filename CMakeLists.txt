@@ -22,7 +22,14 @@ find_package(Boost REQUIRED COMPONENTS system thread)
 add_executable(BeamMP-Server 
     src/main.cpp
     src/TConsole.cpp
+    src/TServer.cpp
     src/Compat.cpp
+    src/Common.cpp
+    src/Client.cpp
+    src/VehicleData.cpp
+    src/TConfig.cpp
+    src/TLuaEngine.cpp
+    src/TLuaFile.cpp
 )
     
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
