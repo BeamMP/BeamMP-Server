@@ -7,6 +7,6 @@ public:
     TConfig(const std::string& ConfigFile);
 
 private:
-    std::string RemoveComments(const std::string& Line);
-    void SetValues(const std::string& Line, int Index);
+    static std::string RemoveComments(const std::string& Line);
+    static void SetValues(const std::string& Line, int Index);
 };

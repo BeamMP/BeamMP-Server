@@ -3,12 +3,11 @@
 
 #include "Common.h"
 #include "IThreaded.h"
+#include "TLuaFile.h"
 #include "TServer.h"
 #include <lua.hpp>
 #include <memory>
 #include <set>
-
-class TLuaFile;
 
 class TLuaEngine : public IThreaded {
 public:

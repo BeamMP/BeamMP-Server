@@ -24,11 +24,11 @@ public:
         std::string Resource;
         std::string MapName;
         std::string Key;
-        int MaxPlayers;
-        bool Private;
-        int MaxCars;
+        int MaxPlayers {};
+        bool Private {};
+        int MaxCars {};
         bool DebugModeEnabled;
-        int Port;
+        int Port {};
         std::string CustomIP;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
 
@@ -46,22 +46,33 @@ public:
     static void GracefullyShutdown();
     static TConsole& Console() { return *mConsole; }
     static std::string ServerVersion() { return "v1.20"; }
+    static std::string ClientVersion() { return "v1.80"; }
+    static std::string PPS() { return mPPS; }
+    static void SetPPS(std::string NewPPS) { mPPS = NewPPS; }
 
     static inline TSettings Settings {};
 
 private:
+    static inline std::string mPPS;
     static std::unique_ptr<TConsole> mConsole;
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::vector<TShutdownHandler> mShutdownHandlers {};
 };
 
-#define warn(x) Application::Console().Write(std::string("[WARN] ") + (x))
-#define error(x) Application::Console().Write(std::string("[ERROR] ") + (x))
-#define info(x) Application::Console().Write(std::string("[INFO] ") + (x))
-#define luaprint(x) Application::Console().Write(std::string("[LUA] ") + (x))
-#define debug(x)                                                         \
-    do {                                                                 \
-        if (Application::Settings.DebugModeEnabled) {                    \
-            Application::Console().Write(std::string("[DEBUG] ") + (x)); \
-        }                                                                \
-    } while (false)
+static inline void warn(const std::string& str) {
+    Application::Console().Write(std::string("[WARN] ") + str);
+}
+static inline void error(const std::string& str) {
+    Application::Console().Write(std::string("[ERROR] ") + str);
+}
+static inline void info(const std::string& str) {
+    Application::Console().Write(std::string("[INFO] ") + str);
+}
+static inline void debug(const std::string& str) {
+    if (Application::Settings.DebugModeEnabled) {
+        Application::Console().Write(std::string("[DEBUG] ") + str);
+    }
+}
+static inline void luaprint(const std::string& str) {
+    Application::Console().Write(std::string("[LUA] ") + str);
+}

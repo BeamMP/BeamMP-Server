@@ -5,6 +5,7 @@
 #include <mutex>
 #include <sio_client.h>
 #include <thread>
+#include <memory>
 
 /*
  * We send relevant server events over socket.io to the backend.
@@ -44,10 +45,10 @@ public:
 
     ~SocketIO();
 
-    void SetAuthenticated(bool auth) { _Authenticated = auth; }
+    void SetAuthenticated(bool auth) { mAuthenticated = auth; }
 
 private:
-    SocketIO();
+    SocketIO() noexcept;
 
     void ThreadMain();
 
@@ -57,12 +58,12 @@ private:
         std::string Data;
     };
 
-    bool _Authenticated { false };
-    sio::client _Client;
-    std::thread _Thread;
-    std::atomic_bool _CloseThread { false };
-    std::mutex _QueueMutex;
-    std::deque<Event> _Queue;
+    bool mAuthenticated { false };
+    sio::client mClient;
+    std::thread mThread;
+    std::atomic_bool mCloseThread { false };
+    std::mutex mQueueMutex;
+    std::deque<Event> mQueue;
 
     friend std::unique_ptr<SocketIO> std::make_unique<SocketIO>();
 };

@@ -1,6 +1,7 @@
 #include "SocketIO.h"
-#include "Logger.h"
-#include "Settings.h"
+#include "Common.h"
+
+#include <iostream>
 
 static std::unique_ptr<SocketIO> SocketIOInstance = std::make_unique<SocketIO>();
 
@@ -8,19 +9,18 @@ SocketIO& SocketIO::Get() {
     return *SocketIOInstance;
 }
 
-SocketIO::SocketIO()
-    : _Thread([this] { ThreadMain(); }) {
-    _Client.socket("/")->on("Hello", [&](sio::event&) {
-        DebugPrintTIDInternal("Hello-handler");
+SocketIO::SocketIO() noexcept
+    : mThread([this] { ThreadMain(); }) {
+    mClient.socket("/")->on("Hello", [&](sio::event&) {
         info("Got 'Hello' from backend socket-io!");
     });
-    _Client.connect("https://backend.beammp.com");
-    _Client.set_logs_quiet();
+    mClient.connect("https://backend.beammp.com");
+    mClient.set_logs_quiet();
 }
 
 SocketIO::~SocketIO() {
-    _CloseThread.store(true);
-    _Thread.join();
+    mCloseThread.store(true);
+    mThread.join();
 }
 
 static constexpr auto RoomNameFromEnum(SocketIORoom Room) {
@@ -60,29 +60,28 @@ static constexpr auto EventNameFromEnum(SocketIOEvent Event) {
 }
 
 void SocketIO::Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data) {
-    if (!_Authenticated) {
+    if (!mAuthenticated) {
         debug("trying to emit a socket.io event when not yet authenticated");
         return;
     }
     std::string RoomName = RoomNameFromEnum(Room);
     std::string EventName = EventNameFromEnum(Event);
     debug("emitting event \"" + EventName + "\" with data: \"" + Data + "\" in room \"/key/" + RoomName + "\"");
-    std::unique_lock Lock(_QueueMutex);
-    _Queue.push_back({ RoomName, EventName, Data });
-    debug("queue now has " + std::to_string(_Queue.size()) + " events");
+    std::unique_lock Lock(mQueueMutex);
+    mQueue.push_back({ RoomName, EventName, Data });
+    debug("queue now has " + std::to_string(mQueue.size()) + " events");
 }
 
 void SocketIO::ThreadMain() {
     bool FirstTime = true;
-    while (!_CloseThread.load()) {
-        if (_Authenticated && FirstTime) {
+    while (!mCloseThread.load()) {
+        if (mAuthenticated && FirstTime) {
             FirstTime = false;
-            DebugPrintTID();
         }
         bool empty = false;
         { // queue lock scope
-            std::unique_lock Lock(_QueueMutex);
-            empty = _Queue.empty();
+            std::unique_lock Lock(mQueueMutex);
+            empty = mQueue.empty();
         } // end queue lock scope
         if (empty) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -90,20 +89,20 @@ void SocketIO::ThreadMain() {
         } else {
             Event TheEvent;
             { // queue lock scope
-                std::unique_lock Lock(_QueueMutex);
-                TheEvent = _Queue.front();
-                _Queue.pop_front();
+                std::unique_lock Lock(mQueueMutex);
+                TheEvent = mQueue.front();
+                mQueue.pop_front();
             } // end queue lock scope
             debug("sending \"" + TheEvent.Name + "\" event");
             auto Room = "/" + TheEvent.Room;
-            _Client.socket("/")->emit(TheEvent.Name, TheEvent.Data);
+            mClient.socket("/")->emit(TheEvent.Name, TheEvent.Data);
             debug("sent \"" + TheEvent.Name + "\" event");
         }
     }
+    // using std::cout as this happens during static destruction and the logger might be dead already
     std::cout << "closing " + std::string(__func__) << std::endl;
 
-    _Client.sync_close();
-    _Client.clear_con_listeners();
+    mClient.sync_close();
+    mClient.clear_con_listeners();
     std::cout << "closed" << std::endl;
-
 }

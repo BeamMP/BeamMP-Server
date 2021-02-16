@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "TLuaEngine.h"
 #include "TServer.h"
 
 #include <future>

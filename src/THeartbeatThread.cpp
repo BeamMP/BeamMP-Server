@@ -1,10 +1,9 @@
 #include "THeartbeatThread.h"
 
+#include "Client.h"
 #include "Http.h"
 #include "SocketIO.h"
-
-THeartbeatThread::THeartbeatThread() {
-}
+#include <sstream>
 
 void THeartbeatThread::operator()() {
     std::string Body;
@@ -15,7 +14,7 @@ void THeartbeatThread::operator()() {
 
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
-    while (true) {
+    while (!mShutdown) {
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
@@ -53,5 +52,45 @@ void THeartbeatThread::operator()() {
         }
 
         SocketIO::Get().SetAuthenticated(isAuth);
+    }
+}
+std::string THeartbeatThread::GenerateCall() {
+    std::stringstream Ret;
+
+    Ret << "uuid=" << Application::Settings.Key
+        << "&players=" << mServer.ClientCount()
+        << "&maxplayers=" << Application::Settings.MaxPlayers
+        << "&port=" << Application::Settings.Port
+        << "&map=" << Application::Settings.MapName
+        << "&private=" << (Application::Settings.Private ? "true" : "false")
+        << "&version=" << Application::ServerVersion()
+        << "&clientversion=" << Application::ClientVersion()
+        << "&name=" << Application::Settings.ServerName
+        << "&pps=" << Application::PPS()
+        << "&modlist=" << mResourceManager.FileList()
+        << "&modstotalsize=" << mResourceManager.MaxModSize()
+        << "&modstotal=" << mResourceManager.ModsLoaded()
+        << "&playerslist=" << GetPlayers()
+        << "&desc=" << Application::Settings.ServerDesc;
+    return Ret.str();
+}
+THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
+    : mResourceManager(ResourceManager)
+    , mServer(Server) {
+    Application::RegisterShutdownHandler([&] { mShutdown = true; });
+}
+std::string THeartbeatThread::GetPlayers() {
+    std::string Return;
+    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+        if (!ClientPtr.expired()) {
+            Return += ClientPtr.lock()->GetName() + ";";
+        }
+        return true;
+    });
+    return Return;
+}
+THeartbeatThread::~THeartbeatThread() {
+    if (mThread.joinable()) {
+        mThread.join();
     }
 }

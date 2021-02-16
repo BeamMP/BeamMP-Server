@@ -1,7 +1,6 @@
 #ifndef TLUAFILE_H
 #define TLUAFILE_H
 
-#include "TLuaEngine.h"
 #include <any>
 #include <filesystem>
 #include <lua.hpp>
@@ -16,6 +15,8 @@ struct TLuaArg {
     std::vector<std::any> args;
     void PushArgs(lua_State* State);
 };
+
+class TLuaEngine;
 
 class TLuaFile {
 public:
