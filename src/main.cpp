@@ -3,9 +3,11 @@
 #include "IThreaded.h"
 #include "TConfig.h"
 #include "TConsole.h"
+#include "THeartbeatThread.h"
 #include "TLuaEngine.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+#include "TPPSMonitor.h"
 #include <atomic>
 #include <functional>
 #include <iostream>
@@ -43,10 +45,11 @@ int main(int argc, char** argv) {
 #endif // __unix
 
     TServer Server(argc, argv);
-    TConfig Config("Server.cfg");
+    [[maybe_unused]] TConfig Config("Server.cfg");
     TLuaEngine LuaEngine(Server);
     TResourceManager ResourceManager;
-    THeartbeatThread Heartbeat;
+    [[maybe_unused]] TPPSMonitor PPSMonitor(Server);
+    THeartbeatThread Heartbeat(ResourceManager, Server);
 
     // TODO: replace
     bool Shutdown = false;
