@@ -17,7 +17,7 @@ class Application final {
 public:
     // types
     struct TSettings {
-        TSettings()
+        TSettings() noexcept
             : DebugModeEnabled(true) { }
         std::string ServerName;
         std::string ServerDesc;
@@ -30,7 +30,7 @@ public:
         bool DebugModeEnabled;
         int Port;
         std::string CustomIP;
-        bool HasCustomIP() const { return !CustomIP.empty(); }
+        [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
 
         // new settings
         std::string ResourceFolder;
@@ -44,20 +44,21 @@ public:
     static void RegisterShutdownHandler(const TShutdownHandler& Handler);
     // Causes all threads to finish up and exit gracefull gracefully
     static void GracefullyShutdown();
-    static TConsole& Console() { return *_Console; }
+    static TConsole& Console() { return *mConsole; }
     static std::string ServerVersion() { return "v1.20"; }
 
     static inline TSettings Settings {};
 
 private:
-    static std::unique_ptr<TConsole> _Console;
-    static inline std::mutex _ShutdownHandlersMutex {};
-    static inline std::vector<TShutdownHandler> _ShutdownHandlers {};
+    static std::unique_ptr<TConsole> mConsole;
+    static inline std::mutex mShutdownHandlersMutex {};
+    static inline std::vector<TShutdownHandler> mShutdownHandlers {};
 };
 
 #define warn(x) Application::Console().Write(std::string("[WARN] ") + (x))
 #define error(x) Application::Console().Write(std::string("[ERROR] ") + (x))
 #define info(x) Application::Console().Write(std::string("[INFO] ") + (x))
+#define luaprint(x) Application::Console().Write(std::string("[LUA] ") + (x))
 #define debug(x)                                                         \
     do {                                                                 \
         if (Application::Settings.DebugModeEnabled) {                    \

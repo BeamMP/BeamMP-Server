@@ -5,7 +5,8 @@
 
 namespace fs = std::filesystem;
 
-TLuaEngine::TLuaEngine() {
+TLuaEngine::TLuaEngine(TServer& Server)
+    : mServer(Server) {
     if (!fs::exists(Application::Settings.ResourceFolder)) {
         fs::create_directory(Application::Settings.ResourceFolder);
     }
@@ -22,7 +23,7 @@ void TLuaEngine::operator()() {
 }
 
 std::optional<std::reference_wrapper<TLuaFile>> TLuaEngine::GetScript(lua_State* L) {
-    for (auto& Script : _LuaFiles) {
+    for (auto& Script : mLuaFiles) {
         if (Script->GetState() == L)
             return *Script;
     }
@@ -49,7 +50,7 @@ void TLuaEngine::RegisterFiles(const std::string& Path, bool HotSwap) {
                 auto FileName = entry.path().string();
                 std::unique_ptr<TLuaFile> ScriptToInsert(new TLuaFile(*this, Name, FileName, fs::last_write_time(FileName)));
                 auto& Script = *ScriptToInsert;
-                _LuaFiles.insert(std::move(ScriptToInsert));
+                mLuaFiles.insert(std::move(ScriptToInsert));
                 Script.Init();
                 if (HotSwap)
                     info(("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
@@ -59,7 +60,7 @@ void TLuaEngine::RegisterFiles(const std::string& Path, bool HotSwap) {
 }
 
 bool TLuaEngine::NewFile(const std::string& Path) {
-    for (auto& Script : _LuaFiles) {
+    for (auto& Script : mLuaFiles) {
         if (Path == Script->GetFileName())
             return false;
     }

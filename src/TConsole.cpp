@@ -40,12 +40,12 @@ std::string GetDate() {
 }
 
 TConsole::TConsole() {
-    _Commandline.enable_history();
-    _Commandline.set_history_limit(20);
-    _Commandline.set_prompt("> ");
-    _Commandline.on_command = [this](Commandline& c) {
+    mCommandline.enable_history();
+    mCommandline.set_history_limit(20);
+    mCommandline.set_prompt("> ");
+    mCommandline.on_command = [this](Commandline& c) {
         auto cmd = c.get_command();
-        _Commandline.write("> " + cmd);
+        mCommandline.write("> " + cmd);
         if (cmd == "exit") {
             info("gracefully shutting down");
             Application::GracefullyShutdown();
@@ -59,7 +59,7 @@ TConsole::TConsole() {
 
 void TConsole::Write(const std::string& str) {
     auto ToWrite = GetDate() + str;
-    _Commandline.write(ToWrite);
+    mCommandline.write(ToWrite);
     // TODO write to logfile, too
 }
 

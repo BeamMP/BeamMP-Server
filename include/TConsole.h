@@ -11,6 +11,5 @@ public:
     void Write(const std::string& str);
 
 private:
-    Commandline _Commandline;
+    Commandline mCommandline;
 };
-
