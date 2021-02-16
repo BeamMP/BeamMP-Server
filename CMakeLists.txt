@@ -44,7 +44,7 @@ add_executable(BeamMP-Server
         include/THeartbeatThread.h src/THeartbeatThread.cpp
         include/Http.h src/Http.cpp
         include/SocketIO.h src/SocketIO.cpp
-        include/TPPSMonitor.h src/TPPSMonitor.cpp)
+        include/TPPSMonitor.h src/TPPSMonitor.cpp include/TUDPServer.h src/TUDPServer.cpp include/TTCPServer.h src/TTCPServer.cpp)
 
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 

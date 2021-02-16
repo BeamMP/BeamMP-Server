@@ -8,46 +8,52 @@
 #include "Compat.h"
 #include "VehicleData.h"
 
+class TServer;
+
 class TClient final {
 public:
     using TSetOfVehicleData = std::unordered_set<std::unique_ptr<TVehicleData>>;
 
+    explicit TClient(TServer& Server);
+
     void AddNewCar(int Ident, const std::string& Data);
     void SetCarData(int Ident, const std::string& Data);
     TSetOfVehicleData& GetAllCars();
-    void SetName(const std::string& Name) { _Name = Name; }
-    void SetRoles(const std::string& Role) { _Role = Role; }
+    void SetName(const std::string& Name) { mName = Name; }
+    void SetRoles(const std::string& Role) { mRole = Role; }
     std::string GetCarData(int Ident);
-    void SetUDPAddr(sockaddr_in Addr) { _UDPAddress = Addr; }
-    void SetDownSock(SOCKET CSock) { _Socket[1] = CSock; }
-    void SetTCPSock(SOCKET CSock) { _Socket[0] = CSock; }
-    void SetStatus(int Status) { _Status = Status; }
+    void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
+    void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
+    void SetTCPSock(SOCKET CSock) { mSocket[0] = CSock; }
+    void SetStatus(int Status) { mStatus = Status; }
     void DeleteCar(int Ident);
-    sockaddr_in GetUDPAddr() { return _UDPAddress; }
-    std::string GetRoles() { return _Role; }
-    std::string GetName() { return _Name; }
-    SOCKET GetDownSock() { return _Socket[1]; }
-    SOCKET GetTCPSock() { return _Socket[0]; }
-    void SetID(int ID) { _ID = ID; }
-    int GetOpenCarID();
-    int GetCarCount();
+    sockaddr_in GetUDPAddr() const { return mUDPAddress; }
+    std::string GetRoles() const { return mRole; }
+    std::string GetName() const { return mName; }
+    SOCKET GetDownSock() const { return mSocket[1]; }
+    SOCKET GetTCPSock() const { return mSocket[0]; }
+    void SetID(int ID) { mID = ID; }
+    int GetOpenCarID() const;
+    int GetCarCount() const;
     void ClearCars();
-    int GetStatus() { return _Status; }
-    int GetID() { return _ID; }
-    bool IsConnected() const { return _IsConnected; }
-    bool IsSynced() const { return _IsSynced; }
-    bool IsGuest() const { return _IsGuest; }
+    int GetStatus() const { return mStatus; }
+    int GetID() const { return mID; }
+    bool IsConnected() const { return mIsConnected; }
+    bool IsSynced() const { return mIsSynced; }
+    bool IsGuest() const { return mIsGuest; }
+    TServer& Server() const;
 
 private:
-    bool _IsConnected = false;
-    bool _IsSynced = false;
-    bool _IsGuest = false;
-    TSetOfVehicleData _VehicleData;
-    std::string _Name = "Unknown Client";
-    SOCKET _Socket[2] { SOCKET(-1) };
-    sockaddr_in _UDPAddress;
-    std::string _Role;
-    std::string _DID;
-    int _Status = 0;
-    int _ID = -1;
+    TServer& mServer;
+    bool mIsConnected = false;
+    bool mIsSynced = false;
+    bool mIsGuest = false;
+    TSetOfVehicleData mVehicleData;
+    std::string mName = "Unknown Client";
+    SOCKET mSocket[2] { SOCKET(-1) };
+    sockaddr_in mUDPAddress {}; // is this initialization OK?
+    std::string mRole;
+    std::string mDID;
+    int mStatus = 0;
+    int mID = -1;
 };

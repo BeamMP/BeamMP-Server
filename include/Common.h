@@ -76,3 +76,8 @@ static inline void debug(const std::string& str) {
 static inline void luaprint(const std::string& str) {
     Application::Console().Write(std::string("[LUA] ") + str);
 }
+
+#define Biggest 30000
+std::string Comp(std::string Data);
+std::string DeComp(std::string Compressed);
+

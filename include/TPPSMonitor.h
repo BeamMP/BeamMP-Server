@@ -10,8 +10,11 @@ public:
 
     void operator()() override;
 
-private:
+    void SetInternalPPS(int NewPPS) { mInternalPPS = NewPPS; }
+    void IncrementInternalPPS() { ++mInternalPPS; }
+    [[nodiscard]] int InternalPPS() const { return mInternalPPS; }
 
+private:
     TServer& mServer;
     bool mShutdown { false };
     int mInternalPPS { 0 };

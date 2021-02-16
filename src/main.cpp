@@ -8,6 +8,7 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 #include "TPPSMonitor.h"
+#include "TUDPServer.h"
 #include <atomic>
 #include <functional>
 #include <iostream>
@@ -46,10 +47,12 @@ int main(int argc, char** argv) {
 
     TServer Server(argc, argv);
     [[maybe_unused]] TConfig Config("Server.cfg");
-    TLuaEngine LuaEngine(Server);
     TResourceManager ResourceManager;
     [[maybe_unused]] TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
+    TTCPServer TCPServer(Server);
+    TUDPServer UDPServer(Server, PPSMonitor);
+    TLuaEngine LuaEngine(Server);
 
     // TODO: replace
     bool Shutdown = false;
