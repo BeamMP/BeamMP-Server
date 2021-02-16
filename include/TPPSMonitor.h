@@ -1,12 +1,11 @@
 #pragma once
 
 #include "Common.h"
-#include "IThreaded.h"
 #include "TServer.h"
 
 class TPPSMonitor : public IThreaded {
 public:
-    TPPSMonitor(TServer& Server);
+    explicit TPPSMonitor(TServer& Server);
 
     void operator()() override;
 

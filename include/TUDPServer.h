@@ -9,7 +9,7 @@
 
 class TUDPServer : public IThreaded {
 public:
-    explicit TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor);
+    explicit TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor, TTCPServer& TCPServer);
 
     void operator()() override;
 
@@ -17,10 +17,10 @@ public:
     void SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel);
 
 private:
-    void UDPParser(TClient& Client, std::string Packet);
-
     TServer& mServer;
     TPPSMonitor& mPPSMonitor;
-    SOCKET mUDPSock;
+    TTCPServer& mTCPServer;
+    SOCKET mUDPSock {};
+
     std::string UDPRcvFromClient(sockaddr_in& client) const;
 };

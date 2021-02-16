@@ -4,6 +4,8 @@
 #include "CustomAssert.h"
 #include "TLuaEngine.h"
 #include "TServer.h"
+#include "TTCPServer.h"
+#include "TUDPServer.h"
 
 #include <future>
 #include <thread>
@@ -68,11 +70,11 @@ std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg
         return f1.get();
     return 0;
 }
-std::any TriggerLuaEvent(TLuaEngine& Engine, const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait) {
+std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait) {
     std::any R;
     std::string Type;
     int Ret = 0;
-    for (auto& Script : Engine.LuaFiles()) {
+    for (auto& Script : Engine().LuaFiles()) {
         if (Script->IsRegistered(Event)) {
             if (local) {
                 if (Script->GetPluginName() == Caller->GetPluginName()) {
@@ -139,7 +141,7 @@ int lua_TriggerEventL(lua_State* L) {
     TLuaFile& Script = MaybeScript.value();
     if (Args > 0) {
         if (lua_isstring(L, 1)) {
-            TriggerLuaEvent(Engine(), lua_tostring(L, 1), true, &Script, CreateArg(L, Args, 2), false);
+            TriggerLuaEvent(lua_tostring(L, 1), true, &Script, CreateArg(L, Args, 2), false);
         } else
             SendError(Engine(), L, ("TriggerLocalEvent wrong argument [1] need string"));
     } else {
@@ -155,7 +157,7 @@ int lua_TriggerEventG(lua_State* L) {
     TLuaFile& Script = MaybeScript.value();
     if (Args > 0) {
         if (lua_isstring(L, 1)) {
-            TriggerLuaEvent(Engine(), lua_tostring(L, 1), false, &Script, CreateArg(L, Args, 2), false);
+            TriggerLuaEvent(lua_tostring(L, 1), false, &Script, CreateArg(L, Args, 2), false);
         } else
             SendError(Engine(), L, ("TriggerGlobalEvent wrong argument [1] need string"));
     } else
@@ -356,7 +358,7 @@ int lua_dropPlayer(lua_State* L) {
             Reason = std::string((" Reason : ")) + lua_tostring(L, 2);
         }
         auto c = MaybeClient.value().lock();
-        Respond(c, "C:Server:You have been Kicked from the server! " + Reason, true);
+        Engine().TCPServer().Respond(*c, "C:Server:You have been Kicked from the server! " + Reason, true);
         c->SetStatus(-2);
         info(("Closing socket due to kick"));
         CloseSocketProper(c->GetTCPSock());
@@ -370,7 +372,7 @@ int lua_sendChat(lua_State* L) {
             int ID = int(lua_tointeger(L, 1));
             if (ID == -1) {
                 std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
-                SendToAll(nullptr, Packet, true, true);
+                Engine().UDPServer().SendToAll(nullptr, Packet, true, true);
             } else {
                 auto MaybeClient = GetClient(Engine().Server(), ID);
                 if (MaybeClient && !MaybeClient.value().expired()) {
@@ -378,7 +380,7 @@ int lua_sendChat(lua_State* L) {
                     if (!c->IsSynced())
                         return 0;
                     std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
-                    Respond(c, Packet, true);
+                    Engine().TCPServer().Respond(*c, Packet, true);
                 } else
                     SendError(Engine(), L, ("SendChatMessage invalid argument [1] invalid ID"));
             }
@@ -405,7 +407,7 @@ int lua_RemoveVehicle(lua_State* L) {
         auto c = MaybeClient.value().lock();
         if (!c->GetCarData(VID).empty()) {
             std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
-            SendToAll(nullptr, Destroy, true, true);
+            Engine().UDPServer().SendToAll(nullptr, Destroy, true, true);
             c->DeleteCar(VID);
         }
     } else
@@ -437,7 +439,7 @@ int lua_RemoteEvent(lua_State* L) {
     int ID = int(lua_tointeger(L, 1));
     std::string Packet = "E:" + std::string(lua_tostring(L, 2)) + ":" + std::string(lua_tostring(L, 3));
     if (ID == -1)
-        SendToAll(nullptr, Packet, true, true);
+        Engine().UDPServer().SendToAll(nullptr, Packet, true, true);
     else {
         auto MaybeClient = GetClient(Engine().Server(), ID);
         if (!MaybeClient || MaybeClient.value().expired()) {
@@ -445,7 +447,7 @@ int lua_RemoteEvent(lua_State* L) {
             return 0;
         }
         auto c = MaybeClient.value().lock();
-        Respond(c, Packet, true);
+        Engine().TCPServer().Respond(*c, Packet, true);
     }
     return 0;
 }

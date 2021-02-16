@@ -1,20 +1,16 @@
-#include "Client.h"
 #include "Common.h"
-#include "IThreaded.h"
 #include "TConfig.h"
-#include "TConsole.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
+#include "TPPSMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
-#include "TPPSMonitor.h"
 #include "TUDPServer.h"
-#include <atomic>
-#include <functional>
 #include <iostream>
 #include <thread>
 
 #ifdef __unix
+#include <TTCPServer.h>
 #include <csignal>
 
 void UnixSignalHandler(int sig) {
@@ -45,18 +41,20 @@ int main(int argc, char** argv) {
     signal(SIGINT, UnixSignalHandler);
 #endif // __unix
 
+    bool Shutdown = false;
+    Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
+
     TServer Server(argc, argv);
     [[maybe_unused]] TConfig Config("Server.cfg");
     TResourceManager ResourceManager;
-    [[maybe_unused]] TPPSMonitor PPSMonitor(Server);
+    TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
-    TTCPServer TCPServer(Server);
-    TUDPServer UDPServer(Server, PPSMonitor);
-    TLuaEngine LuaEngine(Server);
+    TTCPServer TCPServer(Server, PPSMonitor, ResourceManager);
+    TUDPServer UDPServer(Server, PPSMonitor, TCPServer);
+    TCPServer.SetUDPServer(UDPServer);
+    TLuaEngine LuaEngine(Server, TCPServer, UDPServer);
 
     // TODO: replace
-    bool Shutdown = false;
-    Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

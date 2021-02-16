@@ -4,7 +4,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <vector>
+#include <deque>
 
 #include "TConsole.h"
 
@@ -56,7 +56,7 @@ private:
     static inline std::string mPPS;
     static std::unique_ptr<TConsole> mConsole;
     static inline std::mutex mShutdownHandlersMutex {};
-    static inline std::vector<TShutdownHandler> mShutdownHandlers {};
+    static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 };
 
 static inline void warn(const std::string& str) {

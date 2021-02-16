@@ -1,6 +1,17 @@
 #include "TServer.h"
 #include "Client.h"
 #include "Common.h"
+#include "TPPSMonitor.h"
+#include "TTCPServer.h"
+#include "TUDPServer.h"
+#include <TLuaFile.h>
+#include <any>
+#include <sstream>
+
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
+namespace json = rapidjson;
 
 TServer::TServer(int argc, char** argv) {
     info("BeamMP Server running version " + Application::ServerVersion());
@@ -46,4 +57,215 @@ void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& F
 size_t TServer::ClientCount() const {
     ReadLock Lock(mClientsMutex);
     return mClients.size();
+}
+
+void TServer::GlobalParser(std::weak_ptr<TClient> Client, std::string Packet, TPPSMonitor& PPSMonitor, TUDPServer& UDPServer, TTCPServer& TCPServer) {
+    if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
+        abort();
+    }
+    if (Packet.substr(0, 4) == "ABG:") {
+        Packet = DeComp(Packet.substr(4));
+    }
+    if (Packet.empty()) {
+        return;
+    }
+
+    if (Client.expired()) {
+        return;
+    }
+    auto LockedClient = Client.lock();
+
+    std::any Res;
+    char Code = Packet.at(0);
+
+    //V to Z
+    if (Code <= 90 && Code >= 86) {
+        PPSMonitor.IncrementInternalPPS();
+        UDPServer.SendToAll(LockedClient.get(), Packet, false, false);
+        return;
+    }
+    switch (Code) {
+    case 'H': // initial connection
+#ifdef DEBUG
+        debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
+#endif
+        TCPServer.SyncClient(Client);
+        return;
+    case 'p':
+        TCPServer.Respond(*LockedClient, ("p"), false);
+        TCPServer.UpdatePlayers();
+        return;
+    case 'O':
+        if (Packet.length() > 1000) {
+            debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.length()));
+        }
+        ParseVehicle(*LockedClient, Packet, TCPServer, UDPServer);
+        return;
+    case 'J':
+#ifdef DEBUG
+        debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        UDPServer.SendToAll(LockedClient.get(), Packet, false, true);
+        return;
+    case 'C':
+#ifdef DEBUG
+        debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
+            break;
+        Res = TriggerLuaEvent("onChatMessage", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }), true);
+        if (std::any_cast<int>(Res))
+            break;
+        UDPServer.SendToAll(nullptr, Packet, true, true);
+        return;
+    case 'E':
+#ifdef DEBUG
+        debug(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        HandleEvent(*LockedClient, Packet);
+        return;
+    default:
+        return;
+    }
+}
+
+void TServer::HandleEvent(TClient& c, const std::string& Data) {
+    std::stringstream ss(Data);
+    std::string t, Name;
+    int a = 0;
+    while (std::getline(ss, t, ':')) {
+        switch (a) {
+        case 1:
+            Name = t;
+            break;
+        case 2:
+            TriggerLuaEvent(Name, false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), t } }), false);
+            break;
+        default:
+            break;
+        }
+        if (a == 2)
+            break;
+        a++;
+    }
+}
+
+void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPServer, TUDPServer& UDPServer) {
+    if (Pckt.length() < 4)
+        return;
+    std::string Packet = Pckt;
+    char Code = Packet.at(1);
+    int PID = -1;
+    int VID = -1;
+    std::string Data = Packet.substr(3), pid, vid;
+    switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
+    case 's':
+#ifdef DEBUG
+        debug(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        if (Data.at(0) == '0') {
+            int CarID = c.GetOpenCarID();
+            debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
+            Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
+            auto Res = TriggerLuaEvent(("onVehicleSpawn"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), CarID, Packet.substr(3) } }), true);
+            if (c.GetCarCount() >= Application::Settings.MaxCars || std::any_cast<int>(Res)) {
+                TCPServer.Respond(c, Packet, true);
+                std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(CarID);
+                TCPServer.Respond(c, Destroy, true);
+                debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
+            } else {
+                c.AddNewCar(CarID, Packet);
+                UDPServer.SendToAll(nullptr, Packet, true, true);
+            }
+        }
+        return;
+    case 'c':
+#ifdef DEBUG
+        debug(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        pid = Data.substr(0, Data.find('-'));
+        vid = Data.substr(Data.find('-') + 1, Data.find(':', 1) - Data.find('-') - 1);
+        if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
+            PID = stoi(pid);
+            VID = stoi(vid);
+        }
+        if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            auto Res = TriggerLuaEvent(("onVehicleEdited"), false, nullptr,
+                std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Packet.substr(3) } }),
+                true);
+            if (!std::any_cast<int>(Res)) {
+                UDPServer.SendToAll(&c, Packet, false, true);
+                Apply(c, VID, Packet);
+            } else {
+                std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
+                TCPServer.Respond(c, Destroy, true);
+                c.DeleteCar(VID);
+            }
+        }
+        return;
+    case 'd':
+#ifdef DEBUG
+        debug(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        pid = Data.substr(0, Data.find('-'));
+        vid = Data.substr(Data.find('-') + 1);
+        if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
+            PID = stoi(pid);
+            VID = stoi(vid);
+        }
+        if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            UDPServer.SendToAll(nullptr, Packet, true, true);
+            TriggerLuaEvent(("onVehicleDeleted"), false, nullptr,
+                std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID } }), false);
+            c.DeleteCar(VID);
+            debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
+        }
+        return;
+    case 'r':
+#ifdef DEBUG
+        debug(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        UDPServer.SendToAll(&c, Packet, false, true);
+        return;
+    case 't':
+#ifdef DEBUG
+        debug(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+#endif
+        UDPServer.SendToAll(&c, Packet, false, true);
+        return;
+    default:
+#ifdef DEBUG
+        warn(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
+#endif // DEBUG
+        return;
+    }
+}
+
+void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
+    std::string Packet = pckt.substr(pckt.find('{')), VD = c.GetCarData(VID);
+    std::string Header = VD.substr(0, VD.find('{'));
+    VD = VD.substr(VD.find('{'));
+    rapidjson::Document Veh, Pack;
+    Veh.Parse(VD.c_str());
+    if (Veh.HasParseError()) {
+        error("Could not get vehicle config!");
+        return;
+    }
+    Pack.Parse(Packet.c_str());
+    if (Pack.HasParseError() || Pack.IsNull()) {
+        error("Could not get active vehicle config!");
+        return;
+    }
+
+    for (auto& M : Pack.GetObject()) {
+        if (Veh[M.name].IsNull()) {
+            Veh.AddMember(M.name, M.value, Veh.GetAllocator());
+        } else {
+            Veh[M.name] = Pack[M.name];
+        }
+    }
+    rapidjson::StringBuffer Buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(Buffer);
+    Veh.Accept(writer);
+    c.SetCarData(VID, Header + Buffer.GetString());
 }

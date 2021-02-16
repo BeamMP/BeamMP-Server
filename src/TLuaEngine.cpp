@@ -5,8 +5,10 @@
 
 namespace fs = std::filesystem;
 
-TLuaEngine::TLuaEngine(TServer& Server)
-    : mServer(Server) {
+TLuaEngine::TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPServer)
+    : mTCPServer(TCPServer)
+    , mUDPServer(UDPServer)
+    , mServer(Server) {
     if (!fs::exists(Application::Settings.ResourceFolder)) {
         fs::create_directory(Application::Settings.ResourceFolder);
     }
