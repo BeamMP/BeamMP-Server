@@ -30,7 +30,7 @@ void TServer::RemoveClient(std::weak_ptr<TClient> WeakClientPtr) {
 std::weak_ptr<TClient> TServer::InsertNewClient() {
     debug("inserting new client (" + std::to_string(ClientCount()) + ")");
     WriteLock Lock(mClientsMutex);
-    auto [Iter, Replaced] = mClients.insert(std::make_shared<TClient>());
+    auto [Iter, Replaced] = mClients.insert(std::make_shared<TClient>(*this));
     return *Iter;
 }
 
