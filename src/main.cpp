@@ -4,6 +4,7 @@
 #include "TConfig.h"
 #include "TConsole.h"
 #include "TLuaEngine.h"
+#include "TResourceManager.h"
 #include "TServer.h"
 #include <atomic>
 #include <functional>
@@ -44,6 +45,8 @@ int main(int argc, char** argv) {
     TServer Server(argc, argv);
     TConfig Config("Server.cfg");
     TLuaEngine LuaEngine(Server);
+    TResourceManager ResourceManager;
+    THeartbeatThread Heartbeat;
 
     // TODO: replace
     bool Shutdown = false;

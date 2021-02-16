@@ -1,6 +1,15 @@
-[submodule "commandline"]
-	path = commandline
-	url = https://github.com/lionkor/commandline
 [submodule "include/commandline"]
 	path = include/commandline
-	url = https://github.com/lionkor/commandline
+    url = https://github.com/lionkor/commandline
+[submodule "socket.io-client-cpp"]
+	path = socket.io-client-cpp
+	url = https://github.com/socketio/socket.io-client-cpp
+[submodule "asio"]
+	path = asio
+	url = https://github.com/chriskohlhoff/asio
+[submodule "rapidjson"]
+	path = rapidjson
+	url = https://github.com/Tencent/rapidjson
+[submodule "websocketpp"]
+	path = websocketpp
+	url = https://github.com/zaphoyd/websocketpp
