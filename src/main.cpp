@@ -3,6 +3,7 @@
 #include "IThreaded.h"
 #include "TConfig.h"
 #include "TConsole.h"
+#include "TLuaEngine.h"
 #include "TServer.h"
 #include <atomic>
 #include <functional>
@@ -25,13 +26,16 @@ void UnixSignalHandler(int sig) {
         info("gracefully shutting down via SIGINT");
         Application::GracefullyShutdown();
         break;
+    default:
+        debug("unhandled signal: " + std::to_string(sig));
+        break;
     }
 }
 #endif // __unix
 
 int main(int argc, char** argv) {
 #ifdef __unix
-    info("registering SIGPIPE and SIGTERM handlers");
+    info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
     signal(SIGINT, UnixSignalHandler);
@@ -39,20 +43,9 @@ int main(int argc, char** argv) {
 
     TServer Server(argc, argv);
     TConfig Config("Server.cfg");
+    TLuaEngine LuaEngine(Server);
 
-    auto Client = Server.InsertNewClient();
-    if (!Client.expired()) {
-        Client.lock()->SetName("Lion");
-    } else {
-        error("fuckj");
-        _Exit(-1);
-    }
-
-    Server.ForEachClient([](auto client) -> bool { debug(client.lock()->GetName()); return true; });
-
-    Server.RemoveClient(Client);
-
-    // TODO: replace with blocking heartbeat
+    // TODO: replace
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
     while (!Shutdown) {

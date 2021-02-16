@@ -21,7 +21,6 @@ class TLuaFile {
 public:
     void Init();
     void RegisterEvent(const std::string& Event, const std::string& FunctionName);
-    std::string GetRegistered(const std::string& Event) const;
     void UnRegisterEvent(const std::string& Event);
     void SetLastWrite(fs::file_time_type time);
     bool IsRegistered(const std::string& Event);
@@ -29,30 +28,31 @@ public:
     void Execute(const std::string& Command);
     void SetFileName(const std::string& Name);
     fs::file_time_type GetLastWrite();
-    std::string GetPluginName() const;
-    std::string GetFileName() const;
     lua_State* GetState();
-    const lua_State* GetState() const;
     std::string GetOrigin();
     std::mutex Lock;
     void Reload();
     TLuaFile(TLuaEngine& Engine, const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote, bool Console = false);
-    TLuaFile(TLuaEngine& Engine, bool Console = false);
+    explicit TLuaFile(TLuaEngine& Engine, bool Console = false);
     ~TLuaFile();
-    void SetStopThread(bool StopThread) { _StopThread = StopThread; }
-    bool GetStopThread() const { return _StopThread; }
-    TLuaEngine& Engine() { return _Engine; }
-    const TLuaEngine& Engine() const { return _Engine; }
+    void SetStopThread(bool StopThread) { mStopThread = StopThread; }
+    TLuaEngine& Engine() { return mEngine; }
+    [[nodiscard]] std::string GetPluginName() const;
+    [[nodiscard]] std::string GetFileName() const;
+    [[nodiscard]] const lua_State* GetState() const;
+    [[nodiscard]] bool GetStopThread() const { return mStopThread; }
+    [[nodiscard]] const TLuaEngine& Engine() const { return mEngine; }
+    [[nodiscard]] std::string GetRegistered(const std::string& Event) const;
 
 private:
-    TLuaEngine& _Engine;
-    std::set<std::pair<std::string, std::string>> _RegisteredEvents;
-    lua_State* luaState { nullptr };
-    fs::file_time_type _LastWrote;
-    std::string _PluginName {};
-    std::string _FileName {};
-    bool _StopThread = false;
-    bool _Console = false;
+    TLuaEngine& mEngine;
+    std::set<std::pair<std::string, std::string>> mRegisteredEvents;
+    lua_State* mLuaState { nullptr };
+    fs::file_time_type mLastWrote;
+    std::string mPluginName {};
+    std::string mFileName {};
+    bool mStopThread = false;
+    bool mConsole = false;
 };
 
 #endif // TLUAFILE_H

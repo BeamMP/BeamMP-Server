@@ -17,10 +17,10 @@ public:
 
     std::weak_ptr<TClient> InsertNewClient();
     void RemoveClient(std::weak_ptr<TClient>);
-    void ForEachClient(std::function<bool(std::weak_ptr<TClient>)>);
+    void ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     size_t ClientCount() const;
 
 private:
-    TClientSet _Clients;
-    mutable RWMutex _ClientsMutex;
+    TClientSet mClients;
+    mutable RWMutex mClientsMutex;
 };

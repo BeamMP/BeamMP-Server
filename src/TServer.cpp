@@ -22,21 +22,21 @@ void TServer::RemoveClient(std::weak_ptr<TClient> WeakClientPtr) {
         TClient& Client = *WeakClientPtr.lock();
         debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
         Client.ClearCars();
-        WriteLock Lock(_ClientsMutex);
-        _Clients.erase(WeakClientPtr.lock());
+        WriteLock Lock(mClientsMutex);
+        mClients.erase(WeakClientPtr.lock());
     }
 }
 
 std::weak_ptr<TClient> TServer::InsertNewClient() {
     debug("inserting new client (" + std::to_string(ClientCount()) + ")");
-    WriteLock Lock(_ClientsMutex);
-    auto [Iter, Replaced] = _Clients.insert(std::make_shared<TClient>());
+    WriteLock Lock(mClientsMutex);
+    auto [Iter, Replaced] = mClients.insert(std::make_shared<TClient>());
     return *Iter;
 }
 
-void TServer::ForEachClient(std::function<bool(std::weak_ptr<TClient>)> Fn) {
-    ReadLock Lock(_ClientsMutex);
-    for (auto& Client : _Clients) {
+void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
+    ReadLock Lock(mClientsMutex);
+    for (auto& Client : mClients) {
         if (!Fn(Client)) {
             break;
         }
@@ -44,6 +44,6 @@ void TServer::ForEachClient(std::function<bool(std::weak_ptr<TClient>)> Fn) {
 }
 
 size_t TServer::ClientCount() const {
-    ReadLock Lock(_ClientsMutex);
-    return _Clients.size();
+    ReadLock Lock(mClientsMutex);
+    return mClients.size();
 }
