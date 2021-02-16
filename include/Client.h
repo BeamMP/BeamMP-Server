@@ -41,6 +41,9 @@ public:
     bool IsConnected() const { return mIsConnected; }
     bool IsSynced() const { return mIsSynced; }
     bool IsGuest() const { return mIsGuest; }
+    void SetIsGuest(bool NewIsGuest) { mIsGuest = NewIsGuest; }
+    void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
+    void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     TServer& Server() const;
 
 private:

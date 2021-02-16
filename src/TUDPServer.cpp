@@ -1,11 +1,14 @@
 #include "TUDPServer.h"
 #include "CustomAssert.h"
+#include "TTCPServer.h"
 #include <any>
 #include <cstring>
+#include <utility>
 
-TUDPServer::TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor)
+TUDPServer::TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor, TTCPServer& TCPServer)
     : mServer(Server)
-    , mPPSMonitor(PPSMonitor) {
+    , mPPSMonitor(PPSMonitor)
+    , mTCPServer(TCPServer) {
 }
 
 void TUDPServer::operator()() {
@@ -65,8 +68,8 @@ void TUDPServer::operator()() {
                     auto Client = ClientPtr.lock();
                     if (Client->GetID() == ID) {
                         Client->SetUDPAddr(client);
-                        Client->SetConnected(true);
-                        UDPParser(*Client, Data.substr(2));
+                        Client->SetIsConnected(true);
+                        TServer::GlobalParser(ClientPtr, Data.substr(2), mPPSMonitor, *this, mTCPServer);
                     }
                 }
                 return true;
@@ -74,69 +77,6 @@ void TUDPServer::operator()() {
         } catch (const std::exception& e) {
             error(("fatal: ") + std::string(e.what()));
         }
-    }
-}
-void TUDPServer::UDPParser(TClient& Client, std::string Packet) {
-    if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
-        abort();
-    }
-    if (Packet.substr(0, 4) == "ABG:") {
-        Packet = DeComp(Packet.substr(4));
-    }
-    if (Packet.empty()) {
-        return;
-    }
-    std::any Res;
-    char Code = Packet.at(0);
-
-    //V to Z
-    if (Code <= 90 && Code >= 86) {
-        mPPSMonitor.IncrementInternalPPS();
-        SendToAll(&Client, Packet, false, false);
-        return;
-    }
-    switch (Code) {
-    case 'H': // initial connection
-#ifdef DEBUG
-        debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
-#endif
-        SyncClient(Client);
-        return;
-    case 'p':
-        Respond(Client, ("p"), false);
-        UpdatePlayers();
-        return;
-    case 'O':
-        if (Packet.length() > 1000) {
-            debug(("Received data from: ") + Client->GetName() + (" Size: ") + std::to_string(Packet.length()));
-        }
-        ParseVeh(Client, Packet);
-        return;
-    case 'J':
-#ifdef DEBUG
-        debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-#endif
-        SendToAll(Client, Packet, false, true);
-        return;
-    case 'C':
-#ifdef DEBUG
-        debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-#endif
-        if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
-            break;
-        Res = TriggerLuaEvent("onChatMessage", false, nullptr, std::make_unique<LuaArg>(LuaArg { { Client->GetID(), Client->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }), true);
-        if (std::any_cast<int>(Res))
-            break;
-        SendToAll(nullptr, Packet, true, true);
-        return;
-    case 'E':
-#ifdef DEBUG
-        debug(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-#endif
-        HandleEvent(Client, Packet);
-        return;
-    default:
-        return;
     }
 }
 
@@ -151,9 +91,9 @@ void TUDPServer::SendToAll(TClient* c, const std::string& Data, bool Self, bool 
                 if (Client->IsSynced()) {
                     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
                         if (C == 'O' || C == 'T' || Data.length() > 1000)
-                            SendLarge(*Client, Data);
+                            mTCPServer.SendLarge(*Client, Data);
                         else
-                            TCPSend(*Client, Data);
+                            mTCPServer.TCPSend(*Client, Data);
                     } else
                         UDPSend(*Client, Data);
                 }

@@ -56,4 +56,6 @@ private:
     bool mConsole = false;
 };
 
+std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
+
 #endif // TLUAFILE_H
