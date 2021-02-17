@@ -2,7 +2,7 @@
 
 #include "Client.h"
 #include "Http.h"
-#include "SocketIO.h"
+//#include "SocketIO.h"
 #include <sstream>
 
 void THeartbeatThread::operator()() {
@@ -27,12 +27,12 @@ void THeartbeatThread::operator()() {
         if (!Application::Settings.CustomIP.empty())
             Body += "&ip=" + Application::Settings.CustomIP;
 
-        T = Http::POST("backend.beammp.com", "/heartbeat", {}, Body, false);
+        T = Http::POST("beammp.com", "/heartbeatv2", {}, Body, false);
 
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST("backend.beammp.com", "/heartbeat", {}, Body, false);
+            T = Http::POST("beammp.com", "/heartbeatv2", {}, Body, false);
             // TODO backup2 + HTTP flag (no TSL)
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
@@ -51,7 +51,7 @@ void THeartbeatThread::operator()() {
             }
         }
 
-        SocketIO::Get().SetAuthenticated(isAuth);
+        //SocketIO::Get().SetAuthenticated(isAuth);
     }
 }
 std::string THeartbeatThread::GenerateCall() {
@@ -78,6 +78,7 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     : mResourceManager(ResourceManager)
     , mServer(Server) {
     Application::RegisterShutdownHandler([&] { mShutdown = true; });
+    Start();
 }
 std::string THeartbeatThread::GetPlayers() {
     std::string Return;

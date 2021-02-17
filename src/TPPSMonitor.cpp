@@ -5,6 +5,7 @@ TPPSMonitor::TPPSMonitor(TServer& Server)
     : mServer(Server) {
     Application::SetPPS("-");
     Application::RegisterShutdownHandler([&] { mShutdown = true; });
+    Start();
 }
 void TPPSMonitor::operator()() {
     while (!mShutdown) {

@@ -20,6 +20,7 @@ TTCPServer::TTCPServer(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManage
     , mPPSMonitor(PPSMonitor)
     , mResourceManager(ResourceManager) {
     Application::RegisterShutdownHandler([this] { mShutdown = true; });
+    Start();
 }
 
 void TTCPServer::Identify(SOCKET TCPSock) {
@@ -115,8 +116,8 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
                 Cl->SetStatus(-2);
                 return false;
             }
-            return true;
         }
+        return true;
     });
 
     auto arg = std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetName(), LockedClient->GetRoles(), LockedClient->IsGuest() } });
@@ -284,6 +285,7 @@ void TTCPServer::UpdatePlayers() {
             auto c = ClientPtr.lock();
             Packet += c->GetName() + ",";
         }
+        return true;
     });
     Packet = Packet.substr(0, Packet.length() - 1);
     UDPServer().SendToAll(nullptr, Packet, true, true);
@@ -327,8 +329,8 @@ int TTCPServer::OpenID() {
                     found = false;
                     ID++;
                 }
-                return true;
             }
+            return true;
         });
     } while (!found);
     return ID;

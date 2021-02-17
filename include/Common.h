@@ -1,10 +1,10 @@
 #pragma once
 
 #include <atomic>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
-#include <deque>
 
 #include "TConsole.h"
 
@@ -31,9 +31,6 @@ public:
         int Port {};
         std::string CustomIP;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
-
-        // new settings
-        std::string ResourceFolder;
     };
     using TShutdownHandler = std::function<void()>;
 
@@ -80,4 +77,3 @@ static inline void luaprint(const std::string& str) {
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
-

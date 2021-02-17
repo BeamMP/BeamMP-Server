@@ -9,14 +9,15 @@ TLuaEngine::TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPSe
     : mTCPServer(TCPServer)
     , mUDPServer(UDPServer)
     , mServer(Server) {
-    if (!fs::exists(Application::Settings.ResourceFolder)) {
-        fs::create_directory(Application::Settings.ResourceFolder);
+    if (!fs::exists(Application::Settings.Resource)) {
+        fs::create_directory(Application::Settings.Resource);
     }
-    std::string Path = Application::Settings.ResourceFolder + ("/Server");
+    std::string Path = Application::Settings.Resource + ("/Server");
     if (!fs::exists(Path)) {
         fs::create_directory(Path);
     }
     FolderList(Path, false);
+    Start();
 }
 
 void TLuaEngine::operator()() {
