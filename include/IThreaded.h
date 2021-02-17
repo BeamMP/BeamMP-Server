@@ -7,8 +7,11 @@ class IThreaded {
 public:
     IThreaded()
         // invokes operator() on this object
-        : mThread(std::thread([this] { (*this)(); })) { }
+        : mThread() { }
 
+    virtual void Start() final {
+        mThread = std::thread([this] { (*this)(); });
+    }
     virtual void operator()() = 0;
 
 protected:

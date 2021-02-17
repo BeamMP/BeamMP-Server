@@ -9,6 +9,7 @@ TUDPServer::TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor, TTCPServer& TCP
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
     , mTCPServer(TCPServer) {
+    Start();
 }
 
 void TUDPServer::operator()() {
