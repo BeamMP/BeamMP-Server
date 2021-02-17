@@ -260,6 +260,7 @@ std::string TTCPServer::TCPRcv(TClient& c) {
 void TTCPServer::ClientKick(TClient& c, const std::string& R) {
     info("Client kicked: " + R);
     TCPSend(c, "E" + R);
+    c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
 
@@ -287,8 +288,7 @@ void TTCPServer::TCPClient(std::weak_ptr<TClient> c) {
     }
 }
 
-void TTCPServer::UpdatePlayers() {
-    debug("Update Players!");
+void TTCPServer::UpdatePlayer(TClient& Client) {
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
@@ -298,7 +298,7 @@ void TTCPServer::UpdatePlayers() {
         return true;
     });
     Packet = Packet.substr(0, Packet.length() - 1);
-    UDPServer().SendToAll(nullptr, Packet, true, true);
+    Respond(Client, Packet, true);
 }
 
 void TTCPServer::OnDisconnect(std::weak_ptr<TClient> ClientPtr, bool kicked) {

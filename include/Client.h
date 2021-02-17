@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -45,6 +46,8 @@ public:
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     TServer& Server() const;
+    void UpdatePingTime();
+    int SecondsSinceLastPing();
 
 private:
     TServer& mServer;
@@ -59,4 +62,5 @@ private:
     std::string mDID;
     int mStatus = 0;
     int mID = -1;
+    std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
 };
