@@ -4,7 +4,14 @@
 TPPSMonitor::TPPSMonitor(TServer& Server)
     : mServer(Server) {
     Application::SetPPS("-");
-    Application::RegisterShutdownHandler([&] { mShutdown = true; });
+    Application::RegisterShutdownHandler([&] {
+        if (mThread.joinable()) {
+            debug("shutting down PPSMonitor");
+            mShutdown = true;
+            mThread.join();
+            debug("shut down PPSMonitor");
+        }
+    });
     Start();
 }
 void TPPSMonitor::operator()() {

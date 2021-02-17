@@ -38,7 +38,9 @@ int main(int argc, char** argv) {
     info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
+#ifndef DEBUG
     signal(SIGINT, UnixSignalHandler);
+#endif // DEBUG
 #endif // __unix
 
     bool Shutdown = false;
@@ -53,6 +55,7 @@ int main(int argc, char** argv) {
     TUDPServer UDPServer(Server, PPSMonitor, TCPServer);
     TLuaEngine LuaEngine(Server, TCPServer, UDPServer);
     TCPServer.SetUDPServer(UDPServer);
+    Application::Console().InitializeLuaConsole(LuaEngine);
 
     // TODO: replace
     while (!Shutdown) {

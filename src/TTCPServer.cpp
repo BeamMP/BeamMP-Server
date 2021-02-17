@@ -19,7 +19,13 @@ TTCPServer::TTCPServer(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManage
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
     , mResourceManager(ResourceManager) {
-    Application::RegisterShutdownHandler([this] { mShutdown = true; });
+    Application::RegisterShutdownHandler([&] {if (mThread.joinable()) {
+        debug("shutting down TCPServer");
+        mShutdown = true;
+        // FIXME: Join once TCPServer can timeout on a read, accept, etc.
+        mThread.detach();
+        debug("shut down TCPServer");
+    } });
     Start();
 }
 
@@ -282,6 +288,7 @@ void TTCPServer::TCPClient(std::weak_ptr<TClient> c) {
 }
 
 void TTCPServer::UpdatePlayers() {
+    debug("Update Players!");
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
@@ -368,8 +375,8 @@ void TTCPServer::SyncResources(TClient& c) {
         }
 #ifndef DEBUG
     } catch (std::exception& e) {
-        except("Exception! : " + std::string(e.what()));
-        c->SetStatus(-1);
+        error("Exception! : " + std::string(e.what()));
+        c.SetStatus(-1);
     }
 #endif
 }
@@ -650,4 +657,6 @@ void TTCPServer::operator()() {
 
     CloseSocketProper(client);
 #endif
+}
+TTCPServer::~TTCPServer() {
 }

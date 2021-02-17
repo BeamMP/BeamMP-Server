@@ -9,6 +9,13 @@ TUDPServer::TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor, TTCPServer& TCP
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
     , mTCPServer(TCPServer) {
+    Application::RegisterShutdownHandler([&] {if (mThread.joinable()) {
+        debug("shutting down UDPServer");
+        mShutdown = true;
+        // FIXME: Once we use boost for UDP, set up a timeout so this doesn't block
+        mThread.detach();
+        debug("shut down UDPServer");
+    } });
     Start();
 }
 
@@ -53,7 +60,7 @@ void TUDPServer::operator()() {
 
     info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
-    while (true) {
+    while (!mShutdown) {
         try {
             sockaddr_in client {};
             std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
@@ -162,4 +169,7 @@ std::string TUDPServer::UDPRcvFromClient(sockaddr_in& client) const {
         return "";
     }
     return std::string(Ret.begin(), Ret.begin() + Rcv);
+}
+
+TUDPServer::~TUDPServer() {
 }

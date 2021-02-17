@@ -23,7 +23,12 @@ TLuaEngine::TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPSe
     }
     FolderList(Path, false);
     mPath = Path;
-    Application::RegisterShutdownHandler([&] { mShutdown = true; });
+    Application::RegisterShutdownHandler([&] {if (mThread.joinable()) {
+        debug("shutting down LuaEngine");
+        mShutdown = true;
+        mThread.join();
+        debug("shut down LuaEngine");
+    } });
     Start();
 }
 
@@ -95,4 +100,7 @@ bool TLuaEngine::NewFile(const std::string& Path) {
             return false;
     }
     return true;
+}
+
+TLuaEngine::~TLuaEngine() {
 }

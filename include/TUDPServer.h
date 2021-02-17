@@ -10,6 +10,7 @@
 class TUDPServer : public IThreaded {
 public:
     explicit TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor, TTCPServer& TCPServer);
+    ~TUDPServer();
 
     void operator()() override;
 
@@ -21,6 +22,7 @@ private:
     TPPSMonitor& mPPSMonitor;
     TTCPServer& mTCPServer;
     SOCKET mUDPSock {};
+    bool mShutdown { false };
 
     std::string UDPRcvFromClient(sockaddr_in& client) const;
 };

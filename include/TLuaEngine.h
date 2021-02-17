@@ -1,5 +1,4 @@
-#ifndef TLUAENGINE_H
-#define TLUAENGINE_H
+#pragma once
 
 #include "Common.h"
 #include "IThreaded.h"
@@ -12,6 +11,7 @@
 class TLuaEngine : public IThreaded {
 public:
     explicit TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPServer);
+    ~TLuaEngine();
 
     using TSetOfLuaFile = std::set<std::unique_ptr<TLuaFile>>;
 
@@ -38,5 +38,3 @@ private:
     bool mShutdown { false };
     TSetOfLuaFile mLuaFiles;
 };
-
-#endif // TLUAENGINE_H
