@@ -6,10 +6,14 @@
 
 namespace fs = std::filesystem;
 
+// necessary as lua relies on global state
+TLuaEngine* TheEngine;
+
 TLuaEngine::TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPServer)
     : mTCPServer(TCPServer)
     , mUDPServer(UDPServer)
     , mServer(Server) {
+    TheEngine = this;
     if (!fs::exists(Application::Settings.Resource)) {
         fs::create_directory(Application::Settings.Resource);
     }
