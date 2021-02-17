@@ -79,6 +79,5 @@ int TClient::SecondsSinceLastPing() {
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::high_resolution_clock::now() - mLastPingTime)
                        .count();
-    debug("ping time for " + GetName() + ": " + std::to_string(seconds));
     return seconds;
 }
