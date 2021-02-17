@@ -68,7 +68,8 @@ TServer& TClient::Server() const {
 }
 
 TClient::TClient(TServer& Server)
-    : mServer(Server) {
+    : mServer(Server)
+    , mLastPingTime(std::chrono::high_resolution_clock::now()) {
 }
 
 void TClient::UpdatePingTime() {
