@@ -17,7 +17,7 @@ public:
     bool TCPSend(TClient& c, const std::string& Data);
     void SendLarge(TClient& c, std::string Data);
     void Respond(TClient& c, const std::string& MSG, bool Rel);
-    std::weak_ptr<TClient> CreateClient(SOCKET TCPSock);
+    std::shared_ptr<TClient> CreateClient(SOCKET TCPSock);
     std::string TCPRcv(TClient& c);
     void ClientKick(TClient& c, const std::string& R);
 
@@ -32,6 +32,7 @@ public:
     void SyncResources(TClient& c);
 
     void UpdatePlayers();
+
 private:
     std::optional<std::reference_wrapper<TUDPServer>> mUDPServer { std::nullopt };
     TServer& mServer;

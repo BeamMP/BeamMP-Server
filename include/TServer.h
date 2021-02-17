@@ -18,6 +18,7 @@ public:
 
     TServer(int argc, char** argv);
 
+    void InsertClient(std::shared_ptr<TClient> Ptr);
     std::weak_ptr<TClient> InsertNewClient();
     void RemoveClient(std::weak_ptr<TClient>);
     // in Fn, return true to continue, return false to break
