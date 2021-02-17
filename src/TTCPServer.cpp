@@ -632,7 +632,7 @@ void TTCPServer::operator()() {
     info(("Vehicle event network online"));
     do {
         try {
-            if (!mShutdown) {
+            if (mShutdown) {
                 debug("shutdown during TCP wait for accept loop");
                 break;
             }
