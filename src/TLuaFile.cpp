@@ -16,7 +16,7 @@ void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg);
 std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArg> Arg);
 std::any TriggerLuaEvent(TLuaEngine& Engine, const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
 
-static TLuaEngine* TheEngine { nullptr };
+extern TLuaEngine* TheEngine;
 
 static TLuaEngine& Engine() {
     Assert(TheEngine);
