@@ -90,6 +90,8 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         Rc = Http::POST("auth.beammp.com", "/pkToUser", {}, R"({"key":")" + Rc + "\"}", true);
     }
 
+    debug("Auth response: " + Rc);
+
     json::Document AuthResponse;
     AuthResponse.Parse(Rc.c_str());
     if (Rc == "-1" || AuthResponse.HasParseError()) {
@@ -107,10 +109,13 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
     }
 
     debug("Name -> " + LockedClient->GetName() + ", Guest -> " + std::to_string(LockedClient->IsGuest()) + ", Roles -> " + LockedClient->GetRoles());
+    debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto Cl = ClientPtr.lock();
+            info("Client Iteration: Name -> " + LockedClient->GetName() + ", Guest -> " + std::to_string(LockedClient->IsGuest()) + ", Roles -> " + LockedClient->GetRoles());
             if (Cl->GetName() == LockedClient->GetName() && Cl->IsGuest() == LockedClient->IsGuest()) {
+                info("New client matched with current iteration");
                 info("Old client (" + Cl->GetName() + ") kicked: Reconnecting");
                 CloseSocketProper(Cl->GetTCPSock());
                 Cl->SetStatus(-2);
@@ -627,17 +632,21 @@ void TTCPServer::operator()() {
     info(("Vehicle event network online"));
     do {
         try {
+            if (!mShutdown) {
+                debug("shutdown during TCP wait for accept loop");
+                break;
+            }
             client = accept(Listener, nullptr, nullptr);
             if (client == -1) {
                 warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
             std::thread ID(&TTCPServer::Identify, this, client);
-            ID.detach();
+            ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
             error(("fatal: ") + std::string(e.what()));
         }
-    } while (client && !mShutdown);
+    } while (client);
 
     debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
 
