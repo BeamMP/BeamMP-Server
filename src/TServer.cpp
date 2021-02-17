@@ -95,6 +95,7 @@ void TServer::GlobalParser(std::weak_ptr<TClient> Client, std::string Packet, TP
         TCPServer.Respond(*LockedClient, ("p"), false);
         TCPServer.UpdatePlayer(*LockedClient);
         LockedClient->UpdatePingTime();
+        debug("ping received from " + LockedClient->GetName());
         return;
     case 'O':
         if (Packet.length() > 1000) {

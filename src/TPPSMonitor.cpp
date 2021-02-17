@@ -44,6 +44,7 @@ void TPPSMonitor::operator()() {
         for (auto& ClientToKick : TimedOutClients) {
             TCPServer().ClientKick(*ClientToKick, "Timeout (no ping for >10 seconds)");
         }
+        TimedOutClients.clear();
         if (C == 0 || mInternalPPS == 0) {
             Application::SetPPS("-");
         } else {
