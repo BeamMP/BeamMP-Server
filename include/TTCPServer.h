@@ -32,7 +32,7 @@ public:
     bool CheckBytes(TClient& c, int32_t BytesRcv);
     void SyncResources(TClient& c);
 
-    void UpdatePlayers();
+    void UpdatePlayer(TClient& Client);
 
 private:
     std::optional<std::reference_wrapper<TUDPServer>> mUDPServer { std::nullopt };

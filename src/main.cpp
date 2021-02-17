@@ -55,6 +55,7 @@ int main(int argc, char** argv) {
     TUDPServer UDPServer(Server, PPSMonitor, TCPServer);
     TLuaEngine LuaEngine(Server, TCPServer, UDPServer);
     TCPServer.SetUDPServer(UDPServer);
+    PPSMonitor.SetTCPServer(TCPServer);
     Application::Console().InitializeLuaConsole(LuaEngine);
 
     // TODO: replace

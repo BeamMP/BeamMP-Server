@@ -70,3 +70,12 @@ TServer& TClient::Server() const {
 TClient::TClient(TServer& Server)
     : mServer(Server) {
 }
+
+void TClient::UpdatePingTime() {
+    mLastPingTime = std::chrono::high_resolution_clock::now();
+}
+int TClient::SecondsSinceLastPing() {
+    return std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::high_resolution_clock::now() - mLastPingTime)
+        .count();
+}

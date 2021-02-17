@@ -1,5 +1,6 @@
 #include "TPPSMonitor.h"
 #include "Client.h"
+#include "TTCPServer.h"
 
 TPPSMonitor::TPPSMonitor(TServer& Server)
     : mServer(Server) {
@@ -15,6 +16,11 @@ TPPSMonitor::TPPSMonitor(TServer& Server)
     Start();
 }
 void TPPSMonitor::operator()() {
+    while (!mTCPServer) {
+        // hard spi
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    std::vector<std::shared_ptr<TClient>> TimedOutClients;
     while (!mShutdown) {
         int C = 0, V = 0;
         if (mServer.ClientCount() == 0) {
@@ -28,9 +34,16 @@ void TPPSMonitor::operator()() {
                     C++;
                     V += c->GetCarCount();
                 }
+                // kick on "no ping"
+                if (c->SecondsSinceLastPing() > 10) {
+                    TimedOutClients.push_back(c);
+                }
             }
             return true;
         });
+        for (auto& ClientToKick : TimedOutClients) {
+            TCPServer().ClientKick(*ClientToKick, "Timeout (no ping for >10 seconds)");
+        }
         if (C == 0 || mInternalPPS == 0) {
             Application::SetPPS("-");
         } else {
