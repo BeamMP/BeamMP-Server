@@ -76,15 +76,15 @@ static inline void luaprint(const std::string& str) {
 }
 */
 
-#define warn(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [WARN] ") + (x));
-#define info(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [INFO] ") + (x));
-#define error(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [ERROR] ") + (x));
-#define luaprint(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [LUA] ") + (x));
-#define debug(x)                                                                                                                             \
-    do {                                                                                                                                     \
-        if (Application::Settings.DebugModeEnabled) {                                                                                        \
-            Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [DEBUG] ") + (x)) \
-        }                                                                                                                                    \
+#define warn(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [WARN] ") + (x))
+#define info(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [INFO] ") + (x))
+#define error(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [ERROR] ") + (x))
+#define luaprint(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [LUA] ") + (x))
+#define debug(x)                                                                                                                              \
+    do {                                                                                                                                      \
+        if (Application::Settings.DebugModeEnabled) {                                                                                         \
+            Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [DEBUG] ") + (x)); \
+        }                                                                                                                                     \
     } while (false)
 
 #define Biggest 30000

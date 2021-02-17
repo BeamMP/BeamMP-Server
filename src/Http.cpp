@@ -1,6 +1,6 @@
 #include "Http.h"
 
-#include "Common.h"
+//#include "Common.h"
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast.hpp>
@@ -47,7 +47,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
         return result;
 
     } catch (const std::exception& e) {
-        error(e.what());
+        //error(e.what());
         return "-1";
     }
 }
@@ -71,7 +71,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
                     boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
                     // FIXME: we could throw and crash, if we like
                     // throw boost::system::system_error { ec };
-                    debug("POST " + host + target + " failed.");
+                    //debug("POST " + host + target + " failed.");
                     return false;
                 }
                 beast::get_lowest_layer(stream).connect(results);
@@ -85,7 +85,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         //debug("IPv6 connect failed, trying IPv4");
         bool ok = try_connect_with_protocol(tcp::v4());
         if (!ok) {
-            error("failed to resolve or connect in POST " + host + target);
+            //error("failed to resolve or connect in POST " + host + target);
             return "-1";
         }
         //}
@@ -133,11 +133,11 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         // info(result.str());
         std::string debug_response_str;
         std::getline(result, debug_response_str);
-        debug("POST " + host + target + ": " + debug_response_str);
+        //debug("POST " + host + target + ": " + debug_response_str);
         return std::string(response.body());
 
     } catch (const std::exception& e) {
-        error(e.what());
+        //error(e.what());
         return "-1";
     }
 }
