@@ -42,8 +42,8 @@ public:
     // Causes all threads to finish up and exit gracefull gracefully
     static void GracefullyShutdown();
     static TConsole& Console() { return *mConsole; }
-    static std::string ServerVersion() { return "v1.20"; }
-    static std::string ClientVersion() { return "v1.80"; }
+    static std::string ServerVersion() { return "1.20"; }
+    static std::string ClientVersion() { return "1.80"; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(std::string NewPPS) { mPPS = NewPPS; }
 
