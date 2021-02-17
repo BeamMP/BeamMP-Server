@@ -51,8 +51,8 @@ int main(int argc, char** argv) {
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TTCPServer TCPServer(Server, PPSMonitor, ResourceManager);
     TUDPServer UDPServer(Server, PPSMonitor, TCPServer);
-    TCPServer.SetUDPServer(UDPServer);
     TLuaEngine LuaEngine(Server, TCPServer, UDPServer);
+    TCPServer.SetUDPServer(UDPServer);
 
     // TODO: replace
     while (!Shutdown) {
