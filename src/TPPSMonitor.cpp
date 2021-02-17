@@ -23,10 +23,11 @@ void TPPSMonitor::operator()() {
     info("PPSMonitor starting");
     std::vector<std::shared_ptr<TClient>> TimedOutClients;
     while (!mShutdown) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
         int C = 0, V = 0;
         if (mServer.ClientCount() == 0) {
             Application::SetPPS("-");
-            return;
+            continue;
         }
         mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
             if (!ClientPtr.expired()) {
@@ -53,6 +54,5 @@ void TPPSMonitor::operator()() {
             Application::SetPPS(std::to_string(R));
         }
         mInternalPPS = 0;
-        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
