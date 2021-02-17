@@ -2,6 +2,7 @@
 #include "TLuaFile.h"
 
 #include <filesystem>
+#include <sys/stat.h>
 
 namespace fs = std::filesystem;
 
@@ -17,12 +18,34 @@ TLuaEngine::TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPSe
         fs::create_directory(Path);
     }
     FolderList(Path, false);
+    mPath = Path;
+    Application::RegisterShutdownHandler([&] { mShutdown = true; });
     Start();
 }
 
 void TLuaEngine::operator()() {
     info("Lua system online");
-    // thread main
+    while (!mShutdown) {
+        if (!mLuaFiles.empty()) {
+            for (auto& Script : mLuaFiles) {
+                struct stat Info { };
+                if (stat(Script->GetFileName().c_str(), &Info) != 0) {
+                    Script->SetStopThread(true);
+                    mLuaFiles.erase(Script);
+                    info(("[HOTSWAP] Removed removed script due to delete"));
+                    break;
+                }
+                if (Script->GetLastWrite() != fs::last_write_time(Script->GetFileName())) {
+                    Script->SetStopThread(true);
+                    info(("[HOTSWAP] Updated Scripts due to edit"));
+                    Script->SetLastWrite(fs::last_write_time(Script->GetFileName()));
+                    Script->Reload();
+                }
+            }
+        }
+        FolderList(mPath, true);
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
 }
 
 std::optional<std::reference_wrapper<TLuaFile>> TLuaEngine::GetScript(lua_State* L) {

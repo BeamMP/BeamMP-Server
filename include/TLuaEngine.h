@@ -34,6 +34,8 @@ private:
     TTCPServer& mTCPServer;
     TUDPServer& mUDPServer;
     TServer& mServer;
+    std::string mPath;
+    bool mShutdown { false };
     TSetOfLuaFile mLuaFiles;
 };
 
