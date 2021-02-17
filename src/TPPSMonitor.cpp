@@ -20,6 +20,7 @@ void TPPSMonitor::operator()() {
         // hard spi
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+    info("PPSMonitor starting");
     std::vector<std::shared_ptr<TClient>> TimedOutClients;
     while (!mShutdown) {
         int C = 0, V = 0;
