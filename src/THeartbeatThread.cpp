@@ -18,10 +18,12 @@ void THeartbeatThread::operator()() {
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
-        if (Last == Body && (Now - LastNormalUpdateTime) < std::chrono::seconds(30)) {
-            std::this_thread::sleep_for(std::chrono::seconds(5));
+        if (((Now - LastNormalUpdateTime) < std::chrono::seconds(5))
+            || (Last == Body && (Now - LastNormalUpdateTime) < std::chrono::seconds(30))) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
+
         Last = Body;
         LastNormalUpdateTime = Now;
         if (!Application::Settings.CustomIP.empty())
@@ -77,7 +79,14 @@ std::string THeartbeatThread::GenerateCall() {
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
     : mResourceManager(ResourceManager)
     , mServer(Server) {
-    Application::RegisterShutdownHandler([&] { mShutdown = true; });
+    Application::RegisterShutdownHandler([&] {
+        if (mThread.joinable()) {
+            debug("shutting down Heartbeat");
+            mShutdown = true;
+            mThread.join();
+            debug("shut down Heartbeat");
+        }
+    });
     Start();
 }
 std::string THeartbeatThread::GetPlayers() {
@@ -91,7 +100,4 @@ std::string THeartbeatThread::GetPlayers() {
     return Return;
 }
 THeartbeatThread::~THeartbeatThread() {
-    if (mThread.joinable()) {
-        mThread.join();
-    }
 }

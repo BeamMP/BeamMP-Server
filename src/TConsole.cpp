@@ -43,6 +43,10 @@ TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
     mCommandline.set_prompt("> ");
+    bool success = mCommandline.enable_write_to_file("Server.log");
+    if (!success) {
+        error("unable to open file for writing: \"Server.log\"");
+    }
     mCommandline.on_command = [this](Commandline& c) {
         auto cmd = c.get_command();
         mCommandline.write("> " + cmd);
@@ -52,7 +56,11 @@ TConsole::TConsole() {
         } else if (cmd == "clear" || cmd == "cls") {
             // TODO: clear screen
         } else {
-            // TODO: execute as lua
+            if (mLuaConsole) {
+                mLuaConsole->Execute(cmd);
+            } else {
+                error("Lua subsystem not yet initialized, please wait a few seconds and try again");
+            }
         }
     };
 }
@@ -62,4 +70,9 @@ void TConsole::Write(const std::string& str) {
     mCommandline.write(ToWrite);
     // TODO write to logfile, too
 }
-
+void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
+    mLuaConsole = std::make_unique<TLuaFile>(Engine, true);
+}
+void TConsole::WriteRaw(const std::string& str) {
+    mCommandline.write(str);
+}

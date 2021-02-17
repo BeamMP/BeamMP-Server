@@ -537,17 +537,43 @@ int lua_Set(lua_State* L) {
 extern "C" {
 int lua_Print(lua_State* L) {
     int Arg = lua_gettop(L);
+    std::string to_print;
     for (int i = 1; i <= Arg; i++) {
-        auto str = lua_tostring(L, i);
-        if (str != nullptr) {
-            luaprint(str + std::string(("\n")));
+        if (lua_isstring(L, i)) {
+            to_print += lua_tostring(L, i);
+        } else if (lua_isinteger(L, i)) {
+            to_print += std::to_string(lua_tointeger(L, 1));
+        } else if (lua_isnumber(L, i)) {
+            to_print += std::to_string(lua_tonumber(L, 1));
+        } else if (lua_isboolean(L, i)) {
+            to_print += lua_toboolean(L, i) ? "true" : "false";
+        } else if (lua_isfunction(L, i)) {
+            std::stringstream ss;
+            ss << std::hex << reinterpret_cast<const void*>(lua_tocfunction(L, i));
+            to_print += "function: " + ss.str();
+        } else if (lua_istable(L, i)) {
+            std::stringstream ss;
+            ss << std::hex << reinterpret_cast<const void*>(lua_topointer(L, i));
+            to_print += "table: " + ss.str();
+        } else if (lua_isnoneornil(L, i)) {
+            to_print += "nil";
+        } else if (lua_isthread(L, i)) {
+            std::stringstream ss;
+            ss << std::hex << reinterpret_cast<const void*>(lua_tothread(L, i));
+            to_print += "thread: " + ss.str();
         } else {
-            luaprint("nil\n");
+            to_print += "(unknown)";
+        }
+        if (i + 1 <= Arg) {
+            to_print += "\t";
         }
     }
+    luaprint(to_print);
     return 0;
 }
 }
+
+int lua_TempFix(lua_State* L);
 
 TLuaFile::TLuaFile(TLuaEngine& Engine, const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote, bool Console)
     : mEngine(Engine)
@@ -564,13 +590,14 @@ TLuaFile::TLuaFile(TLuaEngine& Engine, const std::string& PluginName, const std:
         SetFileName(FileName);
     }
     SetLastWrite(LastWrote);
-    mConsole = Console;
+    Init();
 }
 
 TLuaFile::TLuaFile(TLuaEngine& Engine, bool Console)
     : mEngine(Engine)
     , mLuaState(luaL_newstate()) {
     mConsole = Console;
+    Init();
 }
 
 void TLuaFile::Execute(const std::string& Command) {
@@ -614,23 +641,7 @@ void TLuaFile::SetPluginName(const std::string& Name) {
 void TLuaFile::SetFileName(const std::string& Name) {
     mFileName = Name;
 }
-int lua_TempFix(lua_State* L) {
-    if (lua_isnumber(L, 1)) {
-        int ID = int(lua_tonumber(L, 1));
-        auto MaybeClient = GetClient(Engine().Server(), ID);
-        if (!MaybeClient || MaybeClient.value().expired())
-            return 0;
-        std::string Ret;
-        auto c = MaybeClient.value().lock();
-        if (c->IsGuest()) {
-            Ret = "Guest-" + c->GetName();
-        } else
-            Ret = c->GetName();
-        lua_pushstring(L, Ret.c_str());
-    } else
-        SendError(Engine(), L, "GetDID not enough arguments");
-    return 1;
-}
+
 void TLuaFile::Init() {
     Assert(mLuaState);
     luaL_openlibs(mLuaState);
@@ -721,6 +732,23 @@ void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg) {
         a = fs::path(S.GetFileName()).filename().string();
     }
     warn(a + (" | Incorrect Call of ") + msg);
+}
+int lua_TempFix(lua_State* L) {
+    if (lua_isnumber(L, 1)) {
+        int ID = int(lua_tonumber(L, 1));
+        auto MaybeClient = GetClient(Engine().Server(), ID);
+        if (!MaybeClient || MaybeClient.value().expired())
+            return 0;
+        std::string Ret;
+        auto c = MaybeClient.value().lock();
+        if (c->IsGuest()) {
+            Ret = "Guest-" + c->GetName();
+        } else
+            Ret = c->GetName();
+        lua_pushstring(L, Ret.c_str());
+    } else
+        SendError(Engine(), L, "GetDID not enough arguments");
+    return 1;
 }
 
 void TLuaArg::PushArgs(lua_State* State) {

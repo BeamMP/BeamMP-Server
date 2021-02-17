@@ -56,7 +56,7 @@ private:
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 };
 
-/*
+#ifndef DEBUG
 static inline void warn(const std::string& str) {
     Application::Console().Write(std::string("[WARN] ") + str);
 }
@@ -72,9 +72,9 @@ static inline void debug(const std::string& str) {
     }
 }
 static inline void luaprint(const std::string& str) {
-    Application::Console().Write(std::string("[LUA] ") + str);
+    Application::Console().WriteRaw(str);
 }
-*/
+#else // DEBUG
 
 #define warn(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [WARN] ") + (x))
 #define info(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [INFO] ") + (x))
@@ -86,6 +86,7 @@ static inline void luaprint(const std::string& str) {
             Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [DEBUG] ") + (x)); \
         }                                                                                                                                     \
     } while (false)
+#endif // DEBUG
 
 #define Biggest 30000
 std::string Comp(std::string Data);

@@ -11,6 +11,7 @@ class TResourceManager;
 class TTCPServer : public IThreaded {
 public:
     explicit TTCPServer(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
+    ~TTCPServer();
 
     void operator()() override;
 
