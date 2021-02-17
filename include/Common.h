@@ -56,6 +56,7 @@ private:
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 };
 
+/*
 static inline void warn(const std::string& str) {
     Application::Console().Write(std::string("[WARN] ") + str);
 }
@@ -73,6 +74,18 @@ static inline void debug(const std::string& str) {
 static inline void luaprint(const std::string& str) {
     Application::Console().Write(std::string("[LUA] ") + str);
 }
+*/
+
+#define warn(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [WARN] ") + (x));
+#define info(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [INFO] ") + (x));
+#define error(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [ERROR] ") + (x));
+#define luaprint(x) Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [LUA] ") + (x));
+#define debug(x)                                                                                                                             \
+    do {                                                                                                                                     \
+        if (Application::Settings.DebugModeEnabled) {                                                                                        \
+            Application::Console().Write(std::string(__PRETTY_FUNCTION__) + ":" + std::to_string(__LINE__) + std::string(" [DEBUG] ") + (x)) \
+        }                                                                                                                                    \
+    } while (false)
 
 #define Biggest 30000
 std::string Comp(std::string Data);
