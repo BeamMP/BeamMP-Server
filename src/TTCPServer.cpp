@@ -57,32 +57,29 @@ void TTCPServer::HandleDownload(SOCKET TCPSock) {
 }
 
 void TTCPServer::Authentication(SOCKET TCPSock) {
-    auto c = CreateClient(TCPSock);
+    auto Client = CreateClient(TCPSock);
 
     std::string Rc;
     info("Identifying new client...");
 
-    Assert(!c.expired());
-
-    auto LockedClient = c.lock();
-    Rc = TCPRcv(*LockedClient);
+    Rc = TCPRcv(*Client);
 
     if (Rc.size() > 3 && Rc.substr(0, 2) == "VC") {
         Rc = Rc.substr(2);
         if (Rc.length() > 4 || Rc != Application::ClientVersion()) {
-            ClientKick(*LockedClient, "Outdated Version!");
+            ClientKick(*Client, "Outdated Version!");
             return;
         }
     } else {
-        ClientKick(*LockedClient, "Invalid version header!");
+        ClientKick(*Client, "Invalid version header!");
         return;
     }
-    TCPSend(*LockedClient, "S");
+    TCPSend(*Client, "S");
 
-    Rc = TCPRcv(*LockedClient);
+    Rc = TCPRcv(*Client);
 
     if (Rc.size() > 50) {
-        ClientKick(*LockedClient, "Invalid Key!");
+        ClientKick(*Client, "Invalid Key!");
         return;
     }
 
@@ -95,26 +92,26 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
     json::Document AuthResponse;
     AuthResponse.Parse(Rc.c_str());
     if (Rc == "-1" || AuthResponse.HasParseError()) {
-        ClientKick(*LockedClient, "Invalid key! Please restart your game.");
+        ClientKick(*Client, "Invalid key! Please restart your game.");
         return;
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString() && AuthResponse["guest"].IsBool()) {
-        LockedClient->SetName(AuthResponse["username"].GetString());
-        LockedClient->SetRoles(AuthResponse["roles"].GetString());
-        LockedClient->SetIsGuest(AuthResponse["guest"].GetBool());
+        Client->SetName(AuthResponse["username"].GetString());
+        Client->SetRoles(AuthResponse["roles"].GetString());
+        Client->SetIsGuest(AuthResponse["guest"].GetBool());
     } else {
-        ClientKick(*LockedClient, "Invalid authentication data!");
+        ClientKick(*Client, "Invalid authentication data!");
         return;
     }
 
-    debug("Name -> " + LockedClient->GetName() + ", Guest -> " + std::to_string(LockedClient->IsGuest()) + ", Roles -> " + LockedClient->GetRoles());
+    debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto Cl = ClientPtr.lock();
-            info("Client Iteration: Name -> " + LockedClient->GetName() + ", Guest -> " + std::to_string(LockedClient->IsGuest()) + ", Roles -> " + LockedClient->GetRoles());
-            if (Cl->GetName() == LockedClient->GetName() && Cl->IsGuest() == LockedClient->IsGuest()) {
+            info("Client Iteration: Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
+            if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
                 info("New client matched with current iteration");
                 info("Old client (" + Cl->GetName() + ") kicked: Reconnecting");
                 CloseSocketProper(Cl->GetTCPSock());
@@ -125,27 +122,28 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         return true;
     });
 
-    auto arg = std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetName(), LockedClient->GetRoles(), LockedClient->IsGuest() } });
+    auto arg = std::make_unique<TLuaArg>(TLuaArg { { Client->GetName(), Client->GetRoles(), Client->IsGuest() } });
     std::any Res = TriggerLuaEvent("onPlayerAuth", false, nullptr, std::move(arg), true);
     std::string Type = Res.type().name();
     if (Type.find("int") != std::string::npos && std::any_cast<int>(Res)) {
-        ClientKick(*LockedClient, "you are not allowed on the server!");
+        ClientKick(*Client, "you are not allowed on the server!");
         return;
     } else if (Type.find("string") != std::string::npos) {
-        ClientKick(*LockedClient, std::any_cast<std::string>(Res));
+        ClientKick(*Client, std::any_cast<std::string>(Res));
         return;
     }
 
     if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
         info("Identification success");
-        TCPClient(c);
+        mServer.InsertClient(Client);
+        TCPClient(Client);
     } else
-        ClientKick(*LockedClient, "Server full!");
+        ClientKick(*Client, "Server full!");
 }
 
-std::weak_ptr<TClient> TTCPServer::CreateClient(SOCKET TCPSock) {
-    auto c = mServer.InsertNewClient();
-    c.lock()->SetTCPSock(TCPSock);
+std::shared_ptr<TClient> TTCPServer::CreateClient(SOCKET TCPSock) {
+    auto c = std::make_shared<TClient>(mServer);
+    c->SetTCPSock(TCPSock);
     return c;
 }
 

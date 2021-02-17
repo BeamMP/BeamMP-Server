@@ -269,3 +269,9 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     Veh.Accept(writer);
     c.SetCarData(VID, Header + Buffer.GetString());
 }
+
+void TServer::InsertClient(std::shared_ptr<TClient> NewClient) {
+    debug("inserting client (" + std::to_string(ClientCount()) + ")");
+    WriteLock Lock(mClientsMutex);
+    (void)mClients.insert(NewClient);
+}
