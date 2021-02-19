@@ -15,6 +15,8 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 ## Build Instructions
 
+**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v1.20`!__**
+
 Currently only linux and windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
 
 ### Prerequisites
