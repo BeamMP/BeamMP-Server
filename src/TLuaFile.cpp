@@ -178,11 +178,11 @@ void SafeExecution(TLuaEngine& Engine, TLuaFile* lua, const std::string& FuncNam
     if (lua_isfunction(luaState, -1)) {
         char* Origin = ThreadOrigin(lua);
 #ifdef WIN32
-        __try {
+        //__try {
             int R = lua_pcall(luaState, 0, 0, 0);
             CheckLua(luaState, R);
-        } __except (Handle(GetExceptionInformation(), Origin)) {
-        }
+        /*} __except (Handle(GetExceptionInformation(), Origin)) {
+        }*/
 #else // unix
         int R = lua_pcall(luaState, 0, 0, 0);
         CheckLua(luaState, R);

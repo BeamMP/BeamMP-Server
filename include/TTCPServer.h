@@ -5,6 +5,7 @@
 #include "Compat.h"
 #include "IThreaded.h"
 #include "TServer.h"
+#include <optional>
 
 class TResourceManager;
 

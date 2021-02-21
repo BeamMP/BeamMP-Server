@@ -2,6 +2,7 @@
 #include "CustomAssert.h"
 #include "TTCPServer.h"
 #include <any>
+#include <array>
 #include <cstring>
 #include <utility>
 
@@ -119,7 +120,7 @@ void TUDPServer::UDPSend(TClient& Client, std::string Data) const {
         return;
     }
     sockaddr_in Addr = Client.GetUDPAddr();
-    socklen_t AddrSize = sizeof(Client.GetUDPAddr());
+    auto AddrSize = sizeof(Client.GetUDPAddr());
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
@@ -159,7 +160,12 @@ void TUDPServer::UDPSend(TClient& Client, std::string Data) const {
 std::string TUDPServer::UDPRcvFromClient(sockaddr_in& client) const {
     size_t clientLength = sizeof(client);
     std::array<char, 1024> Ret {};
+#ifdef WIN32
+    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (int*)&clientLength);
+#else // unix
     int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
+#endif // WIN32
+
     if (Rcv == -1) {
 #ifdef WIN32
         error(("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));

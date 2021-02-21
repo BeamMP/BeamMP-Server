@@ -5,6 +5,11 @@
     <mapping directory="$PROJECT_DIR$/asio" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/include/commandline" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/rapidjson" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/rapidjson/thirdparty/gtest" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/socket.io-client-cpp" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/socket.io-client-cpp/lib/asio" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/socket.io-client-cpp/lib/catch" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/socket.io-client-cpp/lib/rapidjson" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/socket.io-client-cpp/lib/websocketpp" vcs="Git" />
   </component>
 </project>

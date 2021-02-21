@@ -463,3 +463,13 @@ out/build/x86-Debug/.cmake/api/v1/reply/index-2020-01-28T17-35-38-0764.json
 out/build/x86-Debug/.cmake/api/v1/reply/codemodel-v2-6a61e390ef8eaf17e9f8.json
 out/build/x86-Debug/Server.cfg
 *Server.cfg*
+*.cmake
+*.make
+*.xml
+*.includecache
+cmake-build-release/include/commandline/Makefile
+*.lib
+*.cbp
+*.marks
+*.internal
+*.xml
