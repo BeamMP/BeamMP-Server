@@ -473,3 +473,4 @@ cmake-build-release/include/commandline/Makefile
 *.marks
 *.internal
 *.xml
+cmake-build-debug/include/commandline/Makefile

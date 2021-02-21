@@ -8,7 +8,7 @@ namespace fs = std::filesystem;
 TResourceManager::TResourceManager() {
     std::string Path = Application::Settings.Resource + "/Client";
     if (!fs::exists(Path))
-        fs::create_directory(Path);
+        fs::create_directories(Path);
     for (const auto& entry : fs::directory_iterator(Path)) {
         auto pos = entry.path().string().find(".zip");
         if (pos != std::string::npos) {
