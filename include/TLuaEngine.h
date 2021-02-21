@@ -4,6 +4,7 @@
 #include "IThreaded.h"
 #include "TLuaFile.h"
 #include "TServer.h"
+#include <optional>
 #include <lua.hpp>
 #include <memory>
 #include <set>

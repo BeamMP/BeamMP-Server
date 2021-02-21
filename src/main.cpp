@@ -8,9 +8,9 @@
 #include "TUDPServer.h"
 #include <iostream>
 #include <thread>
+#include <TTCPServer.h>
 
 #ifdef __unix
-#include <TTCPServer.h>
 #include <csignal>
 
 void UnixSignalHandler(int sig) {
