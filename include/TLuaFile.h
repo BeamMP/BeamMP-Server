@@ -20,7 +20,6 @@ class TLuaEngine;
 
 class TLuaFile {
 public:
-    void Load();
     void RegisterEvent(const std::string& Event, const std::string& FunctionName);
     void UnRegisterEvent(const std::string& Event);
     void SetLastWrite(fs::file_time_type time);
@@ -54,6 +53,7 @@ private:
     std::string mFileName {};
     bool mStopThread = false;
     bool mConsole = false;
+    void Load();
 };
 
 std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
