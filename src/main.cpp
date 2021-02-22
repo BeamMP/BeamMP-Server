@@ -6,7 +6,6 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 #include "TUDPServer.h"
-#include <iostream>
 #include <thread>
 #include <TTCPServer.h>
 

@@ -12,7 +12,7 @@
 class TLuaEngine : public IThreaded {
 public:
     explicit TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPServer);
-    ~TLuaEngine();
+    //~TLuaEngine();
 
     using TSetOfLuaFile = std::set<std::unique_ptr<TLuaFile>>;
 

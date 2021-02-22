@@ -29,7 +29,7 @@ void TPPSMonitor::operator()() {
             Application::SetPPS("-");
             continue;
         }
-        mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+        mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
             if (!ClientPtr.expired()) {
                 auto c = ClientPtr.lock();
                 if (c->GetCarCount() > 0) {

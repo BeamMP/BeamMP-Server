@@ -20,7 +20,7 @@ class TLuaEngine;
 
 class TLuaFile {
 public:
-    void Init();
+    void Load();
     void RegisterEvent(const std::string& Event, const std::string& FunctionName);
     void UnRegisterEvent(const std::string& Event);
     void SetLastWrite(fs::file_time_type time);
@@ -33,7 +33,7 @@ public:
     std::string GetOrigin();
     std::mutex Lock;
     void Reload();
-    TLuaFile(TLuaEngine& Engine, const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote, bool Console = false);
+    void Init(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote);
     explicit TLuaFile(TLuaEngine& Engine, bool Console = false);
     ~TLuaFile();
     void SetStopThread(bool StopThread) { mStopThread = StopThread; }
