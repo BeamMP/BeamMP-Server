@@ -51,7 +51,7 @@ void TTCPServer::HandleDownload(SOCKET TCPSock) {
         return;
     }
     auto ID = uint8_t(D);
-    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto c = ClientPtr.lock();
             if (c->GetID() == ID) {
@@ -264,7 +264,7 @@ void TTCPServer::ClientKick(TClient& c, const std::string& R) {
     CloseSocketProper(c.GetTCPSock());
 }
 
-void TTCPServer::TCPClient(std::weak_ptr<TClient> c) {
+void TTCPServer::TCPClient(const std::weak_ptr<TClient>& c) {
     // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
     if (c.expired() || c.lock()->GetTCPSock() == -1) {
         mServer.RemoveClient(c);
@@ -290,7 +290,7 @@ void TTCPServer::TCPClient(std::weak_ptr<TClient> c) {
 
 void TTCPServer::UpdatePlayer(TClient& Client) {
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
-    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto c = ClientPtr.lock();
             Packet += c->GetName() + ",";
@@ -301,7 +301,7 @@ void TTCPServer::UpdatePlayer(TClient& Client) {
     Respond(Client, Packet, true);
 }
 
-void TTCPServer::OnDisconnect(std::weak_ptr<TClient> ClientPtr, bool kicked) {
+void TTCPServer::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked) {
     Assert(!ClientPtr.expired());
     auto LockedClientPtr = ClientPtr.lock();
     TClient& c = *LockedClientPtr;
@@ -332,7 +332,7 @@ int TTCPServer::OpenID() {
     bool found;
     do {
         found = true;
-        mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+        mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
             if (!ClientPtr.expired()) {
                 auto c = ClientPtr.lock();
                 if (c->GetID() == ID) {
@@ -346,7 +346,7 @@ int TTCPServer::OpenID() {
     return ID;
 }
 
-void TTCPServer::OnConnect(std::weak_ptr<TClient> c) {
+void TTCPServer::OnConnect(const std::weak_ptr<TClient>& c) {
     Assert(!c.expired());
     info("Client connected");
     auto LockedClient = c.lock();
@@ -522,7 +522,7 @@ void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel) {
     }
 }
 
-void TTCPServer::SyncClient(std::weak_ptr<TClient> c) {
+void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
     if (c.expired()) {
         return;
     }
@@ -535,7 +535,7 @@ void TTCPServer::SyncClient(std::weak_ptr<TClient> c) {
     UDPServer().SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
     TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
     bool Return = false;
-    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto client = ClientPtr.lock();
             if (client != LockedClient) {
@@ -658,5 +658,5 @@ void TTCPServer::operator()() {
     CloseSocketProper(client);
 #endif
 }
-TTCPServer::~TTCPServer() {
-}
+/*TTCPServer::~TTCPServer() {
+}*/
