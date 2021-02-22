@@ -12,7 +12,7 @@ class TResourceManager;
 class TTCPServer : public IThreaded {
 public:
     explicit TTCPServer(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
-    ~TTCPServer();
+    //~TTCPServer();
 
     void operator()() override;
 
@@ -27,7 +27,7 @@ public:
 
     TUDPServer& UDPServer() { return mUDPServer->get(); }
 
-    void SyncClient(std::weak_ptr<TClient> c);
+    void SyncClient(const std::weak_ptr<TClient>& c);
     void Identify(SOCKET TCPSock);
     void Authentication(SOCKET TCPSock);
     bool CheckBytes(TClient& c, int32_t BytesRcv);
@@ -43,10 +43,10 @@ private:
     bool mShutdown { false };
 
     void HandleDownload(SOCKET TCPSock);
-    void OnConnect(std::weak_ptr<TClient> c);
-    void TCPClient(std::weak_ptr<TClient> c);
+    void OnConnect(const std::weak_ptr<TClient>& c);
+    void TCPClient(const std::weak_ptr<TClient>& c);
     int OpenID();
-    void OnDisconnect(std::weak_ptr<TClient> ClientPtr, bool kicked);
+    void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked);
     void Parse(TClient& c, const std::string& Packet);
     void SendFile(TClient& c, const std::string& Name);
     static bool TCPSendRaw(SOCKET C, char* Data, int32_t Size);

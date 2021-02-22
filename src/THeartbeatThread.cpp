@@ -69,7 +69,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&clientversion=" << Application::ClientVersion()
         << "&name=" << Application::Settings.ServerName
         << "&pps=" << Application::PPS()
-        << "&modlist=" << mResourceManager.FileList()
+        << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()
         << "&playerslist=" << GetPlayers()
@@ -91,7 +91,7 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
 }
 std::string THeartbeatThread::GetPlayers() {
     std::string Return;
-    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             Return += ClientPtr.lock()->GetName() + ";";
         }
@@ -99,5 +99,5 @@ std::string THeartbeatThread::GetPlayers() {
     });
     return Return;
 }
-THeartbeatThread::~THeartbeatThread() {
-}
+/*THeartbeatThread::~THeartbeatThread() {
+}*/

@@ -8,7 +8,7 @@
 class THeartbeatThread : public IThreaded {
 public:
     THeartbeatThread(TResourceManager& ResourceManager, TServer& Server);
-    ~THeartbeatThread();
+    //~THeartbeatThread();
     void operator()() override;
 
 private:
