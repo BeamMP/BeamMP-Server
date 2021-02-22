@@ -10,7 +10,7 @@ void THeartbeatThread::operator()() {
     std::string T;
 
     // these are "hot-change" related variables
-    static std::string Last = "";
+    static std::string Last;
 
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;

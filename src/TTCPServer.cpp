@@ -113,7 +113,7 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
 
     debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
-    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto Cl = ClientPtr.lock();
             info("Client Iteration: Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());

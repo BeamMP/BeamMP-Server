@@ -83,10 +83,11 @@ void TLuaEngine::RegisterFiles(const std::string& Path, bool HotSwap) {
         if (pos != std::string::npos && entry.path().string().length() - pos == 4) {
             if (!HotSwap || NewFile(entry.path().string())) {
                 auto FileName = entry.path().string();
-                std::unique_ptr<TLuaFile> ScriptToInsert(new TLuaFile(*this, Name, FileName, fs::last_write_time(FileName)));
+                std::unique_ptr<TLuaFile> ScriptToInsert(new TLuaFile(*this));
                 auto& Script = *ScriptToInsert;
                 mLuaFiles.insert(std::move(ScriptToInsert));
-                Script.Init();
+                Script.Init(Name, FileName, fs::last_write_time(FileName));
+                //Script.Load();
                 if (HotSwap)
                     info(("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
             }
@@ -102,5 +103,5 @@ bool TLuaEngine::NewFile(const std::string& Path) {
     return true;
 }
 
-TLuaEngine::~TLuaEngine() {
-}
+/*TLuaEngine::~TLuaEngine() {
+}*/

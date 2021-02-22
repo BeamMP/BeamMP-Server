@@ -18,8 +18,8 @@ TServer::TServer(int argc, char** argv) {
     if (argc > 1) {
         Application::Settings.CustomIP = argv[1];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
-        auto p = Application::Settings.CustomIP.find_first_not_of((".0123456789"));
-        if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == ("127")) {
+        auto p = Application::Settings.CustomIP.find_first_not_of(".0123456789");
+        if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == "127") {
             Application::Settings.CustomIP.clear();
             warn("IP Specified is invalid! Ignoring");
         } else {
@@ -28,7 +28,7 @@ TServer::TServer(int argc, char** argv) {
     }
 }
 
-void TServer::RemoveClient(std::weak_ptr<TClient> WeakClientPtr) {
+void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     if (!WeakClientPtr.expired()) {
         TClient& Client = *WeakClientPtr.lock();
         debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
@@ -59,7 +59,7 @@ size_t TServer::ClientCount() const {
     return mClients.size();
 }
 
-void TServer::GlobalParser(std::weak_ptr<TClient> Client, std::string Packet, TPPSMonitor& PPSMonitor, TUDPServer& UDPServer, TTCPServer& TCPServer) {
+void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TUDPServer& UDPServer, TTCPServer& TCPServer) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
         abort();
     }
@@ -271,7 +271,7 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     c.SetCarData(VID, Header + Buffer.GetString());
 }
 
-void TServer::InsertClient(std::shared_ptr<TClient> NewClient) {
+void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     debug("inserting client (" + std::to_string(ClientCount()) + ")");
     WriteLock Lock(mClientsMutex);
     (void)mClients.insert(NewClient);

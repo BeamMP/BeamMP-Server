@@ -1,7 +1,6 @@
 #include "Common.h"
 
 #include "TConsole.h"
-#include <algorithm>
 #include <array>
 #include <iostream>
 #include <zlib.h>

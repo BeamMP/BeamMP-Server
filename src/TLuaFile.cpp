@@ -131,7 +131,7 @@ int lua_RegisterEvent(lua_State* L) {
     if (Args == 2 && lua_isstring(L, 1) && lua_isstring(L, 2)) {
         Script.RegisterEvent(lua_tostring(L, 1), lua_tostring(L, 2));
     } else
-        SendError(Engine(), L, ("RegisterEvent invalid argument count expected 2 got ") + std::to_string(Args));
+        SendError(Engine(), L, "RegisterEvent invalid argument count expected 2 got " + std::to_string(Args));
     return 0;
 }
 int lua_TriggerEventL(lua_State* L) {
@@ -308,7 +308,7 @@ int lua_GetGuest(lua_State* L) {
 }
 int lua_GetAllPlayers(lua_State* L) {
     lua_newtable(L);
-    Engine().Server().ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    Engine().Server().ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (ClientPtr.expired())
             return true;
         auto Client = ClientPtr.lock();
@@ -575,9 +575,8 @@ int lua_Print(lua_State* L) {
 
 int lua_TempFix(lua_State* L);
 
-TLuaFile::TLuaFile(TLuaEngine& Engine, const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote, bool Console)
-    : mEngine(Engine)
-    , mLuaState(luaL_newstate()) {
+
+void TLuaFile::Init(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote){
     // set global engine for lua_* functions
     if (!TheEngine) {
         TheEngine = &mEngine;
@@ -590,14 +589,16 @@ TLuaFile::TLuaFile(TLuaEngine& Engine, const std::string& PluginName, const std:
         SetFileName(FileName);
     }
     SetLastWrite(LastWrote);
-    Init();
+    Load();
 }
 
 TLuaFile::TLuaFile(TLuaEngine& Engine, bool Console)
     : mEngine(Engine)
     , mLuaState(luaL_newstate()) {
-    mConsole = Console;
-    Init();
+    if(Console) {
+        mConsole = Console;
+        Load();
+    }
 }
 
 void TLuaFile::Execute(const std::string& Command) {
@@ -642,7 +643,7 @@ void TLuaFile::SetFileName(const std::string& Name) {
     mFileName = Name;
 }
 
-void TLuaFile::Init() {
+void TLuaFile::Load() {
     Assert(mLuaState);
     luaL_openlibs(mLuaState);
     lua_register(mLuaState, "TriggerGlobalEvent", lua_TriggerEventG);
