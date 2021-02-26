@@ -11,6 +11,7 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
+
 namespace json = rapidjson;
 
 TServer::TServer(int argc, char** argv) {
@@ -234,6 +235,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
             PID = stoi(pid);
             VID = stoi(vid);
         }
+
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             Data = Data.substr(Data.find('{'));
             TriggerLuaEvent("onVehicleReset", false, nullptr,
