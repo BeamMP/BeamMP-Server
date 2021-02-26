@@ -6,8 +6,8 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 #include "TUDPServer.h"
-#include <thread>
 #include <TTCPServer.h>
+#include <thread>
 
 #ifdef __unix
 #include <csignal>
@@ -41,6 +41,8 @@ int main(int argc, char** argv) {
     signal(SIGINT, UnixSignalHandler);
 #endif // DEBUG
 #endif // __unix
+
+    setlocale(LC_ALL, "C");
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
