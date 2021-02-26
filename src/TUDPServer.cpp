@@ -133,7 +133,7 @@ void TUDPServer::UDPSend(TClient& Client, std::string Data) const {
     size_t len = Data.size();
 #endif // WIN32
 
-    sendOk = sendto(mUDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, AddrSize);
+    sendOk = sendto(mUDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, int(AddrSize));
 #ifdef WIN32
     if (sendOk == -1) {
         debug(("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
@@ -161,7 +161,7 @@ std::string TUDPServer::UDPRcvFromClient(sockaddr_in& client) const {
     size_t clientLength = sizeof(client);
     std::array<char, 1024> Ret {};
 #ifdef WIN32
-    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (int*)&clientLength);
+    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), int(Ret.size()), 0, (sockaddr*)&client, (int*)&clientLength);
 #else // unix
     int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
 #endif // WIN32
