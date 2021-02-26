@@ -41,7 +41,7 @@ public:
     // Singleton pattern
     static SocketIO& Get();
 
-    void Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data);
+    void Emit(SocketIOEvent Event, const std::string& Data);
 
     ~SocketIO();
 
@@ -53,7 +53,6 @@ private:
     void ThreadMain();
 
     struct Event {
-        std::string Room;
         std::string Name;
         std::string Data;
     };
