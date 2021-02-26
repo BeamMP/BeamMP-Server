@@ -4,6 +4,7 @@
 TVehicleData::TVehicleData(int ID, const std::string& Data)
     : _ID(ID)
     , _Data(Data) {
+    debug("vehicle " + std::to_string(_ID) + " constructed");
 }
 
 TVehicleData::~TVehicleData() {
