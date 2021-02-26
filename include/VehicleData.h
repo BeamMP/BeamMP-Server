@@ -5,6 +5,7 @@
 class TVehicleData final {
 public:
     TVehicleData(int ID, const std::string& Data);
+    ~TVehicleData();
 
     bool IsInvalid() const { return _ID == -1; }
     int ID() const { return _ID; }
