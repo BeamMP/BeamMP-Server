@@ -1,6 +1,5 @@
 #include "SocketIO.h"
 #include "Common.h"
-
 #include <iostream>
 
 static std::unique_ptr<SocketIO> SocketIOInstance = std::make_unique<SocketIO>();
@@ -11,11 +10,16 @@ SocketIO& SocketIO::Get() {
 
 SocketIO::SocketIO() noexcept
     : mThread([this] { ThreadMain(); }) {
-    mClient.socket("/")->on("Hello", [&](sio::event&) {
+
+    mClient.socket("/" + Application::TSettings().Key)->on("Hello", [&](sio::event&) {
         info("Got 'Hello' from backend socket-io!");
     });
-    mClient.connect("https://backend.beammp.com");
+
     mClient.set_logs_quiet();
+    mClient.set_reconnect_delay(10000);
+    mClient.connect("https://backend.beammp.com");
+
+    //mClient.socket()->emit("initConnection", Application::TSettings().Key);
 }
 
 SocketIO::~SocketIO() {
@@ -95,7 +99,7 @@ void SocketIO::ThreadMain() {
             } // end queue lock scope
             debug("sending \"" + TheEvent.Name + "\" event");
             auto Room = "/" + TheEvent.Room;
-            mClient.socket("/")->emit(TheEvent.Name, TheEvent.Data);
+            mClient.socket()->emit(TheEvent.Name, TheEvent.Data);
             debug("sent \"" + TheEvent.Name + "\" event");
         }
     }
@@ -104,5 +108,6 @@ void SocketIO::ThreadMain() {
 
     mClient.sync_close();
     mClient.clear_con_listeners();
+
     std::cout << "closed" << std::endl;
 }
