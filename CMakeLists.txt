@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.10)
 project(Server)
 set(CMAKE_CXX_STANDARD 17)
 
+if (WIN32)
+    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
+    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+endif ()
 
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 include_directories("asio/asio/include")
@@ -20,12 +26,7 @@ if (UNIX)
         message(STATUS "sanitize is ON")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
     endif (SANITIZE)
-elseif (WIN32)
-    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
-    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
-    #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
-endif ()
+endif()
 
 find_package(Boost REQUIRED COMPONENTS system thread)
 
