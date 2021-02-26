@@ -11,15 +11,14 @@ SocketIO& SocketIO::Get() {
 SocketIO::SocketIO() noexcept
     : mThread([this] { ThreadMain(); }) {
 
-    mClient.socket("/" + Application::TSettings().Key)->on("Hello", [&](sio::event&) {
-        info("Got 'Hello' from backend socket-io!");
+    mClient.socket()->on("welcome", [&](sio::event&) {
+        info("Got welcome from backend! Authenticating SocketIO...");
+        mClient.socket()->emit("onInitConnection", Application::Settings.Key);
     });
 
     mClient.set_logs_quiet();
     mClient.set_reconnect_delay(10000);
     mClient.connect("https://backend.beammp.com");
-
-    //mClient.socket()->emit("initConnection", Application::TSettings().Key);
 }
 
 SocketIO::~SocketIO() {
@@ -77,18 +76,14 @@ void SocketIO::Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& D
 }
 
 void SocketIO::ThreadMain() {
-    bool FirstTime = true;
     while (!mCloseThread.load()) {
-        if (mAuthenticated && FirstTime) {
-            FirstTime = false;
-        }
-        bool empty = false;
+        bool empty;
         { // queue lock scope
             std::unique_lock Lock(mQueueMutex);
             empty = mQueue.empty();
         } // end queue lock scope
-        if (empty) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        if (empty || !mClient.opened()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         } else {
             Event TheEvent;
