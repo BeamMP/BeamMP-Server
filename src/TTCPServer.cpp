@@ -539,7 +539,7 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
         if (!ClientPtr.expired()) {
             auto client = ClientPtr.lock();
             if (client != LockedClient) {
-                for (auto& v : LockedClient->GetAllCars()) {
+                for (auto& v : client->GetAllCars()) {
                     if (v != nullptr) {
                         if (LockedClient->GetStatus() < 0) {
                             Return = true;
