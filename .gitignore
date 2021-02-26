@@ -474,3 +474,6 @@ cmake-build-release/include/commandline/Makefile
 *.internal
 *.xml
 cmake-build-debug/include/commandline/Makefile
+*.manifest
+*.rc
+*.res

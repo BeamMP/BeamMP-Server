@@ -87,7 +87,6 @@ void TLuaEngine::RegisterFiles(const std::string& Path, bool HotSwap) {
                 auto& Script = *ScriptToInsert;
                 mLuaFiles.insert(std::move(ScriptToInsert));
                 Script.Init(Name, FileName, fs::last_write_time(FileName));
-                //Script.Load();
                 if (HotSwap)
                     info(("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
             }
