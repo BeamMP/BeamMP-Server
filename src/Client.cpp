@@ -34,7 +34,7 @@ int TClient::GetOpenCarID() const {
 }
 
 void TClient::AddNewCar(int Ident, const std::string& Data) {
-    mVehicleData.insert(std::make_unique<TVehicleData>(TVehicleData { Ident, Data }));
+    mVehicleData.emplace(new TVehicleData { Ident, Data });
 }
 
 TClient::TSetOfVehicleData& TClient::GetAllCars() {
