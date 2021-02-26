@@ -2,6 +2,8 @@
 #include "Common.h"
 #include <iostream>
 
+
+//TODO Default disabled with config option
 static std::unique_ptr<SocketIO> SocketIOInstance = std::make_unique<SocketIO>();
 
 SocketIO& SocketIO::Get() {
@@ -10,6 +12,13 @@ SocketIO& SocketIO::Get() {
 
 SocketIO::SocketIO() noexcept
     : mThread([this] { ThreadMain(); }) {
+
+    mClient.socket()->on("network", [&](sio::event&e) {
+        if(e.get_message()->get_string() == "Welcome"){
+            info("SocketIO Authenticated!");
+            mAuthenticated = true;
+        }
+    });
 
     mClient.socket()->on("welcome", [&](sio::event&) {
         info("Got welcome from backend! Authenticating SocketIO...");
@@ -26,23 +35,6 @@ SocketIO::~SocketIO() {
     mThread.join();
 }
 
-static constexpr auto RoomNameFromEnum(SocketIORoom Room) {
-    switch (Room) {
-    case SocketIORoom::None:
-        return "";
-    case SocketIORoom::Console:
-        return "console";
-    case SocketIORoom::Info:
-        return "info";
-    case SocketIORoom::Player:
-        return "player";
-    case SocketIORoom::Stats:
-        return "stats";
-    default:
-        error("unreachable code reached (developer error)");
-        abort();
-    }
-}
 
 static constexpr auto EventNameFromEnum(SocketIOEvent Event) {
     switch (Event) {
@@ -62,16 +54,15 @@ static constexpr auto EventNameFromEnum(SocketIOEvent Event) {
     }
 }
 
-void SocketIO::Emit(SocketIORoom Room, SocketIOEvent Event, const std::string& Data) {
+void SocketIO::Emit(SocketIOEvent Event, const std::string& Data) {
     if (!mAuthenticated) {
         debug("trying to emit a socket.io event when not yet authenticated");
         return;
     }
-    std::string RoomName = RoomNameFromEnum(Room);
     std::string EventName = EventNameFromEnum(Event);
-    debug("emitting event \"" + EventName + "\" with data: \"" + Data + "\" in room \"/key/" + RoomName + "\"");
+    debug("emitting event \"" + EventName + "\" with data: \"" + Data);
     std::unique_lock Lock(mQueueMutex);
-    mQueue.push_back({ RoomName, EventName, Data });
+    mQueue.push_back({EventName, Data });
     debug("queue now has " + std::to_string(mQueue.size()) + " events");
 }
 
@@ -93,7 +84,6 @@ void SocketIO::ThreadMain() {
                 mQueue.pop_front();
             } // end queue lock scope
             debug("sending \"" + TheEvent.Name + "\" event");
-            auto Room = "/" + TheEvent.Room;
             mClient.socket()->emit(TheEvent.Name, TheEvent.Data);
             debug("sent \"" + TheEvent.Name + "\" event");
         }
