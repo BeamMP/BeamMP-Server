@@ -235,7 +235,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            Data = Packet.substr(Packet.find(':',4)+1);
+            Data = Data.substr(Data.find('{'));
             TriggerLuaEvent("onVehicleReset", false, nullptr,
                             std::make_unique<TLuaArg>(TLuaArg {{ c.GetID(), VID, Data}}),
                             false);
