@@ -157,7 +157,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
     std::string Packet = Pckt;
     char Code = Packet.at(1);
     int PID = -1;
-    int VID = -1;
+    int VID = -1,Pos;
     std::string Data = Packet.substr(3), pid, vid;
     switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
@@ -226,7 +226,21 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
 #ifdef DEBUG
         debug(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
-        UDPServer.SendToAll(&c, Packet, false, true);
+        Pos = int(Data.find('-'));
+        pid = Data.substr(0, Pos++);
+        vid = Data.substr(Pos,Data.find(':') - Pos);
+
+        if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
+            PID = stoi(pid);
+            VID = stoi(vid);
+        }
+        if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            Data = Packet.substr(Packet.find(':',4)+1);
+            TriggerLuaEvent("onVehicleReset", false, nullptr,
+                            std::make_unique<TLuaArg>(TLuaArg {{ c.GetID(), VID, Data}}),
+                            false);
+            UDPServer.SendToAll(&c, Packet, false, true);
+        }
         return;
     case 't':
 #ifdef DEBUG
