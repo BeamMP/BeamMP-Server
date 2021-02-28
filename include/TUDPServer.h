@@ -10,7 +10,7 @@
 class TUDPServer : public IThreaded {
 public:
     explicit TUDPServer(TServer& Server, TPPSMonitor& PPSMonitor, TTCPServer& TCPServer);
-    ~TUDPServer();
+    //~TUDPServer();
 
     void operator()() override;
 
