@@ -56,6 +56,9 @@ private:
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 };
 
+#define KB 1024
+#define MB (KB * 1024)
+
 #ifndef DEBUG
 static inline void warn(const std::string& str) {
     Application::Console().Write(std::string("[WARN] ") + str);

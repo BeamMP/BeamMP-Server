@@ -226,7 +226,13 @@ std::string TTCPServer::TCPRcv(TClient& c) {
 #endif // DEBUG
         return "";
     }
-    Data.resize(Header);
+    if (Header < 100 * MB) {
+        Data.resize(Header);
+    } else {
+        ClientKick(c, "Header size limit exceeded");
+        warn("Client " + c.GetName() + " (" + std::to_string(c.GetID()) + ") sent header of >100MB - assuming malicious intent and disconnecting the client.");
+        return "";
+    }
     BytesRcv = 0;
     do {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], Header - BytesRcv, 0);
@@ -307,11 +313,14 @@ void TTCPServer::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kick
     TClient& c = *LockedClientPtr;
     info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
-    for (auto& v : c.GetAllCars()) {
-        if (v != nullptr) {
-            Packet = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(v->ID());
-            UDPServer().SendToAll(&c, Packet, false, true);
-        }
+    TClient::TSetOfVehicleData VehicleData;
+    { // Vehicle Data Lock Scope
+        auto LockedData = c.GetAllCars();
+        VehicleData = LockedData.VehicleData;
+    } // End Vehicle Data Lock Scope
+    for (auto& v : VehicleData) {
+        Packet = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(v.ID());
+        UDPServer().SendToAll(&c, Packet, false, true);
     }
     if (kicked)
         Packet = ("L") + c.GetName() + (" was kicked!");
@@ -538,16 +547,19 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto client = ClientPtr.lock();
+            TClient::TSetOfVehicleData VehicleData;
+            { // Vehicle Data Lock Scope
+                auto LockedData = client->GetAllCars();
+                VehicleData = LockedData.VehicleData;
+            } // End Vehicle Data Lock Scope
             if (client != LockedClient) {
-                for (auto& v : client->GetAllCars()) {
-                    if (v != nullptr) {
-                        if (LockedClient->GetStatus() < 0) {
-                            Return = true;
-                            return false;
-                        }
-                        Respond(*LockedClient, v->Data(), true);
-                        std::this_thread::sleep_for(std::chrono::seconds(2));
+                for (auto& v : VehicleData) {
+                    if (LockedClient->GetStatus() < 0) {
+                        Return = true;
+                        return false;
                     }
+                    Respond(*LockedClient, v.Data(), true);
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
                 }
             }
         }

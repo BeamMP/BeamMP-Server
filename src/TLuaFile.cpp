@@ -179,8 +179,8 @@ void SafeExecution(TLuaEngine& Engine, TLuaFile* lua, const std::string& FuncNam
         char* Origin = ThreadOrigin(lua);
 #ifdef WIN32
         //__try {
-            int R = lua_pcall(luaState, 0, 0, 0);
-            CheckLua(luaState, R);
+        int R = lua_pcall(luaState, 0, 0, 0);
+        CheckLua(luaState, R);
         /*} __except (Handle(GetExceptionInformation(), Origin)) {
         }*/
 #else // unix
@@ -328,15 +328,18 @@ int lua_GetCars(lua_State* L) {
         if (MaybeClient && !MaybeClient.value().expired()) {
             auto Client = MaybeClient.value().lock();
             int i = 1;
-            for (auto& v : Client->GetAllCars()) {
-                if (v != nullptr) {
-                    lua_pushinteger(L, v->ID());
-                    lua_pushstring(L, v->Data().substr(3).c_str());
-                    lua_settable(L, -3);
-                    i++;
-                }
+            TClient::TSetOfVehicleData VehicleData;
+            { // Vehicle Data Lock Scope
+                auto LockedData = Client->GetAllCars();
+                VehicleData = LockedData.VehicleData;
+            } // End Vehicle Data Lock Scope
+            for (auto& v : VehicleData) {
+                lua_pushinteger(L, v.ID());
+                lua_pushstring(L, v.Data().substr(3).c_str());
+                lua_settable(L, -3);
+                i++;
             }
-            if (Client->GetAllCars().empty())
+            if (VehicleData.empty())
                 return 0;
         } else
             return 0;
@@ -575,8 +578,7 @@ int lua_Print(lua_State* L) {
 
 int lua_TempFix(lua_State* L);
 
-
-void TLuaFile::Init(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote){
+void TLuaFile::Init(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote) {
     // set global engine for lua_* functions
     if (!TheEngine) {
         TheEngine = &mEngine;
@@ -595,7 +597,7 @@ void TLuaFile::Init(const std::string& PluginName, const std::string& FileName, 
 TLuaFile::TLuaFile(TLuaEngine& Engine, bool Console)
     : mEngine(Engine)
     , mLuaState(luaL_newstate()) {
-    if(Console) {
+    if (Console) {
         mConsole = Console;
         Load();
     }

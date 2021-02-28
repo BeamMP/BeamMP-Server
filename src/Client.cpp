@@ -7,7 +7,7 @@
 
 void TClient::DeleteCar(int Ident) {
     for (auto& v : mVehicleData) {
-        if (v != nullptr && v->ID() == Ident) {
+        if (v.ID() == Ident) {
             mVehicleData.erase(v);
             break;
         }
@@ -24,7 +24,7 @@ int TClient::GetOpenCarID() const {
     do {
         found = true;
         for (auto& v : mVehicleData) {
-            if (v != nullptr && v->ID() == OpenID) {
+            if (v.ID() == OpenID) {
                 OpenID++;
                 found = false;
             }
@@ -34,17 +34,17 @@ int TClient::GetOpenCarID() const {
 }
 
 void TClient::AddNewCar(int Ident, const std::string& Data) {
-    mVehicleData.insert(std::make_unique<TVehicleData>(Ident, Data));
+    mVehicleData.insert(TVehicleData(Ident, Data));
 }
 
-TClient::TSetOfVehicleData& TClient::GetAllCars() {
-    return mVehicleData;
+TClient::TVehicleDataLockPair TClient::GetAllCars() {
+    return { mVehicleData, std::unique_lock(mVehicleDataMutex) };
 }
 
 std::string TClient::GetCarData(int Ident) {
     for (auto& v : mVehicleData) {
-        if (v != nullptr && v->ID() == Ident) {
-            return v->Data();
+        if (v.ID() == Ident) {
+            return v.Data();
         }
     }
     DeleteCar(Ident);
@@ -53,8 +53,8 @@ std::string TClient::GetCarData(int Ident) {
 
 void TClient::SetCarData(int Ident, const std::string& Data) {
     for (auto& v : mVehicleData) {
-        if (v != nullptr && v->ID() == Ident) {
-            v->Data() = Data;
+        if (v.ID() == Ident) {
+            v.Data() = Data;
             return;
         }
     }
