@@ -16,7 +16,7 @@ public:
 
     void operator()() override;
 
-    bool TCPSend(TClient& c, const std::string& Data);
+    bool TCPSend(TClient& c, const std::string& Data, bool IsSync = false);
     void SendLarge(TClient& c, std::string Data);
     void Respond(TClient& c, const std::string& MSG, bool Rel);
     std::shared_ptr<TClient> CreateClient(SOCKET TCPSock);

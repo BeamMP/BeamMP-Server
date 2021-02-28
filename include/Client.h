@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_set>
 
@@ -46,9 +47,13 @@ public:
     int GetID() const { return mID; }
     bool IsConnected() const { return mIsConnected; }
     bool IsSynced() const { return mIsSynced; }
+    bool IsSyncing() const { return mIsSyncing; }
     bool IsGuest() const { return mIsGuest; }
     void SetIsGuest(bool NewIsGuest) { mIsGuest = NewIsGuest; }
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
+    void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
+    void EnqueueMissedPacketDuringSyncing(const std::string& Packet) { mMissedPacketsDuringSyncing.push(Packet); }
+    size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     TServer& Server() const;
     void UpdatePingTime();
@@ -58,6 +63,8 @@ private:
     TServer& mServer;
     bool mIsConnected = false;
     bool mIsSynced = false;
+    bool mIsSyncing = false;
+    std::queue<std::string> mMissedPacketsDuringSyncing;
     bool mIsGuest = false;
     std::mutex mVehicleDataMutex;
     TSetOfVehicleData mVehicleData;
