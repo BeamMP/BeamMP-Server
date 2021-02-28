@@ -76,15 +76,38 @@ static inline void luaprint(const std::string& str) {
 }
 #else // DEBUG
 
-#define warn(x) Application::Console().Write(std::string(__func__) + ":" + std::to_string(__LINE__) + std::string(" [WARN] ") + (x))
-#define info(x) Application::Console().Write(std::string(__func__) + ":" + std::to_string(__LINE__) + std::string(" [INFO] ") + (x))
-#define error(x) Application::Console().Write(std::string(__func__) + ":" + std::to_string(__LINE__) + std::string(" [ERROR] ") + (x))
-#define luaprint(x) Application::Console().Write(std::string(__func__) + ":" + std::to_string(__LINE__) + std::string(" [LUA] ") + (x))
-#define debug(x)                                                                                                                              \
-    do {                                                                                                                                      \
-        if (Application::Settings.DebugModeEnabled) {                                                                                         \
-            Application::Console().Write(std::string(__func__) + ":" + std::to_string(__LINE__) + std::string(" [DEBUG] ") + (x)); \
-        }                                                                                                                                     \
+#define _file_basename std::filesystem::path(__FILE__).filename().string()
+#define _line std::to_string(__LINE__)
+#define _in_lambda (std::string(__func__) == "operator()")
+
+// we would like the full function signature 'void a::foo() const'
+// on windows this is __FUNCSIG__, on GCC it's __PRETTY_FUNCTION__,
+// feel free to add more
+#if defined(WIN32)
+#define _function_name std::string(__FUNCSIG__)
+#elif defined(__unix) || defined(__unix__)
+#define _function_name std::string(__PRETTY_FUNCTION__)
+#else
+#define _function_name std::string(__func__)
+#endif
+
+// if this is defined, we will show the full function signature infront of
+// each info/debug/warn... call instead of the 'filename:line' format.
+#if defined(BMP_FULL_FUNCTION_NAMES)
+#define _this_location (_function_name)
+#else
+#define _this_location (_file_basename + ":" + _line)
+#endif
+
+#define warn(x) Application::Console().Write(_this_location + std::string(" [WARN] ") + (x))
+#define info(x) Application::Console().Write(_this_location + std::string(" [INFO] ") + (x))
+#define error(x) Application::Console().Write(_this_location + std::string(" [ERROR] ") + (x))
+#define luaprint(x) Application::Console().Write(_this_location + std::string(" [LUA] ") + (x))
+#define debug(x)                                                                           \
+    do {                                                                                   \
+        if (Application::Settings.DebugModeEnabled) {                                      \
+            Application::Console().Write(_this_location + std::string(" [DEBUG] ") + (x)); \
+        }                                                                                  \
     } while (false)
 #endif // DEBUG
 

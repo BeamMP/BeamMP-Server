@@ -18,11 +18,16 @@ void THeartbeatThread::operator()() {
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
-        if (((Now - LastNormalUpdateTime) < std::chrono::seconds(5))
-            || (Last == Body && (Now - LastNormalUpdateTime) < std::chrono::seconds(30))) {
+        bool Unchanged = Last == Body;
+        auto TimePassed = (Now - LastNormalUpdateTime);
+        auto Threshold = Unchanged ? 30 : 5;
+        if (TimePassed < std::chrono::seconds(Threshold)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
+#ifdef DEBUG
+        debug("heartbeat @ " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()));
+#endif // DEBUG
 
         Last = Body;
         LastNormalUpdateTime = Now;
