@@ -102,7 +102,7 @@ void TUDPServer::SendToAll(TClient* c, const std::string& Data, bool Self, bool 
                         if (C == 'O' || C == 'T' || Data.length() > 1000)
                             mTCPServer.SendLarge(*Client, Data);
                         else
-                            mTCPServer.TCPSend(*Client, Data, false);
+                            mTCPServer.TCPSend(*Client, Data);
                     } else
                         UDPSend(*Client, Data);
                 }
