@@ -80,7 +80,7 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         ClientKick(*Client, "Invalid version header!");
         return;
     }
-    TCPSend(*Client, "S");
+    TCPSend(*Client, "S", false);
 
     Rc = TCPRcv(*Client);
 
@@ -153,7 +153,12 @@ std::shared_ptr<TClient> TTCPServer::CreateClient(SOCKET TCPSock) {
     return c;
 }
 
-bool TTCPServer::TCPSend(TClient& c, const std::string& Data) {
+bool TTCPServer::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
+    if (c.IsSyncing() && !IsSync) {
+        c.EnqueueMissedPacketDuringSyncing(Data);
+        return true;
+    } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
+    }
     int32_t Size, Sent;
     std::string Send(4, 0);
     Size = int32_t(Data.size());
@@ -265,7 +270,7 @@ std::string TTCPServer::TCPRcv(TClient& c) {
 
 void TTCPServer::ClientKick(TClient& c, const std::string& R) {
     info("Client kicked: " + R);
-    TCPSend(c, "E" + R);
+    TCPSend(c, "E" + R, false);
     c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
@@ -374,7 +379,7 @@ void TTCPServer::SyncResources(TClient& c) {
 #ifndef DEBUG
     try {
 #endif
-        TCPSend(c, "P" + std::to_string(c.GetID()));
+        TCPSend(c, "P" + std::to_string(c.GetID()), false);
         std::string Data;
         while (c.GetStatus() > -1) {
             Data = TCPRcv(c);
@@ -406,7 +411,7 @@ void TTCPServer::Parse(TClient& c, const std::string& Packet) {
             std::string ToSend = mResourceManager.FileList() + mResourceManager.FileSizes();
             if (ToSend.empty())
                 ToSend = "-";
-            TCPSend(c, ToSend);
+            TCPSend(c, ToSend, false);
         }
         return;
     default:
@@ -418,11 +423,11 @@ void TTCPServer::SendFile(TClient& c, const std::string& Name) {
     info(c.GetName() + " requesting : " + Name.substr(Name.find_last_of('/')));
 
     if (!std::filesystem::exists(Name)) {
-        TCPSend(c, "CO");
+        TCPSend(c, "CO", false);
         warn("File " + Name + " could not be accessed!");
         return;
     } else
-        TCPSend(c, "AG");
+        TCPSend(c, "AG", false);
 
     ///Wait for connections
     int T = 0;
@@ -515,7 +520,7 @@ void TTCPServer::SendLarge(TClient& c, std::string Data) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    TCPSend(c, Data);
+    TCPSend(c, Data, false);
 }
 
 void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel) {
@@ -524,7 +529,7 @@ void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel) {
         if (C == 'O' || C == 'T' || MSG.length() > 1000) {
             SendLarge(c, MSG);
         } else {
-            TCPSend(c, MSG);
+            TCPSend(c, MSG, false);
         }
     } else {
         UDPServer().UDPSend(c, MSG);
@@ -538,12 +543,14 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
     auto LockedClient = c.lock();
     if (LockedClient->IsSynced())
         return;
-    LockedClient->SetIsSynced(true);
+    // Syncing, later set isSynced
+    // after syncing is done, we apply all packets they missed
     std::this_thread::sleep_for(std::chrono::seconds(1));
     Respond(*LockedClient, ("Sn") + LockedClient->GetName(), true);
     UDPServer().SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
     TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
     bool Return = false;
+    LockedClient->SetIsSyncing(true);
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto client = ClientPtr.lock();
@@ -565,9 +572,11 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
         }
         return true;
     });
+    LockedClient->SetIsSyncing(false);
     if (Return) {
         return;
     }
+    LockedClient->SetIsSynced(true);
     info(LockedClient->GetName() + (" is now synced!"));
 }
 
