@@ -545,12 +545,11 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
         return;
     // Syncing, later set isSynced
     // after syncing is done, we apply all packets they missed
-    std::this_thread::sleep_for(std::chrono::seconds(1));
     Respond(*LockedClient, ("Sn") + LockedClient->GetName(), true);
+    LockedClient->SetIsSyncing(true);
     UDPServer().SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
     TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
     bool Return = false;
-    LockedClient->SetIsSyncing(true);
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto client = ClientPtr.lock();

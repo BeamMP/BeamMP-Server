@@ -178,5 +178,5 @@ std::string TUDPServer::UDPRcvFromClient(sockaddr_in& client) const {
     return std::string(Ret.begin(), Ret.begin() + Rcv);
 }
 
-TUDPServer::~TUDPServer() {
-}
+/*TUDPServer::~TUDPServer() {
+}*/
