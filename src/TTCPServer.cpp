@@ -80,7 +80,7 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         ClientKick(*Client, "Invalid version header!");
         return;
     }
-    TCPSend(*Client, "S", false);
+    TCPSend(*Client, "S");
 
     Rc = TCPRcv(*Client);
 
@@ -270,7 +270,7 @@ std::string TTCPServer::TCPRcv(TClient& c) {
 
 void TTCPServer::ClientKick(TClient& c, const std::string& R) {
     info("Client kicked: " + R);
-    TCPSend(c, "E" + R, false);
+    TCPSend(c, "E" + R);
     c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
@@ -379,7 +379,7 @@ void TTCPServer::SyncResources(TClient& c) {
 #ifndef DEBUG
     try {
 #endif
-        TCPSend(c, "P" + std::to_string(c.GetID()), false);
+        TCPSend(c, "P" + std::to_string(c.GetID()));
         std::string Data;
         while (c.GetStatus() > -1) {
             Data = TCPRcv(c);
@@ -411,7 +411,7 @@ void TTCPServer::Parse(TClient& c, const std::string& Packet) {
             std::string ToSend = mResourceManager.FileList() + mResourceManager.FileSizes();
             if (ToSend.empty())
                 ToSend = "-";
-            TCPSend(c, ToSend, false);
+            TCPSend(c, ToSend);
         }
         return;
     default:
@@ -423,11 +423,11 @@ void TTCPServer::SendFile(TClient& c, const std::string& Name) {
     info(c.GetName() + " requesting : " + Name.substr(Name.find_last_of('/')));
 
     if (!std::filesystem::exists(Name)) {
-        TCPSend(c, "CO", false);
+        TCPSend(c, "CO");
         warn("File " + Name + " could not be accessed!");
         return;
     } else
-        TCPSend(c, "AG", false);
+        TCPSend(c, "AG");
 
     ///Wait for connections
     int T = 0;
@@ -520,7 +520,7 @@ void TTCPServer::SendLarge(TClient& c, std::string Data) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    TCPSend(c, Data, false);
+    TCPSend(c, Data);
 }
 
 void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel) {
@@ -529,7 +529,7 @@ void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel) {
         if (C == 'O' || C == 'T' || MSG.length() > 1000) {
             SendLarge(c, MSG);
         } else {
-            TCPSend(c, MSG, false);
+            TCPSend(c, MSG);
         }
     } else {
         UDPServer().UDPSend(c, MSG);
