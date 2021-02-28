@@ -114,9 +114,10 @@ void TUDPServer::SendToAll(TClient* c, const std::string& Data, bool Self, bool 
 
 void TUDPServer::UDPSend(TClient& Client, std::string Data) const {
     if (!Client.IsConnected() || Client.GetStatus() < 0) {
-#ifdef DEBUG
-        debug(Client.GetName() + ": !IsConnected() or GetStatus() < 0");
-#endif // DEBUG
+        // this can happen if we try to send a packet to a client that is either
+        // 1. not yet fully connected, or
+        // 2. disconnected and not yet fully removed
+        // this is fine can can be ignored :^)
         return;
     }
     sockaddr_in Addr = Client.GetUDPAddr();

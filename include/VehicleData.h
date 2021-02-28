@@ -7,13 +7,24 @@ public:
     TVehicleData(int ID, const std::string& Data);
     ~TVehicleData();
 
-    bool IsInvalid() const { return _ID == -1; }
-    int ID() const { return _ID; }
+    [[nodiscard]] bool IsInvalid() const { return mID == -1; }
+    [[nodiscard]] int ID() const { return mID; }
 
-    std::string Data() const { return _Data; }
-    void SetData(const std::string& Data) { _Data = Data; }
+    [[nodiscard]] std::string Data() const { return mData; }
+    void SetData(const std::string& Data) { mData = Data; }
+
+    bool operator==(const TVehicleData& v) const { return mID == v.mID; }
 
 private:
-    int _ID { -1 };
-    std::string _Data;
+    int mID { -1 };
+    std::string mData;
 };
+
+namespace std {
+template <>
+struct hash<TVehicleData> {
+    std::size_t operator()(const TVehicleData& s) const noexcept {
+        return s.ID();
+    }
+};
+}

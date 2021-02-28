@@ -13,13 +13,18 @@ class TServer;
 
 class TClient final {
 public:
-    using TSetOfVehicleData = std::unordered_set<std::unique_ptr<TVehicleData>>;
+    using TSetOfVehicleData = std::unordered_set<TVehicleData>;
+
+    struct TVehicleDataLockPair {
+        TSetOfVehicleData& VehicleData;
+        std::unique_lock<std::mutex> Lock;
+    };
 
     explicit TClient(TServer& Server);
 
     void AddNewCar(int Ident, const std::string& Data);
     void SetCarData(int Ident, const std::string& Data);
-    TSetOfVehicleData& GetAllCars();
+    TVehicleDataLockPair GetAllCars();
     void SetName(const std::string& Name) { mName = Name; }
     void SetRoles(const std::string& Role) { mRole = Role; }
     std::string GetCarData(int Ident);
@@ -54,6 +59,7 @@ private:
     bool mIsConnected = false;
     bool mIsSynced = false;
     bool mIsGuest = false;
+    std::mutex mVehicleDataMutex;
     TSetOfVehicleData mVehicleData;
     std::string mName = "Unknown Client";
     SOCKET mSocket[2] { SOCKET(-1) };

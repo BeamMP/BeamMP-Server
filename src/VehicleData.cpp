@@ -2,11 +2,11 @@
 #include "Common.h"
 
 TVehicleData::TVehicleData(int ID, const std::string& Data)
-    : _ID(ID)
-    , _Data(Data) {
-    debug("vehicle " + std::to_string(_ID) + " constructed");
+    : mID(ID)
+    , mData(Data) {
+    debug("vehicle " + std::to_string(mID) + " constructed");
 }
 
 TVehicleData::~TVehicleData() {
-    debug("vehicle " + std::to_string(_ID) + " destroyed");
+    debug("vehicle " + std::to_string(mID) + " destroyed");
 }
