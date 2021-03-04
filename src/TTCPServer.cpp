@@ -443,7 +443,7 @@ void TTCPServer::SendFile(TClient& c, const std::string& Name) {
         return;
     }
 
-    int64_t Size = std::filesystem::file_size(Name), MSize = Size / 2;
+    size_t Size = size_t(std::filesystem::file_size(Name)), MSize = Size / 2;
 
     std::thread SplitThreads[2] {
         std::thread([&] {
@@ -461,9 +461,9 @@ void TTCPServer::SendFile(TClient& c, const std::string& Name) {
     }
 }
 
-void TTCPServer::SplitLoad(TClient& c, int64_t Sent, int64_t Size, bool D, const std::string& Name) {
+void TTCPServer::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
-    int32_t Split = 0x7735940; //125MB
+    uint32_t Split = 0x7735940; //125MB
     char* Data;
     if (Size > Split)
         Data = new char[Split];
@@ -476,7 +476,7 @@ void TTCPServer::SplitLoad(TClient& c, int64_t Sent, int64_t Size, bool D, const
         TCPSock = c.GetTCPSock();
     info("Split load Socket " + std::to_string(TCPSock));
     while (c.GetStatus() > -1 && Sent < Size) {
-        int64_t Diff = Size - Sent;
+        size_t Diff = Size - Sent;
         if (Diff > Split) {
             f.seekg(Sent, std::ios_base::beg);
             f.read(Data, Split);
@@ -502,9 +502,9 @@ void TTCPServer::SplitLoad(TClient& c, int64_t Sent, int64_t Size, bool D, const
 }
 
 bool TTCPServer::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
-    int64_t Sent = 0;
+    intmax_t Sent = 0;
     do {
-        int64_t Temp = send(C, &Data[Sent], int(Size - Sent), 0);
+        intmax_t Temp = send(C, &Data[Sent], int(Size - Sent), 0);
         if (Temp < 1) {
             info("Socket Closed! " + std::to_string(C));
             CloseSocketProper(C);

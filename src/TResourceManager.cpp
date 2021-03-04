@@ -20,8 +20,8 @@ TResourceManager::TResourceManager() {
                     File = File.substr(i,pos-i);
                 }
                 mTrimmedList += File + ';';
-                mFileSizes += std::to_string(uint64_t(fs::file_size(entry.path()))) + ';';
-                mMaxModSize += uint64_t(fs::file_size(entry.path()));
+                mFileSizes += std::to_string(size_t(fs::file_size(entry.path()))) + ';';
+                mMaxModSize += size_t(fs::file_size(entry.path()));
                 mModsLoaded++;
             }
         }

@@ -50,5 +50,5 @@ private:
     void Parse(TClient& c, const std::string& Packet);
     void SendFile(TClient& c, const std::string& Name);
     static bool TCPSendRaw(SOCKET C, char* Data, int32_t Size);
-    static void SplitLoad(TClient& c, int64_t Sent, int64_t Size, bool D, const std::string& Name);
+    static void SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name);
 };

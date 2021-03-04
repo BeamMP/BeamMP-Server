@@ -6,14 +6,14 @@ class TResourceManager {
 public:
     TResourceManager();
 
-    [[nodiscard]] uint64_t MaxModSize() const { return mMaxModSize; }
+    [[nodiscard]] size_t MaxModSize() const { return mMaxModSize; }
     [[nodiscard]] std::string FileList() const { return mFileList; }
     [[nodiscard]] std::string TrimmedList() const { return mTrimmedList; }
     [[nodiscard]] std::string FileSizes() const { return mFileSizes; }
     [[nodiscard]] int ModsLoaded() const { return mModsLoaded; }
 
 private:
-    uint64_t mMaxModSize = 0;
+    size_t mMaxModSize = 0;
     std::string mFileSizes;
     std::string mFileList;
     std::string mTrimmedList;
