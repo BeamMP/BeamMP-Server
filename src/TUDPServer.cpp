@@ -162,7 +162,7 @@ std::string TUDPServer::UDPRcvFromClient(sockaddr_in& client) const {
     size_t clientLength = sizeof(client);
     std::array<char, 1024> Ret {};
 #ifdef WIN32
-    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), int(Ret.size()), 0, (sockaddr*)&client, (int*)&clientLength);
+    auto Rcv = recvfrom(mUDPSock, Ret.data(), int(Ret.size()), 0, (sockaddr*)&client, (int*)&clientLength);
 #else // unix
     int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
 #endif // WIN32
