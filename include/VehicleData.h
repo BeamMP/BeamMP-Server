@@ -4,7 +4,7 @@
 
 class TVehicleData final {
 public:
-    TVehicleData(int ID, const std::string& Data);
+    TVehicleData(int ID, std::string Data);
     ~TVehicleData();
 
     [[nodiscard]] bool IsInvalid() const { return mID == -1; }
