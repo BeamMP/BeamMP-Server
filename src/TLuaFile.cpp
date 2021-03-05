@@ -322,31 +322,34 @@ int lua_GetAllPlayers(lua_State* L) {
     return 1;
 }
 int lua_GetCars(lua_State* L) {
-    if (lua_isnumber(L, 1)) {
+    int Args = lua_gettop(L);
+    if (Args > 0 && lua_isnumber(L, 1)) {
+        info("GetCars Called!");
         int ID = int(lua_tonumber(L, 1));
         auto MaybeClient = GetClient(Engine().Server(), ID);
         if (MaybeClient && !MaybeClient.value().expired()) {
             auto Client = MaybeClient.value().lock();
-            int i = 1;
             TClient::TSetOfVehicleData VehicleData;
             { // Vehicle Data Lock Scope
                 auto LockedData = Client->GetAllCars();
                 VehicleData = LockedData.VehicleData;
             } // End Vehicle Data Lock Scope
-            for (auto& v : VehicleData) {
+            if (VehicleData.empty())
+                return 0;
+            lua_newtable(L);
+            for (const auto& v : VehicleData) {
                 lua_pushinteger(L, v.ID());
                 lua_pushstring(L, v.Data().substr(3).c_str());
                 lua_settable(L, -3);
-                i++;
             }
-            if (VehicleData.empty())
-                return 0;
+
         } else
             return 0;
     } else {
         SendError(Engine(), L, ("GetPlayerVehicles not enough arguments"));
         return 0;
     }
+    info("GetCars returned 1!");
     return 1;
 }
 int lua_dropPlayer(lua_State* L) {
