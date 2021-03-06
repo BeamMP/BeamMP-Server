@@ -110,7 +110,7 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         Client->SetName(AuthResponse["username"].GetString());
         Client->SetRoles(AuthResponse["roles"].GetString());
         Client->SetIsGuest(AuthResponse["guest"].GetBool());
-        for(const auto& ID : AuthResponse["identifiers"].GetArray()){
+        for (const auto& ID : AuthResponse["identifiers"].GetArray()) {
             Client->AddIdentifier(ID.GetString());
         }
     } else {
@@ -161,14 +161,17 @@ std::shared_ptr<TClient> TTCPServer::CreateClient(SOCKET TCPSock) {
 }
 
 bool TTCPServer::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
-    if (c.IsSyncing() && !IsSync) {
-        c.EnqueueMissedPacketDuringSyncing(Data);
-        return true;
-    } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0 && !IsSync) {
-        while(c.MissedPacketQueueSize() > 0){
-            std::string QData = c.MissedPacketQueue().front();
-            c.MissedPacketQueue().pop();
-            TCPSend(c, QData,true);
+    if (!IsSync) {
+        if (c.IsSyncing()) {
+            c.EnqueueMissedPacketDuringSyncing(Data);
+            return true;
+        } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
+            while (c.MissedPacketQueueSize() > 0) {
+                std::string QData = c.MissedPacketQueue().front();
+                c.MissedPacketQueue().pop();
+                debug("sending a missed packet of size " + std::to_string(QData.size()));
+                TCPSend(c, QData, true);
+            }
         }
     }
     int32_t Size, Sent;
@@ -539,7 +542,7 @@ void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSy
     char C = MSG.at(0);
     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
         if (C == 'O' || C == 'T' || MSG.length() > 1000) {
-            SendLarge(c, MSG);
+            SendLarge(c, MSG, isSync);
         } else {
             TCPSend(c, MSG, isSync);
         }
@@ -558,9 +561,9 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
     // Syncing, later set isSynced
     // after syncing is done, we apply all packets they missed
     Respond(*LockedClient, ("Sn") + LockedClient->GetName(), true);
-    LockedClient->SetIsSyncing(true);
     UDPServer().SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
     TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
+    LockedClient->SetIsSyncing(true);
     bool Return = false;
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {

@@ -55,7 +55,8 @@ public:
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
     void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
     void EnqueueMissedPacketDuringSyncing(const std::string& Packet);
-    [[nodiscard]] std::queue<std::string> MissedPacketQueue(){ return mMissedPacketsDuringSyncing; }
+    [[nodiscard]] std::queue<std::string>& MissedPacketQueue() { return mMissedPacketsDuringSyncing; }
+    [[nodiscard]] const std::queue<std::string>& MissedPacketQueue() const { return mMissedPacketsDuringSyncing; }
     [[nodiscard]] size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     [[nodiscard]] TServer& Server() const;
