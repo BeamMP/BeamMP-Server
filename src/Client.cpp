@@ -60,9 +60,11 @@ void TClient::SetCarData(int Ident, const std::string& Data) {
     }
     DeleteCar(Ident);
 }
+
 int TClient::GetCarCount() const {
     return int(mVehicleData.size());
 }
+
 TServer& TClient::Server() const {
     return mServer;
 }

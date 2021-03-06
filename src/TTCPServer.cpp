@@ -7,6 +7,8 @@
 #include <Http.h>
 #include <cstring>
 
+#undef GetObject //Fixes Windows
+
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
@@ -102,10 +104,15 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         return;
     }
 
-    if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString() && AuthResponse["guest"].IsBool()) {
+    if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
+        && AuthResponse["guest"].IsBool() && AuthResponse["identifiers"].IsArray()) {
+
         Client->SetName(AuthResponse["username"].GetString());
         Client->SetRoles(AuthResponse["roles"].GetString());
         Client->SetIsGuest(AuthResponse["guest"].GetBool());
+        for(const auto& ID : AuthResponse["identifiers"].GetArray()){
+            Client->AddIdentifier(ID.GetString());
+        }
     } else {
         ClientKick(*Client, "Invalid authentication data!");
         return;
