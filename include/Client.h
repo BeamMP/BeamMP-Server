@@ -54,7 +54,8 @@ public:
     void SetIsGuest(bool NewIsGuest) { mIsGuest = NewIsGuest; }
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
     void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
-    void EnqueueMissedPacketDuringSyncing(const std::string& Packet) { mMissedPacketsDuringSyncing.push(Packet); }
+    void EnqueueMissedPacketDuringSyncing(const std::string& Packet);
+    [[nodiscard]] std::queue<std::string> MissedPacketQueue(){ return mMissedPacketsDuringSyncing; }
     [[nodiscard]] size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     [[nodiscard]] TServer& Server() const;
@@ -66,6 +67,7 @@ private:
     bool mIsConnected = false;
     bool mIsSynced = false;
     bool mIsSyncing = false;
+    std::mutex mMissedPacketsMutex;
     std::queue<std::string> mMissedPacketsDuringSyncing;
     std::set<std::string> mIdentifiers;
     bool mIsGuest = false;
@@ -73,7 +75,7 @@ private:
     TSetOfVehicleData mVehicleData;
     std::string mName = "Unknown Client";
     SOCKET mSocket[2] { SOCKET(-1) };
-    sockaddr_in mUDPAddress {}; // is this initialization OK?
+    sockaddr_in mUDPAddress {}; // is this initialization OK? yes it is
     std::string mRole;
     std::string mDID;
     int mStatus = 0;

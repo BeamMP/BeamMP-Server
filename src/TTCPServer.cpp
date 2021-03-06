@@ -164,7 +164,12 @@ bool TTCPServer::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (c.IsSyncing() && !IsSync) {
         c.EnqueueMissedPacketDuringSyncing(Data);
         return true;
-    } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
+    } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0 && !IsSync) {
+        while(c.MissedPacketQueueSize() > 0){
+            std::string QData = c.MissedPacketQueue().front();
+            c.MissedPacketQueue().pop();
+            TCPSend(c, QData,true);
+        }
     }
     int32_t Size, Sent;
     std::string Send(4, 0);
@@ -522,21 +527,21 @@ bool TTCPServer::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
     return true;
 }
 
-void TTCPServer::SendLarge(TClient& c, std::string Data) {
+void TTCPServer::SendLarge(TClient& c, std::string Data, bool isSync) {
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    TCPSend(c, Data);
+    TCPSend(c, Data, isSync);
 }
 
-void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel) {
+void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync) {
     char C = MSG.at(0);
     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
         if (C == 'O' || C == 'T' || MSG.length() > 1000) {
             SendLarge(c, MSG);
         } else {
-            TCPSend(c, MSG);
+            TCPSend(c, MSG, isSync);
         }
     } else {
         UDPServer().UDPSend(c, MSG);
@@ -571,7 +576,7 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
                         Return = true;
                         return false;
                     }
-                    Respond(*LockedClient, v.Data(), true);
+                    Respond(*LockedClient, v.Data(), true, true);
                     std::this_thread::sleep_for(std::chrono::seconds(2));
                 }
             }
