@@ -321,9 +321,30 @@ int lua_GetAllPlayers(lua_State* L) {
         return 0;
     return 1;
 }
+int lua_GetIdentifiers(lua_State* L){
+    if(lua_isnumber(L,1)){
+        auto MaybeClient = GetClient(Engine().Server(), int(lua_tonumber(L, 1)));
+        if (MaybeClient && !MaybeClient.value().expired()) {
+            auto IDs = MaybeClient.value().lock()->GetIdentifiers();
+            if(IDs.empty())
+                return 0;
+            lua_newtable(L);
+            for(const std::string& ID : IDs){
+                lua_pushstring(L, ID.substr(0,ID.find(':')).c_str());
+                lua_pushstring(L, ID.c_str());
+                lua_settable(L, -3);
+            }
+        }else
+            return 0;
+    }else{
+        SendError(Engine(), L, "lua_GetIdentifiers wrong arguments");
+        return 0;
+    }
+    return 1;
+}
+
 int lua_GetCars(lua_State* L) {
-    int Args = lua_gettop(L);
-    if (Args > 0 && lua_isnumber(L, 1)) {
+    if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
         auto MaybeClient = GetClient(Engine().Server(), ID);
         if (MaybeClient && !MaybeClient.value().expired()) {
@@ -344,7 +365,7 @@ int lua_GetCars(lua_State* L) {
         } else
             return 0;
     } else {
-        SendError(Engine(), L, ("GetPlayerVehicles not enough arguments"));
+        SendError(Engine(), L, ("GetPlayerVehicles wrong arguments"));
         return 0;
     }
     return 1;
@@ -638,9 +659,11 @@ std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_pt
     ClearStack(luaState);
     return 0;
 }
+
 void TLuaFile::SetPluginName(const std::string& Name) {
     mPluginName = Name;
 }
+
 void TLuaFile::SetFileName(const std::string& Name) {
     mFileName = Name;
 }
@@ -648,6 +671,7 @@ void TLuaFile::SetFileName(const std::string& Name) {
 void TLuaFile::Load() {
     Assert(mLuaState);
     luaL_openlibs(mLuaState);
+    lua_register(mLuaState, "GetPlayerIdentifiers", lua_GetIdentifiers);
     lua_register(mLuaState, "TriggerGlobalEvent", lua_TriggerEventG);
     lua_register(mLuaState, "TriggerLocalEvent", lua_TriggerEventL);
     lua_register(mLuaState, "TriggerClientEvent", lua_RemoteEvent);

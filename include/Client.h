@@ -28,34 +28,36 @@ public:
     TVehicleDataLockPair GetAllCars();
     void SetName(const std::string& Name) { mName = Name; }
     void SetRoles(const std::string& Role) { mRole = Role; }
+    void AddIdentifier(const std::string& ID) { mIdentifiers.insert(ID); };
     std::string GetCarData(int Ident);
     void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
     void SetTCPSock(SOCKET CSock) { mSocket[0] = CSock; }
     void SetStatus(int Status) { mStatus = Status; }
     void DeleteCar(int Ident);
-    sockaddr_in GetUDPAddr() const { return mUDPAddress; }
-    std::string GetRoles() const { return mRole; }
-    std::string GetName() const { return mName; }
-    SOCKET GetDownSock() const { return mSocket[1]; }
-    SOCKET GetTCPSock() const { return mSocket[0]; }
+    [[nodiscard]] std::set<std::string> GetIdentifiers() const { return mIdentifiers; }
+    [[nodiscard]] sockaddr_in GetUDPAddr() const { return mUDPAddress; }
+    [[nodiscard]] SOCKET GetDownSock() const { return mSocket[1]; }
+    [[nodiscard]] SOCKET GetTCPSock() const { return mSocket[0]; }
+    [[nodiscard]] std::string GetRoles() const { return mRole; }
+    [[nodiscard]] std::string GetName() const { return mName; }
     void SetID(int ID) { mID = ID; }
-    int GetOpenCarID() const;
-    int GetCarCount() const;
+    [[nodiscard]] int GetOpenCarID() const;
+    [[nodiscard]] int GetCarCount() const;
     void ClearCars();
-    int GetStatus() const { return mStatus; }
-    int GetID() const { return mID; }
-    bool IsConnected() const { return mIsConnected; }
-    bool IsSynced() const { return mIsSynced; }
-    bool IsSyncing() const { return mIsSyncing; }
-    bool IsGuest() const { return mIsGuest; }
+    [[nodiscard]] int GetStatus() const { return mStatus; }
+    [[nodiscard]] int GetID() const { return mID; }
+    [[nodiscard]] bool IsConnected() const { return mIsConnected; }
+    [[nodiscard]] bool IsSynced() const { return mIsSynced; }
+    [[nodiscard]] bool IsSyncing() const { return mIsSyncing; }
+    [[nodiscard]] bool IsGuest() const { return mIsGuest; }
     void SetIsGuest(bool NewIsGuest) { mIsGuest = NewIsGuest; }
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
     void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
     void EnqueueMissedPacketDuringSyncing(const std::string& Packet) { mMissedPacketsDuringSyncing.push(Packet); }
-    size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
+    [[nodiscard]] size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
-    TServer& Server() const;
+    [[nodiscard]] TServer& Server() const;
     void UpdatePingTime();
     int SecondsSinceLastPing();
 
@@ -65,6 +67,7 @@ private:
     bool mIsSynced = false;
     bool mIsSyncing = false;
     std::queue<std::string> mMissedPacketsDuringSyncing;
+    std::set<std::string> mIdentifiers;
     bool mIsGuest = false;
     std::mutex mVehicleDataMutex;
     TSetOfVehicleData mVehicleData;
