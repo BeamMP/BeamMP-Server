@@ -97,7 +97,7 @@ void TUDPServer::SendToAll(TClient* c, const std::string& Data, bool Self, bool 
         if (!ClientPtr.expired()) {
             auto Client = ClientPtr.lock();
             if (Self || Client.get() != c) {
-                if (Client->IsSynced()) {
+                if (Client->IsSynced() || Client->IsSyncing()) {
                     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
                         if (C == 'O' || C == 'T' || Data.length() > 1000)
                             mTCPServer.SendLarge(*Client, Data);

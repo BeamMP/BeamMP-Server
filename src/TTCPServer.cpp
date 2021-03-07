@@ -104,6 +104,12 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         return;
     }
 
+    if (!AuthResponse.IsObject()) {
+        ClientKick(*Client, "Backend returned invalid auth response format.");
+        error("Backend returned invalid auth response format. This should never happen.");
+        return;
+    }
+
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
         && AuthResponse["guest"].IsBool() && AuthResponse["identifiers"].IsArray()) {
 
@@ -166,7 +172,6 @@ bool TTCPServer::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             c.EnqueueMissedPacketDuringSyncing(Data);
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
             while (c.MissedPacketQueueSize() > 0) {
                 std::string QData = c.MissedPacketQueue().front();
                 c.MissedPacketQueue().pop();
