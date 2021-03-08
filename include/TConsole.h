@@ -1,5 +1,5 @@
 #pragma once
-#undef max //fixes windows macro
+
 #include "commandline/commandline.h"
 #include "TLuaFile.h"
 #include <atomic>
