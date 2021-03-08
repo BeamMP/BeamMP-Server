@@ -1,7 +1,7 @@
 #pragma once
-
-#include "TLuaFile.h"
+#undef max //fixes windows macro
 #include "commandline/commandline.h"
+#include "TLuaFile.h"
 #include <atomic>
 #include <fstream>
 

@@ -1,9 +1,9 @@
 #include "TNetwork.h"
-
 #include "Client.h"
 #include <CustomAssert.h>
 #include <Http.h>
 #include <cstring>
+#include <array>
 
 TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
     : mServer(Server)
@@ -119,8 +119,10 @@ void TNetwork::TCPServerMain() {
         error("Invalid listening socket");
         return;
     }
+
     if (listen(Listener, SOMAXCONN)) {
         error("listener failed " + std::to_string(GetLastError()));
+        //TODO Fix me leak for Listener socket
         return;
     }
     info("Vehicle event network online");
@@ -131,7 +133,7 @@ void TNetwork::TCPServerMain() {
                 warn("Got an invalid client socket on connect! Skipping...");
                 continue;
             }
-            std::thread ID(&TTCPServer::Identify, this, client);
+            std::thread ID(&TNetwork::Identify, this, client);
             ID.detach();
         } catch (const std::exception& e) {
             error("fatal: " + std::string(e.what()));
@@ -163,6 +165,7 @@ void TNetwork::TCPServerMain() {
     }
     if (listen(Listener, SOMAXCONN)) {
         error(("listener failed ") + std::string(strerror(errno)));
+        //TODO fix me leak Listener
         return;
     }
     info(("Vehicle event network online"));
