@@ -49,11 +49,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `rapidjson-dev`
 - `libboost1.70-dev` 
   
-  If your distro doesn't have 1.7x version of libboost, you'll have to compile it from source. For Ubuntu, you can use 
-  ```
-  sudo add-apt-repository ppa:mhier/libboost-latest
-  sudo apt-get install -y libboost1.70-dev libboost1.70
-  ```
+  If your distro doesn't have 1.7x version of libboost, you'll have to compile it from source or find another way to get it for your distro.
 - `libopenssl-dev`
 
 ### How to build
