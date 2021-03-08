@@ -15,7 +15,7 @@ elseif (UNIX)
         message(STATUS "sanitize is ON")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
     endif (SANITIZE)
-endif()
+endif ()
 
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 include_directories("asio/asio/include")
@@ -44,8 +44,7 @@ add_executable(BeamMP-Server
         include/Http.h src/Http.cpp
         include/SocketIO.h src/SocketIO.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
-        include/TUDPServer.h src/TUDPServer.cpp
-        include/TTCPServer.h src/TTCPServer.cpp)
+        include/TNetwork.h src/TNetwork.cpp)
 
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 

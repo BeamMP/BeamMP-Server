@@ -21,6 +21,7 @@ void Application::GracefullyShutdown() {
         Handler();
     }
 }
+
 std::string Comp(std::string Data) {
     std::array<char, Biggest> C {};
     // obsolete

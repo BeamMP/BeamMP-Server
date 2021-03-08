@@ -4,7 +4,7 @@
 
 class TConfig {
 public:
-    TConfig(const std::string& ConfigFile);
+    explicit TConfig(const std::string& ConfigFile);
 
 private:
     static std::string RemoveComments(const std::string& Line);

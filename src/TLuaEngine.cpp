@@ -9,9 +9,8 @@ namespace fs = std::filesystem;
 // necessary as lua relies on global state
 TLuaEngine* TheEngine;
 
-TLuaEngine::TLuaEngine(TServer& Server, TTCPServer& TCPServer, TUDPServer& UDPServer)
-    : mTCPServer(TCPServer)
-    , mUDPServer(UDPServer)
+TLuaEngine::TLuaEngine(TServer& Server, TNetwork& Network)
+    : mNetwork(Network)
     , mServer(Server) {
     TheEngine = this;
     if (!fs::exists(Application::Settings.Resource)) {
@@ -101,6 +100,3 @@ bool TLuaEngine::NewFile(const std::string& Path) {
     }
     return true;
 }
-
-/*TLuaEngine::~TLuaEngine() {
-}*/

@@ -1,20 +1,12 @@
 #pragma once
 
-#include "Client.h"
-#include "Common.h"
 #include "Compat.h"
-#include "IThreaded.h"
+#include "TResourceManager.h"
 #include "TServer.h"
-#include <optional>
 
-class TResourceManager;
-
-class TTCPServer : public IThreaded {
+class TNetwork {
 public:
-    explicit TTCPServer(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
-    //~TTCPServer();
-
-    void operator()() override;
+    TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
 
     bool TCPSend(TClient& c, const std::string& Data, bool IsSync = false);
     void SendLarge(TClient& c, std::string Data, bool isSync = false);
@@ -22,26 +14,28 @@ public:
     std::shared_ptr<TClient> CreateClient(SOCKET TCPSock);
     std::string TCPRcv(TClient& c);
     void ClientKick(TClient& c, const std::string& R);
-
-    void SetUDPServer(TUDPServer& UDPServer);
-
-    TUDPServer& UDPServer() { return mUDPServer->get(); }
-
     void SyncClient(const std::weak_ptr<TClient>& c);
     void Identify(SOCKET TCPSock);
     void Authentication(SOCKET TCPSock);
     bool CheckBytes(TClient& c, int32_t BytesRcv);
     void SyncResources(TClient& c);
-
+    void UDPSend(TClient& Client, std::string Data) const;
+    void SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel);
     void UpdatePlayer(TClient& Client);
 
 private:
-    std::optional<std::reference_wrapper<TUDPServer>> mUDPServer { std::nullopt };
+    void UDPServerMain();
+    void TCPServerMain();
+
     TServer& mServer;
     TPPSMonitor& mPPSMonitor;
-    TResourceManager& mResourceManager;
+    SOCKET mUDPSock {};
     bool mShutdown { false };
+    TResourceManager& mResourceManager;
+    std::thread mUDPThread;
+    std::thread mTCPThread;
 
+    std::string UDPRcvFromClient(sockaddr_in& client) const;
     void HandleDownload(SOCKET TCPSock);
     void OnConnect(const std::weak_ptr<TClient>& c);
     void TCPClient(const std::weak_ptr<TClient>& c);

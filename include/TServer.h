@@ -8,8 +8,7 @@
 #include <unordered_set>
 
 class TClient;
-class TUDPServer;
-class TTCPServer;
+class TNetwork;
 class TPPSMonitor;
 
 class TServer final {
@@ -25,12 +24,12 @@ public:
     void ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     size_t ClientCount() const;
 
-    static void GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TUDPServer& UDPServer, TTCPServer& TCPServer);
+    static void GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
     static void HandleEvent(TClient& c, const std::string& Data);
 
 private:
     TClientSet mClients;
     mutable RWMutex mClientsMutex;
-    static void ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPServer, TUDPServer& UDPServer);
+    static void ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network);
     static void Apply(TClient& c, int VID, const std::string& pckt);
 };

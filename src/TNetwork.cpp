@@ -1,11 +1,194 @@
-#include "TTCPServer.h"
-#include "TLuaEngine.h"
-#include "TLuaFile.h"
-#include "TResourceManager.h"
-#include "TUDPServer.h"
+#include "TNetwork.h"
+
+#include "Client.h"
 #include <CustomAssert.h>
 #include <Http.h>
 #include <cstring>
+
+TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
+    : mServer(Server)
+    , mPPSMonitor(PPSMonitor)
+    , mResourceManager(ResourceManager) {
+    Application::RegisterShutdownHandler([&] {
+        if (mUDPThread.joinable()) {
+            debug("shutting down TCPServer");
+            mShutdown = true;
+            mUDPThread.detach();
+            debug("shut down TCPServer");
+        }
+    });
+    Application::RegisterShutdownHandler([&] {
+        if (mUDPThread.joinable()) {
+            debug("shutting down TCPServer");
+            mShutdown = true;
+            mTCPThread.detach();
+            debug("shut down TCPServer");
+        }
+    });
+    mTCPThread = std::thread(&TNetwork::TCPServerMain, this);
+    mUDPThread = std::thread(&TNetwork::UDPServerMain, this);
+}
+
+void TNetwork::UDPServerMain() {
+#ifdef WIN32
+    WSADATA data;
+    if (WSAStartup(514, &data)) {
+        error(("Can't start Winsock!"));
+        //return;
+    }
+
+    mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
+    // Create a server hint structure for the server
+    sockaddr_in serverAddr {};
+    serverAddr.sin_addr.S_un.S_addr = ADDR_ANY; //Any Local
+    serverAddr.sin_family = AF_INET; // Address format is IPv4
+    serverAddr.sin_port = htons(Application::Settings.Port); // Convert from little to big endian
+
+    // Try and bind the socket to the IP and port
+    if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
+        error(("Can't bind socket!") + std::to_string(WSAGetLastError()));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+        //return;
+    }
+#else // unix
+    mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
+    // Create a server hint structure for the server
+    sockaddr_in serverAddr {};
+    serverAddr.sin_addr.s_addr = INADDR_ANY; //Any Local
+    serverAddr.sin_family = AF_INET; // Address format is IPv4
+    serverAddr.sin_port = htons(uint16_t(Application::Settings.Port)); // Convert from little to big endian
+
+    // Try and bind the socket to the IP and port
+    if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
+        error(("Can't bind socket!") + std::string(strerror(errno)));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+        //return;
+    }
+#endif
+
+    info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
+        + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
+    while (!mShutdown) {
+        try {
+            sockaddr_in client {};
+            std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
+            size_t Pos = Data.find(':');
+            if (Data.empty() || Pos > 2)
+                continue;
+            /*char clientIp[256];
+            ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
+            inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
+            uint8_t ID = uint8_t(Data.at(0)) - 1;
+            mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+                if (!ClientPtr.expired()) {
+                    auto Client = ClientPtr.lock();
+                    if (Client->GetID() == ID) {
+                        Client->SetUDPAddr(client);
+                        Client->SetIsConnected(true);
+                        TServer::GlobalParser(ClientPtr, Data.substr(2), mPPSMonitor, *this);
+                    }
+                }
+                return true;
+            });
+        } catch (const std::exception& e) {
+            error(("fatal: ") + std::string(e.what()));
+        }
+    }
+}
+
+void TNetwork::TCPServerMain() {
+#ifdef WIN32
+    WSADATA wsaData;
+    if (WSAStartup(514, &wsaData)) {
+        error("Can't start Winsock!");
+        return;
+    }
+    SOCKET client, Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    sockaddr_in addr {};
+    addr.sin_addr.S_un.S_addr = ADDR_ANY;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(Application::Settings.Port);
+    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
+        error("Can't bind socket! " + std::to_string(WSAGetLastError()));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+    }
+    if (Listener == -1) {
+        error("Invalid listening socket");
+        return;
+    }
+    if (listen(Listener, SOMAXCONN)) {
+        error("listener failed " + std::to_string(GetLastError()));
+        return;
+    }
+    info("Vehicle event network online");
+    do {
+        try {
+            client = accept(Listener, nullptr, nullptr);
+            if (client == -1) {
+                warn("Got an invalid client socket on connect! Skipping...");
+                continue;
+            }
+            std::thread ID(&TTCPServer::Identify, this, client);
+            ID.detach();
+        } catch (const std::exception& e) {
+            error("fatal: " + std::string(e.what()));
+        }
+    } while (client);
+
+    CloseSocketProper(client);
+    WSACleanup();
+#else // unix
+    // wondering why we need slightly different implementations of this?
+    // ask ms.
+    SOCKET client = -1;
+    SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    int optval = 1;
+    setsockopt(Listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
+    // TODO: check optval or return value idk
+    sockaddr_in addr {};
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(uint16_t(Application::Settings.Port));
+    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
+        error(("Can't bind socket! ") + std::string(strerror(errno)));
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        exit(-1);
+    }
+    if (Listener == -1) {
+        error(("Invalid listening socket"));
+        return;
+    }
+    if (listen(Listener, SOMAXCONN)) {
+        error(("listener failed ") + std::string(strerror(errno)));
+        return;
+    }
+    info(("Vehicle event network online"));
+    do {
+        try {
+            if (mShutdown) {
+                debug("shutdown during TCP wait for accept loop");
+                break;
+            }
+            client = accept(Listener, nullptr, nullptr);
+            if (client == -1) {
+                warn(("Got an invalid client socket on connect! Skipping..."));
+                continue;
+            }
+            std::thread ID(&TNetwork::Identify, this, client);
+            ID.detach(); // TODO: Add to a queue and attempt to join periodically
+        } catch (const std::exception& e) {
+            error(("fatal: ") + std::string(e.what()));
+        }
+    } while (client);
+
+    debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
+
+    CloseSocketProper(client);
+#endif
+}
 
 #undef GetObject //Fixes Windows
 
@@ -14,24 +197,7 @@
 #include "rapidjson/writer.h"
 namespace json = rapidjson;
 
-bool TCPSend(std::weak_ptr<TClient> c, const std::string& Data);
-bool TCPSend(TClient& c, const std::string& Data);
-
-TTCPServer::TTCPServer(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
-    : mServer(Server)
-    , mPPSMonitor(PPSMonitor)
-    , mResourceManager(ResourceManager) {
-    Application::RegisterShutdownHandler([&] {if (mThread.joinable()) {
-        debug("shutting down TCPServer");
-        mShutdown = true;
-        // FIXME: Join once TCPServer can timeout on a read, accept, etc.
-        mThread.detach();
-        debug("shut down TCPServer");
-    } });
-    Start();
-}
-
-void TTCPServer::Identify(SOCKET TCPSock) {
+void TNetwork::Identify(SOCKET TCPSock) {
     char Code;
     if (recv(TCPSock, &Code, 1, 0) != 1) {
         CloseSocketProper(TCPSock);
@@ -46,7 +212,7 @@ void TTCPServer::Identify(SOCKET TCPSock) {
     }
 }
 
-void TTCPServer::HandleDownload(SOCKET TCPSock) {
+void TNetwork::HandleDownload(SOCKET TCPSock) {
     char D;
     if (recv(TCPSock, &D, 1, 0) != 1) {
         CloseSocketProper(TCPSock);
@@ -64,7 +230,7 @@ void TTCPServer::HandleDownload(SOCKET TCPSock) {
     });
 }
 
-void TTCPServer::Authentication(SOCKET TCPSock) {
+void TNetwork::Authentication(SOCKET TCPSock) {
     auto Client = CreateClient(TCPSock);
 
     std::string Rc;
@@ -160,13 +326,13 @@ void TTCPServer::Authentication(SOCKET TCPSock) {
         ClientKick(*Client, "Server full!");
 }
 
-std::shared_ptr<TClient> TTCPServer::CreateClient(SOCKET TCPSock) {
+std::shared_ptr<TClient> TNetwork::CreateClient(SOCKET TCPSock) {
     auto c = std::make_shared<TClient>(mServer);
     c->SetTCPSock(TCPSock);
     return c;
 }
 
-bool TTCPServer::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
+bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
         if (c.IsSyncing()) {
             c.EnqueueMissedPacketDuringSyncing(Data);
@@ -204,7 +370,7 @@ bool TTCPServer::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     return true;
 }
 
-bool TTCPServer::CheckBytes(TClient& c, int32_t BytesRcv) {
+bool TNetwork::CheckBytes(TClient& c, int32_t BytesRcv) {
     if (BytesRcv == 0) {
         debug("(TCP) Connection closing...");
         if (c.GetStatus() > -1)
@@ -225,7 +391,7 @@ bool TTCPServer::CheckBytes(TClient& c, int32_t BytesRcv) {
     return true;
 }
 
-std::string TTCPServer::TCPRcv(TClient& c) {
+std::string TNetwork::TCPRcv(TClient& c) {
     int32_t Header, BytesRcv = 0, Temp;
     if (c.GetStatus() < 0)
         return "";
@@ -289,14 +455,14 @@ std::string TTCPServer::TCPRcv(TClient& c) {
     return Ret;
 }
 
-void TTCPServer::ClientKick(TClient& c, const std::string& R) {
+void TNetwork::ClientKick(TClient& c, const std::string& R) {
     info("Client kicked: " + R);
     TCPSend(c, "E" + R);
     c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
 
-void TTCPServer::TCPClient(const std::weak_ptr<TClient>& c) {
+void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
     // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
     if (c.expired() || c.lock()->GetTCPSock() == -1) {
         mServer.RemoveClient(c);
@@ -310,7 +476,7 @@ void TTCPServer::TCPClient(const std::weak_ptr<TClient>& c) {
         if (Client->GetStatus() <= -1) {
             break;
         }
-        TServer::GlobalParser(c, TCPRcv(*Client), mPPSMonitor, UDPServer(), *this);
+        TServer::GlobalParser(c, TCPRcv(*Client), mPPSMonitor, *this);
     }
     if (!c.expired()) {
         auto Client = c.lock();
@@ -320,7 +486,7 @@ void TTCPServer::TCPClient(const std::weak_ptr<TClient>& c) {
     }
 }
 
-void TTCPServer::UpdatePlayer(TClient& Client) {
+void TNetwork::UpdatePlayer(TClient& Client) {
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
@@ -333,7 +499,7 @@ void TTCPServer::UpdatePlayer(TClient& Client) {
     Respond(Client, Packet, true);
 }
 
-void TTCPServer::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked) {
+void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked) {
     Assert(!ClientPtr.expired());
     auto LockedClientPtr = ClientPtr.lock();
     TClient& c = *LockedClientPtr;
@@ -346,13 +512,13 @@ void TTCPServer::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kick
     } // End Vehicle Data Lock Scope
     for (auto& v : VehicleData) {
         Packet = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(v.ID());
-        UDPServer().SendToAll(&c, Packet, false, true);
+        SendToAll(&c, Packet, false, true);
     }
     if (kicked)
         Packet = ("L") + c.GetName() + (" was kicked!");
     else
         Packet = ("L") + c.GetName() + (" left the server!");
-    UDPServer().SendToAll(&c, Packet, false, true);
+    SendToAll(&c, Packet, false, true);
     Packet.clear();
     TriggerLuaEvent(("onPlayerDisconnect"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID() } }), false);
     if (c.GetTCPSock())
@@ -362,7 +528,7 @@ void TTCPServer::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kick
     mServer.RemoveClient(ClientPtr);
 }
 
-int TTCPServer::OpenID() {
+int TNetwork::OpenID() {
     int ID = 0;
     bool found;
     do {
@@ -381,7 +547,7 @@ int TTCPServer::OpenID() {
     return ID;
 }
 
-void TTCPServer::OnConnect(const std::weak_ptr<TClient>& c) {
+void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     Assert(!c.expired());
     info("Client connected");
     auto LockedClient = c.lock();
@@ -396,7 +562,7 @@ void TTCPServer::OnConnect(const std::weak_ptr<TClient>& c) {
     TriggerLuaEvent("onPlayerJoining", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
 }
 
-void TTCPServer::SyncResources(TClient& c) {
+void TNetwork::SyncResources(TClient& c) {
 #ifndef DEBUG
     try {
 #endif
@@ -416,7 +582,7 @@ void TTCPServer::SyncResources(TClient& c) {
 #endif
 }
 
-void TTCPServer::Parse(TClient& c, const std::string& Packet) {
+void TNetwork::Parse(TClient& c, const std::string& Packet) {
     if (Packet.empty())
         return;
     char Code = Packet.at(0), SubCode = 0;
@@ -440,7 +606,7 @@ void TTCPServer::Parse(TClient& c, const std::string& Packet) {
     }
 }
 
-void TTCPServer::SendFile(TClient& c, const std::string& Name) {
+void TNetwork::SendFile(TClient& c, const std::string& Name) {
     info(c.GetName() + " requesting : " + Name.substr(Name.find_last_of('/')));
 
     if (!std::filesystem::exists(Name)) {
@@ -482,7 +648,7 @@ void TTCPServer::SendFile(TClient& c, const std::string& Name) {
     }
 }
 
-void TTCPServer::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
+void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
     uint32_t Split = 0x7735940; //125MB
     char* Data;
@@ -522,7 +688,7 @@ void TTCPServer::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const s
     f.close();
 }
 
-bool TTCPServer::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
+bool TNetwork::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
     intmax_t Sent = 0;
     do {
         intmax_t Temp = send(C, &Data[Sent], int(Size - Sent), 0);
@@ -536,7 +702,7 @@ bool TTCPServer::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
     return true;
 }
 
-void TTCPServer::SendLarge(TClient& c, std::string Data, bool isSync) {
+void TNetwork::SendLarge(TClient& c, std::string Data, bool isSync) {
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
@@ -544,7 +710,7 @@ void TTCPServer::SendLarge(TClient& c, std::string Data, bool isSync) {
     TCPSend(c, Data, isSync);
 }
 
-void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync) {
+void TNetwork::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync) {
     char C = MSG.at(0);
     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
         if (C == 'O' || C == 'T' || MSG.length() > 1000) {
@@ -553,11 +719,11 @@ void TTCPServer::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSy
             TCPSend(c, MSG, isSync);
         }
     } else {
-        UDPServer().UDPSend(c, MSG);
+        UDPSend(c, MSG);
     }
 }
 
-void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
+void TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     if (c.expired()) {
         return;
     }
@@ -567,7 +733,7 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
     // Syncing, later set isSynced
     // after syncing is done, we apply all packets they missed
     Respond(*LockedClient, ("Sn") + LockedClient->GetName(), true);
-    UDPServer().SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
+    SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
     TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
     LockedClient->SetIsSyncing(true);
     bool Return = false;
@@ -600,104 +766,91 @@ void TTCPServer::SyncClient(const std::weak_ptr<TClient>& c) {
     info(LockedClient->GetName() + (" is now synced!"));
 }
 
-void TTCPServer::SetUDPServer(TUDPServer& UDPServer) {
-    mUDPServer = std::ref(UDPServer);
+void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel) {
+    if (!Self)
+        Assert(c);
+    char C = Data.at(0);
+    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+        if (!ClientPtr.expired()) {
+            auto Client = ClientPtr.lock();
+            if (Self || Client.get() != c) {
+                if (Client->IsSynced() || Client->IsSyncing()) {
+                    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
+                        if (C == 'O' || C == 'T' || Data.length() > 1000)
+                            SendLarge(*Client, Data);
+                        else
+                            TCPSend(*Client, Data);
+                    } else
+                        UDPSend(*Client, Data);
+                }
+            }
+        }
+        return true;
+    });
 }
 
-void TTCPServer::operator()() {
-    while (!mUDPServer.has_value()) {
-        // hard spin
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+void TNetwork::UDPSend(TClient& Client, std::string Data) const {
+    if (!Client.IsConnected() || Client.GetStatus() < 0) {
+        // this can happen if we try to send a packet to a client that is either
+        // 1. not yet fully connected, or
+        // 2. disconnected and not yet fully removed
+        // this is fine can can be ignored :^)
+        return;
+    }
+    sockaddr_in Addr = Client.GetUDPAddr();
+    auto AddrSize = sizeof(Client.GetUDPAddr());
+    if (Data.length() > 400) {
+        std::string CMP(Comp(Data));
+        Data = "ABG:" + CMP;
     }
 #ifdef WIN32
-    WSADATA wsaData;
-    if (WSAStartup(514, &wsaData)) {
-        error("Can't start Winsock!");
-        return;
-    }
-    SOCKET client, Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    sockaddr_in addr {};
-    addr.sin_addr.S_un.S_addr = ADDR_ANY;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(Application::Settings.Port);
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        error("Can't bind socket! " + std::to_string(WSAGetLastError()));
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
-    }
-    if (Listener == -1) {
-        error("Invalid listening socket");
-        return;
-    }
-    if (listen(Listener, SOMAXCONN)) {
-        error("listener failed " + std::to_string(GetLastError()));
-        return;
-    }
-    info("Vehicle event network online");
-    do {
-        try {
-            client = accept(Listener, nullptr, nullptr);
-            if (client == -1) {
-                warn("Got an invalid client socket on connect! Skipping...");
-                continue;
-            }
-            std::thread ID(&TTCPServer::Identify, this, client);
-            ID.detach();
-        } catch (const std::exception& e) {
-            error("fatal: " + std::string(e.what()));
-        }
-    } while (client);
+    int sendOk;
+    int len = static_cast<int>(Data.size());
+#else
+    int64_t sendOk;
+    size_t len = Data.size();
+#endif // WIN32
 
-    CloseSocketProper(client);
-    WSACleanup();
+    sendOk = sendto(mUDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, int(AddrSize));
+#ifdef WIN32
+    if (sendOk == -1) {
+        debug(("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
+        if (Client.GetStatus() > -1)
+            Client.SetStatus(-1);
+    } else if (sendOk == 0) {
+        debug(("(UDP) sendto returned 0"));
+        if (Client.GetStatus() > -1)
+            Client.SetStatus(-1);
+    }
 #else // unix
-    // wondering why we need slightly different implementations of this?
-    // ask ms.
-    SOCKET client = -1;
-    SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    int optval = 1;
-    setsockopt(Listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
-    // TODO: check optval or return value idk
-    sockaddr_in addr {};
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(uint16_t(Application::Settings.Port));
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        error(("Can't bind socket! ") + std::string(strerror(errno)));
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
+    if (sendOk == -1) {
+        debug(("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
+        if (Client.GetStatus() > -1)
+            Client.SetStatus(-1);
+    } else if (sendOk == 0) {
+        debug(("(UDP) sendto returned 0"));
+        if (Client.GetStatus() > -1)
+            Client.SetStatus(-1);
     }
-    if (Listener == -1) {
-        error(("Invalid listening socket"));
-        return;
-    }
-    if (listen(Listener, SOMAXCONN)) {
-        error(("listener failed ") + std::string(strerror(errno)));
-        return;
-    }
-    info(("Vehicle event network online"));
-    do {
-        try {
-            if (mShutdown) {
-                debug("shutdown during TCP wait for accept loop");
-                break;
-            }
-            client = accept(Listener, nullptr, nullptr);
-            if (client == -1) {
-                warn(("Got an invalid client socket on connect! Skipping..."));
-                continue;
-            }
-            std::thread ID(&TTCPServer::Identify, this, client);
-            ID.detach(); // TODO: Add to a queue and attempt to join periodically
-        } catch (const std::exception& e) {
-            error(("fatal: ") + std::string(e.what()));
-        }
-    } while (client);
-
-    debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
-
-    CloseSocketProper(client);
-#endif
+#endif // WIN32
 }
-/*TTCPServer::~TTCPServer() {
-}*/
+
+std::string TNetwork::UDPRcvFromClient(sockaddr_in& client) const {
+    size_t clientLength = sizeof(client);
+    std::array<char, 1024> Ret {};
+#ifdef WIN32
+    auto Rcv = recvfrom(mUDPSock, Ret.data(), int(Ret.size()), 0, (sockaddr*)&client, (int*)&clientLength);
+#else // unix
+    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
+#endif // WIN32
+
+    if (Rcv == -1) {
+#ifdef WIN32
+        error(("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
+#else // unix
+        error(("(UDP) Error receiving from Client! Code : ") + std::string(strerror(errno)));
+#endif // WIN32
+        return "";
+    }
+    return std::string(Ret.begin(), Ret.begin() + Rcv);
+}

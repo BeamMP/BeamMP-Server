@@ -3,9 +3,8 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "TLuaEngine.h"
+#include "TNetwork.h"
 #include "TServer.h"
-#include "TTCPServer.h"
-#include "TUDPServer.h"
 
 #include <future>
 #include <thread>
@@ -172,7 +171,7 @@ char* ThreadOrigin(TLuaFile* lua) {
     memcpy(Data, T.c_str(), T.size());
     return Data;
 }
-void SafeExecution(TLuaEngine& Engine, TLuaFile* lua, const std::string& FuncName) {
+void SafeExecution(TLuaFile* lua, const std::string& FuncName) {
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {
@@ -192,19 +191,21 @@ void SafeExecution(TLuaEngine& Engine, TLuaFile* lua, const std::string& FuncNam
     ClearStack(luaState);
 }
 
-void ExecuteAsync(TLuaEngine& Engine, TLuaFile* lua, const std::string& FuncName) {
+void ExecuteAsync(TLuaFile* lua, const std::string& FuncName) {
     std::lock_guard<std::mutex> lockGuard(lua->Lock);
-    SafeExecution(Engine, lua, FuncName);
+    SafeExecution(lua, FuncName);
 }
+
 void CallAsync(TLuaFile* lua, const std::string& Func, int U) {
     //DebugPrintTID();
     lua->SetStopThread(false);
     int D = 1000 / U;
     while (!lua->GetStopThread()) {
-        ExecuteAsync(Engine(), lua, Func);
+        ExecuteAsync(lua, Func);
         std::this_thread::sleep_for(std::chrono::milliseconds(D));
     }
 }
+
 int lua_StopThread(lua_State* L) {
     auto MaybeScript = Engine().GetScript(L);
     Assert(MaybeScript.has_value());
@@ -321,22 +322,22 @@ int lua_GetAllPlayers(lua_State* L) {
         return 0;
     return 1;
 }
-int lua_GetIdentifiers(lua_State* L){
-    if(lua_isnumber(L,1)){
+int lua_GetIdentifiers(lua_State* L) {
+    if (lua_isnumber(L, 1)) {
         auto MaybeClient = GetClient(Engine().Server(), int(lua_tonumber(L, 1)));
         if (MaybeClient && !MaybeClient.value().expired()) {
             auto IDs = MaybeClient.value().lock()->GetIdentifiers();
-            if(IDs.empty())
+            if (IDs.empty())
                 return 0;
             lua_newtable(L);
-            for(const std::string& ID : IDs){
-                lua_pushstring(L, ID.substr(0,ID.find(':')).c_str());
+            for (const std::string& ID : IDs) {
+                lua_pushstring(L, ID.substr(0, ID.find(':')).c_str());
                 lua_pushstring(L, ID.c_str());
                 lua_settable(L, -3);
             }
-        }else
+        } else
             return 0;
-    }else{
+    } else {
         SendError(Engine(), L, "lua_GetIdentifiers wrong arguments");
         return 0;
     }
@@ -382,7 +383,7 @@ int lua_dropPlayer(lua_State* L) {
             Reason = std::string((" Reason : ")) + lua_tostring(L, 2);
         }
         auto c = MaybeClient.value().lock();
-        Engine().TCPServer().Respond(*c, "C:Server:You have been Kicked from the server! " + Reason, true);
+        Engine().Network().Respond(*c, "C:Server:You have been Kicked from the server! " + Reason, true);
         c->SetStatus(-2);
         info(("Closing socket due to kick"));
         CloseSocketProper(c->GetTCPSock());
@@ -396,7 +397,7 @@ int lua_sendChat(lua_State* L) {
             int ID = int(lua_tointeger(L, 1));
             if (ID == -1) {
                 std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
-                Engine().UDPServer().SendToAll(nullptr, Packet, true, true);
+                Engine().Network().SendToAll(nullptr, Packet, true, true);
             } else {
                 auto MaybeClient = GetClient(Engine().Server(), ID);
                 if (MaybeClient && !MaybeClient.value().expired()) {
@@ -404,7 +405,7 @@ int lua_sendChat(lua_State* L) {
                     if (!c->IsSynced())
                         return 0;
                     std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
-                    Engine().TCPServer().Respond(*c, Packet, true);
+                    Engine().Network().Respond(*c, Packet, true);
                 } else
                     SendError(Engine(), L, ("SendChatMessage invalid argument [1] invalid ID"));
             }
@@ -431,7 +432,7 @@ int lua_RemoveVehicle(lua_State* L) {
         auto c = MaybeClient.value().lock();
         if (!c->GetCarData(VID).empty()) {
             std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
-            Engine().UDPServer().SendToAll(nullptr, Destroy, true, true);
+            Engine().Network().SendToAll(nullptr, Destroy, true, true);
             c->DeleteCar(VID);
         }
     } else
@@ -463,7 +464,7 @@ int lua_RemoteEvent(lua_State* L) {
     int ID = int(lua_tointeger(L, 1));
     std::string Packet = "E:" + std::string(lua_tostring(L, 2)) + ":" + std::string(lua_tostring(L, 3));
     if (ID == -1)
-        Engine().UDPServer().SendToAll(nullptr, Packet, true, true);
+        Engine().Network().SendToAll(nullptr, Packet, true, true);
     else {
         auto MaybeClient = GetClient(Engine().Server(), ID);
         if (!MaybeClient || MaybeClient.value().expired()) {
@@ -471,7 +472,7 @@ int lua_RemoteEvent(lua_State* L) {
             return 0;
         }
         auto c = MaybeClient.value().lock();
-        Engine().TCPServer().Respond(*c, Packet, true);
+        Engine().Network().Respond(*c, Packet, true);
     }
     return 0;
 }
