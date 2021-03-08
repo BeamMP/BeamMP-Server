@@ -2,8 +2,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "TPPSMonitor.h"
-#include "TTCPServer.h"
-#include "TUDPServer.h"
+#include "TNetwork.h"
 #include <TLuaFile.h>
 #include <any>
 #include <sstream>
@@ -13,8 +12,6 @@
 #include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
-
-
 
 namespace json = rapidjson;
 
@@ -64,7 +61,7 @@ size_t TServer::ClientCount() const {
     return mClients.size();
 }
 
-void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TUDPServer& UDPServer, TTCPServer& TCPServer) {
+void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
         abort();
     }
@@ -86,7 +83,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     //V to Z
     if (Code <= 90 && Code >= 86) {
         PPSMonitor.IncrementInternalPPS();
-        UDPServer.SendToAll(LockedClient.get(), Packet, false, false);
+        Network.SendToAll(LockedClient.get(), Packet, false, false);
         return;
     }
     switch (Code) {
@@ -94,24 +91,24 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
 #ifdef DEBUG
         debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
 #endif
-        TCPServer.SyncClient(Client);
+        Network.SyncClient(Client);
         return;
     case 'p':
-        TCPServer.Respond(*LockedClient, ("p"), false);
-        TCPServer.UpdatePlayer(*LockedClient);
+        Network.Respond(*LockedClient, ("p"), false);
+        Network.UpdatePlayer(*LockedClient);
         LockedClient->UpdatePingTime();
         return;
     case 'O':
         if (Packet.length() > 1000) {
             debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.length()));
         }
-        ParseVehicle(*LockedClient, Packet, TCPServer, UDPServer);
+        ParseVehicle(*LockedClient, Packet, Network);
         return;
     case 'J':
 #ifdef DEBUG
         debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
-        UDPServer.SendToAll(LockedClient.get(), Packet, false, true);
+        Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
     case 'C':
 #ifdef DEBUG
@@ -122,7 +119,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         Res = TriggerLuaEvent("onChatMessage", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }), true);
         if (std::any_cast<int>(Res))
             break;
-        UDPServer.SendToAll(nullptr, Packet, true, true);
+        Network.SendToAll(nullptr, Packet, true, true);
         return;
     case 'E':
 #ifdef DEBUG
@@ -156,13 +153,13 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
     }
 }
 
-void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPServer, TUDPServer& UDPServer) {
+void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network) {
     if (Pckt.length() < 4)
         return;
     std::string Packet = Pckt;
     char Code = Packet.at(1);
     int PID = -1;
-    int VID = -1,Pos;
+    int VID = -1, Pos;
     std::string Data = Packet.substr(3), pid, vid;
     switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
@@ -175,13 +172,13 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
             auto Res = TriggerLuaEvent(("onVehicleSpawn"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), CarID, Packet.substr(3) } }), true);
             if (c.GetCarCount() >= Application::Settings.MaxCars || std::any_cast<int>(Res)) {
-                TCPServer.Respond(c, Packet, true);
+                Network.Respond(c, Packet, true);
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(CarID);
-                TCPServer.Respond(c, Destroy, true);
+                Network.Respond(c, Destroy, true);
                 debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
             } else {
                 c.AddNewCar(CarID, Packet);
-                UDPServer.SendToAll(nullptr, Packet, true, true);
+                Network.SendToAll(nullptr, Packet, true, true);
             }
         }
         return;
@@ -200,11 +197,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Packet.substr(3) } }),
                 true);
             if (!std::any_cast<int>(Res)) {
-                UDPServer.SendToAll(&c, Packet, false, true);
+                Network.SendToAll(&c, Packet, false, true);
                 Apply(c, VID, Packet);
             } else {
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
-                TCPServer.Respond(c, Destroy, true);
+                Network.Respond(c, Destroy, true);
                 c.DeleteCar(VID);
             }
         }
@@ -220,7 +217,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            UDPServer.SendToAll(nullptr, Packet, true, true);
+            Network.SendToAll(nullptr, Packet, true, true);
             TriggerLuaEvent(("onVehicleDeleted"), false, nullptr,
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID } }), false);
             c.DeleteCar(VID);
@@ -233,7 +230,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
 #endif
         Pos = int(Data.find('-'));
         pid = Data.substr(0, Pos++);
-        vid = Data.substr(Pos,Data.find(':') - Pos);
+        vid = Data.substr(Pos, Data.find(':') - Pos);
 
         if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
             PID = stoi(pid);
@@ -243,16 +240,16 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TTCPServer& TCPS
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             Data = Data.substr(Data.find('{'));
             TriggerLuaEvent("onVehicleReset", false, nullptr,
-                            std::make_unique<TLuaArg>(TLuaArg {{ c.GetID(), VID, Data}}),
-                            false);
-            UDPServer.SendToAll(&c, Packet, false, true);
+                std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Data } }),
+                false);
+            Network.SendToAll(&c, Packet, false, true);
         }
         return;
     case 't':
 #ifdef DEBUG
         debug(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
-        UDPServer.SendToAll(&c, Packet, false, true);
+        Network.SendToAll(&c, Packet, false, true);
         return;
     default:
 #ifdef DEBUG

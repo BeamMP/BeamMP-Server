@@ -2,11 +2,10 @@
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
+#include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
-#include "TUDPServer.h"
-#include <TTCPServer.h>
 #include <thread>
 
 #ifdef __unix
@@ -52,11 +51,9 @@ int main(int argc, char** argv) {
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
-    TTCPServer TCPServer(Server, PPSMonitor, ResourceManager);
-    TUDPServer UDPServer(Server, PPSMonitor, TCPServer);
-    TLuaEngine LuaEngine(Server, TCPServer, UDPServer);
-    TCPServer.SetUDPServer(UDPServer);
-    PPSMonitor.SetTCPServer(TCPServer);
+    TNetwork Network(Server, PPSMonitor, ResourceManager);
+    TLuaEngine LuaEngine(Server, Network);
+    PPSMonitor.SetNetwork(Network);
     Application::Console().InitializeLuaConsole(LuaEngine);
 
     // TODO: replace
