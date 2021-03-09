@@ -34,7 +34,7 @@ int TClient::GetOpenCarID() const {
 }
 
 void TClient::AddNewCar(int Ident, const std::string& Data) {
-    mVehicleData.insert(TVehicleData(Ident, Data));
+    mVehicleData.emplace(Ident, Data);
 }
 
 TClient::TVehicleDataLockPair TClient::GetAllCars() {
