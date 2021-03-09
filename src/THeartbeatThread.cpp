@@ -34,6 +34,8 @@ void THeartbeatThread::operator()() {
         if (!Application::Settings.CustomIP.empty())
             Body += "&ip=" + Application::Settings.CustomIP;
 
+        Body += "&pps=" + Application::PPS();
+
         T = Http::POST("beammp.com", "/heartbeatv2", {}, Body, false);
 
         if (T.substr(0, 2) != "20") {
@@ -73,7 +75,6 @@ std::string THeartbeatThread::GenerateCall() {
         << "&version=" << Application::ServerVersion()
         << "&clientversion=" << Application::ClientVersion()
         << "&name=" << Application::Settings.ServerName
-        << "&pps=" << Application::PPS()
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()
