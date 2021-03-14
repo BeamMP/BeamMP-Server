@@ -164,29 +164,12 @@ int lua_TriggerEventG(lua_State* L) {
     return 0;
 }
 
-char* ThreadOrigin(TLuaFile* lua) {
-    std::string T = "Thread in " + fs::path(lua->GetFileName()).filename().string();
-    char* Data = new char[T.size() + 1];
-    std::fill_n(Data, T.size() + 1, 0);
-    memcpy(Data, T.c_str(), T.size());
-    return Data;
-}
 void SafeExecution(TLuaFile* lua, const std::string& FuncName) {
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {
-        char* Origin = ThreadOrigin(lua);
-#ifdef WIN32
-        //__try {
         int R = lua_pcall(luaState, 0, 0, 0);
         CheckLua(luaState, R);
-        /*} __except (Handle(GetExceptionInformation(), Origin)) {
-        }*/
-#else // unix
-        int R = lua_pcall(luaState, 0, 0, 0);
-        CheckLua(luaState, R);
-#endif // WIN32
-        delete[] Origin;
     }
     ClearStack(luaState);
 }
