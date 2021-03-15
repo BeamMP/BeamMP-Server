@@ -20,7 +20,7 @@ jobs:
         with:
             vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp'
             vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-            vcpkgGitCommitId: '75522bb1f2e7d863078bcd06322348f053a9e33f'
+            #vcpkgGitCommitId: '75522bb1f2e7d863078bcd06322348f053a9e33f'
             vcpkgTriplet: 'x64-windows-static'
             appendedCacheKey: ${{ hashFiles( '**/vcpkg_manifest/vcpkg.json' ) }}
             additionalCachedPaths: ${{ env.buildDir }}/vcpkg_installed          
