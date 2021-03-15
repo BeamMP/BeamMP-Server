@@ -23,7 +23,7 @@ Currently only linux and windows are supported (generally). See [Releases](https
 
 Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
-Dependencies for windows can be installed with `vkpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, `boost-beast`, `boost-asio` and `openssl`.
+Dependencies for windows can be installed with `vcpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, `boost-beast`, `boost-asio` and `openssl`.
 
 #### Linux / \*nix
 
