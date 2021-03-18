@@ -83,8 +83,6 @@ jobs:
           vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
           vcpkgGitCommitId: '30124253eecff36bc90f73341edbfb4f845e2a1e'
           vcpkgTriplet: 'x64-windows-static'
-          appendedCacheKey: ${{ hashFiles( '**/vcpkg_manifest/vcpkg.json' ) }}
-          additionalCachedPaths: ${{ env.buildDir }}/vcpkg_installed          
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-windows
