@@ -3,7 +3,7 @@
 [![CMake Windows Build](https://github.com/BeamMP/BeamMP-Server/workflows/CMake%20Windows%20Build/badge.svg?branch=master)](https://github.com/BeamMP/BeamMP-Server/actions?query=workflow%3A%22CMake+Windows+Build%22)
 [![CMake Linux Build](https://github.com/BeamMP/BeamMP-Server/workflows/CMake%20Linux%20Build/badge.svg?branch=master)](https://github.com/BeamMP/BeamMP-Server/actions?query=workflow%3A%22CMake+Linux+Build%22)
 
-This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** [BeamNG.drive](https://www.beamng.com/) called .
+This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** for the game [BeamNG.drive](https://www.beamng.com/).
 The server is the point throug which all clients communicate. You can write lua mods for the server, detailed instructions on the [BeamMP Wiki](https://wiki.beammp.com).
 
 ## About Building from Source
