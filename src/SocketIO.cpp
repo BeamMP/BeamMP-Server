@@ -27,7 +27,7 @@ SocketIO::SocketIO() noexcept
 
     mClient.set_logs_quiet();
     mClient.set_reconnect_delay(10000);
-    mClient.connect("https://backend.beammp.com");
+    mClient.connect(Application::GetBackendUrlForSocketIO());
 }
 
 SocketIO::~SocketIO() {

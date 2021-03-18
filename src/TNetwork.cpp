@@ -261,7 +261,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     }
 
     if (!Rc.empty()) {
-        Rc = Http::POST("auth.beammp.com", "/pkToUser", {}, R"({"key":")" + Rc + "\"}", true);
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), "/pkToUser", {}, R"({"key":")" + Rc + "\"}", true);
     }
 
     debug("Auth response: " + Rc);

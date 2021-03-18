@@ -49,6 +49,10 @@ public:
 
     static inline TSettings Settings {};
 
+    static std::string GetBackendUrlForAuth() { return "auth.beammp.com"; }
+    static std::string GetBackendHostname() { return "beammp.com"; }
+    static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
+
 private:
     static inline std::string mPPS;
     static std::unique_ptr<TConsole> mConsole;
