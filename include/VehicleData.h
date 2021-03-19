@@ -11,13 +11,13 @@ public:
     [[nodiscard]] int ID() const { return mID; }
 
     [[nodiscard]] std::string Data() const { return mData; }
-    void SetData(const std::string& Data) { mData = Data; }
+    void SetData(const std::string& Data) const { mData = Data; }
 
     bool operator==(const TVehicleData& v) const { return mID == v.mID; }
 
 private:
     int mID { -1 };
-    std::string mData;
+    mutable std::string mData;
 };
 
 namespace std {

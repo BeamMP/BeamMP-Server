@@ -54,7 +54,7 @@ std::string TClient::GetCarData(int Ident) {
 void TClient::SetCarData(int Ident, const std::string& Data) {
     for (auto& v : mVehicleData) {
         if (v.ID() == Ident) {
-            v.Data() = Data;
+            v.SetData(Data);
             return;
         }
     }
