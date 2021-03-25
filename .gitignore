@@ -23,16 +23,8 @@ mono_crash.*
 out/
 
 #Clion Files
-cmake-build-debug/CMakeFiles/
-cmake-build-release/CMakeFiles/
-cmake-build-debug/Resources/
-cmake-build-release/Resources/
-cmake-build-debug/*.*
-cmake-build-release/*.*
-cmake-build-debug/Makefile
-cmake-build-release/Makefile
-!cmake-build-debug/*.lib
-!cmake-build-release/*.lib
+cmake-build-debug/
+cmake-build-release/
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
