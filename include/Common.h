@@ -87,9 +87,9 @@ void RegisterThread(const std::string str);
 // if this is defined, we will show the full function signature infront of
 // each info/debug/warn... call instead of the 'filename:line' format.
 #if defined(BMP_FULL_FUNCTION_NAMES)
-#define _this_location (ThreadName() + _function_name)
+#define _this_location (ThreadName() + _function_name + " ")
 #else
-#define _this_location (ThreadName() + _file_basename + ":" + _line)
+#define _this_location (ThreadName() + _file_basename + ":" + _line + " ")
 #endif
 
 #else // !defined(DEBUG)
