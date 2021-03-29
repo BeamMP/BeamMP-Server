@@ -2,8 +2,8 @@
 #include "Client.h"
 #include <CustomAssert.h>
 #include <Http.h>
-#include <cstring>
 #include <array>
+#include <cstring>
 
 TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
     : mServer(Server)
@@ -30,6 +30,7 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 }
 
 void TNetwork::UDPServerMain() {
+    RegisterThread("UDPServer");
 #ifdef WIN32
     WSADATA data;
     if (WSAStartup(514, &data)) {
@@ -99,6 +100,7 @@ void TNetwork::UDPServerMain() {
 }
 
 void TNetwork::TCPServerMain() {
+    RegisterThread("TCPServer");
 #ifdef WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)) {
@@ -201,6 +203,7 @@ void TNetwork::TCPServerMain() {
 namespace json = rapidjson;
 
 void TNetwork::Identify(SOCKET TCPSock) {
+    RegisterThreadAuto();
     char Code;
     if (recv(TCPSock, &Code, 1, 0) != 1) {
         CloseSocketProper(TCPSock);
@@ -293,6 +296,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         return;
     }
 
+    RegisterThread(Client->GetName());
     debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {

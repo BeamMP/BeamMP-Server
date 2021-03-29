@@ -3,6 +3,8 @@
 #include "TConsole.h"
 #include <array>
 #include <iostream>
+#include <map>
+#include <thread>
 #include <zlib.h>
 
 std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
@@ -64,4 +66,23 @@ std::string DeComp(std::string Compressed) {
     std::string Ret(TO, 0);
     std::copy_n(C.begin(), TO, Ret.begin());
     return Ret;
+}
+
+// thread name stuff
+
+std::map<std::thread::id, std::string> threadNameMap;
+
+std::string ThreadName() {
+    if (Application::Settings.DebugModeEnabled) {
+        auto id = std::this_thread::get_id();
+        if (threadNameMap.find(id) != threadNameMap.end()) {
+            // found
+            return threadNameMap.at(id) + " ";
+        }
+    }
+    return "";
+}
+
+void RegisterThread(const std::string str) {
+    threadNameMap[std::this_thread::get_id()] = str;
 }

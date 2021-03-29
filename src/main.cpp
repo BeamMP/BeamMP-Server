@@ -33,7 +33,9 @@ void UnixSignalHandler(int sig) {
 
 int main(int argc, char** argv) {
 #ifdef __unix
+#if DEBUG
     info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
+#endif // DEBUG
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
 #ifndef DEBUG
@@ -48,6 +50,7 @@ int main(int argc, char** argv) {
 
     TServer Server(argc, argv);
     [[maybe_unused]] TConfig Config("Server.cfg");
+    RegisterThread("Main");
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);

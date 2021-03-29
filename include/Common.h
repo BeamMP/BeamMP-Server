@@ -60,28 +60,12 @@ private:
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 };
 
+std::string ThreadName();
+void RegisterThread(const std::string str);
+#define RegisterThreadAuto() RegisterThread(__func__)
+
 #define KB 1024
 #define MB (KB * 1024)
-
-#ifndef DEBUG
-static inline void warn(const std::string& str) {
-    Application::Console().Write(std::string("[WARN] ") + str);
-}
-static inline void error(const std::string& str) {
-    Application::Console().Write(std::string("[ERROR] ") + str);
-}
-static inline void info(const std::string& str) {
-    Application::Console().Write(std::string("[INFO] ") + str);
-}
-static inline void debug(const std::string& str) {
-    if (Application::Settings.DebugModeEnabled) {
-        Application::Console().Write(std::string("[DEBUG] ") + str);
-    }
-}
-static inline void luaprint(const std::string& str) {
-    Application::Console().WriteRaw(str);
-}
-#else // DEBUG
 
 #define _file_basename std::filesystem::path(__FILE__).filename().string()
 #define _line std::to_string(__LINE__)
@@ -98,26 +82,34 @@ static inline void luaprint(const std::string& str) {
 #define _function_name std::string(__func__)
 #endif
 
+#if defined(DEBUG)
+
 // if this is defined, we will show the full function signature infront of
 // each info/debug/warn... call instead of the 'filename:line' format.
 #if defined(BMP_FULL_FUNCTION_NAMES)
-#define _this_location (_function_name)
+#define _this_location (ThreadName() + _function_name)
 #else
-#define _this_location (_file_basename + ":" + _line)
+#define _this_location (ThreadName() + _file_basename + ":" + _line)
 #endif
 
-#define warn(x) Application::Console().Write(_this_location + std::string(" [WARN] ") + (x))
-#define info(x) Application::Console().Write(_this_location + std::string(" [INFO] ") + (x))
-#define error(x) Application::Console().Write(_this_location + std::string(" [ERROR] ") + (x))
-#define luaprint(x) Application::Console().Write(_this_location + std::string(" [LUA] ") + (x))
-#define debug(x)                                                                           \
-    do {                                                                                   \
-        if (Application::Settings.DebugModeEnabled) {                                      \
-            Application::Console().Write(_this_location + std::string(" [DEBUG] ") + (x)); \
-        }                                                                                  \
+#else // !defined(DEBUG)
+
+#define _this_location (ThreadName())
+
+#endif // defined(DEBUG)
+
+#define warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
+#define info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
+#define error(x) Application::Console().Write(_this_location + std::string("[ERROR] ") + (x))
+#define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
+#define debug(x)                                                                          \
+    do {                                                                                  \
+        if (Application::Settings.DebugModeEnabled) {                                     \
+            Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
+        }                                                                                 \
     } while (false)
-#endif // DEBUG
 
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
+

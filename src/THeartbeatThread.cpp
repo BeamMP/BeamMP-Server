@@ -6,6 +6,7 @@
 #include <sstream>
 
 void THeartbeatThread::operator()() {
+    RegisterThread("Heartbeat");
     std::string Body;
     std::string T;
 

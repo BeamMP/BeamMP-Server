@@ -32,6 +32,7 @@ TLuaEngine::TLuaEngine(TServer& Server, TNetwork& Network)
 }
 
 void TLuaEngine::operator()() {
+    RegisterThread("LuaEngine");
     info("Lua system online");
     while (!mShutdown) {
         if (!mLuaFiles.empty()) {

@@ -1,8 +1,8 @@
 #include "TServer.h"
 #include "Client.h"
 #include "Common.h"
-#include "TPPSMonitor.h"
 #include "TNetwork.h"
+#include "TPPSMonitor.h"
 #include <TLuaFile.h>
 #include <any>
 #include <sstream>
@@ -16,7 +16,7 @@
 namespace json = rapidjson;
 
 TServer::TServer(int argc, char** argv) {
-    info("BeamMP Server running version " + Application::ServerVersion());
+    info("BeamMP Server v" + Application::ServerVersion());
     if (argc > 1) {
         Application::Settings.CustomIP = argv[1];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
