@@ -474,8 +474,8 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         mServer.RemoveClient(c);
         return;
     }
-    RegisterThread("(" + std::to_string(c.lock()->GetID()) + ") \"" + c.lock()->GetName() + "\"");
     OnConnect(c);
+    RegisterThread("(" + std::to_string(c.lock()->GetID()) + ") \"" + c.lock()->GetName() + "\"");
     while (true) {
         if (c.expired())
             break;
