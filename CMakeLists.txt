@@ -46,7 +46,7 @@ add_executable(BeamMP-Server
         include/TResourceManager.h src/TResourceManager.cpp
         include/THeartbeatThread.h src/THeartbeatThread.cpp
         include/Http.h src/Http.cpp
-        include/SocketIO.h src/SocketIO.cpp
+        #include/SocketIO.h src/SocketIO.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp)
 
