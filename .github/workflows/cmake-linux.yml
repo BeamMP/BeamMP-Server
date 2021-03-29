@@ -34,3 +34,8 @@ jobs:
       shell: bash
       run: cmake --build . --config $BUILD_TYPE
 
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: BeamMP-Server-linux
+        path: ${{github.workspace}}/build-linux/BeamMP-Server
