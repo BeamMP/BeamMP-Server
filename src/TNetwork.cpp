@@ -296,7 +296,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         return;
     }
 
-    RegisterThread(Client->GetName());
+    RegisterThread("(" + std::to_string(Client->GetID()) + ") " + Client->GetName());
     debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
