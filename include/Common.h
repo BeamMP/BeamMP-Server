@@ -50,7 +50,7 @@ public:
     static inline TSettings Settings {};
 
     static std::string GetBackendUrlForAuth() { return "auth.beammp.com"; }
-    static std::string GetBackendHostname() { return "beammp.com"; }
+    static std::string GetBackendHostname() { return "backend.beammp.com"; }
     static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
 
 private:

@@ -1,4 +1,5 @@
 #include "Common.h"
+#include "Http.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
