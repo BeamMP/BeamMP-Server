@@ -36,7 +36,8 @@ std::string GetDate() {
              << " ";
     }
     */
-    return date.str();
+    warn(date.rdbuf()->str());
+    return std::string(date.str());
 }
 
 TConsole::TConsole() {
