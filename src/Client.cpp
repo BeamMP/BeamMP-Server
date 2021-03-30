@@ -69,7 +69,7 @@ TServer& TClient::Server() const {
     return mServer;
 }
 
-void TClient::EnqueueMissedPacketDuringSyncing(const std::string& Packet) {
+void TClient::EnqueuePacket(const std::string& Packet) {
     std::unique_lock Lock(mMissedPacketsMutex);
     mMissedPacketsDuringSyncing.push(Packet);
 }

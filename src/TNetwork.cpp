@@ -357,12 +357,12 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             //std::unique_lock Lock(c.MissedPacketQueueMutex());
             if(!Data.empty()) {
                 if (Data.at(0) == 'O' || Data.at(0) == 'A' || Data.at(0) == 'C' || Data.at(0) == 'E') {
-                    c.EnqueueMissedPacketDuringSyncing(Data);
+                    c.EnqueuePacket(Data);
                 }
             }
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
-            debug("sending " + std::to_string(c.MissedPacketQueueSize()) + " missed packets");
+            debug("sending " + std::to_string(c.MissedPacketQueueSize()) + " queued packets");
             while (c.MissedPacketQueueSize() > 0) {
                 std::string QData {};
                 { // locked context
@@ -389,6 +389,8 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             }
         }
     }
+
+
     int32_t Size, Sent;
     std::string Send(4, 0);
     Size = int32_t(Data.size());
@@ -860,9 +862,16 @@ void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Re
             if (Client->IsSynced() || Client->IsSyncing()) {
                 if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
                     if (C == 'O' || C == 'T' || Data.length() > 1000) {
-                        ret = SendLarge(*Client, Data);
+                        if (Data.length() > 400) {
+                            std::string CMP(Comp(Data));
+                            Client->EnqueuePacket("ABG:" + CMP);
+                        }else{
+                            Client->EnqueuePacket(Data);
+                        }
+                        //ret = SendLarge(*Client, Data);
                     } else {
-                        ret = TCPSend(*Client, Data);
+                        Client->EnqueuePacket(Data);
+                        //ret = TCPSend(*Client, Data);
                     }
                 } else {
                     ret = UDPSend(*Client, Data);
