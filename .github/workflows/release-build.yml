@@ -36,6 +36,8 @@ jobs:
     needs: create-release
     steps:
       - uses: actions/checkout@v2
+        with:
+            submodules: 'true'
  
       - name: Install Dependencies
         run: |
@@ -74,6 +76,8 @@ jobs:
     needs: create-release
     steps:
       - uses: actions/checkout@v2
+        with:
+            submodules: 'true'
       
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
         uses: lukka/run-vcpkg@main
