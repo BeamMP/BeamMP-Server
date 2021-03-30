@@ -139,8 +139,5 @@ std::string Http::POST(const std::string& host, const std::string& target, const
     } catch (const std::exception& e) {
         error(e.what());
         return "-1";
-    } catch (const boost::system::system_error& e) {
-        error(e.what());
-        return "-1";
     }
 }
