@@ -38,26 +38,27 @@ jobs:
       - uses: actions/checkout@v2
         with:
             submodules: 'true'
- 
+
       - name: Install Dependencies
         run: |
             sudo apt-get update
-            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev
+            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev
             sudo add-apt-repository ppa:mhier/libboost-latest
             sudo apt-get install -y libboost1.70-dev libboost1.70
-  
+
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-linux
-  
+
       - name: Configure CMake
         shell: bash
         working-directory: ${{github.workspace}}/build-linux
         run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10
-  
+
       - name: Build
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
         run: cmake --build . --config $BUILD_TYPE
+
 
       - name: Upload Release Asset
         id: upload-release-asset 
@@ -83,10 +84,10 @@ jobs:
         uses: lukka/run-vcpkg@main
         id: runvcpkg
         with:
-          vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl'
-          vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-          vcpkgGitCommitId: '30124253eecff36bc90f73341edbfb4f845e2a1e'
-          vcpkgTriplet: 'x64-windows-static'
+            vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp'
+            vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
+            vcpkgGitCommitId: '75522bb1f2e7d863078bcd06322348f053a9e33f'
+            vcpkgTriplet: 'x64-windows-static'
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-windows
@@ -99,7 +100,7 @@ jobs:
       - name: Build
         working-directory: ${{github.workspace}}/build-windows
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE        
+        run: cmake --build . --config $BUILD_TYPE
 
       - name: Upload Release Asset
         id: upload-release-asset 
