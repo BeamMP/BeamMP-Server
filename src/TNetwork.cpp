@@ -359,12 +359,14 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     Sent = 0;
     Size += 4;
     do {
-        int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, 0);
+        int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
         if (Temp == 0) {
+            debug("send() == 0: " + std::string(std::strerror(errno)));
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             return false;
         } else if (Temp < 0) {
+            debug("send() < 0: " + std::string(std::strerror(errno)));
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             CloseSocketProper(c.GetTCPSock());
