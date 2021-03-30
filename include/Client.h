@@ -58,6 +58,7 @@ public:
     [[nodiscard]] std::queue<std::string>& MissedPacketQueue() { return mMissedPacketsDuringSyncing; }
     [[nodiscard]] const std::queue<std::string>& MissedPacketQueue() const { return mMissedPacketsDuringSyncing; }
     [[nodiscard]] size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
+    [[nodiscard]] std::mutex& MissedPacketQueueMutex() const { return mMissedPacketsMutex; }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     [[nodiscard]] TServer& Server() const;
     void UpdatePingTime();
@@ -68,7 +69,7 @@ private:
     bool mIsConnected = false;
     bool mIsSynced = false;
     bool mIsSyncing = false;
-    std::mutex mMissedPacketsMutex;
+    mutable std::mutex mMissedPacketsMutex;
     std::queue<std::string> mMissedPacketsDuringSyncing;
     std::set<std::string> mIdentifiers;
     bool mIsGuest = false;
