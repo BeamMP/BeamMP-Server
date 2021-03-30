@@ -467,6 +467,8 @@ std::string TNetwork::TCPRcv(TClient& c) {
     //debug("Parsing from " + c->GetName() + " -> " +std::to_string(Ret.size()));
 #endif
 
+    c.UpdatePingTime();
+
     return Ret;
 }
 

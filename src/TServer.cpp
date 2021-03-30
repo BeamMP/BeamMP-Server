@@ -96,7 +96,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     case 'p':
         Network.Respond(*LockedClient, ("p"), false);
         Network.UpdatePlayer(*LockedClient);
-        LockedClient->UpdatePingTime();
         return;
     case 'O':
         if (Packet.length() > 1000) {
