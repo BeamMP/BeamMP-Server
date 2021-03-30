@@ -489,7 +489,8 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         if (c.expired())
             break;
         auto Client = c.lock();
-        if (Client->GetStatus() <= -1) {
+        if (Client->GetStatus() < 0) {
+            debug("client status < 0, breaking client loop");
             break;
         }
         TServer::GlobalParser(c, TCPRcv(*Client), mPPSMonitor, *this);

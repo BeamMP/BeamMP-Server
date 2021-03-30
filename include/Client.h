@@ -22,6 +22,8 @@ public:
     };
 
     explicit TClient(TServer& Server);
+    TClient(const TClient&) = delete;
+    TClient& operator=(const TClient&) = delete;
 
     void AddNewCar(int Ident, const std::string& Data);
     void SetCarData(int Ident, const std::string& Data);

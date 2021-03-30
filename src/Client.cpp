@@ -69,7 +69,7 @@ TServer& TClient::Server() const {
     return mServer;
 }
 
-void TClient::EnqueueMissedPacketDuringSyncing(const std::string& Packet){
+void TClient::EnqueueMissedPacketDuringSyncing(const std::string& Packet) {
     std::unique_lock Lock(mMissedPacketsMutex);
     mMissedPacketsDuringSyncing.push(Packet);
 }
@@ -81,6 +81,7 @@ TClient::TClient(TServer& Server)
 
 void TClient::UpdatePingTime() {
     mLastPingTime = std::chrono::high_resolution_clock::now();
+    debug(std::string("ping time updated!: ") + ((SecondsSinceLastPing() == 0) ? "OK" : "ERR"));
 }
 int TClient::SecondsSinceLastPing() {
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
