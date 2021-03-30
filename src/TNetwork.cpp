@@ -343,7 +343,9 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
         if (c.IsSyncing()) {
             //std::unique_lock Lock(c.MissedPacketQueueMutex());
-            c.EnqueueMissedPacketDuringSyncing(Data);
+            if(!Data.empty() && Data.at(0) != 'S') {
+                c.EnqueueMissedPacketDuringSyncing(Data);
+            }
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
             debug("sending " + std::to_string(c.MissedPacketQueueSize()) + " missed packets");
