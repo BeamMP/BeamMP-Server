@@ -267,8 +267,6 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         Rc = Http::POST(Application::GetBackendUrlForAuth(), "/pkToUser", {}, R"({"key":")" + Rc + "\"}", true);
     }
 
-    debug("Auth response: " + Rc);
-
     json::Document AuthResponse;
     AuthResponse.Parse(Rc.c_str());
     if (Rc == "-1" || AuthResponse.HasParseError()) {
