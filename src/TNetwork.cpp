@@ -299,7 +299,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto Cl = ClientPtr.lock();
-            info("Client Iteration: Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
+            info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
             if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
                 info("New client matched with current iteration");
                 info("Old client (" + Cl->GetName() + ") kicked: Reconnecting");

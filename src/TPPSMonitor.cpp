@@ -47,6 +47,7 @@ void TPPSMonitor::operator()() {
             return true;
         });
         for (auto& ClientToKick : TimedOutClients) {
+            debug("client " + std::string("(") + std::to_string(ClientToKick->GetID()) + ")" + ClientToKick->GetName() + " kicked due to timeout!");
             Network().ClientKick(*ClientToKick, "Timeout (no ping for >10 seconds)");
         }
         TimedOutClients.clear();
