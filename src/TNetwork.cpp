@@ -255,7 +255,9 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         ClientKick(*Client, "Invalid version header!");
         return;
     }
-    TCPSend(*Client, "S");
+    if (!TCPSend(*Client, "S")) {
+        // TODO: handle
+    }
 
     Rc = TCPRcv(*Client);
 
@@ -356,7 +358,12 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
                     c.MissedPacketQueue().pop();
                 } // end locked context
                 // debug("sending a missed packet: " + QData);
-                TCPSend(c, QData, true);
+                if (!TCPSend(c, QData, true)) {
+                    if (c.GetStatus() > -1)
+                        c.SetStatus(-1);
+                    CloseSocketProper(c.GetTCPSock());
+                    return false;
+                }
             }
         }
     }
@@ -468,14 +475,14 @@ std::string TNetwork::TCPRcv(TClient& c) {
     //debug("Parsing from " + c->GetName() + " -> " +std::to_string(Ret.size()));
 #endif
 
-    c.UpdatePingTime();
-
     return Ret;
 }
 
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     info("Client kicked: " + R);
-    TCPSend(c, "E" + R);
+    if (!TCPSend(c, "E" + R)) {
+        // TODO handle
+    }
     c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
@@ -521,7 +528,7 @@ void TNetwork::UpdatePlayer(TClient& Client) {
         return true;
     });
     Packet = Packet.substr(0, Packet.length() - 1);
-    Respond(Client, Packet, true);
+    (void)Respond(Client, Packet, true);
 }
 
 void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked) {
@@ -582,7 +589,7 @@ void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     SyncResources(*LockedClient);
     if (LockedClient->GetStatus() < 0)
         return;
-    Respond(*LockedClient, "M" + Application::Settings.MapName, true); //Send the Map on connect
+    (void)Respond(*LockedClient, "M" + Application::Settings.MapName, true); //Send the Map on connect
     info(LockedClient->GetName() + " : Connected");
     TriggerLuaEvent("onPlayerJoining", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
 }
@@ -591,7 +598,9 @@ void TNetwork::SyncResources(TClient& c) {
 #ifndef DEBUG
     try {
 #endif
-        TCPSend(c, "P" + std::to_string(c.GetID()));
+        if (!TCPSend(c, "P" + std::to_string(c.GetID()))) {
+            // TODO handle
+        }
         std::string Data;
         while (c.GetStatus() > -1) {
             Data = TCPRcv(c);
@@ -623,7 +632,9 @@ void TNetwork::Parse(TClient& c, const std::string& Packet) {
             std::string ToSend = mResourceManager.FileList() + mResourceManager.FileSizes();
             if (ToSend.empty())
                 ToSend = "-";
-            TCPSend(c, ToSend);
+            if (!TCPSend(c, ToSend)) {
+                // TODO: error
+            }
         }
         return;
     default:
@@ -635,11 +646,16 @@ void TNetwork::SendFile(TClient& c, const std::string& Name) {
     info(c.GetName() + " requesting : " + Name.substr(Name.find_last_of('/')));
 
     if (!std::filesystem::exists(Name)) {
-        TCPSend(c, "CO");
+        if (!TCPSend(c, "CO")) {
+            // TODO: handle
+        }
         warn("File " + Name + " could not be accessed!");
         return;
-    } else
-        TCPSend(c, "AG");
+    } else {
+        if (!TCPSend(c, "AG")) {
+            // TODO: handle
+        }
+    }
 
     ///Wait for connections
     int T = 0;
@@ -727,41 +743,46 @@ bool TNetwork::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
     return true;
 }
 
-void TNetwork::SendLarge(TClient& c, std::string Data, bool isSync) {
+bool TNetwork::SendLarge(TClient& c, std::string Data, bool isSync) {
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-    TCPSend(c, Data, isSync);
+    return TCPSend(c, Data, isSync);
 }
 
-void TNetwork::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync) {
+bool TNetwork::Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync) {
     char C = MSG.at(0);
     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
         if (C == 'O' || C == 'T' || MSG.length() > 1000) {
-            SendLarge(c, MSG, isSync);
+            return SendLarge(c, MSG, isSync);
         } else {
-            TCPSend(c, MSG, isSync);
+            return TCPSend(c, MSG, isSync);
         }
     } else {
-        UDPSend(c, MSG);
+        return UDPSend(c, MSG);
     }
 }
 
-void TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
+bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     if (c.expired()) {
-        return;
+        return false;
     }
     auto LockedClient = c.lock();
     if (LockedClient->IsSynced())
-        return;
+        return true;
     // Syncing, later set isSynced
     // after syncing is done, we apply all packets they missed
-    Respond(*LockedClient, ("Sn") + LockedClient->GetName(), true);
-    SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
+    if (!Respond(*LockedClient, ("Sn") + LockedClient->GetName(), true)) {
+        return false;
+    }
+    // ignore error
+    (void)SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
+
     TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
     LockedClient->SetIsSyncing(true);
     bool Return = false;
+    bool res = true;
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto client = ClientPtr.lock();
@@ -774,9 +795,10 @@ void TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
                 for (auto& v : VehicleData) {
                     if (LockedClient->GetStatus() < 0) {
                         Return = true;
+                        res = false;
                         return false;
                     }
-                    Respond(*LockedClient, v.Data(), true, true);
+                    res = Respond(*LockedClient, v.Data(), true, true);
                     std::this_thread::sleep_for(std::chrono::seconds(2));
                 }
             }
@@ -785,42 +807,50 @@ void TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     });
     LockedClient->SetIsSyncing(false);
     if (Return) {
-        return;
+        return res;
     }
     LockedClient->SetIsSynced(true);
     info(LockedClient->GetName() + (" is now synced!"));
+    return true;
 }
 
 void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel) {
     if (!Self)
         Assert(c);
     char C = Data.at(0);
+    bool ret = true;
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         if (!ClientPtr.expired()) {
             auto Client = ClientPtr.lock();
             if (Self || Client.get() != c) {
                 if (Client->IsSynced() || Client->IsSyncing()) {
                     if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
-                        if (C == 'O' || C == 'T' || Data.length() > 1000)
-                            SendLarge(*Client, Data);
-                        else
-                            TCPSend(*Client, Data);
-                    } else
-                        UDPSend(*Client, Data);
+                        if (C == 'O' || C == 'T' || Data.length() > 1000) {
+                            ret = SendLarge(*Client, Data);
+                        } else {
+                            ret = TCPSend(*Client, Data);
+                        }
+                    } else {
+                        ret = UDPSend(*Client, Data);
+                    }
                 }
             }
         }
         return true;
     });
+    if (!ret) {
+        // TODO: handle
+    }
+    return;
 }
 
-void TNetwork::UDPSend(TClient& Client, std::string Data) const {
+bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
     if (!Client.IsConnected() || Client.GetStatus() < 0) {
         // this can happen if we try to send a packet to a client that is either
         // 1. not yet fully connected, or
         // 2. disconnected and not yet fully removed
         // this is fine can can be ignored :^)
-        return;
+        return true;
     }
     sockaddr_in Addr = Client.GetUDPAddr();
     auto AddrSize = sizeof(Client.GetUDPAddr());
@@ -842,22 +872,27 @@ void TNetwork::UDPSend(TClient& Client, std::string Data) const {
         debug(("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
+        return false;
     } else if (sendOk == 0) {
         debug(("(UDP) sendto returned 0"));
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
+        return false;
     }
 #else // unix
     if (sendOk == -1) {
         debug(("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
+        return false;
     } else if (sendOk == 0) {
         debug(("(UDP) sendto returned 0"));
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
+        return false;
     }
 #endif // WIN32
+    return true;
 }
 
 std::string TNetwork::UDPRcvFromClient(sockaddr_in& client) const {

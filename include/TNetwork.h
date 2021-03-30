@@ -8,18 +8,18 @@ class TNetwork {
 public:
     TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
 
-    bool TCPSend(TClient& c, const std::string& Data, bool IsSync = false);
-    void SendLarge(TClient& c, std::string Data, bool isSync = false);
-    void Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync = false);
+    [[nodiscard]] bool TCPSend(TClient& c, const std::string& Data, bool IsSync = false);
+    [[nodiscard]] bool SendLarge(TClient& c, std::string Data, bool isSync = false);
+    [[nodiscard]] bool Respond(TClient& c, const std::string& MSG, bool Rel, bool isSync = false);
     std::shared_ptr<TClient> CreateClient(SOCKET TCPSock);
     std::string TCPRcv(TClient& c);
     void ClientKick(TClient& c, const std::string& R);
-    void SyncClient(const std::weak_ptr<TClient>& c);
+    [[nodiscard]] bool SyncClient(const std::weak_ptr<TClient>& c);
     void Identify(SOCKET TCPSock);
     void Authentication(SOCKET TCPSock);
-    bool CheckBytes(TClient& c, int32_t BytesRcv);
+    [[nodiscard]] bool CheckBytes(TClient& c, int32_t BytesRcv);
     void SyncResources(TClient& c);
-    void UDPSend(TClient& Client, std::string Data) const;
+    [[nodiscard]] bool UDPSend(TClient& Client, std::string Data) const;
     void SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel);
     void UpdatePlayer(TClient& Client);
 

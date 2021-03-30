@@ -91,11 +91,20 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
 #ifdef DEBUG
         debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
 #endif
-        Network.SyncClient(Client);
+        if (!Network.SyncClient(Client)) {
+            // TODO handle
+        }
         return;
     case 'p':
-        Network.Respond(*LockedClient, ("p"), false);
-        Network.UpdatePlayer(*LockedClient);
+        if (!Network.Respond(*LockedClient, ("p"), false)) {
+            // failed to send
+            if (LockedClient->GetStatus() > -1) {
+                LockedClient->SetStatus(-1);
+            }
+        } else {
+            Network.UpdatePlayer(*LockedClient);
+        }
+        LockedClient->UpdatePingTime();
         return;
     case 'O':
         if (Packet.length() > 1000) {
@@ -171,9 +180,13 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
             auto Res = TriggerLuaEvent(("onVehicleSpawn"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), CarID, Packet.substr(3) } }), true);
             if (c.GetCarCount() >= Application::Settings.MaxCars || std::any_cast<int>(Res)) {
-                Network.Respond(c, Packet, true);
+                if (!Network.Respond(c, Packet, true)) {
+                    // TODO: handle
+                }
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(CarID);
-                Network.Respond(c, Destroy, true);
+                if (!Network.Respond(c, Destroy, true)) {
+                    // TODO: handle
+                }
                 debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
             } else {
                 c.AddNewCar(CarID, Packet);
@@ -200,7 +213,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 Apply(c, VID, Packet);
             } else {
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
-                Network.Respond(c, Destroy, true);
+                if (!Network.Respond(c, Destroy, true)) {
+                    // TODO: handle
+                }
                 c.DeleteCar(VID);
             }
         }
