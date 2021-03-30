@@ -1,6 +1,8 @@
 #include "Http.h"
 
 #include "Common.h"
+#undef error
+
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast.hpp>
@@ -47,7 +49,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
         return result;
 
     } catch (const std::exception& e) {
-        error(e.what());
+        Application::Console().Write(e.what());
         return "-1";
     }
 }
@@ -137,7 +139,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         return std::string(response.body());
 
     } catch (const std::exception& e) {
-        error(e.what());
+        Application::Console().Write(e.what());
         return "-1";
     }
 }
