@@ -86,6 +86,7 @@ void TNetwork::UDPServerMain() {
                 if (!ClientPtr.expired()) {
                     auto Client = ClientPtr.lock();
                     if (Client->GetID() == ID) {
+                        Client->UpdatePingTime();
                         Client->SetUDPAddr(client);
                         Client->SetIsConnected(true);
                         TServer::GlobalParser(ClientPtr, Data.substr(2), mPPSMonitor, *this);
