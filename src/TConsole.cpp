@@ -36,7 +36,7 @@ std::string GetDate() {
              << " ";
     }
     */
-    return std::string(date.str());
+    return date.str();
 }
 
 TConsole::TConsole() {

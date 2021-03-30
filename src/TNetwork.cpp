@@ -358,7 +358,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     Sent = 0;
     Size += 4;
     do {
-        int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
+        int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, 0);
         if (Temp == 0) {
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
