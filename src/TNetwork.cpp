@@ -342,7 +342,7 @@ std::shared_ptr<TClient> TNetwork::CreateClient(SOCKET TCPSock) {
 bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
         if (c.IsSyncing()) {
-            std::unique_lock Lock(c.MissedPacketQueueMutex());
+            //std::unique_lock Lock(c.MissedPacketQueueMutex());
             c.EnqueueMissedPacketDuringSyncing(Data);
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
