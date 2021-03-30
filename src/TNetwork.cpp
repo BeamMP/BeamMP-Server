@@ -373,7 +373,11 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     Sent = 0;
     Size += 4;
     do {
+#ifdef WIN32
+        int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, 0);
+#else //WIN32
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
+#endif //WIN32
         if (Temp == 0) {
             debug("send() == 0: " + std::string(std::strerror(errno)));
             if (c.GetStatus() > -1)
@@ -492,7 +496,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c){
             break;
         }
         if (!Client->IsSyncing() && Client->IsSynced() && Client->MissedPacketQueueSize() != 0) {
-            debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
+            //debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
             while (Client->MissedPacketQueueSize() > 0) {
                 std::string QData {};
                 { // locked context
@@ -550,7 +554,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         TServer::GlobalParser(c, res, mPPSMonitor, *this);
     }
     if(QueueSync.joinable())QueueSync.join();
-    
+
     if (!c.expired()) {
         auto Client = c.lock();
         OnDisconnect(c, Client->GetStatus() == -2);
