@@ -37,11 +37,12 @@ void TPPSMonitor::operator()() {
                     C++;
                     V += c->GetCarCount();
                 }
-                // kick on "no ping"
-                if (c->SecondsSinceLastPing() > 10 && c->IsSynced()) {
-                    TimedOutClients.push_back(c);
-                } else if (!c->IsSynced()) {
+                if (!c->IsSynced() || c->IsSyncing()) {
                     c->UpdatePingTime();
+                }
+                // kick on "no ping"
+                if (c->SecondsSinceLastPing() > 10 && c->IsSynced() && !c->IsSyncing()) {
+                    TimedOutClients.push_back(c);
                 }
             }
             return true;
