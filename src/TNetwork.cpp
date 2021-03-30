@@ -361,32 +361,6 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
                 }
             }
             return true;
-        } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
-            debug("sending " + std::to_string(c.MissedPacketQueueSize()) + " queued packets");
-            while (c.MissedPacketQueueSize() > 0) {
-                std::string QData {};
-                { // locked context
-                    std::unique_lock lock(c.MissedPacketQueueMutex());
-                    if (c.MissedPacketQueueSize() <= 0) {
-                        break;
-                    }
-                    QData = c.MissedPacketQueue().front();
-                    c.MissedPacketQueue().pop();
-                } // end locked context
-                // debug("sending a missed packet: " + QData);
-                if (!TCPSend(c, QData, true)) {
-                    if (c.GetStatus() > -1)
-                        c.SetStatus(-1);
-                    {
-                        std::unique_lock lock(c.MissedPacketQueueMutex());
-                        while(!c.MissedPacketQueue().empty()){
-                            c.MissedPacketQueue().pop();
-                        }
-                    }
-                    CloseSocketProper(c.GetTCPSock());
-                    return false;
-                }
-            }
         }
     }
 
@@ -526,6 +500,33 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         if (Client->GetStatus() < 0) {
             debug("client status < 0, breaking client loop");
             break;
+        }
+        if (!Client->IsSyncing() && Client->IsSynced() && Client->MissedPacketQueueSize() != 0) {
+            debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
+            while (Client->MissedPacketQueueSize() > 0) {
+                std::string QData {};
+                { // locked context
+                    std::unique_lock lock(Client->MissedPacketQueueMutex());
+                    if (Client->MissedPacketQueueSize() <= 0) {
+                        break;
+                    }
+                    QData = Client->MissedPacketQueue().front();
+                    Client->MissedPacketQueue().pop();
+                } // end locked context
+                // debug("sending a missed packet: " + QData);
+                if (!TCPSend(*Client, QData, true)) {
+                    if (Client->GetStatus() > -1)
+                        Client->SetStatus(-1);
+                    {
+                        std::unique_lock lock(Client->MissedPacketQueueMutex());
+                        while (!Client->MissedPacketQueue().empty()) {
+                            Client->MissedPacketQueue().pop();
+                        }
+                    }
+                    CloseSocketProper(Client->GetTCPSock());
+                    break;
+                }
+            }
         }
         auto res = TCPRcv(*Client);
         if (res == "") {
