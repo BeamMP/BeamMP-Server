@@ -342,6 +342,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             c.EnqueueMissedPacketDuringSyncing(Data);
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
+            debug("sending " + std::to_string(c.MissedPacketQueueSize()) + " missed packets");
             while (c.MissedPacketQueueSize() > 0) {
                 std::string QData = c.MissedPacketQueue().front();
                 c.MissedPacketQueue().pop();
