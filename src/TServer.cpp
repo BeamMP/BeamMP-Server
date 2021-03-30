@@ -48,7 +48,12 @@ std::weak_ptr<TClient> TServer::InsertNewClient() {
 }
 
 void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
-    for (auto& Client : mClients) {
+    decltype(mClients) Clients;
+    {
+        ReadLock lock(mClientsMutex);
+        Clients = mClients;
+    }
+    for (auto& Client : Clients) {
         if (!Fn(Client)) {
             break;
         }
