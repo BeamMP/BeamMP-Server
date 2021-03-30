@@ -26,7 +26,7 @@ public:
 
     static void GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
     static void HandleEvent(TClient& c, const std::string& Data);
-
+    RWMutex& GetClientMutex() const { return mClientsMutex; }
 private:
     TClientSet mClients;
     mutable RWMutex mClientsMutex;

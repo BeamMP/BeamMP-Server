@@ -83,15 +83,21 @@ void TNetwork::UDPServerMain() {
             inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
             uint8_t ID = uint8_t(Data.at(0)) - 1;
             mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
-                if (!ClientPtr.expired()) {
-                    auto Client = ClientPtr.lock();
-                    if (Client->GetID() == ID) {
-                        Client->UpdatePingTime();
-                        Client->SetUDPAddr(client);
-                        Client->SetIsConnected(true);
-                        TServer::GlobalParser(ClientPtr, Data.substr(2), mPPSMonitor, *this);
-                    }
+                std::shared_ptr<TClient> Client;
+                {
+                    ReadLock Lock(mServer.GetClientMutex());
+                    if (!ClientPtr.expired()) {
+                        Client = ClientPtr.lock();
+                    }else return true;
                 }
+
+                if (Client->GetID() == ID) {
+                    Client->UpdatePingTime();
+                    Client->SetUDPAddr(client);
+                    Client->SetIsConnected(true);
+                    TServer::GlobalParser(ClientPtr, Data.substr(2), mPPSMonitor, *this);
+                }
+
                 return true;
             });
         } catch (const std::exception& e) {
@@ -227,6 +233,7 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
     }
     auto ID = uint8_t(D);
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+        ReadLock Lock(mServer.GetClientMutex());
         if (!ClientPtr.expired()) {
             auto c = ClientPtr.lock();
             if (c->GetID() == ID) {
@@ -300,17 +307,22 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        if (!ClientPtr.expired()) {
-            auto Cl = ClientPtr.lock();
-            info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
-            if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
-                info("New client matched with current iteration");
-                info("Old client (" + Cl->GetName() + ") kicked: Reconnecting");
-                CloseSocketProper(Cl->GetTCPSock());
-                Cl->SetStatus(-2);
-                return false;
-            }
+        std::shared_ptr<TClient> Cl;
+        {
+            ReadLock Lock(mServer.GetClientMutex());
+            if (!ClientPtr.expired()) {
+                Cl = ClientPtr.lock();
+            } else return true;
         }
+        info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
+        if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
+            info("New client matched with current iteration");
+            info("Old client (" + Cl->GetName() + ") kicked: Reconnecting");
+            CloseSocketProper(Cl->GetTCPSock());
+            Cl->SetStatus(-2);
+            return false;
+        }
+
         return true;
     });
 
@@ -531,6 +543,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
 void TNetwork::UpdatePlayer(TClient& Client) {
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+        ReadLock Lock(mServer.GetClientMutex());
         if (!ClientPtr.expired()) {
             auto c = ClientPtr.lock();
             Packet += c->GetName() + ",";
@@ -576,6 +589,7 @@ int TNetwork::OpenID() {
     do {
         found = true;
         mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+            ReadLock Lock(mServer.GetClientMutex());
             if (!ClientPtr.expired()) {
                 auto c = ClientPtr.lock();
                 if (c->GetID() == ID) {
@@ -794,25 +808,30 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     bool Return = false;
     bool res = true;
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        if (!ClientPtr.expired()) {
-            auto client = ClientPtr.lock();
-            TClient::TSetOfVehicleData VehicleData;
-            { // Vehicle Data Lock Scope
-                auto LockedData = client->GetAllCars();
-                VehicleData = LockedData.VehicleData;
-            } // End Vehicle Data Lock Scope
-            if (client != LockedClient) {
-                for (auto& v : VehicleData) {
-                    if (LockedClient->GetStatus() < 0) {
-                        Return = true;
-                        res = false;
-                        return false;
-                    }
-                    res = Respond(*LockedClient, v.Data(), true, true);
-                    std::this_thread::sleep_for(std::chrono::seconds(2));
+        std::shared_ptr<TClient> client;
+        {
+            ReadLock Lock(mServer.GetClientMutex());
+            if (!ClientPtr.expired()) {
+                client = ClientPtr.lock();
+            } else return true;
+        }
+        TClient::TSetOfVehicleData VehicleData;
+        { // Vehicle Data Lock Scope
+            auto LockedData = client->GetAllCars();
+            VehicleData = LockedData.VehicleData;
+        } // End Vehicle Data Lock Scope
+        if (client != LockedClient) {
+            for (auto& v : VehicleData) {
+                if (LockedClient->GetStatus() < 0) {
+                    Return = true;
+                    res = false;
+                    return false;
                 }
+                res = Respond(*LockedClient, v.Data(), true, true);
+                std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }
+
         return true;
     });
     LockedClient->SetIsSyncing(false);
@@ -830,19 +849,23 @@ void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Re
     char C = Data.at(0);
     bool ret = true;
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
-        if (!ClientPtr.expired()) {
-            auto Client = ClientPtr.lock();
-            if (Self || Client.get() != c) {
-                if (Client->IsSynced() || Client->IsSyncing()) {
-                    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
-                        if (C == 'O' || C == 'T' || Data.length() > 1000) {
-                            ret = SendLarge(*Client, Data);
-                        } else {
-                            ret = TCPSend(*Client, Data);
-                        }
+        std::shared_ptr<TClient> Client;
+        {
+            ReadLock Lock(mServer.GetClientMutex());
+            if (!ClientPtr.expired()) {
+                Client = ClientPtr.lock();
+            }else return true;
+        }
+        if (Self || Client.get() != c) {
+            if (Client->IsSynced() || Client->IsSyncing()) {
+                if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
+                    if (C == 'O' || C == 'T' || Data.length() > 1000) {
+                        ret = SendLarge(*Client, Data);
                     } else {
-                        ret = UDPSend(*Client, Data);
+                        ret = TCPSend(*Client, Data);
                     }
+                } else {
+                    ret = UDPSend(*Client, Data);
                 }
             }
         }

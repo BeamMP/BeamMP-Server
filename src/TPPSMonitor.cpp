@@ -31,21 +31,26 @@ void TPPSMonitor::operator()() {
             continue;
         }
         mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-            if (!ClientPtr.expired()) {
-                auto c = ClientPtr.lock();
-                if (c->GetCarCount() > 0) {
-                    C++;
-                    V += c->GetCarCount();
-                }
-                if (!c->IsSynced() || c->IsSyncing()) {
-                    c->UpdatePingTime();
-                }
-                // kick on "no ping"
-                if (c->SecondsSinceLastPing() > 60 && c->IsSynced() && !c->IsSyncing()) {
-                    debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
-                    TimedOutClients.push_back(c);
-                }
+            std::shared_ptr<TClient> c;
+            {
+                ReadLock Lock(mServer.GetClientMutex());
+                if (!ClientPtr.expired()) {
+                    c = ClientPtr.lock();
+                } else return true;
             }
+            if (c->GetCarCount() > 0) {
+                C++;
+                V += c->GetCarCount();
+            }
+            if (!c->IsSynced() || c->IsSyncing()) {
+                c->UpdatePingTime();
+            }
+            // kick on "no ping"
+            if (c->SecondsSinceLastPing() > 60 && c->IsSynced() && !c->IsSyncing()) {
+                debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
+                TimedOutClients.push_back(c);
+            }
+
             return true;
         });
         for (auto& ClientToKick : TimedOutClients) {

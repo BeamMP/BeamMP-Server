@@ -233,6 +233,7 @@ int lua_Sleep(lua_State* L) {
 std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
     std::optional<std::weak_ptr<TClient>> MaybeClient { std::nullopt };
     Server.ForEachClient([&](std::weak_ptr<TClient> CPtr) -> bool {
+        ReadLock Lock(Server.GetClientMutex());
         if (!CPtr.expired()) {
             auto C = CPtr.lock();
             if (C->GetID() == ID) {
@@ -294,9 +295,13 @@ int lua_GetGuest(lua_State* L) {
 int lua_GetAllPlayers(lua_State* L) {
     lua_newtable(L);
     Engine().Server().ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        if (ClientPtr.expired())
-            return true;
-        auto Client = ClientPtr.lock();
+        std::shared_ptr<TClient> Client;
+        {
+            ReadLock Lock(Engine().Server().GetClientMutex());
+            if (ClientPtr.expired())
+                return true;
+            Client = ClientPtr.lock();
+        }
         lua_pushinteger(L, Client->GetID());
         lua_pushstring(L, Client->GetName().c_str());
         lua_settable(L, -3);
