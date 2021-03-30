@@ -12,15 +12,15 @@ We only allow building unmodified (original) source code. `master` is considered
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we only distribute windows binaries and instructions to build on Debian 10 (stable). For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support ARM or any big-endian architectures. 
+The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute windows binaries and sometimes linux. For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support any big-endian architectures.
 
-Recommended compilers: MSVC, GCC. 
+Recommended compilers: MSVC, GCC, CLANG. 
 
 You can find precompiled binaries under [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
 ## Build Instructions
 
-**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v1.20`!__**
+**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v2.0`!__**
 
 Currently only linux and windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
 
@@ -48,7 +48,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
   You can also use any version of `libluajit`, but the same applies regarding the version.
 - `libz-dev`
 - `rapidjson-dev`
-- `libboost1.70-dev` 
+- `libboost1.70-dev`
   
   If your distro doesn't have 1.7x version of libboost, you'll have to compile it from source or find another way to get it for your distro.
 - `libopenssl-dev`
