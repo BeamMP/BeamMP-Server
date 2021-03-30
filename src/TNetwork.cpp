@@ -338,15 +338,22 @@ std::shared_ptr<TClient> TNetwork::CreateClient(SOCKET TCPSock) {
 
 bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
-        std::unique_lock Lock(c.MissedPacketQueueMutex());
         if (c.IsSyncing()) {
+            std::unique_lock Lock(c.MissedPacketQueueMutex());
             c.EnqueueMissedPacketDuringSyncing(Data);
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
             debug("sending " + std::to_string(c.MissedPacketQueueSize()) + " missed packets");
             while (c.MissedPacketQueueSize() > 0) {
-                std::string QData = c.MissedPacketQueue().front();
-                c.MissedPacketQueue().pop();
+                std::string QData {};
+                { // locked context
+                    std::unique_lock lock(c.MissedPacketQueueMutex());
+                    if (c.MissedPacketQueueSize() <= 0) {
+                        break;
+                    }
+                    QData = c.MissedPacketQueue().front();
+                    c.MissedPacketQueue().pop();
+                } // end locked context
                 // debug("sending a missed packet: " + QData);
                 TCPSend(c, QData, true);
             }
