@@ -36,7 +36,6 @@ std::string GetDate() {
              << " ";
     }
     */
-    warn(date.rdbuf()->str());
     return std::string(date.str());
 }
 
