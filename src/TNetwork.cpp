@@ -345,7 +345,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             while (c.MissedPacketQueueSize() > 0) {
                 std::string QData = c.MissedPacketQueue().front();
                 c.MissedPacketQueue().pop();
-                debug("sending a missed packet: " + QData);
+                // debug("sending a missed packet: " + QData);
                 TCPSend(c, QData, true);
             }
         }
