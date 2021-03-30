@@ -484,18 +484,8 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
     c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
-
-void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
-    // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
-    if (c.expired() || c.lock()->GetTCPSock() == -1) {
-        mServer.RemoveClient(c);
-        return;
-    }
-    OnConnect(c);
-    RegisterThread("(" + std::to_string(c.lock()->GetID()) + ") \"" + c.lock()->GetName() + "\"");
-    while (true) {
-        if (c.expired())
-            break;
+void TNetwork::Looper(const std::weak_ptr<TClient>& c){
+    while(!c.expired()) {
         auto Client = c.lock();
         if (Client->GetStatus() < 0) {
             debug("client status < 0, breaking client loop");
@@ -527,7 +517,31 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
                     break;
                 }
             }
+        }else{
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
+    }
+}
+void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
+    // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
+    if (c.expired() || c.lock()->GetTCPSock() == -1) {
+        mServer.RemoveClient(c);
+        return;
+    }
+    OnConnect(c);
+    RegisterThread("(" + std::to_string(c.lock()->GetID()) + ") \"" + c.lock()->GetName() + "\"");
+
+    std::thread QueueSync(&TNetwork::Looper, this ,c);
+
+    while (true) {
+        if (c.expired())
+            break;
+        auto Client = c.lock();
+        if (Client->GetStatus() < 0) {
+            debug("client status < 0, breaking client loop");
+            break;
+        }
+
         auto res = TCPRcv(*Client);
         if (res == "") {
             debug("TCPRcv error, break client loop");
@@ -535,6 +549,8 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         }
         TServer::GlobalParser(c, res, mPPSMonitor, *this);
     }
+    if(QueueSync.joinable())QueueSync.join();
+    
     if (!c.expired()) {
         auto Client = c.lock();
         OnDisconnect(c, Client->GetStatus() == -2);

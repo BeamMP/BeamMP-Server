@@ -39,6 +39,7 @@ private:
     void HandleDownload(SOCKET TCPSock);
     void OnConnect(const std::weak_ptr<TClient>& c);
     void TCPClient(const std::weak_ptr<TClient>& c);
+    void Looper(const std::weak_ptr<TClient>& c);
     int OpenID();
     void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked);
     void Parse(TClient& c, const std::string& Packet);
