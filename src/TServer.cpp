@@ -76,8 +76,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         return;
     }
     auto LockedClient = Client.lock();
-    // FIXME: this should not be needed here
-    LockedClient->UpdatePingTime();
 
     std::any Res;
     char Code = Packet.at(0);
@@ -98,6 +96,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     case 'p':
         Network.Respond(*LockedClient, ("p"), false);
         Network.UpdatePlayer(*LockedClient);
+        LockedClient->UpdatePingTime();
         return;
     case 'O':
         if (Packet.length() > 1000) {

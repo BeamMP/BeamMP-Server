@@ -42,13 +42,13 @@ void TPPSMonitor::operator()() {
                 }
                 // kick on "no ping"
                 if (c->SecondsSinceLastPing() > 10 && c->IsSynced() && !c->IsSyncing()) {
+                    debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
                     TimedOutClients.push_back(c);
                 }
             }
             return true;
         });
         for (auto& ClientToKick : TimedOutClients) {
-            debug("client " + std::string("(") + std::to_string(ClientToKick->GetID()) + ")" + ClientToKick->GetName() + " kicked due to timeout!");
             Network().ClientKick(*ClientToKick, "Timeout (no ping for >10 seconds)");
         }
         TimedOutClients.clear();
