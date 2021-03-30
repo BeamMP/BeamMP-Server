@@ -304,6 +304,6 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
 
 void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     debug("inserting client (" + std::to_string(ClientCount()) + ")");
-    WriteLock Lock(mClientsMutex);
+    WriteLock Lock(mClientsMutex); //TODO why is there 30+ threads locked here
     (void)mClients.insert(NewClient);
 }

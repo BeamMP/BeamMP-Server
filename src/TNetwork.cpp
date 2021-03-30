@@ -361,6 +361,12 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
                 if (!TCPSend(c, QData, true)) {
                     if (c.GetStatus() > -1)
                         c.SetStatus(-1);
+                    {
+                        std::unique_lock lock(c.MissedPacketQueueMutex());
+                        while(!c.MissedPacketQueue().empty()){
+                            c.MissedPacketQueue().pop();
+                        }
+                    }
                     CloseSocketProper(c.GetTCPSock());
                     return false;
                 }
@@ -382,7 +388,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
                 c.SetStatus(-1);
             return false;
         } else if (Temp < 0) {
-            debug("send() < 0: " + std::string(std::strerror(errno)));
+            debug("send() < 0: " + std::string(std::strerror(errno))); //TODO fix it was spamming yet everyone stayed on the server
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             CloseSocketProper(c.GetTCPSock());
