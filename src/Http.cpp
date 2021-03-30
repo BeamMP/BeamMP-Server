@@ -1,11 +1,10 @@
 #include "Http.h"
 
-
+#include "Common.h"
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast.hpp>
 #include <boost/beast/ssl.hpp>
-#include "Common.h"
 
 namespace beast = boost::beast; // from <boost/beast.hpp>
 namespace http = beast::http; // from <boost/beast/http.hpp>
@@ -138,6 +137,9 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         return std::string(response.body());
 
     } catch (const std::exception& e) {
+        error(e.what());
+        return "-1";
+    } catch (const boost::system::system_error& e) {
         error(e.what());
         return "-1";
     }
