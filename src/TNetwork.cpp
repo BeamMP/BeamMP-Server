@@ -343,8 +343,10 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
         if (c.IsSyncing()) {
             //std::unique_lock Lock(c.MissedPacketQueueMutex());
-            if(!Data.empty() && (Data.at(0) == 'O' || Data.at(0) == 'A' || Data.at(0) == 'C')) {
-                c.EnqueueMissedPacketDuringSyncing(Data);
+            if(!Data.empty()) {
+                if (Data.at(0) == 'O' || Data.at(0) == 'A' || Data.at(0) == 'C' || Data.at(0) == 'E') {
+                    c.EnqueueMissedPacketDuringSyncing(Data);
+                }
             }
             return true;
         } else if (!c.IsSyncing() && c.IsSynced() && c.MissedPacketQueueSize() != 0) {
