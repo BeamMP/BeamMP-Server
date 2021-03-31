@@ -44,12 +44,14 @@ public:
     [[nodiscard]] SOCKET GetTCPSock() const { return mSocket[0]; }
     [[nodiscard]] std::string GetRoles() const { return mRole; }
     [[nodiscard]] std::string GetName() const { return mName; }
+    void SetUnicycleID(int ID) { mUnicycleID = ID; }
     void SetID(int ID) { mID = ID; }
     [[nodiscard]] int GetOpenCarID() const;
     [[nodiscard]] int GetCarCount() const;
     void ClearCars();
     [[nodiscard]] int GetStatus() const { return mStatus; }
     [[nodiscard]] int GetID() const { return mID; }
+    [[nodiscard]] int GetUnicycleID() const { return mUnicycleID; }
     [[nodiscard]] bool IsConnected() const { return mIsConnected; }
     [[nodiscard]] bool IsSynced() const { return mIsSynced; }
     [[nodiscard]] bool IsSyncing() const { return mIsSyncing; }
@@ -83,6 +85,7 @@ private:
     std::string mName = "Unknown Client";
     SOCKET mSocket[2] { SOCKET(-1) };
     sockaddr_in mUDPAddress {}; // is this initialization OK? yes it is
+    int mUnicycleID = -1;
     std::string mRole;
     std::string mDID;
     int mStatus = 0;

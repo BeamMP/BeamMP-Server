@@ -31,5 +31,6 @@ private:
     TClientSet mClients;
     mutable RWMutex mClientsMutex;
     static void ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network);
+    static bool ShouldSpawn(TClient& c, const std::string& CarJson, int ID);
     static void Apply(TClient& c, int VID, const std::string& pckt);
 };

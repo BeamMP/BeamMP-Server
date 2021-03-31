@@ -165,6 +165,24 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
     }
 }
 
+bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
+
+    if(c.GetUnicycleID() > -1 && (c.GetCarCount() - 1) < Application::Settings.MaxCars){
+        return true;
+    }
+
+    rapidjson::Document Car;
+    Car.Parse(CarJson.c_str(), CarJson.size());
+    if(Car.HasParseError()){
+        error("Failed to parse vehicle data -> " + CarJson);
+    } else if (Car["jbm"].IsString() && std::string(Car["jbm"].GetString()) == "unicycle") {
+        c.SetUnicycleID(ID);
+        return true;
+    }
+
+    return c.GetCarCount() < Application::Settings.MaxCars;
+}
+
 void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network) {
     if (Pckt.length() < 4)
         return;
@@ -181,9 +199,15 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         if (Data.at(0) == '0') {
             int CarID = c.GetOpenCarID();
             debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
-            Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + Packet.substr(4);
+
+            std::string CarJson = Packet.substr(5);
+            Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
             auto Res = TriggerLuaEvent(("onVehicleSpawn"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), CarID, Packet.substr(3) } }), true);
-            if (c.GetCarCount() >= Application::Settings.MaxCars || std::any_cast<int>(Res)) {
+
+            if (ShouldSpawn(c, CarJson, CarID) && std::any_cast<int>(Res) == 0) {
+                c.AddNewCar(CarID, Packet);
+                Network.SendToAll(nullptr, Packet, true, true);
+            } else {
                 if (!Network.Respond(c, Packet, true)) {
                     // TODO: handle
                 }
@@ -192,9 +216,6 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     // TODO: handle
                 }
                 debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
-            } else {
-                c.AddNewCar(CarID, Packet);
-                Network.SendToAll(nullptr, Packet, true, true);
             }
         }
         return;
@@ -209,6 +230,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            if(c.GetUnicycleID() == VID){
+                c.SetUnicycleID(-1);
+            }
             auto Res = TriggerLuaEvent(("onVehicleEdited"), false, nullptr,
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Packet.substr(3) } }),
                 true);
