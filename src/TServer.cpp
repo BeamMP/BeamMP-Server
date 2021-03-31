@@ -180,7 +180,7 @@ bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
         return true;
     }
 
-    return c.GetCarCount() < Application::Settings.MaxCars;
+    return c.GetCarCount() <= Application::Settings.MaxCars;
 }
 
 void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network) {
