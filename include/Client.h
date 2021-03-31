@@ -31,7 +31,6 @@ public:
     void SetName(const std::string& Name) { mName = Name; }
     void SetRoles(const std::string& Role) { mRole = Role; }
     void AddIdentifier(const std::string& ID) { mIdentifiers.insert(ID); };
-    void EraseVehicle(TVehicleData& VehicleData);
     std::string GetCarData(int Ident);
     void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }

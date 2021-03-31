@@ -7,23 +7,13 @@
 
 void TClient::DeleteCar(int Ident) {
     std::unique_lock lock(mVehicleDataMutex);
-    for (auto& v : mVehicleData) {
-        if (v.ID() == Ident) {
-            EraseVehicle(v);
-            break;
-        }
-    }
-}
-
-void TClient::EraseVehicle(TVehicleData& VehicleData) {
-    std::unique_lock lock(mVehicleDataMutex);
     auto iter = std::find_if(mVehicleData.begin(), mVehicleData.end(), [&](auto& elem) {
-        return VehicleData.ID() == elem.ID();
+        return Ident == elem.ID();
     });
     if (iter != mVehicleData.end()) {
         mVehicleData.erase(iter);
     } else {
-        debug("tried to erase a vehicle that doesn't exist!");
+        debug("tried to erase a vehicle that doesn't exist (not an error)");
     }
 }
 
