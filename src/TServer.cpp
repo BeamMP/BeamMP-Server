@@ -244,6 +244,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 Network.SendToAll(&c, Packet, false, true);
                 Apply(c, VID, Packet);
             } else {
+                if(c.GetUnicycleID() == VID){
+                    c.SetUnicycleID(-1);
+                }
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
                 if (!Network.Respond(c, Destroy, true)) {
                     // TODO: handle
