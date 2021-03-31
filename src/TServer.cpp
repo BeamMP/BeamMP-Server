@@ -164,18 +164,23 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
         a++;
     }
 }
-
+bool TServer::IsUnicycle(TClient &c, const std::string &CarJson) {
+    rapidjson::Document Car;
+    Car.Parse(CarJson.c_str(), CarJson.size());
+    if(Car.HasParseError()){
+        error("Failed to parse vehicle data -> " + CarJson);
+    } else if (Car["jbm"].IsString() && std::string(Car["jbm"].GetString()) == "unicycle") {
+        return true;
+    }
+    return false;
+}
 bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
 
     if(c.GetUnicycleID() > -1 && (c.GetCarCount() - 1) < Application::Settings.MaxCars){
         return true;
     }
 
-    rapidjson::Document Car;
-    Car.Parse(CarJson.c_str(), CarJson.size());
-    if(Car.HasParseError()){
-        error("Failed to parse vehicle data -> " + CarJson);
-    } else if (Car["jbm"].IsString() && std::string(Car["jbm"].GetString()) == "unicycle") {
+    if(IsUnicycle(c,CarJson)){
         c.SetUnicycleID(ID);
         return true;
     }
@@ -230,13 +235,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            if(c.GetUnicycleID() == VID){
-                c.SetUnicycleID(-1);
-            }
             auto Res = TriggerLuaEvent(("onVehicleEdited"), false, nullptr,
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Packet.substr(3) } }),
                 true);
-            if (!std::any_cast<int>(Res)) {
+
+            if ((c.GetUnicycleID() != VID || IsUnicycle(c,Packet.substr(Packet.find('{'))))
+                && std::any_cast<int>(Res) == 0) {
                 Network.SendToAll(&c, Packet, false, true);
                 Apply(c, VID, Packet);
             } else {
@@ -259,6 +263,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            if(c.GetUnicycleID() == VID){
+                c.SetUnicycleID(-1);
+            }
             Network.SendToAll(nullptr, Packet, true, true);
             TriggerLuaEvent(("onVehicleDeleted"), false, nullptr,
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID } }), false);
