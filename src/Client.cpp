@@ -6,6 +6,7 @@
 // FIXME: add debug prints
 
 void TClient::DeleteCar(int Ident) {
+    std::unique_lock lock(mVehicleDataMutex);
     for (auto& v : mVehicleData) {
         if (v.ID() == Ident) {
             mVehicleData.erase(v);
@@ -15,6 +16,7 @@ void TClient::DeleteCar(int Ident) {
 }
 
 void TClient::ClearCars() {
+    std::unique_lock lock(mVehicleDataMutex);
     mVehicleData.clear();
 }
 
@@ -34,6 +36,7 @@ int TClient::GetOpenCarID() const {
 }
 
 void TClient::AddNewCar(int Ident, const std::string& Data) {
+    std::unique_lock lock(mVehicleDataMutex);
     mVehicleData.emplace(Ident, Data);
 }
 
@@ -42,6 +45,7 @@ TClient::TVehicleDataLockPair TClient::GetAllCars() {
 }
 
 std::string TClient::GetCarData(int Ident) {
+    std::unique_lock lock(mVehicleDataMutex);
     for (auto& v : mVehicleData) {
         if (v.ID() == Ident) {
             return v.Data();
@@ -52,6 +56,7 @@ std::string TClient::GetCarData(int Ident) {
 }
 
 void TClient::SetCarData(int Ident, const std::string& Data) {
+    std::unique_lock lock(mVehicleDataMutex);
     for (auto& v : mVehicleData) {
         if (v.ID() == Ident) {
             v.SetData(Data);
