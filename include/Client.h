@@ -58,9 +58,9 @@ public:
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
     void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
     void EnqueuePacket(const std::string& Packet);
-    [[nodiscard]] std::queue<std::string>& MissedPacketQueue() { return mMissedPacketsDuringSyncing; }
-    [[nodiscard]] const std::queue<std::string>& MissedPacketQueue() const { return mMissedPacketsDuringSyncing; }
-    [[nodiscard]] size_t MissedPacketQueueSize() const { return mMissedPacketsDuringSyncing.size(); }
+    [[nodiscard]] std::queue<std::string>& MissedPacketQueue() { return mPacketsSync; }
+    [[nodiscard]] const std::queue<std::string>& MissedPacketQueue() const { return mPacketsSync; }
+    [[nodiscard]] size_t MissedPacketQueueSize() const { return mPacketsSync.size(); }
     [[nodiscard]] std::mutex& MissedPacketQueueMutex() const { return mMissedPacketsMutex; }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
     [[nodiscard]] TServer& Server() const;
@@ -75,7 +75,7 @@ private:
     bool mIsSynced = false;
     bool mIsSyncing = false;
     mutable std::mutex mMissedPacketsMutex;
-    std::queue<std::string> mMissedPacketsDuringSyncing;
+    std::queue<std::string> mPacketsSync;
     std::set<std::string> mIdentifiers;
     bool mIsGuest = false;
     std::mutex mVehicleDataMutex;

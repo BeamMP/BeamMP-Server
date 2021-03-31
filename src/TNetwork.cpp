@@ -576,7 +576,8 @@ void TNetwork::UpdatePlayer(TClient& Client) {
         return true;
     });
     Packet = Packet.substr(0, Packet.length() - 1);
-    (void)Respond(Client, Packet, true);
+    Client.EnqueuePacket(Packet);
+    //(void)Respond(Client, Packet, true);
 }
 
 void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked) {
