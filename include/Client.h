@@ -14,10 +14,10 @@ class TServer;
 
 class TClient final {
 public:
-    using TSetOfVehicleData = std::unordered_set<TVehicleData>;
+    using TSetOfVehicleData = std::vector<TVehicleData>;
 
     struct TVehicleDataLockPair {
-        TSetOfVehicleData& VehicleData;
+        TSetOfVehicleData* VehicleData;
         std::unique_lock<std::mutex> Lock;
     };
 
@@ -31,6 +31,7 @@ public:
     void SetName(const std::string& Name) { mName = Name; }
     void SetRoles(const std::string& Role) { mRole = Role; }
     void AddIdentifier(const std::string& ID) { mIdentifiers.insert(ID); };
+    void EraseVehicle(TVehicleData& VehicleData);
     std::string GetCarData(int Ident);
     void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
@@ -67,6 +68,8 @@ public:
     int SecondsSinceLastPing();
 
 private:
+    void InsertVehicle(int ID, const std::string& Data);
+
     TServer& mServer;
     bool mIsConnected = false;
     bool mIsSynced = false;

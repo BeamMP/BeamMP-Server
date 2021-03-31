@@ -339,15 +339,15 @@ int lua_GetCars(lua_State* L) {
         auto MaybeClient = GetClient(Engine().Server(), ID);
         if (MaybeClient && !MaybeClient.value().expired()) {
             auto Client = MaybeClient.value().lock();
-            TClient::TSetOfVehicleData VehicleData;
+            TClient::TSetOfVehicleData* VehicleData;
             { // Vehicle Data Lock Scope
                 auto LockedData = Client->GetAllCars();
                 VehicleData = LockedData.VehicleData;
             } // End Vehicle Data Lock Scope
-            if (VehicleData.empty())
+            if (VehicleData->empty())
                 return 0;
             lua_newtable(L);
-            for (const auto& v : VehicleData) {
+            for (const auto& v : *VehicleData) {
                 lua_pushinteger(L, v.ID());
                 lua_pushstring(L, v.Data().substr(3).c_str());
                 lua_settable(L, -3);

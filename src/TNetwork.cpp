@@ -88,7 +88,8 @@ void TNetwork::UDPServerMain() {
                     ReadLock Lock(mServer.GetClientMutex());
                     if (!ClientPtr.expired()) {
                         Client = ClientPtr.lock();
-                    }else return true;
+                    } else
+                        return true;
                 }
 
                 if (Client->GetID() == ID) {
@@ -312,7 +313,8 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             ReadLock Lock(mServer.GetClientMutex());
             if (!ClientPtr.expired()) {
                 Cl = ClientPtr.lock();
-            } else return true;
+            } else
+                return true;
         }
         info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
         if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
@@ -355,7 +357,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
         if (c.IsSyncing()) {
             //std::unique_lock Lock(c.MissedPacketQueueMutex());
-            if(!Data.empty()) {
+            if (!Data.empty()) {
                 if (Data.at(0) == 'O' || Data.at(0) == 'A' || Data.at(0) == 'C' || Data.at(0) == 'E') {
                     c.EnqueuePacket(Data);
                 }
@@ -363,7 +365,6 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             return true;
         }
     }
-
 
     int32_t Size, Sent;
     std::string Send(4, 0);
@@ -488,8 +489,8 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
     c.SetStatus(-2);
     CloseSocketProper(c.GetTCPSock());
 }
-void TNetwork::Looper(const std::weak_ptr<TClient>& c){
-    while(!c.expired()) {
+void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
+    while (!c.expired()) {
         auto Client = c.lock();
         if (Client->GetStatus() < 0) {
             debug("client status < 0, breaking client loop");
@@ -521,7 +522,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c){
                     break;
                 }
             }
-        }else{
+        } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     }
@@ -535,7 +536,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
     OnConnect(c);
     RegisterThread("(" + std::to_string(c.lock()->GetID()) + ") \"" + c.lock()->GetName() + "\"");
 
-    std::thread QueueSync(&TNetwork::Looper, this ,c);
+    std::thread QueueSync(&TNetwork::Looper, this, c);
 
     while (true) {
         if (c.expired())
@@ -553,7 +554,8 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         }
         TServer::GlobalParser(c, res, mPPSMonitor, *this);
     }
-    if(QueueSync.joinable())QueueSync.join();
+    if (QueueSync.joinable())
+        QueueSync.join();
 
     if (!c.expired()) {
         auto Client = c.lock();
@@ -583,12 +585,12 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked
     TClient& c = *LockedClientPtr;
     info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
-    TClient::TSetOfVehicleData VehicleData;
+    TClient::TSetOfVehicleData* VehicleData;
     { // Vehicle Data Lock Scope
         auto LockedData = c.GetAllCars();
         VehicleData = LockedData.VehicleData;
     } // End Vehicle Data Lock Scope
-    for (auto& v : VehicleData) {
+    for (auto& v : *VehicleData) {
         Packet = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(v.ID());
         SendToAll(&c, Packet, false, true);
     }
@@ -836,15 +838,16 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
             ReadLock Lock(mServer.GetClientMutex());
             if (!ClientPtr.expired()) {
                 client = ClientPtr.lock();
-            } else return true;
+            } else
+                return true;
         }
-        TClient::TSetOfVehicleData VehicleData;
+        TClient::TSetOfVehicleData* VehicleData;
         { // Vehicle Data Lock Scope
             auto LockedData = client->GetAllCars();
             VehicleData = LockedData.VehicleData;
         } // End Vehicle Data Lock Scope
         if (client != LockedClient) {
-            for (auto& v : VehicleData) {
+            for (auto& v : *VehicleData) {
                 if (LockedClient->GetStatus() < 0) {
                     Return = true;
                     res = false;
@@ -877,7 +880,8 @@ void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Re
             ReadLock Lock(mServer.GetClientMutex());
             if (!ClientPtr.expired()) {
                 Client = ClientPtr.lock();
-            }else return true;
+            } else
+                return true;
         }
         if (Self || Client.get() != c) {
             if (Client->IsSynced() || Client->IsSyncing()) {
@@ -886,7 +890,7 @@ void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Re
                         if (Data.length() > 400) {
                             std::string CMP(Comp(Data));
                             Client->EnqueuePacket("ABG:" + CMP);
-                        }else{
+                        } else {
                             Client->EnqueuePacket(Data);
                         }
                         //ret = SendLarge(*Client, Data);

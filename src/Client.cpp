@@ -9,9 +9,21 @@ void TClient::DeleteCar(int Ident) {
     std::unique_lock lock(mVehicleDataMutex);
     for (auto& v : mVehicleData) {
         if (v.ID() == Ident) {
-            mVehicleData.erase(v);
+            EraseVehicle(v);
             break;
         }
+    }
+}
+
+void TClient::EraseVehicle(TVehicleData& VehicleData) {
+    std::unique_lock lock(mVehicleDataMutex);
+    auto iter = std::find_if(mVehicleData.begin(), mVehicleData.end(), [&](auto& elem) {
+        return VehicleData.ID() == elem.ID();
+    });
+    if (iter != mVehicleData.end()) {
+        mVehicleData.erase(iter);
+    } else {
+        debug("tried to erase a vehicle that doesn't exist!");
     }
 }
 
@@ -37,11 +49,11 @@ int TClient::GetOpenCarID() const {
 
 void TClient::AddNewCar(int Ident, const std::string& Data) {
     std::unique_lock lock(mVehicleDataMutex);
-    mVehicleData.emplace(Ident, Data);
+    mVehicleData.emplace_back(Ident, Data);
 }
 
 TClient::TVehicleDataLockPair TClient::GetAllCars() {
-    return { mVehicleData, std::unique_lock(mVehicleDataMutex) };
+    return { &mVehicleData, std::unique_lock(mVehicleDataMutex) };
 }
 
 std::string TClient::GetCarData(int Ident) {
