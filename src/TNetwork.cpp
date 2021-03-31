@@ -585,12 +585,12 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked
     TClient& c = *LockedClientPtr;
     info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
-    TClient::TSetOfVehicleData* VehicleData;
+    TClient::TSetOfVehicleData VehicleData;
     { // Vehicle Data Lock Scope
         auto LockedData = c.GetAllCars();
-        VehicleData = LockedData.VehicleData;
+        VehicleData = *LockedData.VehicleData;
     } // End Vehicle Data Lock Scope
-    for (auto& v : *VehicleData) {
+    for (auto& v : VehicleData) {
         Packet = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(v.ID());
         SendToAll(&c, Packet, false, true);
     }
@@ -841,13 +841,13 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
             } else
                 return true;
         }
-        TClient::TSetOfVehicleData* VehicleData;
+        TClient::TSetOfVehicleData VehicleData;
         { // Vehicle Data Lock Scope
             auto LockedData = client->GetAllCars();
-            VehicleData = LockedData.VehicleData;
+            VehicleData = *LockedData.VehicleData;
         } // End Vehicle Data Lock Scope
         if (client != LockedClient) {
-            for (auto& v : *VehicleData) {
+            for (auto& v : VehicleData) {
                 if (LockedClient->GetStatus() < 0) {
                     Return = true;
                     res = false;
