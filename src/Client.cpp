@@ -47,24 +47,28 @@ TClient::TVehicleDataLockPair TClient::GetAllCars() {
 }
 
 std::string TClient::GetCarData(int Ident) {
-    std::unique_lock lock(mVehicleDataMutex);
-    for (auto& v : mVehicleData) {
-        if (v.ID() == Ident) {
-            return v.Data();
+    { // lock
+        std::unique_lock lock(mVehicleDataMutex);
+        for (auto& v : mVehicleData) {
+            if (v.ID() == Ident) {
+                return v.Data();
+            }
         }
-    }
+    } // unlock
     DeleteCar(Ident);
     return "";
 }
 
 void TClient::SetCarData(int Ident, const std::string& Data) {
-    std::unique_lock lock(mVehicleDataMutex);
-    for (auto& v : mVehicleData) {
-        if (v.ID() == Ident) {
-            v.SetData(Data);
-            return;
+    { // lock
+        std::unique_lock lock(mVehicleDataMutex);
+        for (auto& v : mVehicleData) {
+            if (v.ID() == Ident) {
+                v.SetData(Data);
+                return;
+            }
         }
-    }
+    } // unlock
     DeleteCar(Ident);
 }
 

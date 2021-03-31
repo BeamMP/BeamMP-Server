@@ -36,6 +36,7 @@ public:
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
     void SetTCPSock(SOCKET CSock) { mSocket[0] = CSock; }
     void SetStatus(int Status) { mStatus = Status; }
+    // locks
     void DeleteCar(int Ident);
     [[nodiscard]] std::set<std::string> GetIdentifiers() const { return mIdentifiers; }
     [[nodiscard]] sockaddr_in GetUDPAddr() const { return mUDPAddress; }
