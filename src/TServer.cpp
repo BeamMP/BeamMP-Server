@@ -108,7 +108,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         } else {
             Network.UpdatePlayer(*LockedClient);
         }
-        LockedClient->UpdatePingTime();
         return;
     case 'O':
         if (Packet.length() > 1000) {
@@ -314,11 +313,8 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     std::string Packet = pckt.substr(pckt.find('{')), VD = c.GetCarData(VID);
     std::string Header = VD.substr(0, VD.find('{'));
-    if(VD.empty()){
-        error("Applying config for a non existing car?");
-        abort();
-    }
-    VD = VD.substr(VD.find('{')); //TODO somehow this got hit while VD is empty
+
+    VD = VD.substr(VD.find('{'));
     rapidjson::Document Veh, Pack;
     Veh.Parse(VD.c_str());
     if (Veh.HasParseError()) {

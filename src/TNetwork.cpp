@@ -93,7 +93,6 @@ void TNetwork::UDPServerMain() {
                 }
 
                 if (Client->GetID() == ID) {
-                    Client->UpdatePingTime();
                     Client->SetUDPAddr(client);
                     Client->SetIsConnected(true);
                     TServer::GlobalParser(ClientPtr, Data.substr(2), mPPSMonitor, *this);
@@ -356,7 +355,6 @@ std::shared_ptr<TClient> TNetwork::CreateClient(SOCKET TCPSock) {
 bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     if (!IsSync) {
         if (c.IsSyncing()) {
-            //std::unique_lock Lock(c.MissedPacketQueueMutex());
             if (!Data.empty()) {
                 if (Data.at(0) == 'O' || Data.at(0) == 'A' || Data.at(0) == 'C' || Data.at(0) == 'E') {
                     c.EnqueuePacket(Data);
@@ -393,6 +391,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
         }
         Sent += Temp;
     } while (Sent < Size);
+    c.UpdatePingTime();
     return true;
 }
 
