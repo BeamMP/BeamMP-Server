@@ -97,7 +97,7 @@ std::any TLuaEngine::TriggerLuaEvent(const std::string& Event, bool local, std::
     return Ret;
 }
 
-std::shared_ptr<TLuaFile> TLuaEngine::GetLuaFileOfScript(lua_State* L) {
+std::shared_ptr<TLuaFile> TLuaEngine::GetLuaFileOfState(lua_State* L) {
     std::unique_lock Lock(mLuaFilesMutex);
     for (auto& Script : mLuaFiles) {
         if (Script->GetState() == L)
@@ -143,7 +143,7 @@ bool TLuaEngine::IsNewFile(const std::string& Path) {
 
 void TLuaEngine::SendError(lua_State* L, const std::string& msg) {
     Assert(L);
-    auto MaybeS = GetLuaFileOfScript(L);
+    auto MaybeS = GetLuaFileOfState(L);
     std::string a;
     if (!MaybeS) {
         a = ("_Console");
@@ -195,13 +195,46 @@ int ServerLua_GetIdentifiers(lua_State* L) {
         } else
             return 0;
     } else {
-        SendError(*TheLuaEngine, L, "lua_GetIdentifiers wrong arguments");
+        TheLuaEngine->SendError(L, "lua_GetIdentifiers wrong arguments");
         return 0;
     }
     return 1;
 }
 
+static std::shared_ptr<TLuaArgs> CollectArgs(lua_State* L) {
+    int ArgCount = lua_gettop(L);
+    if (ArgCount == 0) {
+        return nullptr;
+    }
+    std::shared_ptr<TLuaArgs> Temp = std::make_shared<TLuaArgs>();
+    for (int C = 2; C <= ArgCount; C++) {
+        if (lua_isstring(L, C)) {
+            Temp->Args.emplace_back(std::string(lua_tostring(L, C)));
+        } else if (lua_isinteger(L, C)) {
+            Temp->Args.emplace_back(int(lua_tointeger(L, C)));
+        } else if (lua_isboolean(L, C)) {
+            Temp->Args.emplace_back(bool(lua_toboolean(L, C)));
+        } else if (lua_isnumber(L, C)) {
+            Temp->Args.emplace_back(float(lua_tonumber(L, C)));
+        }
+    }
+    return Temp;
+}
 
+int ServerLua_TriggerEventG(lua_State* L) {
+    auto MaybeScript = TheLuaEngine->GetLuaFileOfState(L);
+    Assert(!!MaybeScript);
+    if (lua_gettop(L) <= 0) {
+        TheLuaEngine->SendError(L, ("TriggerGlobalEvent not enough arguments"));
+        return 0;
+    } else if (!lua_isstring(L, 1)) {
+        TheLuaEngine->SendError(L, "TriggerGlobalEvent wrong argument [1] need string");
+    }
+    std::string Name = lua_tostring(L, 1);
+    auto Args = CollectArgs(L);
+    TheLuaEngine->TriggerLuaEvent(Name, false, MaybeScript, Args, false);
+    return 0;
+}
 
 // LEAVE THIS AT THE **VERY** BOTTOM OF THE FILE
 
@@ -214,7 +247,7 @@ std::shared_ptr<TLuaFile> TLuaEngine::InsertNewLuaFile(const fs::path& FileName,
     lua_State* State = Script->GetState();
     luaL_openlibs(State);
     lua_register(State, "GetPlayerIdentifiers", ServerLua_GetIdentifiers);
-    lua_register(State, "TriggerGlobalEvent", lua_TriggerEventG);
+    lua_register(State, "TriggerGlobalEvent", ServerLua_TriggerEventG);
     lua_register(State, "TriggerLocalEvent", lua_TriggerEventL);
     lua_register(State, "TriggerClientEvent", lua_RemoteEvent);
     lua_register(State, "GetPlayerCount", lua_GetPlayerCount);

@@ -32,7 +32,7 @@ public:
     [[nodiscard]] const TNetwork& Network() const { return mNetwork; }
 
     void UnregisterScript(std::shared_ptr<TLuaFile> Script);
-    std::shared_ptr<TLuaFile> GetLuaFileOfScript(lua_State* L);
+    std::shared_ptr<TLuaFile> GetLuaFileOfState(lua_State* L);
     std::shared_ptr<TLuaFile> InsertNewLuaFile(const fs::path& FileName, const std::string& PluginName);
     void SendError(lua_State* L, const std::string& msg);
 
