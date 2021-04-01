@@ -468,3 +468,15 @@ cmake-build-debug/include/commandline/Makefile
 *.manifest
 *.rc
 *.res
+changelog-2.0.txt
+compile_commands.json
+err.html
+file.c
+log.txt
+nohup.out
+notes/
+patch.patch
+new-backend.txt
+sanitizer.txt
+speedcc.fit
+socket.txt

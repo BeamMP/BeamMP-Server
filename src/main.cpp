@@ -9,6 +9,8 @@
 #include "TServer.h"
 #include <thread>
 
+TLuaEngine* TheLuaEngine = nullptr;
+
 #ifdef __unix
 #include <csignal>
 

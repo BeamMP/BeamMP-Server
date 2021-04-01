@@ -12,41 +12,13 @@
 // TODO: REWRITE
 
 void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg);
-std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArg> Arg);
-std::any TriggerLuaEvent(TLuaEngine& Engine, const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
+std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArgs> Arg);
+std::any TriggerLuaEvent(TLuaEngine& Engine, const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArgs> arg, bool Wait);
 
-extern TLuaEngine* TheEngine;
-
-static TLuaEngine& Engine() {
-    Assert(TheEngine);
-    return *TheEngine;
-}
-
-std::shared_ptr<TLuaArg> CreateArg(lua_State* L, int T, int S) {
-    if (S > T)
-        return nullptr;
-    std::shared_ptr<TLuaArg> temp(new TLuaArg);
-    for (int C = S; C <= T; C++) {
-        if (lua_isstring(L, C)) {
-            temp->args.emplace_back(std::string(lua_tostring(L, C)));
-        } else if (lua_isinteger(L, C)) {
-            temp->args.emplace_back(int(lua_tointeger(L, C)));
-        } else if (lua_isboolean(L, C)) {
-            temp->args.emplace_back(bool(lua_toboolean(L, C)));
-        } else if (lua_isnumber(L, C)) {
-            temp->args.emplace_back(float(lua_tonumber(L, C)));
-        }
-    }
-    return temp;
-}
-void ClearStack(lua_State* L) {
-    lua_settop(L, 0);
-}
-
-std::any Trigger(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg> arg) {
+std::any Trigger(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArgs> arg) {
     RegisterThread(lua->GetFileName());
     std::lock_guard<std::mutex> lockGuard(lua->Lock);
-    std::packaged_task<std::any(std::shared_ptr<TLuaArg>)> task([lua, R](std::shared_ptr<TLuaArg> arg) { return CallFunction(lua, R, arg); });
+    std::packaged_task<std::any(std::shared_ptr<TLuaArg>)> task([lua, R](std::shared_ptr<TLuaArgs> arg) { return CallFunction(lua, R, arg); });
     std::future<std::any> f1 = task.get_future();
     std::thread t(std::move(task), arg);
     t.detach();
@@ -56,9 +28,9 @@ std::any Trigger(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg> a
     SendError(lua->Engine(), lua->GetState(), R + " took too long to respond");
     return 0;
 }
-std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg> arg, bool Wait) {
+std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArgs> arg, bool Wait) {
     Assert(lua);
-    std::packaged_task<std::any(std::shared_ptr<TLuaArg>)> task([lua, R](std::shared_ptr<TLuaArg> arg) { return Trigger(lua, R, arg); });
+    std::packaged_task<std::any(std::shared_ptr<TLuaArg>)> task([lua, R](std::shared_ptr<TLuaArgs> arg) { return Trigger(lua, R, arg); });
     std::future<std::any> f1 = task.get_future();
     std::thread t(std::move(task), arg);
     t.detach();
@@ -69,35 +41,6 @@ std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg
     if (status != std::future_status::timeout)
         return f1.get();
     return 0;
-}
-std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait) {
-    std::any R;
-    std::string Type;
-    int Ret = 0;
-    for (auto& Script : Engine().LuaFiles()) {
-        if (Script->IsRegistered(Event)) {
-            if (local) {
-                if (Script->GetPluginName() == Caller->GetPluginName()) {
-                    R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
-                    Type = R.type().name();
-                    if (Type.find("int") != std::string::npos) {
-                        if (std::any_cast<int>(R))
-                            Ret++;
-                    } else if (Event == "onPlayerAuth")
-                        return R;
-                }
-            } else {
-                R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
-                Type = R.type().name();
-                if (Type.find("int") != std::string::npos) {
-                    if (std::any_cast<int>(R))
-                        Ret++;
-                } else if (Event == "onPlayerAuth")
-                    return R;
-            }
-        }
-    }
-    return Ret;
 }
 bool ConsoleCheck(lua_State* L, int r) {
     if (r != LUA_OK) {
@@ -230,21 +173,7 @@ int lua_Sleep(lua_State* L) {
     }
     return 1;
 }
-std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
-    std::optional<std::weak_ptr<TClient>> MaybeClient { std::nullopt };
-    Server.ForEachClient([&](std::weak_ptr<TClient> CPtr) -> bool {
-        ReadLock Lock(Server.GetClientMutex());
-        if (!CPtr.expired()) {
-            auto C = CPtr.lock();
-            if (C->GetID() == ID) {
-                MaybeClient = CPtr;
-                return false;
-            }
-        }
-        return true;
-    });
-    return MaybeClient;
-}
+
 // CONTINUE
 int lua_isConnected(lua_State* L) {
     if (lua_isnumber(L, 1)) {
@@ -309,27 +238,6 @@ int lua_GetAllPlayers(lua_State* L) {
     });
     if (Engine().Server().ClientCount() == 0)
         return 0;
-    return 1;
-}
-int lua_GetIdentifiers(lua_State* L) {
-    if (lua_isnumber(L, 1)) {
-        auto MaybeClient = GetClient(Engine().Server(), int(lua_tonumber(L, 1)));
-        if (MaybeClient && !MaybeClient.value().expired()) {
-            auto IDs = MaybeClient.value().lock()->GetIdentifiers();
-            if (IDs.empty())
-                return 0;
-            lua_newtable(L);
-            for (const std::string& ID : IDs) {
-                lua_pushstring(L, ID.substr(0, ID.find(':')).c_str());
-                lua_pushstring(L, ID.c_str());
-                lua_settable(L, -3);
-            }
-        } else
-            return 0;
-    } else {
-        SendError(Engine(), L, "lua_GetIdentifiers wrong arguments");
-        return 0;
-    }
     return 1;
 }
 
@@ -590,19 +498,7 @@ int lua_Print(lua_State* L) {
 int lua_TempFix(lua_State* L);
 
 void TLuaFile::Init(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote) {
-    // set global engine for lua_* functions
-    if (!TheEngine) {
-        TheEngine = &mEngine;
-    }
     Assert(mLuaState);
-    if (!PluginName.empty()) {
-        SetPluginName(PluginName);
-    }
-    if (!FileName.empty()) {
-        SetFileName(FileName);
-    }
-    SetLastWrite(LastWrote);
-    Load();
 }
 
 TLuaFile::TLuaFile(TLuaEngine& Engine, bool Console)
@@ -628,7 +524,7 @@ std::string TLuaFile::GetOrigin() {
     return fs::path(GetFileName()).filename().string();
 }
 
-std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArg> Arg) {
+std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArgs> Arg) {
     RegisterThread(lua->GetFileName());
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
@@ -660,32 +556,6 @@ void TLuaFile::SetFileName(const std::string& Name) {
 }
 
 void TLuaFile::Load() {
-    Assert(mLuaState);
-    luaL_openlibs(mLuaState);
-    lua_register(mLuaState, "GetPlayerIdentifiers", lua_GetIdentifiers);
-    lua_register(mLuaState, "TriggerGlobalEvent", lua_TriggerEventG);
-    lua_register(mLuaState, "TriggerLocalEvent", lua_TriggerEventL);
-    lua_register(mLuaState, "TriggerClientEvent", lua_RemoteEvent);
-    lua_register(mLuaState, "GetPlayerCount", lua_GetPlayerCount);
-    lua_register(mLuaState, "isPlayerConnected", lua_isConnected);
-    lua_register(mLuaState, "RegisterEvent", lua_RegisterEvent);
-    lua_register(mLuaState, "GetPlayerName", lua_GetPlayerName);
-    lua_register(mLuaState, "RemoveVehicle", lua_RemoveVehicle);
-    lua_register(mLuaState, "GetPlayerDiscordID", lua_TempFix);
-    lua_register(mLuaState, "CreateThread", lua_CreateThread);
-    lua_register(mLuaState, "GetPlayerVehicles", lua_GetCars);
-    lua_register(mLuaState, "SendChatMessage", lua_sendChat);
-    lua_register(mLuaState, "GetPlayers", lua_GetAllPlayers);
-    lua_register(mLuaState, "GetPlayerGuest", lua_GetGuest);
-    lua_register(mLuaState, "StopThread", lua_StopThread);
-    lua_register(mLuaState, "DropPlayer", lua_dropPlayer);
-    lua_register(mLuaState, "GetPlayerHWID", lua_HWID);
-    lua_register(mLuaState, "exit", lua_ServerExit);
-    lua_register(mLuaState, "Sleep", lua_Sleep);
-    lua_register(mLuaState, "print", lua_Print);
-    lua_register(mLuaState, "Set", lua_Set);
-    if (!mConsole)
-        Reload();
 }
 
 void TLuaFile::RegisterEvent(const std::string& Event, const std::string& FunctionName) {
@@ -713,6 +583,12 @@ std::string TLuaFile::GetRegistered(const std::string& Event) const {
     }
     return "";
 }
+
+bool TLuaFile::operator==(const TLuaFile& Other) const {
+    return mPluginName == Other.mPluginName
+        && mFileName == Other.mFileName;
+}
+
 std::string TLuaFile::GetFileName() const {
     return mFileName;
 }
@@ -739,18 +615,6 @@ TLuaFile::~TLuaFile() {
     lua_close(mLuaState);
 }
 
-void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg) {
-    Assert(L);
-    auto MaybeS = Engine.GetScript(L);
-    std::string a;
-    if (!MaybeS.has_value()) {
-        a = ("_Console");
-    } else {
-        TLuaFile& S = MaybeS.value();
-        a = fs::path(S.GetFileName()).filename().string();
-    }
-    warn(a + (" | Incorrect Call of ") + msg);
-}
 int lua_TempFix(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
@@ -769,22 +633,22 @@ int lua_TempFix(lua_State* L) {
     return 1;
 }
 
-void TLuaArg::PushArgs(lua_State* State) {
-    for (std::any arg : args) {
+void TLuaFile::PushArgs(const TLuaArgs& args) {
+    for (const std::any& arg : args.Args) {
         if (!arg.has_value())
             return;
         std::string Type = arg.type().name();
         if (Type.find("bool") != std::string::npos) {
-            lua_pushboolean(State, std::any_cast<bool>(arg));
+            lua_pushboolean(mLuaState, std::any_cast<bool>(arg));
         }
         if (Type.find("basic_string") != std::string::npos || Type.find("char") != std::string::npos) {
-            lua_pushstring(State, std::any_cast<std::string>(arg).c_str());
+            lua_pushstring(mLuaState, std::any_cast<std::string>(arg).c_str());
         }
         if (Type.find("int") != std::string::npos) {
-            lua_pushinteger(State, std::any_cast<int>(arg));
+            lua_pushinteger(mLuaState, std::any_cast<int>(arg));
         }
         if (Type.find("float") != std::string::npos) {
-            lua_pushnumber(State, std::any_cast<float>(arg));
+            lua_pushnumber(mLuaState, std::any_cast<float>(arg));
         }
     }
 }

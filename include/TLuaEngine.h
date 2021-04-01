@@ -9,30 +9,42 @@
 #include <optional>
 #include <set>
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
+struct TLuaArgs final {
+    std::vector<std::any> Args;
+};
+
 class TLuaEngine : public IThreaded {
 public:
     explicit TLuaEngine(TServer& Server, TNetwork& Network);
 
-    using TSetOfLuaFile = std::set<std::unique_ptr<TLuaFile>>;
+    using TSetOfLuaFile = std::vector<std::shared_ptr<TLuaFile>>;
 
     void operator()() override;
 
-    [[nodiscard]] const TSetOfLuaFile& LuaFiles() const { return mLuaFiles; }
+    std::any TriggerLuaEvent(const std::string& Event, bool local, std::weak_ptr<TLuaFile> Caller, std::shared_ptr<TLuaArgs> arg, bool Wait);
+
     [[nodiscard]] TServer& Server() { return mServer; }
     [[nodiscard]] const TServer& Server() const { return mServer; }
     [[nodiscard]] TNetwork& Network() { return mNetwork; }
     [[nodiscard]] const TNetwork& Network() const { return mNetwork; }
 
-    std::optional<std::reference_wrapper<TLuaFile>> GetScript(lua_State* L);
+    void UnregisterScript(std::shared_ptr<TLuaFile> Script);
+    std::shared_ptr<TLuaFile> GetLuaFileOfScript(lua_State* L);
+    std::shared_ptr<TLuaFile> InsertNewLuaFile(const fs::path& FileName, const std::string& PluginName);
+    void SendError(lua_State* L, const std::string& msg);
 
 private:
     void FolderList(const std::string& Path, bool HotSwap);
-    void RegisterFiles(const std::string& Path, bool HotSwap);
-    bool NewFile(const std::string& Path);
+    void RegisterFiles(const fs::path& Path, bool HotSwap);
+    bool IsNewFile(const std::string& Path);
 
     TNetwork& mNetwork;
     TServer& mServer;
     std::string mPath;
     bool mShutdown { false };
+    mutable std::mutex mLuaFilesMutex;
     TSetOfLuaFile mLuaFiles;
 };
