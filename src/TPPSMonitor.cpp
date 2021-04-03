@@ -36,17 +36,15 @@ void TPPSMonitor::operator()() {
                 ReadLock Lock(mServer.GetClientMutex());
                 if (!ClientPtr.expired()) {
                     c = ClientPtr.lock();
-                } else return true;
+                } else
+                    return true;
             }
             if (c->GetCarCount() > 0) {
                 C++;
                 V += c->GetCarCount();
             }
-            if (!c->IsSynced() || c->IsSyncing()) {
-                c->UpdatePingTime();
-            }
             // kick on "no ping"
-            if (c->SecondsSinceLastPing() > 30 && c->IsSynced() && !c->IsSyncing()) {
+            if (c->SecondsSinceLastPing() > 30) {
                 debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
                 TimedOutClients.push_back(c);
             }

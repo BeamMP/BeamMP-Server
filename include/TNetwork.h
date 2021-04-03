@@ -44,6 +44,6 @@ private:
     void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked);
     void Parse(TClient& c, const std::string& Packet);
     void SendFile(TClient& c, const std::string& Name);
-    static bool TCPSendRaw(SOCKET C, char* Data, int32_t Size);
+    static bool TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size);
     static void SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name);
 };

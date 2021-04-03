@@ -390,8 +390,8 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
             return false;
         }
         Sent += Temp;
+        c.UpdatePingTime();
     } while (Sent < Size);
-    c.UpdatePingTime();
     return true;
 }
 
@@ -757,7 +757,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
         if (Diff > Split) {
             f.seekg(Sent, std::ios_base::beg);
             f.read(Data, Split);
-            if (!TCPSendRaw(TCPSock, Data, Split)) {
+            if (!TCPSendRaw(c, TCPSock, Data, Split)) {
                 if (c.GetStatus() > -1)
                     c.SetStatus(-1);
                 break;
@@ -766,7 +766,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
         } else {
             f.seekg(Sent, std::ios_base::beg);
             f.read(Data, Diff);
-            if (!TCPSendRaw(TCPSock, Data, int32_t(Diff))) {
+            if (!TCPSendRaw(c, TCPSock, Data, int32_t(Diff))) {
                 if (c.GetStatus() > -1)
                     c.SetStatus(-1);
                 break;
@@ -778,16 +778,17 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
     f.close();
 }
 
-bool TNetwork::TCPSendRaw(SOCKET C, char* Data, int32_t Size) {
+bool TNetwork::TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size) {
     intmax_t Sent = 0;
     do {
-        intmax_t Temp = send(C, &Data[Sent], int(Size - Sent), 0);
+        intmax_t Temp = send(socket, &Data[Sent], int(Size - Sent), 0);
         if (Temp < 1) {
-            info("Socket Closed! " + std::to_string(C));
-            CloseSocketProper(C);
+            info("Socket Closed! " + std::to_string(socket));
+            CloseSocketProper(socket);
             return false;
         }
         Sent += Temp;
+        C.UpdatePingTime();
     } while (Sent < Size);
     return true;
 }
