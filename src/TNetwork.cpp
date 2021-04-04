@@ -855,7 +855,6 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
                     return false;
                 }
                 res = Respond(*LockedClient, v.Data(), true, true);
-                std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }
 
