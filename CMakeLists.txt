@@ -58,11 +58,11 @@ target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCL
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${Boost_LINK_DIRS} ${LUA_LIBRARIES} dl crypto ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
     find_package(RapidJSON CONFIG REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls)
 endif ()

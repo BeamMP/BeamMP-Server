@@ -48,10 +48,9 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
   You can also use any version of `libluajit`, but the same applies regarding the version.
 - `libz-dev`
 - `rapidjson-dev`
-- `libboost1.70-dev`
-  
-  If your distro doesn't have 1.7x version of libboost, you'll have to compile it from source or find another way to get it for your distro.
 - `libopenssl-dev`
+
+**If** you're building it from source, you'll need `libboost1.70-dev` as well.
 
 ### How to build
 
