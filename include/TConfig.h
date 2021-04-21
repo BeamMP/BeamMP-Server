@@ -7,6 +7,9 @@ public:
     explicit TConfig(const std::string& ConfigFile);
 
 private:
+    static void ReadJson();
+    static void PrintDebug();
+    static void ManageJson();
     static std::string RemoveComments(const std::string& Line);
     static void SetValues(const std::string& Line, int Index);
 };

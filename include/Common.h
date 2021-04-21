@@ -17,18 +17,26 @@ class Application final {
 public:
     // types
     struct TSettings {
-        TSettings() noexcept
-            : DebugModeEnabled(true) { }
+        TSettings() noexcept :
+            ServerName("BeamMP Server"),
+            ServerDesc("BeamMP Default Description"),
+            Resource("Resources"),
+            MapName("/levels/gridmap/info.json"),
+            MaxPlayers(10),
+            Private(true),
+            MaxCars(1),
+            DebugModeEnabled(false),
+            Port(30814){}
         std::string ServerName;
         std::string ServerDesc;
         std::string Resource;
         std::string MapName;
         std::string Key;
-        int MaxPlayers {};
-        bool Private {};
-        int MaxCars {};
+        int MaxPlayers;
+        bool Private;
+        int MaxCars;
         bool DebugModeEnabled;
-        int Port {};
+        int Port;
         std::string CustomIP;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };

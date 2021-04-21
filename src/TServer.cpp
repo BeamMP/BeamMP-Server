@@ -9,9 +9,7 @@
 
 #undef GetObject //Fixes Windows
 
-#include "rapidjson/document.h"
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
+#include "Json.h"
 
 namespace json = rapidjson;
 
