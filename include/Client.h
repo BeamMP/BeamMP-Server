@@ -83,7 +83,7 @@ private:
     std::mutex mVehicleDataMutex;
     TSetOfVehicleData mVehicleData;
     std::string mName = "Unknown Client";
-    SOCKET mSocket[2] { SOCKET(-1) };
+    SOCKET mSocket[2] { SOCKET(0), SOCKET(0) };
     sockaddr_in mUDPAddress {}; // is this initialization OK? yes it is
     int mUnicycleID = -1;
     std::string mRole;
