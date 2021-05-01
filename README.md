@@ -8,7 +8,7 @@ The server is the point throug which all clients communicate. You can write lua 
 
 ## Minimum Requirements
 
-These values are guesstimated based on trial & error and are subject to change with each release.
+These values are guesstimated and are subject to change with each release.
 
 * RAM: 50+ MiB usable (not counting OS overhead)
 * CPU: Any Hz, preferably multicore
