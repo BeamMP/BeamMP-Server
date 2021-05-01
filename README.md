@@ -6,6 +6,17 @@
 This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** for the game [BeamNG.drive](https://www.beamng.com/).
 The server is the point throug which all clients communicate. You can write lua mods for the server, detailed instructions on the [BeamMP Wiki](https://wiki.beammp.com).
 
+## Minimum Requirements
+
+These values are guesstimated based on trial & error and are subject to change with each release.
+
+* RAM: 50+ MiB usable (not counting OS overhead)
+* CPU: Any Hz, preferably multicore
+* OS: Windows, Linux (theoretically any POSIX)
+* GPU: None
+* HDD: 10 MiB + Mods/Plugins
+* Bandwidth: 5-10 Mb/s upload
+
 ## About Building from Source
 
 We only allow building unmodified (original) source code. `master` is considered **unstable** and we will not provide technical support if such a build doesn't work, so always build from a tag. You can checkout a tag with `git checkout tags/TAGNAME`, where `TAGNAME` is the tag, for example `v1.20`. 
