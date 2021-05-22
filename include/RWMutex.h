@@ -7,6 +7,7 @@
  */
 
 #include <shared_mutex>
+#include <mutex>
 
 // Use ReadLock(m) and WriteLock(m) to lock it.
 using RWMutex = std::shared_mutex;
