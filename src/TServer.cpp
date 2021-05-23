@@ -136,6 +136,9 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
 #endif
         HandleEvent(*LockedClient, Packet);
         return;
+    case 'N':
+        debug("got 'N' packet (" + std::to_string(Packet.size()) + ")");
+        Network.SendToAll(LockedClient.get(), Packet, false, true);
     default:
         return;
     }
