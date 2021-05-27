@@ -17,6 +17,14 @@ These values are guesstimated and are subject to change with each release.
 * HDD: 10 MiB + Mods/Plugins
 * Bandwidth: 5-10 Mb/s upload
 
+## Contributing
+
+To contribute, look at the active [issues](https://github.com/BeamMP/BeamMP-Server/issues) and at the [trello](https://trello.com/b/Kw75j3zZ/beamngdrive-multiplayer). Any issues that don't have anyone assigned and any trello cards that aren't assigned or in the "In-Progress" section are good tasks to take on.
+
+Fork this repository, make a new branch for your feature, implement your feature or fix, and then create a pull-request here. Even incomplete features and fixes can be pull-requested.
+
+If you need support with understanding the codebase, please write us in the discord. You'll need to be proficient in modern C++.
+
 ## About Building from Source
 
 We only allow building unmodified (original) source code. `master` is considered **unstable** and we will not provide technical support if such a build doesn't work, so always build from a tag. You can checkout a tag with `git checkout tags/TAGNAME`, where `TAGNAME` is the tag, for example `v1.20`. 
