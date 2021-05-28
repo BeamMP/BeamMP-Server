@@ -21,7 +21,7 @@ These values are guesstimated and are subject to change with each release.
 
 TLDR; [Issues](https://github.com/BeamMP/BeamMP-Server/issues) with the "help wanted" label or with nobody assigned, any [trello](https://trello.com/b/Kw75j3zZ/beamngdrive-multiplayer) cards in the "To-Do" column.
 
-To contribute, look at the active [issues](https://github.com/BeamMP/BeamMP-Server/issues) and at the [trello](https://trello.com/b/Kw75j3zZ/beamngdrive-multiplayer). Any issues that have the "help wanted" label or don't have anyone assigned and any trello cards that aren't assigned or in the "In-Progress" section are good tasks to take on.
+To contribute, look at the active [issues](https://github.com/BeamMP/BeamMP-Server/issues) and at the [trello](https://trello.com/b/Kw75j3zZ/beamngdrive-multiplayer). Any issues that have the "help wanted" label or don't have anyone assigned and any trello cards that aren't assigned or in the "In-Progress" section are good tasks to take on. You can either contribute by programming or by testing and adding more info and ideas.
 
 Fork this repository, make a new branch for your feature, implement your feature or fix, and then create a pull-request here. Even incomplete features and fixes can be pull-requested.
 
