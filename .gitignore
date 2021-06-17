@@ -468,3 +468,9 @@ cmake-build-debug/include/commandline/Makefile
 *.manifest
 *.rc
 *.res
+BeamMP-Server
+*.patch
+callgrind.*
+notes/*
+compile_commands.json
+nohup.out
