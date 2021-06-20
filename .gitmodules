@@ -10,3 +10,6 @@
 [submodule "rapidjson"]
 	path = rapidjson
 	url = https://github.com/Tencent/rapidjson
+[submodule "include/tomlplusplus"]
+	path = include/tomlplusplus
+	url = https://github.com/marzer/tomlplusplus
