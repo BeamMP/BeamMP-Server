@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
 
     TServer Server(argc, argv);
-    [[maybe_unused]] TConfig Config;
+    TConfig Config;
 
     if (Config.Failed()) {
         info("Closing in 10 seconds");
