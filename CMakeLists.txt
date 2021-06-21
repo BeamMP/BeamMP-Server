@@ -53,7 +53,7 @@ add_executable(BeamMP-Server
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
 find_package(Lua REQUIRED)
-target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src")
+target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src" "include/tomlplusplus")
 
 find_package(OpenSSL REQUIRED)
 
