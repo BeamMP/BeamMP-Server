@@ -54,7 +54,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
     if (ofs.good()) {
         ofs << "# This is the BeamMP-Server config file.\n"
                "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-               "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\""
+               "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
             << '\n';
         ofs << tbl << '\n';
         error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. Please open it and fill in your AuthKey and other settings, then restart the server. The old Server.cfg file will no longer be used and cause a warning if it exists from now on.");
