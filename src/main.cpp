@@ -50,7 +50,14 @@ int main(int argc, char** argv) {
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
 
     TServer Server(argc, argv);
-    [[maybe_unused]] TConfig Config("Server.cfg");
+    [[maybe_unused]] TConfig Config;
+
+    if (Config.Failed()) {
+        info("Closing in 10 seconds");
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        return 1;
+    }
+
     RegisterThread("Main");
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);

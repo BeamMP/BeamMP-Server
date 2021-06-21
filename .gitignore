@@ -1,3 +1,5 @@
+.idea/
+*.toml
 boost_*
 Resources
 ## Ignore Visual Studio temporary files, build results, and

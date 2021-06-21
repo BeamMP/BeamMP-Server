@@ -2,14 +2,18 @@
 
 #include "Common.h"
 
+#include <atomic>
+
 class TConfig {
 public:
-    explicit TConfig(const std::string& ConfigFile);
+    explicit TConfig();
+
+    bool Failed() const { return mFailed; }
 
 private:
-    static void ReadJson();
-    static void PrintDebug();
-    static void ManageJson();
-    static std::string RemoveComments(const std::string& Line);
-    static void SetValues(const std::string& Line, int Index);
+    void CreateConfigFile(std::string_view name);
+    void ParseFromFile(std::string_view name);
+    void PrintDebug();
+
+    bool mFailed { false };
 };
