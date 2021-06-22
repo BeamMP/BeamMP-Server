@@ -56,6 +56,7 @@ std::any Trigger(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg> a
     SendError(lua->Engine(), lua->GetState(), R + " took too long to respond");
     return 0;
 }
+
 std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg> arg, bool Wait) {
     Assert(lua);
     std::packaged_task<std::any(std::shared_ptr<TLuaArg>)> task([lua, R](std::shared_ptr<TLuaArg> arg) { return Trigger(lua, R, arg); });
@@ -70,6 +71,7 @@ std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg
         return f1.get();
     return 0;
 }
+
 std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait) {
     std::any R;
     std::string Type;
@@ -99,6 +101,7 @@ std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller,
     }
     return Ret;
 }
+
 bool ConsoleCheck(lua_State* L, int r) {
     if (r != LUA_OK) {
         std::string msg = lua_tostring(L, -1);
@@ -107,6 +110,7 @@ bool ConsoleCheck(lua_State* L, int r) {
     }
     return true;
 }
+
 bool CheckLua(lua_State* L, int r) {
     if (r != LUA_OK) {
         std::string msg = lua_tostring(L, -1);
@@ -134,6 +138,7 @@ int lua_RegisterEvent(lua_State* L) {
         SendError(Engine(), L, "RegisterEvent invalid argument count expected 2 got " + std::to_string(Args));
     return 0;
 }
+
 int lua_TriggerEventL(lua_State* L) {
     int Args = lua_gettop(L);
     auto MaybeScript = Engine().GetScript(L);
@@ -197,6 +202,7 @@ int lua_StopThread(lua_State* L) {
     MaybeScript.value().get().SetStopThread(true);
     return 0;
 }
+
 int lua_CreateThread(lua_State* L) {
     int Args = lua_gettop(L);
     if (Args > 1) {
@@ -220,6 +226,7 @@ int lua_CreateThread(lua_State* L) {
         SendError(Engine(), L, ("CreateThread not enough arguments"));
     return 0;
 }
+
 int lua_Sleep(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int t = int(lua_tonumber(L, 1));
@@ -230,6 +237,7 @@ int lua_Sleep(lua_State* L) {
     }
     return 1;
 }
+
 std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
     std::optional<std::weak_ptr<TClient>> MaybeClient { std::nullopt };
     Server.ForEachClient([&](std::weak_ptr<TClient> CPtr) -> bool {
@@ -245,7 +253,7 @@ std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
     });
     return MaybeClient;
 }
-// CONTINUE
+
 int lua_isConnected(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
@@ -260,6 +268,7 @@ int lua_isConnected(lua_State* L) {
     }
     return 1;
 }
+
 int lua_GetPlayerName(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
@@ -274,10 +283,12 @@ int lua_GetPlayerName(lua_State* L) {
     }
     return 1;
 }
+
 int lua_GetPlayerCount(lua_State* L) {
     lua_pushinteger(L, Engine().Server().ClientCount());
     return 1;
 }
+
 int lua_GetGuest(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
@@ -292,6 +303,7 @@ int lua_GetGuest(lua_State* L) {
     }
     return 1;
 }
+
 int lua_GetAllPlayers(lua_State* L) {
     lua_newtable(L);
     Engine().Server().ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
@@ -311,6 +323,7 @@ int lua_GetAllPlayers(lua_State* L) {
         return 0;
     return 1;
 }
+
 int lua_GetIdentifiers(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         auto MaybeClient = GetClient(Engine().Server(), int(lua_tonumber(L, 1)));
@@ -360,6 +373,7 @@ int lua_GetCars(lua_State* L) {
     }
     return 1;
 }
+
 int lua_dropPlayer(lua_State* L) {
     int Args = lua_gettop(L);
     if (lua_isnumber(L, 1)) {
@@ -380,6 +394,7 @@ int lua_dropPlayer(lua_State* L) {
         SendError(Engine(), L, ("DropPlayer not enough arguments"));
     return 0;
 }
+
 int lua_sendChat(lua_State* L) {
     if (lua_isinteger(L, 1) || lua_isnumber(L, 1)) {
         if (lua_isstring(L, 2)) {
@@ -404,6 +419,7 @@ int lua_sendChat(lua_State* L) {
         SendError(Engine(), L, ("SendChatMessage invalid argument [1] expected number"));
     return 0;
 }
+
 int lua_RemoveVehicle(lua_State* L) {
     int Args = lua_gettop(L);
     if (Args != 2) {
@@ -428,10 +444,12 @@ int lua_RemoveVehicle(lua_State* L) {
         SendError(Engine(), L, ("RemoveVehicle invalid argument expected number"));
     return 0;
 }
+
 int lua_HWID(lua_State* L) {
     lua_pushinteger(L, -1);
     return 1;
 }
+
 int lua_RemoteEvent(lua_State* L) {
     int Args = lua_gettop(L);
     if (Args != 3) {
@@ -465,14 +483,12 @@ int lua_RemoteEvent(lua_State* L) {
     }
     return 0;
 }
-int lua_ServerExit(lua_State* L) {
-    if (lua_gettop(L) > 0) {
-        if (lua_isnumber(L, 1)) {
-            _Exit(int(lua_tointeger(L, 1)));
-        }
-    }
-    _Exit(0);
+
+int lua_ServerExit(lua_State*) {
+    Application::GracefullyShutdown();
+    return 0;
 }
+
 int lua_Set(lua_State* L) {
     int Args = lua_gettop(L);
     if (Args != 2) {
@@ -548,6 +564,7 @@ int lua_Set(lua_State* L) {
 
     return 0;
 }
+
 extern "C" {
 int lua_Print(lua_State* L) {
     int Arg = lua_gettop(L);
@@ -619,11 +636,13 @@ void TLuaFile::Execute(const std::string& Command) {
         lua_settop(mLuaState, 0);
     }
 }
+
 void TLuaFile::Reload() {
     if (CheckLua(mLuaState, luaL_dofile(mLuaState, mFileName.c_str()))) {
         CallFunction(this, ("onInit"), nullptr);
     }
 }
+
 std::string TLuaFile::GetOrigin() {
     return fs::path(GetFileName()).filename().string();
 }
@@ -641,9 +660,13 @@ std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_pt
         int R = lua_pcall(luaState, Size, 1, 0);
         if (CheckLua(luaState, R)) {
             if (lua_isnumber(luaState, -1)) {
-                return int(lua_tointeger(luaState, -1));
+                auto ret = int(lua_tointeger(luaState, -1));
+                ClearStack(luaState);
+                return ret;
             } else if (lua_isstring(luaState, -1)) {
-                return std::string(lua_tostring(luaState, -1));
+                auto ret = std::string(lua_tostring(luaState, -1));
+                ClearStack(luaState);
+                return ret;
             }
         }
     }
@@ -691,6 +714,7 @@ void TLuaFile::Load() {
 void TLuaFile::RegisterEvent(const std::string& Event, const std::string& FunctionName) {
     mRegisteredEvents.insert(std::make_pair(Event, FunctionName));
 }
+
 void TLuaFile::UnRegisterEvent(const std::string& Event) {
     for (const std::pair<std::string, std::string>& a : mRegisteredEvents) {
         if (a.first == Event) {
@@ -699,6 +723,7 @@ void TLuaFile::UnRegisterEvent(const std::string& Event) {
         }
     }
 }
+
 bool TLuaFile::IsRegistered(const std::string& Event) {
     for (const std::pair<std::string, std::string>& a : mRegisteredEvents) {
         if (a.first == Event)
@@ -706,6 +731,7 @@ bool TLuaFile::IsRegistered(const std::string& Event) {
     }
     return false;
 }
+
 std::string TLuaFile::GetRegistered(const std::string& Event) const {
     for (const std::pair<std::string, std::string>& a : mRegisteredEvents) {
         if (a.first == Event)
@@ -713,12 +739,15 @@ std::string TLuaFile::GetRegistered(const std::string& Event) const {
     }
     return "";
 }
+
 std::string TLuaFile::GetFileName() const {
     return mFileName;
 }
+
 std::string TLuaFile::GetPluginName() const {
     return mPluginName;
 }
+
 lua_State* TLuaFile::GetState() {
     return mLuaState;
 }
@@ -751,6 +780,7 @@ void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg) {
     }
     warn(a + (" | Incorrect Call of ") + msg);
 }
+
 int lua_TempFix(lua_State* L) {
     if (lua_isnumber(L, 1)) {
         int ID = int(lua_tonumber(L, 1));
@@ -771,20 +801,25 @@ int lua_TempFix(lua_State* L) {
 
 void TLuaArg::PushArgs(lua_State* State) {
     for (std::any arg : args) {
-        if (!arg.has_value())
+        if (!arg.has_value()) {
+            error("arg didn't have a value, this is not expected, bad");
             return;
-        std::string Type = arg.type().name();
-        if (Type.find("bool") != std::string::npos) {
+        }
+        const auto& Type = arg.type();
+        if (Type == typeid(bool)) {
             lua_pushboolean(State, std::any_cast<bool>(arg));
-        }
-        if (Type.find("basic_string") != std::string::npos || Type.find("char") != std::string::npos) {
+        } else if (Type == typeid(std::string)) {
             lua_pushstring(State, std::any_cast<std::string>(arg).c_str());
-        }
-        if (Type.find("int") != std::string::npos) {
+        } else if (Type == typeid(const char*)) {
+            lua_pushstring(State, std::any_cast<const char*>(arg));
+        } else if (Type == typeid(int)) {
             lua_pushinteger(State, std::any_cast<int>(arg));
-        }
-        if (Type.find("float") != std::string::npos) {
+        } else if (Type == typeid(float)) {
             lua_pushnumber(State, std::any_cast<float>(arg));
+        } else if (Type == typeid(double)) {
+            lua_pushnumber(State, std::any_cast<double>(arg));
+        } else {
+            error("what in the hell is " + std::string(arg.type().name()));
         }
     }
 }
