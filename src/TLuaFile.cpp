@@ -819,6 +819,7 @@ void TLuaArg::PushArgs(lua_State* State) {
         } else if (Type == typeid(double)) {
             lua_pushnumber(State, std::any_cast<double>(arg));
         } else {
+            // if this happens, implement a sane behavior for that value
             error("what in the hell is " + std::string(arg.type().name()));
         }
     }
