@@ -23,7 +23,7 @@ public:
             Resource("Resources"),
             MapName("/levels/gridmap/info.json"),
             MaxPlayers(10),
-            Private(true),
+            Private(false),
             MaxCars(1),
             DebugModeEnabled(false),
             Port(30814){}
