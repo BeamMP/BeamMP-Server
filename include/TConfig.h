@@ -14,6 +14,8 @@ private:
     void CreateConfigFile(std::string_view name);
     void ParseFromFile(std::string_view name);
     void PrintDebug();
+    
+    void ParseOldFormat();
 
     bool mFailed { false };
 };

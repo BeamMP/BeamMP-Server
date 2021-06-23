@@ -31,6 +31,17 @@ TConfig::TConfig() {
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
+    // build from old config Server.cfg
+
+    try {
+        if (fs::exists("Server.cfg")) {
+            // parse it (this is weird and bad and should be removed in some future version)
+            ParseOldFormat();
+        }
+    } catch (const std::exception& e) {
+        error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
+    }
+
     toml::table tbl { {
 
         { "General",
@@ -57,7 +68,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
                "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
             << '\n';
         ofs << tbl << '\n';
-        error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. Please open it and fill in your AuthKey and other settings, then restart the server. The old Server.cfg file will no longer be used and cause a warning if it exists from now on.");
+        error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and cause a warning if it exists from now on.");
         mFailed = true;
     } else {
         error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
@@ -144,4 +155,59 @@ void TConfig::PrintDebug() {
     debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     // special!
     debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
+}
+
+void TConfig::ParseOldFormat() {
+    std::ifstream File("Server.cfg");
+    // read all, strip comments
+    std::string Content;
+    for (;;) {
+        std::string Line;
+        std::getline(File, Line);
+        if (!Line.empty() && Line.at(0) != '#') {
+            Line = Line.substr(0, Line.find_first_of('#'));
+            Content += Line + "\n";
+        }
+        if (!File.good()) {
+            break;
+        }
+    }
+    info("Stripped:\n" + Content);
+    std::stringstream Str(Content);
+    std::string Key, Ignore, Value;
+    for (;;) {
+        Str >> Key >> std::ws >> Ignore >> std::ws;
+        std::getline(Str, Value);
+        if (Str.eof()) {
+            break;
+        }
+        std::stringstream ValueStream(Value);
+        info(Key + " = " + Value);
+        ValueStream >> std::ws; // strip leading whitespace if any
+        Value = ValueStream.str();
+        if (Key == "Debug") {
+            Application::Settings.DebugModeEnabled = Value.find("true") != std::string::npos;
+        } else if (Key == "Private") {
+            Application::Settings.Private = Value.find("true") != std::string::npos;
+        } else if (Key == "Port") {
+            ValueStream >> Application::Settings.Port;
+        } else if (Key == "Cars") {
+            ValueStream >> Application::Settings.MaxCars;
+        } else if (Key == "MaxPlayers") {
+            ValueStream >> Application::Settings.MaxPlayers;
+        } else if (Key == "Map") {
+            Application::Settings.MapName = Value.substr(1, Value.size() - 3);
+        } else if (Key == "Name") {
+            Application::Settings.ServerName = Value.substr(1, Value.size() - 3);
+        } else if (Key == "Desc") {
+            Application::Settings.ServerDesc = Value.substr(1, Value.size() - 3);
+        } else if (Key == "use") {
+            Application::Settings.Resource = Value.substr(1, Value.size() - 3);
+        } else if (Key == "AuthKey") {
+            Application::Settings.Key = Value.substr(1, Value.size() - 3);
+        } else {
+            warn("unknown key in old auth file (ignored): " + Key);
+        }
+        Str >> std::ws;
+    }
 }
