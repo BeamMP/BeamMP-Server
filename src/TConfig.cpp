@@ -3,6 +3,8 @@
 #include "TConfig.h"
 #include <fstream>
 #include <iostream>
+#include <istream>
+#include <sstream>
 
 static const char* ConfigFileName = static_cast<const char*>("ServerConfig.toml");
 
