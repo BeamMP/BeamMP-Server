@@ -172,7 +172,6 @@ void TConfig::ParseOldFormat() {
             break;
         }
     }
-    info("Stripped:\n" + Content);
     std::stringstream Str(Content);
     std::string Key, Ignore, Value;
     for (;;) {
@@ -182,7 +181,6 @@ void TConfig::ParseOldFormat() {
             break;
         }
         std::stringstream ValueStream(Value);
-        info(Key + " = " + Value);
         ValueStream >> std::ws; // strip leading whitespace if any
         Value = ValueStream.str();
         if (Key == "Debug") {
