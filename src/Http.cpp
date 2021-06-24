@@ -16,9 +16,11 @@ namespace ssl = net::ssl; // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
+
     try {
         // Check command line arguments.
         int version = 11;
+
 
         // The io_context is required for all I/O
         net::io_context ioc;
@@ -63,6 +65,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
+
 
         // Declare a container to hold the response
         http::response<http::string_body> res;
@@ -135,11 +138,10 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
         req.set(http::field::host, host);
         if (!body.empty()) {
-            if (json) {
-                req.set(http::field::content_type, "application/json");
-            } else {
-                req.set(http::field::content_type, "application/x-www-form-urlencoded");
-            }
+            req.set(http::field::content_type, ContentType); // "application/json"
+            // "application/x-www-form-urlencoded"
+
+
             req.set(http::field::content_length, std::to_string(body.size()));
             req.body() = body;
             // info("body is " + body + " (" + req.body() + ")");

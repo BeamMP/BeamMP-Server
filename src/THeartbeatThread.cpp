@@ -39,6 +39,7 @@ void THeartbeatThread::operator()() {
             if (status < 0) {
                 status = 0;
             }
+
             auto Lock = Sentry.CreateExclusiveContext();
             Sentry.SetContext("heartbeat",
                 { { "response-body", T },
@@ -47,6 +48,7 @@ void THeartbeatThread::operator()() {
             trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
             Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
         };
+
 
         auto Target = "/heartbeat";
         int ResponseCode = -1;
@@ -63,6 +65,7 @@ void THeartbeatThread::operator()() {
                 T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false, &ResponseCode);
                 if (T.substr(0, 2) != "20" || ResponseCode != 200) {
                     warn("Backend system refused server! Server will not show in the public server list.");
+
                     isAuth = false;
                     SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
                 }
