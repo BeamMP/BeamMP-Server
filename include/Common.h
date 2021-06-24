@@ -17,16 +17,16 @@ class Application final {
 public:
     // types
     struct TSettings {
-        TSettings() noexcept :
-            ServerName("BeamMP Server"),
-            ServerDesc("BeamMP Default Description"),
-            Resource("Resources"),
-            MapName("/levels/gridmap/info.json"),
-            MaxPlayers(10),
-            Private(false),
-            MaxCars(1),
-            DebugModeEnabled(false),
-            Port(30814){}
+        TSettings() noexcept
+            : ServerName("BeamMP Server")
+            , ServerDesc("BeamMP Default Description")
+            , Resource("Resources")
+            , MapName("/levels/gridmap/info.json")
+            , MaxPlayers(10)
+            , Private(false)
+            , MaxCars(1)
+            , DebugModeEnabled(false)
+            , Port(30814) { }
         std::string ServerName;
         std::string ServerDesc;
         std::string Resource;
@@ -50,7 +50,7 @@ public:
     // Causes all threads to finish up and exit gracefull gracefully
     static void GracefullyShutdown();
     static TConsole& Console() { return *mConsole; }
-    static std::string ServerVersion() { return "2.0.4"; }
+    static std::string ServerVersion() { return "2.1.1"; }
     static std::string ClientVersion() { return "2.0"; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(std::string NewPPS) { mPPS = NewPPS; }
