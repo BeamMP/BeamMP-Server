@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
+
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
@@ -25,6 +26,7 @@ add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
+
     #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
     set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
     include_directories(${VcpkgRoot}/include)
@@ -60,6 +62,7 @@ add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
 
 set(CMAKE_CXX_STANDARD 17)
+
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 message(STATUS "Looking for Boost")
