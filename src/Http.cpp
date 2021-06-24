@@ -54,7 +54,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
     }
 }
 
-std::string Http::POST(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json) {
+std::string Http::POST(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, const std::string& ContentType) {
     try {
         net::io_context io;
 
@@ -96,12 +96,8 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
         req.set(http::field::host, host);
         if (!body.empty()) {
-            if (json) {
-                // FIXME: json is untested.
-                req.set(http::field::content_type, "application/json");
-            } else {
-                req.set(http::field::content_type, "application/x-www-form-urlencoded");
-            }
+            req.set(http::field::content_type, ContentType); // "application/json"
+            // "application/x-www-form-urlencoded"
             req.set(http::field::content_length, std::to_string(body.size()));
             req.body() = body;
             // info("body is " + body + " (" + req.body() + ")");

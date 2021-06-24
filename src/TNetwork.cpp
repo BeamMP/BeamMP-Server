@@ -281,7 +281,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     }
 
     if (!Rc.empty()) {
-        Rc = Http::POST(Application::GetBackendUrlForAuth(), "/pkToUser", {}, R"({"key":")" + Rc + "\"}", true);
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), "/pkToUser", {}, R"({"key":")" + Rc + "\"}", "application/json");
     }
 
     json::Document AuthResponse;

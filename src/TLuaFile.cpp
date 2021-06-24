@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "Http.h"
 #include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TServer.h"
@@ -9,7 +10,30 @@
 #include <future>
 #include <thread>
 
-// TODO: REWRITE
+namespace LuaTable {
+void Begin(lua_State* L) {
+    lua_newtable(L);
+}
+
+void End(lua_State* L, const std::string& name) {
+    lua_setglobal(L, name.c_str());
+}
+
+void BeginEntry(lua_State* L, const std::string& name) {
+    lua_pushstring(L, name.c_str());
+}
+
+void EndEntry(lua_State* L) {
+    lua_settable(L, -3);
+}
+
+void InsertFunction(lua_State* L, const std::string& name, lua_CFunction func) {
+    BeginEntry(L, name);
+    lua_pushcfunction(L, func);
+    EndEntry(L);
+}
+
+}
 
 void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg);
 std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArg> Arg);
@@ -39,6 +63,7 @@ std::shared_ptr<TLuaArg> CreateArg(lua_State* L, int T, int S) {
     }
     return temp;
 }
+
 void ClearStack(lua_State* L) {
     lua_settop(L, 0);
 }
@@ -561,6 +586,42 @@ int lua_Set(lua_State* L) {
 
     return 0;
 }
+/*
+// CallInPlugin(PluginName, FunctionName)
+int lua_CallInPlugin(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        SendError(Engine(), L, "CallInPlugin expects a string as 1. argument.");
+        return 1;
+    }
+    if (!lua_isstring(L, 2)) {
+        SendError(Engine(), L, "CallInPlugin expects a string as 2. argument.");
+        return 1;
+    }
+    const char* PluginName = lua_tostring(L, 1);
+    const char* FunctionName = lua_tostring(L, 2);
+
+    bool FoundPlugin = false;
+    for (const auto& File : Engine().LuaFiles()) {
+        if (File->GetPluginName() == PluginName) {
+            FoundPlugin = true;
+            auto State = File->GetState();
+            lua_getglobal(State, FunctionName);
+            if (!lua_isfunction(State, -1)) {
+                SendError(Engine(), L, "CallInPlugin: \"" + std::string(FunctionName) + "\" in plugin  \"" + std::string(PluginName) + "\" is not a function.");
+                return 1;
+            }
+            ClearStack(State);
+            CallFunction(File.get(), FunctionName, nullptr);
+        }
+    }
+    if (!FoundPlugin) {
+        SendError(Engine(), L, "CallInPlugin: Could not find plugin called \"" + std::string(PluginName) + "\"");
+        return 1;
+    }
+
+    return 0;
+}
+*/
 
 extern "C" {
 int lua_Print(lua_State* L) {
@@ -763,32 +824,48 @@ void TLuaFile::SetFileName(const std::string& Name) {
     mFileName = Name;
 }
 
+// GetOSName() -> Linux || Windows || Other
+int lua_GetOSName(lua_State* L) {
+#if defined(__linux) || defined(__linux__)
+    lua_pushstring(L, "Linux");
+#elif defined(WIN32)
+    lua_pushstring(L, "Windows");
+#else
+    lua_pushstring(L, "Unknown");
+#endif
+}
+
 void TLuaFile::Load() {
     Assert(mLuaState);
     luaL_openlibs(mLuaState);
-    lua_register(mLuaState, "GetPlayerIdentifiers", lua_GetIdentifiers);
-    lua_register(mLuaState, "TriggerGlobalEvent", lua_TriggerEventG);
-    lua_register(mLuaState, "TriggerLocalEvent", lua_TriggerEventL);
-    lua_register(mLuaState, "TriggerClientEvent", lua_RemoteEvent);
-    lua_register(mLuaState, "GetPlayerCount", lua_GetPlayerCount);
-    lua_register(mLuaState, "isPlayerConnected", lua_isConnected);
-    lua_register(mLuaState, "RegisterEvent", lua_RegisterEvent);
-    lua_register(mLuaState, "GetPlayerName", lua_GetPlayerName);
-    lua_register(mLuaState, "RemoveVehicle", lua_RemoveVehicle);
-    lua_register(mLuaState, "GetPlayerDiscordID", lua_TempFix);
-    lua_register(mLuaState, "CreateThread", lua_CreateThread);
-    lua_register(mLuaState, "GetPlayerVehicles", lua_GetCars);
-    lua_register(mLuaState, "SendChatMessage", lua_sendChat);
-    lua_register(mLuaState, "GetPlayers", lua_GetAllPlayers);
-    lua_register(mLuaState, "GetPlayerGuest", lua_GetGuest);
-    lua_register(mLuaState, "StopThread", lua_StopThread);
-    lua_register(mLuaState, "DropPlayer", lua_dropPlayer);
-    lua_register(mLuaState, "GetPlayerHWID", lua_HWID);
+
+    LuaTable::Begin(mLuaState);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerIdentifiers", lua_GetIdentifiers);
+    LuaTable::InsertFunction(mLuaState, "TriggerGlobalEvent", lua_TriggerEventG);
+    LuaTable::InsertFunction(mLuaState, "TriggerLocalEvent", lua_TriggerEventL);
+    LuaTable::InsertFunction(mLuaState, "TriggerClientEvent", lua_RemoteEvent);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerCount", lua_GetPlayerCount);
+    LuaTable::InsertFunction(mLuaState, "IsPlayerConnected", lua_isConnected);
+    LuaTable::InsertFunction(mLuaState, "RegisterEvent", lua_RegisterEvent);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerName", lua_GetPlayerName);
+    LuaTable::InsertFunction(mLuaState, "RemoveVehicle", lua_RemoveVehicle);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerDiscordID", lua_TempFix);
+    LuaTable::InsertFunction(mLuaState, "CreateThread", lua_CreateThread);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerVehicles", lua_GetCars);
+    LuaTable::InsertFunction(mLuaState, "SendChatMessage", lua_sendChat);
+    LuaTable::InsertFunction(mLuaState, "GetPlayers", lua_GetAllPlayers);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerGuest", lua_GetGuest);
+    LuaTable::InsertFunction(mLuaState, "StopThread", lua_StopThread);
+    LuaTable::InsertFunction(mLuaState, "DropPlayer", lua_dropPlayer);
     lua_register(mLuaState, "Register", lua_Register);
-    lua_register(mLuaState, "exit", lua_ServerExit);
-    lua_register(mLuaState, "Sleep", lua_Sleep);
+    LuaTable::InsertFunction(mLuaState, "GetPlayerHWID", lua_HWID);
+    LuaTable::InsertFunction(mLuaState, "Sleep", lua_Sleep);
+    LuaTable::InsertFunction(mLuaState, "Set", lua_Set);
+    LuaTable::InsertFunction(mLuaState, "GetOSName", lua_GetOSName);
+    LuaTable::End(mLuaState, "MP");
+
     lua_register(mLuaState, "print", lua_Print);
-    lua_register(mLuaState, "Set", lua_Set);
+    lua_register(mLuaState, "exit", lua_ServerExit);
     if (!mConsole)
         Reload();
 }
@@ -862,6 +939,7 @@ void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg) {
     }
     warn(a + (" | Incorrect Call of ") + msg);
 }
+
 
 void TLuaArg::PushArgs(lua_State* State) {
     for (std::any arg : args) {
