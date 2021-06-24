@@ -1,4 +1,6 @@
-#include <toml.hpp> // header-only version of TOML++
+#define TOML11_PRESERVE_COMMENTS_BY_DEFAULT
+
+#include <toml11/toml.hpp> // header-only version of TOML++
 
 #include "TConfig.h"
 #include <fstream>
@@ -32,6 +34,23 @@ TConfig::TConfig() {
     }
 }
 
+void TConfig::FlushToFile() {
+    auto data = toml::parse(ConfigFileName);
+    data["General"] = toml::table();
+    data["General"][StrAuthKey.data()] = Application::Settings.Key;
+    data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
+    data["General"][StrPrivate.data()] = Application::Settings.Private;
+    data["General"][StrPort.data()] = Application::Settings.Port;
+    data["General"][StrName.data()] = Application::Settings.ServerName;
+    data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
+    data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
+    data["General"][StrMap.data()] = Application::Settings.MapName;
+    data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
+    data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    std::ofstream Stream(ConfigFileName);
+    Stream << data << std::flush;
+}
+
 void TConfig::CreateConfigFile(std::string_view name) {
     // build from old config Server.cfg
 
@@ -44,32 +63,31 @@ void TConfig::CreateConfigFile(std::string_view name) {
         error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
     }
 
-    toml::table tbl { {
+    { // create file context
+        std::ofstream ofs(name.data());
+    }
 
-        { "General",
-            toml::table { {
+    auto data = toml::parse<toml::preserve_comments>(name.data());
 
-                { StrDebug, Application::Settings.DebugModeEnabled },
-                { StrPrivate, Application::Settings.Private },
-                { StrPort, Application::Settings.Port },
-                { StrMaxCars, Application::Settings.MaxCars },
-                { StrMaxPlayers, Application::Settings.MaxPlayers },
-                { StrMap, Application::Settings.MapName },
-                { StrName, Application::Settings.ServerName },
-                { StrDescription, Application::Settings.ServerDesc },
-                { StrResourceFolder, Application::Settings.Resource },
-                { StrAuthKey, Application::Settings.Key },
+    data["General"] = toml::table();
+    data["General"][StrAuthKey.data()] = Application::Settings.Key;
+    data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
+    data["General"][StrPrivate.data()] = Application::Settings.Private;
+    data["General"][StrPort.data()] = Application::Settings.Port;
+    data["General"][StrName.data()] = Application::Settings.ServerName;
+    data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
+    data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
+    data["General"][StrMap.data()] = Application::Settings.MapName;
+    data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
+    data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
 
-            } } },
-
-    } };
     std::ofstream ofs { std::string(name) };
     if (ofs.good()) {
         ofs << "# This is the BeamMP-Server config file.\n"
                "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
                "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
             << '\n';
-        ofs << tbl << '\n';
+        ofs << data << '\n';
         error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
         mFailed = true;
     } else {
@@ -80,58 +98,17 @@ void TConfig::CreateConfigFile(std::string_view name) {
 
 void TConfig::ParseFromFile(std::string_view name) {
     try {
-        toml::table FullTable = toml::parse_file(name);
-        toml::table GeneralTable = *FullTable["General"].as_table();
-        if (auto val = GeneralTable[StrDebug].value<bool>(); val.has_value()) {
-            Application::Settings.DebugModeEnabled = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrDebug));
-        }
-        if (auto val = GeneralTable[StrPrivate].value<bool>(); val.has_value()) {
-            Application::Settings.Private = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrPrivate));
-        }
-        if (auto val = GeneralTable[StrPort].value<int>(); val.has_value()) {
-            Application::Settings.Port = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrPort));
-        }
-        if (auto val = GeneralTable[StrMaxCars].value<int>(); val.has_value()) {
-            Application::Settings.MaxCars = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrMaxCars));
-        }
-        if (auto val = GeneralTable[StrMaxPlayers].value<int>(); val.has_value()) {
-            Application::Settings.MaxPlayers = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrMaxPlayers));
-        }
-        if (auto val = GeneralTable[StrMap].value<std::string>(); val.has_value()) {
-            Application::Settings.MapName = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrMap));
-        }
-        if (auto val = GeneralTable[StrName].value<std::string>(); val.has_value()) {
-            Application::Settings.ServerName = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrName));
-        }
-        if (auto val = GeneralTable[StrDescription].value<std::string>(); val.has_value()) {
-            Application::Settings.ServerDesc = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrDescription));
-        }
-        if (auto val = GeneralTable[StrResourceFolder].value<std::string>(); val.has_value()) {
-            Application::Settings.Resource = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrResourceFolder));
-        }
-        if (auto val = GeneralTable[StrAuthKey].value<std::string>(); val.has_value()) {
-            Application::Settings.Key = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrAuthKey));
-        }
+        toml::value data = toml::parse<toml::preserve_comments>(name.data());
+        Application::Settings.DebugModeEnabled = data["General"][StrDebug.data()].as_boolean();
+        Application::Settings.Private = data["General"][StrPrivate.data()].as_boolean();
+        Application::Settings.Port = data["General"][StrPort.data()].as_integer();
+        Application::Settings.MaxCars = data["General"][StrMaxCars.data()].as_integer();
+        Application::Settings.MaxPlayers = data["General"][StrMaxPlayers.data()].as_integer();
+        Application::Settings.MapName = data["General"][StrMap.data()].as_string();
+        Application::Settings.ServerName = data["General"][StrName.data()].as_string();
+        Application::Settings.ServerDesc = data["General"][StrDescription.data()].as_string();
+        Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
+        Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
     } catch (const std::exception& err) {
         error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;

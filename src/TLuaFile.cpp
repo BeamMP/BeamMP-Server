@@ -586,42 +586,6 @@ int lua_Set(lua_State* L) {
 
     return 0;
 }
-/*
-// CallInPlugin(PluginName, FunctionName)
-int lua_CallInPlugin(lua_State* L) {
-    if (!lua_isstring(L, 1)) {
-        SendError(Engine(), L, "CallInPlugin expects a string as 1. argument.");
-        return 1;
-    }
-    if (!lua_isstring(L, 2)) {
-        SendError(Engine(), L, "CallInPlugin expects a string as 2. argument.");
-        return 1;
-    }
-    const char* PluginName = lua_tostring(L, 1);
-    const char* FunctionName = lua_tostring(L, 2);
-
-    bool FoundPlugin = false;
-    for (const auto& File : Engine().LuaFiles()) {
-        if (File->GetPluginName() == PluginName) {
-            FoundPlugin = true;
-            auto State = File->GetState();
-            lua_getglobal(State, FunctionName);
-            if (!lua_isfunction(State, -1)) {
-                SendError(Engine(), L, "CallInPlugin: \"" + std::string(FunctionName) + "\" in plugin  \"" + std::string(PluginName) + "\" is not a function.");
-                return 1;
-            }
-            ClearStack(State);
-            CallFunction(File.get(), FunctionName, nullptr);
-        }
-    }
-    if (!FoundPlugin) {
-        SendError(Engine(), L, "CallInPlugin: Could not find plugin called \"" + std::string(PluginName) + "\"");
-        return 1;
-    }
-
-    return 0;
-}
-*/
 
 extern "C" {
 int lua_Print(lua_State* L) {
