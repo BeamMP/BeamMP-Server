@@ -706,53 +706,38 @@ int lua_TempFix(lua_State* L) {
     return 1;
 }
 
-template <const size_t _UniqueId, typename Res, typename... ArgTypes>
-struct fun_ptr_helper {
-public:
-    typedef std::function<Res(ArgTypes...)> function_type;
+template <int ID>
+struct CFunctionPointer {
+    std::function<int(lua_State*)> func;
 
-    static void bind(function_type&& f) { instance().fn_.swap(f); }
-
-    static void bind(const function_type& f) { instance().fn_ = f; }
-
-    static Res invoke(ArgTypes... args) { return instance().fn_(args...); }
-
-    typedef decltype(&fun_ptr_helper::invoke) pointer_type;
-    static pointer_type ptr() { return &invoke; }
-
-private:
-    static fun_ptr_helper& instance() {
-        static fun_ptr_helper inst_;
-        return inst_;
+    static int callback(lua_State* s) {
+        return instance().func(s);
     }
 
-    fun_ptr_helper() { }
-
-    function_type fn_;
+    static CFunctionPointer& instance() {
+        static CFunctionPointer inst_;
+        return inst_;
+    }
 };
 
-template <const size_t _UniqueId, typename _Res, typename... _ArgTypes>
-typename fun_ptr_helper<_UniqueId, _Res, _ArgTypes...>::pointer_type
-get_fn_ptr(const std::function<_Res(_ArgTypes...)>& f) {
-    fun_ptr_helper<_UniqueId, _Res, _ArgTypes...>::bind(f);
-    return fun_ptr_helper<_UniqueId, _Res, _ArgTypes...>::ptr();
-}
-
 int lua_Register(lua_State* L) {
-    if (lua_isstring(L, 1)) {
+    if(lua_isstring(L, 1)){
         std::string Name(lua_tolstring(L, 1, nullptr));
         lua_getglobal(L, Name.c_str());
         if (lua_isfunction(L, -1)) {
             for (auto& Script : Engine().LuaFiles()) {
-                if (Script->GetState() != L) {
-                    lua_CFunction Func = get_fn_ptr<0>(std::function<int(lua_State*)>([=](lua_State* A) {
+                if(Script->GetState() != L){
+
+                    CFunctionPointer<0> F; //How do we pass a value instead of a const
+                    F.instance().func = [=](lua_State* A) {
                         lua_getglobal(L, Name.c_str());
                         if (lua_isfunction(L, -1)) {
                             lua_pcall(L, 0, 0, 0);
                         }
                         return 0;
-                    }));
-                    lua_register(Script->GetState(), Name.c_str(), Func);
+                    };
+
+                    lua_register(Script->GetState(), Name.c_str(), F.callback);
                 }
             }
 
