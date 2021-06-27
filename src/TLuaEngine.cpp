@@ -6,6 +6,8 @@
 
 namespace fs = std::filesystem;
 
+std::unordered_map<std::string, lua_State*> TLuaEngine::mGlobals;
+
 // necessary as lua relies on global state
 TLuaEngine* TheEngine;
 

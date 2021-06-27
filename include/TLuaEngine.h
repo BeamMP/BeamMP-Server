@@ -4,10 +4,11 @@
 #include "IThreaded.h"
 #include "TLuaFile.h"
 #include "TServer.h"
+#include <optional>
 #include <lua.hpp>
 #include <memory>
-#include <optional>
 #include <set>
+#include <unordered_map>
 
 class TLuaEngine : public IThreaded {
 public:
@@ -25,6 +26,7 @@ public:
 
     std::optional<std::reference_wrapper<TLuaFile>> GetScript(lua_State* L);
 
+    static std::unordered_map<std::string, lua_State*> mGlobals;
 private:
     void FolderList(const std::string& Path, bool HotSwap);
     void RegisterFiles(const std::string& Path, bool HotSwap);
