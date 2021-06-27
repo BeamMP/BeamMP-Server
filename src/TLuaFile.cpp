@@ -670,38 +670,33 @@ int lua_TempFix(lua_State* L) {
     return 1;
 }
 
-template <int ID>
-struct CFunctionPointer {
-    std::function<int(lua_State*)> func;
+int lua_Registered(lua_State* L) {
 
-    static int callback(lua_State* s) {
-        return instance().func(s);
+    lua_Debug info;
+    lua_getstack(L, 0, &info);
+    lua_getinfo(L, "n", &info);
+
+    if(auto it = TLuaEngine::mGlobals.find(info.name); it != TLuaEngine::mGlobals.end()){
+        lua_getglobal(it->second, info.name);
+        if (lua_isfunction(it->second, -1)) {
+            lua_pcall(it->second, 0, 0, 0); //TODO revisit to allow arguments and return
+        }
+        return 0;
     }
 
-    static CFunctionPointer& instance() {
-        static CFunctionPointer inst_;
-        return inst_;
-    }
-};
+    SendError(Engine(), L, "Cannot find global '" + std::string(info.name) + "\'");
+    return 0;
+}
 
 int lua_Register(lua_State* L) {
     if(lua_isstring(L, 1)){
         std::string Name(lua_tolstring(L, 1, nullptr));
         lua_getglobal(L, Name.c_str());
         if (lua_isfunction(L, -1)) {
+            TLuaEngine::mGlobals.emplace(Name, L);
             for (auto& Script : Engine().LuaFiles()) {
                 if(Script->GetState() != L){
-
-                    CFunctionPointer<0> F; //How do we pass a value instead of a const
-                    F.instance().func = [=](lua_State* A) {
-                        lua_getglobal(L, Name.c_str());
-                        if (lua_isfunction(L, -1)) {
-                            lua_pcall(L, 0, 0, 0);
-                        }
-                        return 0;
-                    };
-
-                    lua_register(Script->GetState(), Name.c_str(), F.callback);
+                    lua_register(Script->GetState(), Name.c_str(), lua_Registered);
                 }
             }
 
