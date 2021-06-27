@@ -679,7 +679,7 @@ int lua_Registered(lua_State* L) {
     if(auto it = TLuaEngine::mGlobals.find(info.name); it != TLuaEngine::mGlobals.end()){
         lua_getglobal(it->second, info.name);
         if (lua_isfunction(it->second, -1)) {
-            lua_pcall(it->second, 0, 0, 0); //TODO revisit to allow arguments and return
+            lua_pcall(it->second, 0, 0, 0); //TODO revisit to allow arguments and return also we need to mutex this
         }
         return 0;
     }
