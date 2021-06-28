@@ -71,7 +71,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `rapidjson-dev`
 - `libopenssl-dev`
 
-**If** you're building it from source, you'll need `libboost1.70-dev` as well.
+**If** you're building it from source, you'll need libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
 
 ### How to build
 
