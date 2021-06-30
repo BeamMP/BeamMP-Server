@@ -17,9 +17,12 @@ using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
 
+
     try {
         // Check command line arguments.
         int version = 11;
+
+
 
 
         // The io_context is required for all I/O
@@ -67,6 +70,8 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
         beast::flat_buffer buffer;
 
 
+
+
         // Declare a container to hold the response
         http::response<http::string_body> res;
 
@@ -86,17 +91,18 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
             *status = res.base().result_int();
         }
         
-        // ignore ec
+        if (ec)
+            throw beast::system_error { ec };
 
         // If we get here then the connection is closed gracefully
         return std::string(res.body());
     } catch (std::exception const& e) {
         Application::Console().Write(__func__ + std::string(": ") + e.what());
-        return "-1";
+        return ErrorString;
     }
 }
 
-std::string Http::POST(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json, int* status) {
+std::string Http::POST(const std::string& host, int port, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, const std::string& ContentType, unsigned int* status) {
     try {
         net::io_context io;
 
@@ -110,7 +116,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         decltype(resolver)::results_type results;
         auto try_connect_with_protocol = [&](tcp protocol) {
             try {
-                results = resolver.resolve(protocol, host, std::to_string(443));
+                results = resolver.resolve(protocol, host, std::to_string(port));
                 if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
                     boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
                     // FIXME: we could throw and crash, if we like
@@ -189,6 +195,10 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         }
         Sentry.SetContext("https-post-response-data", response_data);
 
+        if (status) {
+            *status = response.base().result_int();
+        }
+
         std::stringstream result;
         result << response;
 
@@ -199,12 +209,13 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         // info(result.str());
         std::string debug_response_str;
         std::getline(result, debug_response_str);
+
         //debug("POST " + host + target + ": " + debug_response_str);
         return std::string(response.body());
 
     } catch (const std::exception& e) {
-        Application::Console().Write(e.what());
-        return "-1";
+        Application::Console().Write(__func__ + std::string(": ") + e.what());
+        return ErrorString;
     }
 }
 

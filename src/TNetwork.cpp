@@ -290,7 +290,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
 
     json::Document AuthResponse;
     AuthResponse.Parse(Rc.c_str());
-    if (Rc == "-1" || AuthResponse.HasParseError()) {
+    if (Rc == Http::ErrorString || AuthResponse.HasParseError()) {
         ClientKick(*Client, "Invalid key! Please restart your game.");
         return;
     }
