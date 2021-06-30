@@ -614,7 +614,7 @@ int lua_Set(lua_State* L) {
 }
 
 extern "C" {
-int lua_Print(lua_State* L) {
+int InternalLuaPrint(lua_State* L, bool pretty) {
     int Arg = lua_gettop(L);
     std::string to_print;
     for (int i = 1; i <= Arg; i++) {
@@ -647,8 +647,18 @@ int lua_Print(lua_State* L) {
             to_print += "\t";
         }
     }
-    luaprint(to_print);
+    if (pretty) {
+        luaprint(to_print);
+    } else {
+        Application::Console().WriteRaw(to_print);
+    }
     return 0;
+}
+int lua_Print(lua_State* L) {
+    return InternalLuaPrint(L, true);
+}
+int lua_PrintRaw(lua_State* L) {
+    return InternalLuaPrint(L, false);
 }
 }
 
@@ -931,6 +941,7 @@ void TLuaFile::Load() {
     LuaTable::End(mLuaState, "MP");
 
     lua_register(mLuaState, "print", lua_Print);
+    lua_register(mLuaState, "printRaw", lua_PrintRaw);
     lua_register(mLuaState, "exit", lua_ServerExit);
     if (!mConsole)
         Reload();
