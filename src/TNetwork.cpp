@@ -281,12 +281,12 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     }
 
     if (!Rc.empty()) {
-        Rc = Http::POST(Application::GetBackendUrlForAuth(), "/pkToUser", {}, R"({"key":")" + Rc + "\"}", "application/json");
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), 443, "/pkToUser", {}, R"({"key":")" + Rc + "\"}", "application/json");
     }
 
     json::Document AuthResponse;
     AuthResponse.Parse(Rc.c_str());
-    if (Rc == "-1" || AuthResponse.HasParseError()) {
+    if (Rc == Http::ErrorString || AuthResponse.HasParseError()) {
         ClientKick(*Client, "Invalid key! Please restart your game.");
         return;
     }

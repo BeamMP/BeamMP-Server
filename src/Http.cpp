@@ -14,47 +14,85 @@ namespace net = boost::asio; // from <boost/asio.hpp>
 namespace ssl = net::ssl; // from <boost/asio/ssl.hpp>
 using tcp = net::ip::tcp; // from <boost/asio/ip/tcp.hpp>
 
-std::string Http::GET(const std::string& host, int port, const std::string& target) {
-    // FIXME: doesn't support https
-    // if it causes issues, yell at me and I'll fix it asap. - Lion
+std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
     try {
-        net::io_context io;
-        tcp::resolver resolver(io);
-        beast::tcp_stream stream(io);
-        auto const results = resolver.resolve(host, std::to_string(port));
-        stream.connect(results);
+        // Check command line arguments.
+        int version = 11;
 
-        http::request<http::string_body> req { http::verb::get, target, 11 /* http 1.1 */ };
+        // The io_context is required for all I/O
+        net::io_context ioc;
 
-        req.set(http::field::host, host);
-        // tell the server what we are (boost beast)
-        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+        // The SSL context is required, and holds certificates
+        ssl::context ctx(ssl::context::tlsv12_client);
 
-        http::write(stream, req);
+        // This holds the root certificate used for verification
+        // we don't do / have this
+        // load_root_certificates(ctx);
 
-        // used for reading
-        beast::flat_buffer buffer;
-        http::response<http::string_body> response;
+        // Verify the remote server's certificate
+        ctx.set_verify_mode(ssl::verify_none);
 
-        http::read(stream, buffer, response);
+        // These objects perform our I/O
+        tcp::resolver resolver(ioc);
+        beast::ssl_stream<beast::tcp_stream> stream(ioc, ctx);
 
-        std::string result(response.body());
-
-        beast::error_code ec;
-        stream.socket().shutdown(tcp::socket::shutdown_both, ec);
-        if (ec && ec != beast::errc::not_connected) {
-            throw beast::system_error { ec }; // goes down to `return "-1"` anyways
+        // Set SNI Hostname (many hosts need this to handshake successfully)
+        if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
+            beast::error_code ec { static_cast<int>(::ERR_get_error()), net::error::get_ssl_category() };
+            throw beast::system_error { ec };
         }
 
-        return result;
+        // Look up the domain name
+        auto const results = resolver.resolve(host.c_str(), std::to_string(port));
 
-    } catch (const std::exception& e) {
-        Application::Console().Write(e.what());
-        return "-1";
+        // Make the connection on the IP address we get from a lookup
+        beast::get_lowest_layer(stream).connect(results);
+
+        // Perform the SSL handshake
+        stream.handshake(ssl::stream_base::client);
+
+        // Set up an HTTP GET request message
+        http::request<http::string_body> req { http::verb::get, target, version };
+        req.set(http::field::host, host);
+        req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+
+        // Send the HTTP request to the remote host
+        http::write(stream, req);
+
+        // This buffer is used for reading and must be persisted
+        beast::flat_buffer buffer;
+
+        // Declare a container to hold the response
+        http::response<http::string_body> res;
+
+        // Receive the HTTP response
+        http::read(stream, buffer, res);
+
+        // Gracefully close the stream
+        beast::error_code ec;
+        stream.shutdown(ec);
+        if (ec == net::error::eof) {
+            // Rationale:
+            // http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
+            ec = {};
+        }
+
+        if (status) {
+            *status = res.base().result_int();
+        }
+
+        if (ec)
+            throw beast::system_error { ec };
+
+        // If we get here then the connection is closed gracefully
+        return std::string(res.body());
+    } catch (std::exception const& e) {
+        Application::Console().Write(__func__ + std::string(": ") + e.what());
+        return ErrorString;
     }
 }
 
-std::string Http::POST(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, const std::string& ContentType) {
+std::string Http::POST(const std::string& host, int port, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, const std::string& ContentType, unsigned int* status) {
     try {
         net::io_context io;
 
@@ -68,7 +106,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         decltype(resolver)::results_type results;
         auto try_connect_with_protocol = [&](tcp protocol) {
             try {
-                results = resolver.resolve(protocol, host, std::to_string(443));
+                results = resolver.resolve(protocol, host, std::to_string(port));
                 if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
                     boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
                     // FIXME: we could throw and crash, if we like
@@ -121,6 +159,10 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
         http::read(stream, buffer, response);
 
+        if (status) {
+            *status = response.base().result_int();
+        }
+
         std::stringstream result;
         result << response;
 
@@ -131,11 +173,12 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         // info(result.str());
         std::string debug_response_str;
         std::getline(result, debug_response_str);
+
         //debug("POST " + host + target + ": " + debug_response_str);
         return std::string(response.body());
 
     } catch (const std::exception& e) {
-        Application::Console().Write(e.what());
-        return "-1";
+        Application::Console().Write(__func__ + std::string(": ") + e.what());
+        return ErrorString;
     }
 }

@@ -650,7 +650,7 @@ int lua_Registered(lua_State* L) {
     lua_getstack(L, 0, &info);
     lua_getinfo(L, "n", &info);
 
-    if(auto it = TLuaEngine::mGlobals.find(info.name); it != TLuaEngine::mGlobals.end()){
+    if (auto it = TLuaEngine::mGlobals.find(info.name); it != TLuaEngine::mGlobals.end()) {
         lua_getglobal(it->second, info.name);
         if (lua_isfunction(it->second, -1)) {
             lua_pcall(it->second, 0, 0, 0); //TODO revisit to allow arguments and return also we need to mutex this
@@ -663,13 +663,13 @@ int lua_Registered(lua_State* L) {
 }
 
 int lua_Register(lua_State* L) {
-    if(lua_isstring(L, 1)){
+    if (lua_isstring(L, 1)) {
         std::string Name(lua_tolstring(L, 1, nullptr));
         lua_getglobal(L, Name.c_str());
         if (lua_isfunction(L, -1)) {
             TLuaEngine::mGlobals.emplace(Name, L);
             for (auto& Script : Engine().LuaFiles()) {
-                if(Script->GetState() != L){
+                if (Script->GetState() != L) {
                     lua_register(Script->GetState(), Name.c_str(), lua_Registered);
                 }
             }
@@ -679,7 +679,7 @@ int lua_Register(lua_State* L) {
             ClearStack(L);
         }
     } else {
-        SendError(Engine(), L, "Register wrong arguments expected string");
+        SendError(Engine(), L, "Wrong arguments to `Register`, expected string");
     }
     return 0;
 }
@@ -772,6 +772,106 @@ int lua_GetOSName(lua_State* L) {
     return 1;
 }
 
+// status, body = HttpGET(host, port, target)
+// example usage:
+// send a GET https://example.com:443/index.html:
+// status, body = MP.HttpGET("example.com", 443, "/index.html")
+int lua_HttpsGET(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        SendError(Engine(), L, "`HttpsGET` expects host (type string) as first argument.");
+        ClearStack(L);
+        return 0;
+    }
+    if (!lua_isnumber(L, 2)) {
+        SendError(Engine(), L, "`HttpsGET` expects port (type number) as second argument.");
+        ClearStack(L);
+        return 0;
+    }
+    if (!lua_isstring(L, 3)) {
+        SendError(Engine(), L, "`HttpsGET` expects target (type string) as third argument.");
+        ClearStack(L);
+        return 0;
+    }
+
+    auto Host = lua_tostring(L, 1);
+    auto Port = int(lua_tointeger(L, 2));
+    auto Target = lua_tostring(L, 3);
+
+    ClearStack(L);
+
+    unsigned int Status;
+    auto Body = Http::GET(Host, Port, Target, &Status);
+    lua_pushinteger(L, Status);
+
+    auto PrettyRemote = "https://" + std::string(Host) + ":" + std::to_string(Port) + std::string(Target);
+    if (Body == Http::ErrorString) {
+        SendError(Engine(), L, "HTTPS GET " + PrettyRemote + " failed status " + std::to_string(Status) + ". Check the console or log for more info.");
+        return 1;
+    } else {
+        debug("GET " + PrettyRemote + " completed status " + std::to_string(Status));
+    }
+
+    lua_pushstring(L, Body.c_str());
+
+    return 2;
+}
+
+// status, body = HttpsPOST(host, port, target, body, content_type)
+int lua_HttpsPOST(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        SendError(Engine(), L, "`HttpsPOST` expects host (type string) as 1. argument.");
+        ClearStack(L);
+        return 0;
+    }
+    if (!lua_isnumber(L, 2)) {
+        SendError(Engine(), L, "`HttpsPOST` expects port (type number) as 2. argument.");
+        ClearStack(L);
+        return 0;
+    }
+    if (!lua_isstring(L, 3)) {
+        SendError(Engine(), L, "`HttpsPOST` expects target (type string) as 3. argument.");
+        ClearStack(L);
+        return 0;
+    }
+    if (!lua_isstring(L, 4)) {
+        SendError(Engine(), L, "`HttpsPOST` expects body (type string) as 4. argument.");
+        ClearStack(L);
+        return 0;
+    }
+    if (!lua_isstring(L, 5)) {
+        SendError(Engine(), L, "`HttpsPOST` expects content_type (type string) as 5. argument.");
+        ClearStack(L);
+        return 0;
+    }
+
+    auto Host = lua_tostring(L, 1);
+    auto Port = int(lua_tointeger(L, 2));
+    auto Target = lua_tostring(L, 3);
+    auto RequestBody = lua_tostring(L, 4);
+    auto ContentType = lua_tostring(L, 5);
+
+    ClearStack(L);
+
+    // build fields
+    std::unordered_map<std::string, std::string> Fields;
+
+    unsigned int Status;
+    auto ResponseBody = Http::POST(Host, Port, Target, {}, RequestBody, ContentType, &Status);
+
+    lua_pushinteger(L, Status);
+
+    auto PrettyRemote = "https://" + std::string(Host) + ":" + std::to_string(Port) + std::string(Target);
+    if (ResponseBody == Http::ErrorString) {
+        SendError(Engine(), L, "HTTPS POST " + PrettyRemote + " failed status " + std::to_string(Status) + ". Check the console or log for more info.");
+        return 1;
+    } else {
+        debug("POST " + PrettyRemote + " completed status " + std::to_string(Status));
+    }
+
+    lua_pushstring(L, ResponseBody.c_str());
+    return 2;
+}
+
 void TLuaFile::Load() {
     Assert(mLuaState);
     luaL_openlibs(mLuaState);
@@ -799,6 +899,8 @@ void TLuaFile::Load() {
     LuaTable::InsertFunction(mLuaState, "Sleep", lua_Sleep);
     LuaTable::InsertFunction(mLuaState, "Set", lua_Set);
     LuaTable::InsertFunction(mLuaState, "GetOSName", lua_GetOSName);
+    LuaTable::InsertFunction(mLuaState, "HttpsGET", lua_HttpsGET);
+    LuaTable::InsertFunction(mLuaState, "HttpsPOST", lua_HttpsPOST);
     LuaTable::End(mLuaState, "MP");
 
     lua_register(mLuaState, "print", lua_Print);
@@ -874,7 +976,7 @@ void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg) {
         TLuaFile& S = MaybeS.value();
         a = fs::path(S.GetFileName()).filename().string();
     }
-    warn(a + (" | Incorrect Call of ") + msg);
+    warn(a + (" | Error in MP Lua call: ") + msg);
 }
 
 void TLuaArg::PushArgs(lua_State* State) {
