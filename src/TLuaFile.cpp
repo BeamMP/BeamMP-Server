@@ -809,7 +809,7 @@ int lua_GetOSName(lua_State* L) {
     return 1;
 }
 
-// status, body = HttpGET(host, port, target)
+// status, body = HttpsGET(host, port, target)
 // example usage:
 // send a GET https://example.com:443/index.html:
 // status, body = MP.HttpGET("example.com", 443, "/index.html")
