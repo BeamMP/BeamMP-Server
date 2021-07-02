@@ -21,7 +21,7 @@ public:
             : ServerName("BeamMP Server")
             , ServerDesc("BeamMP Default Description")
             , Resource("Resources")
-            , MapName("/levels/gridmap/info.json")
+            , MapName("/levels/gridmap_v2/info.json")
             , MaxPlayers(10)
             , Private(false)
             , MaxCars(1)
