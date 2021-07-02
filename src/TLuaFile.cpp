@@ -375,12 +375,13 @@ int lua_GetIdentifiers(lua_State* L) {
             auto IDs = MaybeClient.value().lock()->GetIdentifiers();
             if (IDs.empty())
                 return 0;
-            lua_newtable(L);
+            LuaTable::Begin(L);
             for (const std::string& ID : IDs) {
-                lua_pushstring(L, ID.substr(0, ID.find(':')).c_str());
+                LuaTable::BeginEntry(L, ID.substr(0, ID.find(':')).c_str());
                 lua_pushstring(L, ID.c_str());
-                lua_settable(L, -3);
+                LuaTable::EndEntry(L);
             }
+            // LuaTable::End(L, "");
         } else
             return 0;
     } else {
