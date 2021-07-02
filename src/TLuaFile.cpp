@@ -376,12 +376,11 @@ int lua_GetIdentifiers(lua_State* L) {
             if (IDs.empty())
                 return 0;
             LuaTable::Begin(L);
-            for (const std::string& ID : IDs) {
-                LuaTable::BeginEntry(L, ID.substr(0, ID.find(':')).c_str());
-                lua_pushstring(L, ID.c_str());
+            for (const auto& Pair : IDs) {
+                LuaTable::BeginEntry(L, Pair.first);
+                lua_pushstring(L, Pair.second.c_str());
                 LuaTable::EndEntry(L);
             }
-            // LuaTable::End(L, "");
         } else
             return 0;
     } else {

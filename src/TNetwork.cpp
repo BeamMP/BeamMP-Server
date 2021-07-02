@@ -163,7 +163,7 @@ void TNetwork::TCPServerMain() {
 #else // unix
     // wondering why we need slightly different implementations of this?
     // ask ms.
-    SOCKET client = -1;
+    TConnection client {};
     SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int optval = 1;
     setsockopt(Listener, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval));
@@ -193,8 +193,9 @@ void TNetwork::TCPServerMain() {
                 debug("shutdown during TCP wait for accept loop");
                 break;
             }
-            client = accept(Listener, nullptr, nullptr);
-            if (client == -1) {
+            client.SockAddrLen = sizeof(client.SockAddr);
+            client.Socket = accept(Listener, &client.SockAddr, &client.SockAddrLen);
+            if (client.Socket == -1) {
                 warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
@@ -203,11 +204,11 @@ void TNetwork::TCPServerMain() {
         } catch (const std::exception& e) {
             error(("fatal: ") + std::string(e.what()));
         }
-    } while (client);
+    } while (client.Socket);
 
     debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
 
-    CloseSocketProper(client);
+    CloseSocketProper(client.Socket);
 #endif
 }
 
@@ -216,19 +217,19 @@ void TNetwork::TCPServerMain() {
 #include "Json.h"
 namespace json = rapidjson;
 
-void TNetwork::Identify(SOCKET TCPSock) {
+void TNetwork::Identify(const TConnection& client) {
     RegisterThreadAuto();
     char Code;
-    if (recv(TCPSock, &Code, 1, 0) != 1) {
-        CloseSocketProper(TCPSock);
+    if (recv(client.Socket, &Code, 1, 0) != 1) {
+        CloseSocketProper(client.Socket);
         return;
     }
     if (Code == 'C') {
-        Authentication(TCPSock);
+        Authentication(client);
     } else if (Code == 'D') {
-        HandleDownload(TCPSock);
+        HandleDownload(client.Socket);
     } else {
-        CloseSocketProper(TCPSock);
+        CloseSocketProper(client.Socket);
     }
 }
 
@@ -251,11 +252,12 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
     });
 }
 
-void TNetwork::Authentication(SOCKET TCPSock) {
-    auto Client = CreateClient(TCPSock);
+void TNetwork::Authentication(const TConnection& ClientConnection) {
+    auto Client = CreateClient(ClientConnection.Socket);
+    Client->SetIdentifier("ip", inet_ntoa(reinterpret_cast<const struct sockaddr_in*>(&ClientConnection.SockAddr)->sin_addr));
 
     std::string Rc;
-    info("Identifying new client...");
+    info("Identifying new ClientConnection...");
 
     Rc = TCPRcv(*Client);
 
@@ -323,7 +325,9 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         Client->SetRoles(AuthResponse["roles"].GetString());
         Client->SetIsGuest(AuthResponse["guest"].GetBool());
         for (const auto& ID : AuthResponse["identifiers"].GetArray()) {
-            Client->AddIdentifier(ID.GetString());
+            auto Raw = std::string(ID.GetString());
+            auto SepIndex = Raw.find(':');
+            Client->SetIdentifier(Raw.substr(0, SepIndex), Raw.substr(SepIndex + 1));
         }
     } else {
         ClientKick(*Client, "Invalid authentication data!");
