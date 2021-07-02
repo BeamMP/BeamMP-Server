@@ -4,6 +4,8 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 
+struct TConnection;
+
 class TNetwork {
 public:
     TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
@@ -15,8 +17,8 @@ public:
     std::string TCPRcv(TClient& c);
     void ClientKick(TClient& c, const std::string& R);
     [[nodiscard]] bool SyncClient(const std::weak_ptr<TClient>& c);
-    void Identify(SOCKET TCPSock);
-    void Authentication(SOCKET TCPSock);
+    void Identify(const TConnection& client);
+    void Authentication(const TConnection& ClientConnection);
     [[nodiscard]] bool CheckBytes(TClient& c, int32_t BytesRcv);
     void SyncResources(TClient& c);
     [[nodiscard]] bool UDPSend(TClient& Client, std::string Data) const;
