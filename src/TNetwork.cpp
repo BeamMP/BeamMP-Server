@@ -327,11 +327,10 @@ void TNetwork::Authentication(SOCKET TCPSock) {
 
     auto arg = std::make_unique<TLuaArg>(TLuaArg { { Client->GetName(), Client->GetRoles(), Client->IsGuest() } });
     std::any Res = TriggerLuaEvent("onPlayerAuth", false, nullptr, std::move(arg), true);
-    std::string Type = Res.type().name();
-    if (Type.find("int") != std::string::npos && std::any_cast<int>(Res)) {
+    if (Res.type() == typeid(int) && std::any_cast<int>(Res)) {
         ClientKick(*Client, "you are not allowed on the server!");
         return;
-    } else if (Type.find("string") != std::string::npos) {
+    } else if (Res.type() == typeid(std::string)) {
         ClientKick(*Client, std::any_cast<std::string>(Res));
         return;
     }

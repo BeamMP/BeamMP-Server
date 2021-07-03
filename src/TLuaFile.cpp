@@ -74,15 +74,13 @@ std::any FutureWait(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg
 
 std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait) {
     std::any R;
-    std::string Type;
     int Ret = 0;
     for (auto& Script : Engine().LuaFiles()) {
         if (Script->IsRegistered(Event)) {
             if (local) {
                 if (Script->GetPluginName() == Caller->GetPluginName()) {
                     R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
-                    Type = R.type().name();
-                    if (Type.find("int") != std::string::npos) {
+                    if (R.type() == typeid(int)) {
                         if (std::any_cast<int>(R))
                             Ret++;
                     } else if (Event == "onPlayerAuth")
@@ -90,8 +88,7 @@ std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller,
                 }
             } else {
                 R = FutureWait(Script.get(), Script->GetRegistered(Event), arg, Wait);
-                Type = R.type().name();
-                if (Type.find("int") != std::string::npos) {
+                if (R.type() == typeid(int)) {
                     if (std::any_cast<int>(R))
                         Ret++;
                 } else if (Event == "onPlayerAuth")
