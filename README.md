@@ -78,7 +78,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 On windows. use git-bash for these commands.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with `git clone --recursive https://github.com/BeamMP/BeamMP-Server`
+2. Clone the repository in a location of your choice with `git clone --recursive https://github.com/BeamMP/BeamMP-Server`. Now change into the cloned directory by running `cd BeamMP-Server`.
 3. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20.
 4. `cd` into it with `cd BeamMP-Server`
 5. Run `cmake .` (with `.`)
