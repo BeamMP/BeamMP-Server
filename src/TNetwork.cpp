@@ -18,7 +18,7 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
         }
     });
     Application::RegisterShutdownHandler([&] {
-        if (mUDPThread.joinable()) {
+        if (mTCPThread.joinable()) {
             debug("shutting down TCPServer");
             mShutdown = true;
             mTCPThread.detach();
