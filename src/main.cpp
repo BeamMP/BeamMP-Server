@@ -55,6 +55,7 @@ int main(int argc, char** argv) try {
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
+    Application::RegisterShutdownHandler([] { TriggerLuaEvent("onShutdown", false, nullptr, {}, true); });
 
     TServer Server(argc, argv);
     TConfig Config;
