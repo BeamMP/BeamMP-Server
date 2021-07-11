@@ -10,6 +10,15 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     , mPPSMonitor(PPSMonitor)
     , mResourceManager(ResourceManager) {
     Application::RegisterShutdownHandler([&] {
+        debug("Kicking all players due to shutdown");
+        Server.ForEachClient([&](std::weak_ptr<TClient> client) -> bool {
+            if (!client.expired()) {
+                ClientKick(*client.lock(), "Server shutdown");
+            }
+            return true;
+        });
+    });
+    Application::RegisterShutdownHandler([&] {
         if (mUDPThread.joinable()) {
             debug("shutting down TCPServer");
             mShutdown = true;
