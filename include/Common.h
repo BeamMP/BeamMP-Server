@@ -55,6 +55,7 @@ public:
     static void GracefullyShutdown();
     static TConsole& Console() { return *mConsole; }
     static std::string ServerVersion() { return "2.3.1"; }
+#warning "change version from 2.2.0 to real version"
     static std::string ClientVersion() { return "2.0"; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
