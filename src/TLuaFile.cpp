@@ -34,6 +34,12 @@ void InsertFunction(lua_State* L, const std::string& name, lua_CFunction func) {
     EndEntry(L);
 }
 
+void InsertInteger(lua_State* L, const std::string& name, lua_Integer i) {
+    BeginEntry(L, name);
+    lua_pushinteger(L, i);
+    EndEntry(L);
+}
+
 }
 
 void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg);
@@ -559,49 +565,49 @@ int lua_Set(lua_State* L) {
     case 0: //debug
         if (lua_isboolean(L, 2)) {
             Application::Settings.DebugModeEnabled = lua_toboolean(L, 2);
-            info(Name + (" | Debug -> ") + (Application::Settings.DebugModeEnabled ? "true" : "false"));
+            info(Name + (" | Set `Debug` to ") + (Application::Settings.DebugModeEnabled ? "true" : "false"));
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected boolean for ID : 0"));
         break;
     case 1: //private
         if (lua_isboolean(L, 2)) {
             Application::Settings.Private = lua_toboolean(L, 2);
-            info(Name + (" | Private -> ") + (Application::Settings.Private ? "true" : "false"));
+            info(Name + (" | Set `Private` to ") + (Application::Settings.Private ? "true" : "false"));
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected boolean for ID : 1"));
         break;
     case 2: //max cars
         if (lua_isnumber(L, 2)) {
             Application::Settings.MaxCars = int(lua_tointeger(L, 2));
-            info(Name + (" | MaxCars -> ") + std::to_string(Application::Settings.MaxCars));
+            info(Name + (" | Set `MaxCars` to ") + std::to_string(Application::Settings.MaxCars));
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected number for ID : 2"));
         break;
     case 3: //max players
         if (lua_isnumber(L, 2)) {
             Application::Settings.MaxPlayers = int(lua_tointeger(L, 2));
-            info(Name + (" | MaxPlayers -> ") + std::to_string(Application::Settings.MaxPlayers));
+            info(Name + (" | Set `MaxPlayers` to ") + std::to_string(Application::Settings.MaxPlayers));
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected number for ID : 3"));
         break;
     case 4: //Map
         if (lua_isstring(L, 2)) {
             Application::Settings.MapName = lua_tostring(L, 2);
-            info(Name + (" | MapName -> ") + Application::Settings.MapName);
+            info(Name + (" | Set `Map` to ") + Application::Settings.MapName);
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected string for ID : 4"));
         break;
     case 5: //Name
         if (lua_isstring(L, 2)) {
             Application::Settings.ServerName = lua_tostring(L, 2);
-            info(Name + (" | ServerName -> ") + Application::Settings.ServerName);
+            info(Name + (" | Set `Name` to ") + Application::Settings.ServerName);
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected string for ID : 5"));
         break;
     case 6: //Desc
         if (lua_isstring(L, 2)) {
             Application::Settings.ServerDesc = lua_tostring(L, 2);
-            info(Name + (" | ServerDesc -> ") + Application::Settings.ServerDesc);
+            info(Name + (" | Set `Description` to ") + Application::Settings.ServerDesc);
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected string for ID : 6"));
         break;
@@ -609,7 +615,6 @@ int lua_Set(lua_State* L) {
         warn(("Invalid config ID : ") + std::to_string(C));
         break;
     }
-
     return 0;
 }
 
@@ -922,6 +927,19 @@ void TLuaFile::Load() {
     luaL_openlibs(mLuaState);
 
     LuaTable::Begin(mLuaState);
+
+    LuaTable::BeginEntry(mLuaState, "Settings");
+    LuaTable::Begin(mLuaState);
+    // put Settings enums here
+    LuaTable::InsertInteger(mLuaState, "Debug", 0);
+    LuaTable::InsertInteger(mLuaState, "Private", 1);
+    LuaTable::InsertInteger(mLuaState, "MaxCars", 2);
+    LuaTable::InsertInteger(mLuaState, "MaxPlayers", 3);
+    LuaTable::InsertInteger(mLuaState, "Map", 4);
+    LuaTable::InsertInteger(mLuaState, "Name", 5);
+    LuaTable::InsertInteger(mLuaState, "Description", 6);
+    LuaTable::EndEntry(mLuaState);
+
     LuaTable::InsertFunction(mLuaState, "GetPlayerIdentifiers", lua_GetIdentifiers);
     LuaTable::InsertFunction(mLuaState, "TriggerGlobalEvent", lua_TriggerEventG);
     LuaTable::InsertFunction(mLuaState, "TriggerLocalEvent", lua_TriggerEventL);
@@ -947,6 +965,7 @@ void TLuaFile::Load() {
     LuaTable::InsertFunction(mLuaState, "HttpsGET", lua_HttpsGET);
     LuaTable::InsertFunction(mLuaState, "HttpsPOST", lua_HttpsPOST);
     LuaTable::InsertFunction(mLuaState, "GetServerVersion", lua_GetServerVersion);
+
     LuaTable::End(mLuaState, "MP");
 
     lua_register(mLuaState, "print", lua_Print);
