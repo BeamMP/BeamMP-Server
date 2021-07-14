@@ -24,6 +24,10 @@ void Application::GracefullyShutdown() {
     }
 }
 
+std::string Application::ServerVersionString() {
+    return mVersion.AsString();
+}
+
 std::string Comp(std::string Data) {
     std::array<char, Biggest> C {};
     // obsolete
@@ -85,4 +89,15 @@ std::string ThreadName() {
 
 void RegisterThread(const std::string str) {
     threadNameMap[std::this_thread::get_id()] = str;
+}
+
+Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
+    : major(major)
+    , minor(minor)
+    , patch(patch) { }
+
+std::string Version::AsString() {
+    std::stringstream ss {};
+    ss << major << "." << minor << "." << patch;
+    return ss.str();
 }

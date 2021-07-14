@@ -782,6 +782,14 @@ int lua_GetOSName(lua_State* L) {
     return 1;
 }
 
+int lua_GetServerVersion(lua_State* L) {
+    const auto& ver = Application::ServerVersion();
+    lua_pushinteger(L, ver.major);
+    lua_pushinteger(L, ver.minor);
+    lua_pushinteger(L, ver.patch);
+    return 3;
+}
+
 // status, body = HttpsGET(host, port, target)
 // example usage:
 // send a GET https://example.com:443/index.html:
@@ -911,6 +919,7 @@ void TLuaFile::Load() {
     LuaTable::InsertFunction(mLuaState, "GetOSName", lua_GetOSName);
     LuaTable::InsertFunction(mLuaState, "HttpsGET", lua_HttpsGET);
     LuaTable::InsertFunction(mLuaState, "HttpsPOST", lua_HttpsPOST);
+    LuaTable::InsertFunction(mLuaState, "GetServerVersion", lua_GetServerVersion);
     LuaTable::End(mLuaState, "MP");
 
     lua_register(mLuaState, "print", lua_Print);
