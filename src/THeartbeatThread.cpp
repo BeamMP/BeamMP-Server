@@ -26,9 +26,7 @@ void THeartbeatThread::operator()() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-#ifdef DEBUG
-        debug("heartbeat @ " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()));
-#endif // DEBUG
+        debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
 
         Last = Body;
         LastNormalUpdateTime = Now;
