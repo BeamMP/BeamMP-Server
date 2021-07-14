@@ -144,6 +144,15 @@ void RegisterThread(const std::string& str) {
     threadNameMap[std::this_thread::get_id()] = str;
 }
 
+Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
+    : major(major)
+    , minor(minor)
+    , patch(patch) { }
+
+std::string Version::AsString() {
+    std::stringstream ss {};
+    ss << major << "." << minor << "." << patch;
+    return ss.str();
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     std::stringstream ss;
     ss << "[CHAT] ";
@@ -153,5 +162,5 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
         ss << name << "";
     }
     ss << msg;
-    Application::Console().Write(ss.str());
+
 }

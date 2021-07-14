@@ -263,7 +263,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
 
     if (Rc.size() > 3 && Rc.substr(0, 2) == "VC") {
         Rc = Rc.substr(2);
-        if (Rc.length() > 4 || Rc != Application::ClientVersion()) {
+        if (Rc.length() > 4 || Rc != Application::ClientVersionString()) {
             ClientKick(*Client, "Outdated Version!");
             return;
         }

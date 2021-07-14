@@ -14,7 +14,7 @@
 namespace json = rapidjson;
 
 TServer::TServer(int argc, char** argv) {
-    info("BeamMP Server v" + Application::ServerVersion());
+    info("BeamMP Server v" + Application::ServerVersionString());
     if (argc > 1) {
         Application::Settings.CustomIP = argv[1];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');

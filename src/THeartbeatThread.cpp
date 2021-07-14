@@ -95,8 +95,8 @@ std::string THeartbeatThread::GenerateCall() {
         << "&port=" << Application::Settings.Port
         << "&map=" << Application::Settings.MapName
         << "&private=" << (Application::Settings.Private ? "true" : "false")
-        << "&version=" << Application::ServerVersion()
-        << "&clientversion=" << Application::ClientVersion()
+        << "&version=" << Application::ServerVersionString()
+        << "&clientversion=" << Application::ClientVersionString()
         << "&name=" << Application::Settings.ServerName
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
