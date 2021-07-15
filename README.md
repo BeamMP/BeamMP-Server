@@ -73,6 +73,12 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 
 **If** you're building it from source, you'll need `libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
 
+In the end you should end up with a command something like this:
+
+```sh
+sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev libboost1.71-all-dev
+```
+
 ### How to build
 
 On windows. use git-bash for these commands. On linux, these should work in your shell.
