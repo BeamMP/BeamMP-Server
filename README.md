@@ -75,7 +75,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 
 ### How to build
 
-On windows. use git-bash for these commands.
+On windows. use git-bash for these commands. On linux, these should work in your shell.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
 2. Clone the repository in a location of your choice with `git clone --recursive https://github.com/BeamMP/BeamMP-Server`. Now change into the cloned directory by running `cd BeamMP-Server`.
