@@ -98,6 +98,6 @@ Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
 
 std::string Version::AsString() {
     std::stringstream ss {};
-    ss << major << "." << minor << "." << patch;
+    ss << int(major) << "." << int(minor) << "." << int(patch);
     return ss.str();
 }
