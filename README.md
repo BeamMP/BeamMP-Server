@@ -63,13 +63,13 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `g++`
   
   Must support ISO C++17. If your distro's `g++` doesn't support C++17, chances are that it has a `g++-8` or `g++-10` package that does. If this is the case. you just need to run CMake with `-DCMAKE_CXX_COMPILER=g++-10` (replace `g++-10` with your compiler's name).
-- `liblua5.3` 
+- `liblua5.3-dev` 
   
   Any 5.x version should work, but 5.3 is what we officially use. Any other version might break in the future.
   You can also use any version of `libluajit`, but the same applies regarding the version.
 - `libz-dev`
 - `rapidjson-dev`
-- `libopenssl-dev`
+- `libopenssl-dev` or `libssl-dev`
 
 **If** you're building it from source, you'll need `libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
 
