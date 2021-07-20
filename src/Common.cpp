@@ -151,7 +151,7 @@ Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
 
 std::string Version::AsString() {
     std::stringstream ss {};
-    ss << major << "." << minor << "." << patch;
+    ss << int(major) << "." << int(minor) << "." << int(patch);
     return ss.str();
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     std::stringstream ss;
