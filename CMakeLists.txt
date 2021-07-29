@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 
 
+
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
@@ -61,8 +62,9 @@ include_directories("rapidjson/include")
 include_directories("websocketpp")
 add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
-# builds all libraries that don't have cmakelists
-add_subdirectory("lib")
+# luasocket
+set(WANTS_BUILD_STATIC_LIBRARY ON)
+add_subdirectory("lib/luasocket-cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 
