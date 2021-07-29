@@ -239,7 +239,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Packet.substr(3) } }),
                 true);
 
-            if ((c.GetUnicycleID() != VID || IsUnicycle(c, Packet.substr(Packet.find('{'))))
+            auto FoundPos = Packet.find('{');
+            FoundPos = FoundPos == std::string::npos ? 0 : FoundPos; // attempt at sanitizing this
+            if ((c.GetUnicycleID() != VID || IsUnicycle(c, Packet.substr(FoundPos)))
                 && std::any_cast<int>(Res) == 0) {
                 Network.SendToAll(&c, Packet, false, true);
                 Apply(c, VID, Packet);
@@ -312,7 +314,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 }
 
 void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
-    std::string Packet = pckt.substr(pckt.find('{'));
+    auto FoundPos = pckt.find('{');
+    if (FoundPos == std::string::npos) {
+        error("Malformed packet received, no '{' found");
+        return;
+    }
+    std::string Packet = pckt.substr(FoundPos);
     std::string VD = c.GetCarData(VID);
     if (VD.empty()) {
         error("Tried to apply change to vehicle that does not exist");
@@ -320,7 +327,12 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     }
     std::string Header = VD.substr(0, VD.find('{'));
 
-    VD = VD.substr(VD.find('{'));
+    FoundPos = VD.find('{');
+    if (FoundPos == std::string::npos) {
+        error("Malformed packet received, no '{' found");
+        return;
+    }
+    VD = VD.substr(FoundPos);
     rapidjson::Document Veh, Pack;
     Veh.Parse(VD.c_str());
     if (Veh.HasParseError()) {
