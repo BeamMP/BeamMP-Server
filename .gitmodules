@@ -13,6 +13,3 @@
 [submodule "include/toml11"]
 	path = include/toml11
 	url = https://github.com/ToruNiina/toml11
-[submodule "lib/luasocket"]
-	path = lib/luasocket
-	url = https://github.com/diegonehab/luasocket
