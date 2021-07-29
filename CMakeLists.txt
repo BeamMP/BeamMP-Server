@@ -25,9 +25,7 @@ include_directories("rapidjson/include")
 include_directories("websocketpp")
 add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
-# luasocket
-set(WANTS_BUILD_STATIC_LIBRARY ON)
-add_subdirectory("lib/luasocket-cmake")
+
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -55,6 +53,11 @@ add_executable(BeamMP-Server
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
 find_package(Lua REQUIRED)
+
+# luasocket
+set(WANTS_BUILD_STATIC_LIBRARY ON)
+add_subdirectory("lib/luasocket-cmake")
+
 target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src")
 
 find_package(OpenSSL REQUIRED)
