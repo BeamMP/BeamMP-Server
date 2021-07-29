@@ -25,8 +25,9 @@ include_directories("rapidjson/include")
 include_directories("websocketpp")
 add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
-# builds all libraries that don't have cmakelists
-add_subdirectory("lib")
+# luasocket
+set(WANTS_BUILD_STATIC_LIBRARY ON)
+add_subdirectory("lib/luasocket-cmake")
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -59,11 +60,11 @@ target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCL
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls luasocket)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls luasocket_library_static)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
     find_package(RapidJSON CONFIG REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls luasocket)
+    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls luasocket_library_static)
 endif ()
