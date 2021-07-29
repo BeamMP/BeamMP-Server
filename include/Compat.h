@@ -26,6 +26,7 @@ inline void CloseSocketProper(int TheSocket) {
 inline void CloseSocketProper(SOCKET TheSocket) {
     shutdown(TheSocket, 2); // 2 == SD_BOTH
     closesocket(TheSocket);
+
 }
 #endif // WIN32
 
