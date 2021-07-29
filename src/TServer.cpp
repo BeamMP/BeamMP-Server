@@ -312,7 +312,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 }
 
 void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
-    std::string Packet = pckt.substr(pckt.find('{')), VD = c.GetCarData(VID);
+    std::string Packet = pckt.substr(pckt.find('{'));
+    std::string VD = c.GetCarData(VID);
+    if (VD.empty()) {
+        error("Tried to apply change to vehicle that does not exist");
+        return;
+    }
     std::string Header = VD.substr(0, VD.find('{'));
 
     VD = VD.substr(VD.find('{'));
