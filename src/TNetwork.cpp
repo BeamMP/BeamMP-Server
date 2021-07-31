@@ -702,19 +702,29 @@ void TNetwork::Parse(TClient& c, const std::string& Packet) {
     }
 }
 
-void TNetwork::SendFile(TClient& c, const std::string& Name) {
-    info(c.GetName() + " requesting : " + Name.substr(Name.find_last_of('/')));
+void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
+    info(c.GetName() + " requesting : " + UnsafeName.substr(UnsafeName.find_last_of('/')));
 
-    if (!std::filesystem::exists(Name)) {
+    if (!fs::path(UnsafeName).has_filename()) {
         if (!TCPSend(c, "CO")) {
             // TODO: handle
         }
-        warn("File " + Name + " could not be accessed!");
+        warn("File " + UnsafeName + " is not a file!");
         return;
-    } else {
-        if (!TCPSend(c, "AG")) {
+    }
+    auto FileName = fs::path(UnsafeName).filename().string();
+    FileName = Application::Settings.Resource + "/Client/" + FileName;
+
+    if (!std::filesystem::exists(FileName)) {
+        if (!TCPSend(c, "CO")) {
             // TODO: handle
         }
+        warn("File " + UnsafeName + " could not be accessed!");
+        return;
+    }
+
+    if (!TCPSend(c, "AG")) {
+        // TODO: handle
     }
 
     ///Wait for connections
@@ -731,14 +741,14 @@ void TNetwork::SendFile(TClient& c, const std::string& Name) {
         return;
     }
 
-    size_t Size = size_t(std::filesystem::file_size(Name)), MSize = Size / 2;
+    size_t Size = size_t(std::filesystem::file_size(FileName)), MSize = Size / 2;
 
     std::thread SplitThreads[2] {
         std::thread([&] {
-            SplitLoad(c, 0, MSize, false, Name);
+            SplitLoad(c, 0, MSize, false, FileName);
         }),
         std::thread([&] {
-            SplitLoad(c, MSize, Size, true, Name);
+            SplitLoad(c, MSize, Size, true, FileName);
         })
     };
 
