@@ -19,7 +19,7 @@ TResourceManager::TResourceManager() {
                     ++i;
                     File = File.substr(i,pos-i);
                 }
-                mTrimmedList += File + ';';
+                mTrimmedList += "/" + fs::path(File).filename().string() + ';';
                 mFileSizes += std::to_string(size_t(fs::file_size(entry.path()))) + ';';
                 mMaxModSize += size_t(fs::file_size(entry.path()));
                 mModsLoaded++;
