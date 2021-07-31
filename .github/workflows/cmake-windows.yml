@@ -20,7 +20,7 @@ jobs:
         with:
             vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp'
             vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-
+            vcpkgGitCommitId: '8dddc6c899ce6fdbeab38b525a31e7f23cb2d5bb'
             vcpkgTriplet: 'x64-windows-static'
 
       - name: Create Build Environment
@@ -41,4 +41,5 @@ jobs:
         with:
           name: BeamMP-Server.exe
           path: ${{github.workspace}}/build-windows/Release/BeamMP-Server.exe
+
 
