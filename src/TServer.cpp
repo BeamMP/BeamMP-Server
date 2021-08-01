@@ -65,7 +65,7 @@ size_t TServer::ClientCount() const {
 
 void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
-        abort();
+        //abort();
     }
     if (Packet.substr(0, 4) == "ABG:") {
         Packet = DeComp(Packet.substr(4));
