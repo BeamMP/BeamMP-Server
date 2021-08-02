@@ -46,22 +46,7 @@ void TNetwork::UDPServerMain() {
         error(("Can't start Winsock!"));
         //return;
     }
-
-    mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
-    // Create a server hint structure for the server
-    sockaddr_in serverAddr {};
-    serverAddr.sin_addr.S_un.S_addr = ADDR_ANY; //Any Local
-    serverAddr.sin_family = AF_INET; // Address format is IPv4
-    serverAddr.sin_port = htons(Application::Settings.Port); // Convert from little to big endian
-
-    // Try and bind the socket to the IP and port
-    if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        error(("Can't bind socket!") + std::to_string(WSAGetLastError()));
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
-        //return;
-    }
-#else // unix
+#endif // WIN32
     mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
     // Create a server hint structure for the server
     sockaddr_in serverAddr {};
@@ -71,12 +56,12 @@ void TNetwork::UDPServerMain() {
 
     // Try and bind the socket to the IP and port
     if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
-        error(("Can't bind socket!") + std::string(strerror(errno)));
+        error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1);
         //return;
     }
-#endif
+
 
     info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
@@ -123,46 +108,7 @@ void TNetwork::TCPServerMain() {
         error("Can't start Winsock!");
         return;
     }
-    SOCKET client, Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    sockaddr_in addr {};
-    addr.sin_addr.S_un.S_addr = ADDR_ANY;
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(Application::Settings.Port);
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR) {
-        error("Can't bind socket! " + std::to_string(WSAGetLastError()));
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
-    }
-    if (Listener == -1) {
-        error("Invalid listening socket");
-        return;
-    }
-
-    if (listen(Listener, SOMAXCONN)) {
-        error("listener failed " + std::to_string(GetLastError()));
-        //TODO Fix me leak for Listener socket
-        return;
-    }
-    info("Vehicle event network online");
-    do {
-        try {
-            client = accept(Listener, nullptr, nullptr);
-            if (client == -1) {
-                warn("Got an invalid client socket on connect! Skipping...");
-                continue;
-            }
-            std::thread ID(&TNetwork::Identify, this, client);
-            ID.detach();
-        } catch (const std::exception& e) {
-            error("fatal: " + std::string(e.what()));
-        }
-    } while (client);
-
-    CloseSocketProper(client);
-    WSACleanup();
-#else // unix
-    // wondering why we need slightly different implementations of this?
-    // ask ms.
+#endif // WIN32
     TConnection client {};
     SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int optval = 1;
@@ -173,7 +119,7 @@ void TNetwork::TCPServerMain() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Application::Settings.Port));
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        error(("Can't bind socket! ") + std::string(strerror(errno)));
+        error(("Can't bind socket! ") + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1);
     }
@@ -182,7 +128,7 @@ void TNetwork::TCPServerMain() {
         return;
     }
     if (listen(Listener, SOMAXCONN)) {
-        error(("listener failed ") + std::string(strerror(errno)));
+        error(("listener failed ") + GetPlatformAgnosticErrorString());
         //TODO fix me leak Listener
         return;
     }
@@ -209,7 +155,10 @@ void TNetwork::TCPServerMain() {
     debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
 
     CloseSocketProper(client.Socket);
-#endif
+#ifdef WIN32
+    CloseSocketProper(client);
+    WSACleanup();
+#endif // WIN32
 }
 
 #undef GetObject //Fixes Windows
@@ -391,12 +340,12 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
 #endif //WIN32
         if (Temp == 0) {
-            debug("send() == 0: " + std::string(std::strerror(errno)));
+            debug("send() == 0: " + GetPlatformAgnosticErrorString());
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             return false;
         } else if (Temp < 0) {
-            debug("send() < 0: " + std::string(std::strerror(errno))); //TODO fix it was spamming yet everyone stayed on the server
+            debug("send() < 0: " + GetPlatformAgnosticErrorString()); //TODO fix it was spamming yet everyone stayed on the server
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             CloseSocketProper(c.GetTCPSock());
@@ -415,11 +364,7 @@ bool TNetwork::CheckBytes(TClient& c, int32_t BytesRcv) {
             c.SetStatus(-1);
         return false;
     } else if (BytesRcv < 0) {
-#ifdef WIN32
-        debug(("(TCP) recv failed with error: ") + std::to_string(WSAGetLastError()));
-#else // unix
-        debug(("(TCP) recv failed with error: ") + std::string(strerror(errno)));
-#endif // WIN32
+        debug("(TCP) recv() failed: " + GetPlatformAgnosticErrorString());
         if (c.GetStatus() > -1)
             c.SetStatus(-1);
         info(("Closing socket in CheckBytes, BytesRcv < 0"));
@@ -962,31 +907,17 @@ bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
 #endif // WIN32
 
     sendOk = sendto(mUDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, int(AddrSize));
-#ifdef WIN32
     if (sendOk == -1) {
-        debug(("(UDP) Send Failed Code : ") + std::to_string(WSAGetLastError()));
+        debug("(UDP) sendto() failed: " + GetPlatformAgnosticErrorString());
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
         return false;
     } else if (sendOk == 0) {
-        debug(("(UDP) sendto returned 0"));
+        debug(("(UDP) sendto() returned 0"));
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
         return false;
     }
-#else // unix
-    if (sendOk == -1) {
-        debug(("(UDP) Send Failed Code : ") + std::string(strerror(errno)));
-        if (Client.GetStatus() > -1)
-            Client.SetStatus(-1);
-        return false;
-    } else if (sendOk == 0) {
-        debug(("(UDP) sendto returned 0"));
-        if (Client.GetStatus() > -1)
-            Client.SetStatus(-1);
-        return false;
-    }
-#endif // WIN32
     return true;
 }
 
@@ -1000,11 +931,7 @@ std::string TNetwork::UDPRcvFromClient(sockaddr_in& client) const {
 #endif // WIN32
 
     if (Rcv == -1) {
-#ifdef WIN32
-        error(("(UDP) Error receiving from Client! Code : ") + std::to_string(WSAGetLastError()));
-#else // unix
-        error(("(UDP) Error receiving from Client! Code : ") + std::string(strerror(errno)));
-#endif // WIN32
+        error("(UDP) Error receiving from client! recvfrom() failed: " + GetPlatformAgnosticErrorString());
         return "";
     }
     return std::string(Ret.begin(), Ret.begin() + Rcv);

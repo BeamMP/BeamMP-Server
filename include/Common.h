@@ -1,11 +1,14 @@
 #pragma once
 
 #include <atomic>
+#include <cstring>
 #include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <sstream>
+
+#include "Compat.h"
 
 #include "TConsole.h"
 
@@ -133,3 +136,5 @@ void RegisterThread(const std::string str);
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
+
+std::string GetPlatformAgnosticErrorString();

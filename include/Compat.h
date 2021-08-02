@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <termios.h>
 #include <unistd.h>
+#include <errno.h>
 using SOCKET = int;
 using DWORD = unsigned long;
 using PDWORD = unsigned long*;
