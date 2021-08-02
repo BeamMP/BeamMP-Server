@@ -164,3 +164,30 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     ss << msg;
 
 }
+
+std::string GetPlatformAgnosticErrorString() {
+#ifdef WIN32
+    // This will provide us with the error code and an error message, all in one.
+    int err;
+    char msgbuf[256];
+    msgbuf[0] = '\0';
+
+    err = GetLastError();
+
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr,
+        err,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        msgbuf,
+        sizeof(msgbuf),
+        nullptr);
+
+    if (*msgbuf) {
+        return std::to_string(GetLastError()) + " - " + std::string(msgbuf);
+    } else {
+        return std::to_string(GetLastError())
+    }
+#else // posix
+    return std::strerror(errno);
+#endif
+}

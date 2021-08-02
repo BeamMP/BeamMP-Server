@@ -5,11 +5,14 @@ extern TSentry Sentry;
 
 #include <array>
 #include <atomic>
+#include <cstring>
 #include <deque>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <sstream>
+
+#include "Compat.h"
 
 #include "TConsole.h"
 
@@ -159,3 +162,5 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg);
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
+
+std::string GetPlatformAgnosticErrorString();
