@@ -62,7 +62,6 @@ void TNetwork::UDPServerMain() {
         //return;
     }
 
-
     info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
     while (!mShutdown) {

@@ -185,7 +185,7 @@ std::string GetPlatformAgnosticErrorString() {
     if (*msgbuf) {
         return std::to_string(GetLastError()) + " - " + std::string(msgbuf);
     } else {
-        return std::to_string(GetLastError())
+        return std::to_string(GetLastError());
     }
 #else // posix
     return std::strerror(errno);
