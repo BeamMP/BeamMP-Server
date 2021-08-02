@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 3.0)
 
 
 
+
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
@@ -109,6 +110,8 @@ target_include_directories(BeamMP-Server PUBLIC
     "include/curl/include")
 
 message(STATUS "Looking for SSL")
+
+
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
