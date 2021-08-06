@@ -72,6 +72,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `libopenssl-dev` or `libssl-dev`
 
 **If** you're building it from source, you'll need `libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
+If you can't find this version of boost (only 1.6x, for example), you can either update to a newer version of your distro, build boost yourself, or use an unstable rolling release (like Debian `sid` aka `unstable`).
 
 ### How to build
 
