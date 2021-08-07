@@ -47,19 +47,19 @@ add_executable(BeamMP-Server
         include/TResourceManager.h src/TResourceManager.cpp
         include/THeartbeatThread.h src/THeartbeatThread.cpp
         include/Http.h src/Http.cpp
-        #include/SocketIO.h src/SocketIO.cpp
+        include/Sentry.h src/Sentry.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp)
 
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
 find_package(Lua REQUIRED)
-target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src" "include/tomlplusplus")
+target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src" "include/tomlplusplus" "include/sentry-native")
 
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls sentry)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
