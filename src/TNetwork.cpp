@@ -118,17 +118,17 @@ void TNetwork::TCPServerMain() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Application::Settings.Port));
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        error(("Can't bind socket! ") + GetPlatformAgnosticErrorString());
+        error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1);
     }
     if (Listener == -1) {
-        error(("Invalid listening socket"));
+        error("Invalid listening socket");
         return;
     }
     if (listen(Listener, SOMAXCONN)) {
-        error(("listener failed ") + GetPlatformAgnosticErrorString());
-        //TODO fix me leak Listener
+        error("listen() failed: " + GetPlatformAgnosticErrorString());
+        // FIXME leak Listener
         return;
     }
     info(("Vehicle event network online"));
