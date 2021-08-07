@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(Server)
 
+add_subdirectory("include/sentry-native")
+
 if (WIN32)
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
@@ -19,13 +21,18 @@ elseif (UNIX)
     endif (SANITIZE)
 endif ()
 
+# this is set by the build system.
+# if you're building from source, just leave this empty
+if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
+    set(BEAMMP_SECRET_SENTRY_URL "")
+endif()
+
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 include_directories("asio/asio/include")
 include_directories("rapidjson/include")
 include_directories("websocketpp")
 add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
-add_subdirectory("include/sentry-native")
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -59,8 +66,10 @@ target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCL
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
+    add_definitions(-DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
     target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls sentry)
 elseif (WIN32)
+    add_definitions(/DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
     include(FindLua)
     find_package(ZLIB REQUIRED)
     find_package(RapidJSON CONFIG REQUIRED)
