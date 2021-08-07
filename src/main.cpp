@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Http.h"
+#include "Sentry.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
@@ -7,6 +8,8 @@
 #include "TPPSMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+
+#include <sentry.h>
 #include <thread>
 
 #ifdef __unix
@@ -43,6 +46,21 @@ int main(int argc, char** argv) {
     signal(SIGINT, UnixSignalHandler);
 #endif // DEBUG
 #endif // __unix
+
+    // FIXME: this is not prod ready, needs to be compile-time value
+    char* sentry_url = getenv("SENTRY_URL");
+    if (!sentry_url) {
+        error("no sentry url supplied in environment, this is not a fatal error");
+    } else {
+        info("sentry url has length " + std::to_string(std::string(sentry_url).size()));
+    }
+
+    Sentry sentry(sentry_url);
+
+    sentry_capture_event(sentry_value_new_message_event(
+        /*   level */ SENTRY_LEVEL_INFO,
+        /*  logger */ "custom",
+        /* message */ "It works!"));
 
     setlocale(LC_ALL, "C");
 
