@@ -25,6 +25,7 @@ include_directories("rapidjson/include")
 include_directories("websocketpp")
 add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
+add_subdirectory("include/sentry-native")
 
 set(CMAKE_CXX_STANDARD 17)
 
