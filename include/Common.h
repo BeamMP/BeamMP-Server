@@ -79,6 +79,9 @@ void RegisterThread(const std::string str);
 #define _line std::to_string(__LINE__)
 #define _in_lambda (std::string(__func__) == "operator()")
 
+#include "Sentry.h"
+extern TSentry Sentry;
+
 // we would like the full function signature 'void a::foo() const'
 // on windows this is __FUNCSIG__, on GCC it's __PRETTY_FUNCTION__,
 // feel free to add more
@@ -108,7 +111,7 @@ void RegisterThread(const std::string str);
 
 #define warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
 #define info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-#define error(x) Application::Console().Write(_this_location + std::string("[ERROR] ") + (x))
+#define error(x) do { Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); Sentry.AddErrorBreadcrumb((x), _file_basename, _line); } while (false)
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
 #define debug(x)                                                                          \
     do {                                                                                  \
