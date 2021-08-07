@@ -11,7 +11,7 @@ The server is the point throug which all clients communicate. You can write lua 
 These values are guesstimated and are subject to change with each release.
 
 * RAM: 50+ MiB usable (not counting OS overhead)
-* CPU: Any Hz, preferably multicore
+* CPU: >1GHz, preferably multicore
 * OS: Windows, Linux (theoretically any POSIX)
 * GPU: None
 * HDD: 10 MiB + Mods/Plugins
