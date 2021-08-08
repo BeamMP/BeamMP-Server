@@ -50,7 +50,7 @@ public:
     // Causes all threads to finish up and exit gracefull gracefully
     static void GracefullyShutdown();
     static TConsole& Console() { return *mConsole; }
-    static std::string ServerVersion() { return "2.2.0"; }
+    static std::string ServerVersion() { return "2.3.0"; }
     static std::string ClientVersion() { return "2.0"; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(std::string NewPPS) { mPPS = NewPPS; }
@@ -111,7 +111,11 @@ extern TSentry Sentry;
 
 #define warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
 #define info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-#define error(x) do { Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); Sentry.AddErrorBreadcrumb((x), _file_basename, _line); } while (false)
+#define error(x)                                                                      \
+    do {                                                                              \
+        Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
+        Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
+    } while (false)
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
 #define debug(x)                                                                          \
     do {                                                                                  \
@@ -123,4 +127,3 @@ extern TSentry Sentry;
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
-
