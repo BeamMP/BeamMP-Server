@@ -15,6 +15,8 @@ if (WIN32)
 endif()
 add_subdirectory("include/curl")
 
+set(CURL_LIBRARY CURL::libcurl)
+set(CURL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include/curl/include)
 
 add_subdirectory("include/sentry-native")
 
