@@ -4,6 +4,7 @@
 TSentry::TSentry(const std::string& SentryUrl) {
     if (SentryUrl.empty()) {
         mValid = false;
+        info("Sentry disabled in unofficial build");
     } else {
         mValid = true;
         sentry_options_t* options = sentry_options_new();
@@ -12,6 +13,7 @@ TSentry::TSentry(const std::string& SentryUrl) {
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
         sentry_init(options);
+        info("Sentry started");
     }
 }
 

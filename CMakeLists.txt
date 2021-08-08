@@ -18,6 +18,7 @@ if (WIN32)
     set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
     include_directories(${VcpkgRoot}/include)
     link_directories(${VcpkgRoot}/lib)
+    set(CURL_STATIC_CRT ON)
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
@@ -27,6 +28,11 @@ elseif (UNIX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
     endif (SANITIZE)
 endif ()
+
+set(BUILD_CURL_EXE OFF)
+set(BUILD_SHARED_LIBS ON)
+set(CURL_WERROR OFF)
+add_subdirectory("include/curl")
 
 message(STATUS "Checking for Sentry URL")
 # this is set by the build system.
@@ -69,20 +75,36 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp)
 
-target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
+target_include_directories(BeamMP-Server PUBLIC 
+    "${CMAKE_CURRENT_SOURCE_DIR}/include" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
 message(STATUS "Looking for Lua")
 find_package(Lua REQUIRED)
-message(STATUS "Looking for CURL")
-find_package(CURL REQUIRED)
-target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src" "include/tomlplusplus" "include/sentry-native" ${CURL_INCLUDE_DIRS})
+target_include_directories(BeamMP-Server PUBLIC 
+    ${Boost_INCLUDE_DIRS} 
+    ${LUA_INCLUDE_DIR} 
+    "socket.io-client-cpp/src" 
+    "include/tomlplusplus" 
+    "include/sentry-native" 
+    "include/curl/include")
 
 message(STATUS "Looking for SSL")
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
     add_definitions(-DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} commandline sioclient_tls sentry)
+    target_link_libraries(BeamMP-Server 
+        z 
+        pthread 
+        stdc++fs 
+        ${LUA_LIBRARIES} 
+        crypto
+        ${CURL_LIBS}
+        ${OPENSSL_LIBRARIES} 
+        commandline 
+        sioclient_tls 
+        sentry)
 elseif (WIN32)
     add_definitions(/DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
     include(FindLua)
@@ -91,5 +113,12 @@ elseif (WIN32)
     message(STATUS "Looking for RapidJSON")
     find_package(RapidJSON CONFIG REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${OPENSSL_LIBRARIES} ${CURL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server PRIVATE 
+        ws2_32 
+        ZLIB::ZLIB 
+        ${LUA_LIBRARIES} 
+        ${OPENSSL_LIBRARIES} 
+        ${CURL_LIBS}
+        commandline
+        sioclient_tls)
 endif ()
