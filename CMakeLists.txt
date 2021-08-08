@@ -1,8 +1,15 @@
 cmake_minimum_required(VERSION 3.0)
-project(Server)
+project(BeamMP-Server
+    DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
+    HOMEPAGE_URL https://beammp.com
+    LANGUAGES CXX)
+
+message(STATUS "You can find build instructions and a list of dependencies in the README at \
+https://github.com/BeamMP/BeamMP-Server")
 
 add_subdirectory("include/sentry-native")
 
+message(STATUS "Setting compiler flags")
 if (WIN32)
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
@@ -21,12 +28,16 @@ elseif (UNIX)
     endif (SANITIZE)
 endif ()
 
+message(STATUS "Checking for Sentry URL")
 # this is set by the build system.
-# if you're building from source, just leave this empty
+# IMPORTANT: if you're building from source, just leave this empty
 if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
+    message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
+    This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
     set(BEAMMP_SECRET_SENTRY_URL "")
 endif()
 
+message(STATUS "Adding local source dependencies")
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 include_directories("asio/asio/include")
 include_directories("rapidjson/include")
@@ -35,9 +46,9 @@ add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
 
 set(CMAKE_CXX_STANDARD 17)
-
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
+message(STATUS "Looking for Boost")
 find_package(Boost REQUIRED COMPONENTS system thread)
 
 add_executable(BeamMP-Server
@@ -60,9 +71,11 @@ add_executable(BeamMP-Server
 
 target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
+message(STATUS "Looking for Lua")
 find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src" "include/tomlplusplus" "include/sentry-native")
 
+message(STATUS "Looking for SSL")
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
