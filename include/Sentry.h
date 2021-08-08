@@ -4,9 +4,7 @@
 #include <sentry.h>
 #include <string>
 
-enum class Logger {
-
-};
+// TODO possibly use attach_stacktrace
 
 // singleton, dont make this twice
 class TSentry final {
