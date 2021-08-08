@@ -25,7 +25,22 @@ void TSentry::Log(sentry_level_t level, const std::string& logger, const std::st
     if (!mValid) {
         return;
     }
-    sentry_capture_event(sentry_value_new_message_event(level, logger.c_str(), text.c_str()));
+    auto Msg = sentry_value_new_message_event(level, logger.c_str(), text.c_str());
+    sentry_capture_event(Msg);
+}
+
+void TSentry::AddExtra(const std::string& key, const sentry_value_t& value) {
+    if (!mValid) {
+        return;
+    }
+    sentry_set_extra(key.c_str(), value);
+}
+
+void TSentry::AddExtra(const std::string& key, const std::string& value) {
+    if (!mValid) {
+        return;
+    }
+    AddExtra(key.c_str(), sentry_value_new_string(value.c_str()));
 }
 
 void TSentry::LogException(const std::exception& e, const std::string& file, const std::string& line) {

@@ -45,6 +45,12 @@ void THeartbeatThread::operator()() {
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
                 debug("server returned \"" + T + "\"");
+                if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
+                    && Application::Settings.Key.size() == 36) {
+                    Sentry.AddExtra("response", T);
+                    Sentry.AddExtra("body", Body);
+                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
+                }
                 isAuth = false;
             }
         }

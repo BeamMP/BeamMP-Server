@@ -13,6 +13,8 @@ public:
     ~TSentry();
 
     void Log(sentry_level_t level, const std::string& logger, const std::string& text);
+    void AddExtra(const std::string& key, const sentry_value_t& value);
+    void AddExtra(const std::string& key, const std::string& value);
     void LogException(const std::exception& e, const std::string& file, const std::string& line);
     void AddErrorBreadcrumb(const std::string& msg, const std::string& file, const std::string& line);
 
