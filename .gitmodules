@@ -16,3 +16,6 @@
 [submodule "include/sentry-native"]
 	path = include/sentry-native
 	url = https://github.com/getsentry/sentry-native
+[submodule "include/curl"]
+	path = include/curl
+	url = https://github.com/curl/curl
