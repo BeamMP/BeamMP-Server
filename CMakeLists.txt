@@ -100,7 +100,7 @@ if (UNIX)
         stdc++fs 
         ${LUA_LIBRARIES} 
         crypto
-        libcurl
+        CURL::libcurl
         ${OPENSSL_LIBRARIES} 
         commandline 
         sioclient_tls 
@@ -118,7 +118,7 @@ elseif (WIN32)
         ZLIB::ZLIB 
         ${LUA_LIBRARIES} 
         ${OPENSSL_LIBRARIES} 
-        libcurl
+        CURL::libcurl
         commandline
         sioclient_tls)
 endif ()
