@@ -7,6 +7,15 @@ project(BeamMP-Server
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
+set(BUILD_CURL_EXE OFF)
+set(BUILD_SHARED_LIBS ON)
+set(CURL_WERROR OFF)
+if (WIN32)
+    set(CURL_STATIC_CRT ON)
+endif()
+add_subdirectory("include/curl")
+
+
 add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
@@ -18,7 +27,6 @@ if (WIN32)
     set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
     include_directories(${VcpkgRoot}/include)
     link_directories(${VcpkgRoot}/lib)
-    set(CURL_STATIC_CRT ON)
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
@@ -28,11 +36,6 @@ elseif (UNIX)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
     endif (SANITIZE)
 endif ()
-
-set(BUILD_CURL_EXE OFF)
-set(BUILD_SHARED_LIBS ON)
-set(CURL_WERROR OFF)
-add_subdirectory("include/curl")
 
 message(STATUS "Checking for Sentry URL")
 # this is set by the build system.
