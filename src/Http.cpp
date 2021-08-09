@@ -123,6 +123,11 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         beast::flat_buffer buffer;
         http::response<http::string_body> response;
 
+        auto BackendName = response.base().find("Date");
+        if (BackendName != response.base().end()) {
+            Application::Console().Write("HTTP POST: Date is " + std::string(BackendName->value()));
+        }
+
         http::read(stream, buffer, response);
 
         std::stringstream result;

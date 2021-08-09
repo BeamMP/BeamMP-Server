@@ -3,25 +3,13 @@ cmake_minimum_required(VERSION 3.0)
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
-set(BUILD_CURL_EXE OFF)
-set(BUILD_SHARED_LIBS ON)
-set(CURL_WERROR OFF)
-if (WIN32)
-    set(CURL_STATIC_CRT ON)
-endif()
-add_subdirectory("include/curl")
-
-set(CURL_LIBRARY CURL::libcurl)
-set(CURL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include/curl/include)
-
-add_subdirectory("include/sentry-native")
-
-
 # ---- start of CXX section -----
 project(BeamMP-Server
     DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX)
+
+add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
@@ -92,6 +80,7 @@ find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC 
     ${Boost_INCLUDE_DIRS} 
     ${LUA_INCLUDE_DIR} 
+    ${CURL_INCLUDE_DIRS}
     "socket.io-client-cpp/src" 
     "include/tomlplusplus" 
     "include/sentry-native" 
@@ -99,6 +88,8 @@ target_include_directories(BeamMP-Server PUBLIC
 
 message(STATUS "Looking for SSL")
 find_package(OpenSSL REQUIRED)
+
+message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)
     add_definitions(-DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
@@ -108,7 +99,6 @@ if (UNIX)
         stdc++fs 
         ${LUA_LIBRARIES} 
         crypto
-        CURL::libcurl
         ${OPENSSL_LIBRARIES} 
         commandline 
         sioclient_tls 
@@ -126,7 +116,6 @@ elseif (WIN32)
         ZLIB::ZLIB 
         ${LUA_LIBRARIES} 
         ${OPENSSL_LIBRARIES} 
-        CURL::libcurl
         commandline
         sioclient_tls)
 endif ()
