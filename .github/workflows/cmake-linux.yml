@@ -17,7 +17,7 @@ jobs:
     - name: Install Dependencies
       run: |
           sudo apt-get update
-          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev
+          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev
           sudo add-apt-repository ppa:mhier/libboost-latest
           sudo apt-get install -y libboost1.70-dev libboost1.70
 
