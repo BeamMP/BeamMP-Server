@@ -123,16 +123,12 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         beast::flat_buffer buffer;
         http::response<http::string_body> response;
 
-        auto BackendName = response.base().find("BeamMP-Endpoint");
-        if (BackendName != response.base().end()) {
-            Application::Console().Write("HTTP POST: BeamMP-Endpoint is " + std::string(BackendName->value()));
-        } else {
-            for (const auto& header : response.base()) {
-                Application::Console().Write(header.name_string().data() + std::string(" = ") + std::string(header.value()));
-            }
-        }
-
         http::read(stream, buffer, response);
+
+        auto BackendName = response.base().find("x-upstream");
+        if (BackendName != response.base().end()) {
+            Sentry.AddExtra("x-upstream", BackendName->value().data());
+        }
 
         std::stringstream result;
         result << response;
