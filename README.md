@@ -80,8 +80,8 @@ If you can't find this version of boost (only 1.6x, for example), you can either
 On windows, use git-bash for these commands. On Linux, these should work in your shell.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with **`git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`**. Now change into the cloned directory by running `cd BeamMP-Server`.
-3. Ensure that all submodules are initialized by running `git submodule update --init --recursive`. Then change into the cloned directory by running `cd BeamMP-Server`.
+2. Clone the repository in a location of your choice with `git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`. 
+3. Ensure that all submodules are initialized by running `git submodule init --update --recursive`. Then change into the cloned directory by running `cd BeamMP-Server`.
 4. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
 5. Run `cmake .` (with `.`)
 6. Run `make`
