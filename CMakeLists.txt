@@ -1,8 +1,4 @@
 cmake_minimum_required(VERSION 3.0)
-project(BeamMP-Server
-    DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
-    HOMEPAGE_URL https://beammp.com
-    LANGUAGES CXX)
 
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
@@ -19,6 +15,13 @@ set(CURL_LIBRARY CURL::libcurl)
 set(CURL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include/curl/include)
 
 add_subdirectory("include/sentry-native")
+
+
+# ---- start of CXX section -----
+project(BeamMP-Server
+    DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
+    HOMEPAGE_URL https://beammp.com
+    LANGUAGES CXX)
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
