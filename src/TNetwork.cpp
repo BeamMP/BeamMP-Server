@@ -293,12 +293,12 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         return;
     }
 
-    if (!AuthResponse.IsObject()) {
+    if (!AuthResponse.IsObject() && Rc != "0") {
         ClientKick(*Client, "Backend returned invalid auth response format.");
         error("Backend returned invalid auth response format. This should never happen.");
         Sentry.AddExtra("response", Rc);
         Sentry.AddExtra("key", RequestString);
-        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
+        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "auth: wrong backend response format");
         return;
     }
 
@@ -437,7 +437,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], 4 - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
 #ifdef DEBUG
-            error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < 4)"));
+            warn(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < 4)"));
 #endif // DEBUG
             return "";
         }
