@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'true'
+            submodules: 'recursive'
 
       - name: Install Dependencies
         run: |
@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'true'
+            submodules: 'recursive'
       
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
         uses: lukka/run-vcpkg@main
