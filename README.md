@@ -76,14 +76,15 @@ If you can't find this version of boost (only 1.6x, for example), you can either
 
 ### How to build
 
-On windows. use git-bash for these commands. On linux, these should work in your shell.
+On windows, use git-bash for these commands. On Linux, these should work in your shell.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
 2. Clone the repository in a location of your choice with **`git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`**. Now change into the cloned directory by running `cd BeamMP-Server`.
-3. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-4. Run `cmake .` (with `.`)
-5. Run `make`
-6. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
+3. Ensure that all submodules are initialized by running `git submodule init --update --recursive`. Then change into the cloned directory by running `cd BeamMP-Server`.
+4. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
+5. Run `cmake .` (with `.`)
+6. Run `make`
+7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
 *tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
