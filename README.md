@@ -61,6 +61,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `make`
 - `cmake`
 - `g++`
+- `libcurl4-openssl-dev` or similar (search for `libcurl` and look for one with `-dev`)
   
   Must support ISO C++17. If your distro's `g++` doesn't support C++17, chances are that it has a `g++-8` or `g++-10` package that does. If this is the case. you just need to run CMake with `-DCMAKE_CXX_COMPILER=g++-10` (replace `g++-10` with your compiler's name).
 - `liblua5.3-dev` 
