@@ -18,6 +18,8 @@ public:
     void AddExtra(const std::string& key, const std::string& value);
     void LogException(const std::exception& e, const std::string& file, const std::string& line);
     void AddErrorBreadcrumb(const std::string& msg, const std::string& file, const std::string& line);
+    // cleared when Logged
+    void SetTransaction(const std::string& id);
 
 private:
     bool mValid { true };

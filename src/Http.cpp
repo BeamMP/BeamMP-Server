@@ -87,7 +87,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         //debug("IPv6 connect failed, trying IPv4");
         bool ok = try_connect_with_protocol(tcp::v4());
         if (!ok) {
-            //error("failed to resolve or connect in POST " + host + target);
+            Application::Console().Write("[ERROR] failed to resolve or connect in POST " + host + target);
             return "-1";
         }
         //}
@@ -97,7 +97,6 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         req.set(http::field::host, host);
         if (!body.empty()) {
             if (json) {
-                // FIXME: json is untested.
                 req.set(http::field::content_type, "application/json");
             } else {
                 req.set(http::field::content_type, "application/x-www-form-urlencoded");
@@ -125,9 +124,14 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
         http::read(stream, buffer, response);
 
-        auto BackendName = response.base().find("x-upstream");
-        if (BackendName != response.base().end()) {
-            Sentry.AddExtra("x-upstream", BackendName->value().data());
+        Sentry.AddExtra("reponse-code", std::to_string(response.result_int()));
+
+        for (const auto& header : response.base()) {
+            // need to do explicit casts to convert string_view to string
+            // since string_view may not be null-terminated (and in fact isn't, here)
+            std::string KeyString(header.name_string());
+            std::string ValueString(header.value());
+            Sentry.AddExtra(KeyString, ValueString);
         }
 
         std::stringstream result;
