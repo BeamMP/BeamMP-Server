@@ -65,19 +65,19 @@ void THeartbeatThread::operator()() {
                 }
             }
         }
-    }
 
-    if (!isAuth) {
-        if (T == "2000") {
-            info(("Authenticated!"));
-            isAuth = true;
-        } else if (T == "200") {
-            info(("Resumed authenticated session!"));
-            isAuth = true;
+        if (!isAuth) {
+            if (T == "2000") {
+                info(("Authenticated!"));
+                isAuth = true;
+            } else if (T == "200") {
+                info(("Resumed authenticated session!"));
+                isAuth = true;
+            }
         }
-    }
 
-    //SocketIO::Get().SetAuthenticated(isAuth);
+        //SocketIO::Get().SetAuthenticated(isAuth);
+    }
 }
 
 std::string THeartbeatThread::GenerateCall() {
