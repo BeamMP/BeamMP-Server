@@ -66,6 +66,7 @@ int main(int argc, char** argv) try {
 
     RegisterThread("Main");
 
+    Sentry.SetupUser();
     Sentry.PrintWelcome();
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
