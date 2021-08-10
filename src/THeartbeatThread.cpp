@@ -35,12 +35,12 @@ void THeartbeatThread::operator()() {
 
         Body += "&pps=" + Application::PPS();
 
-        T = Http::POST(Application::GetBackendHostname(), "/heartbeat", {}, Body, false);
+        auto Target = "/heartbeat";
+        T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false);
 
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            auto Target = "/heartbeat";
             T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false);
             // TODO backup2 + HTTP flag (no TSL)
             if (T.substr(0, 2) != "20") {
