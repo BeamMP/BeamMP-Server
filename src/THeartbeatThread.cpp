@@ -39,32 +39,46 @@ void THeartbeatThread::operator()() {
         T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false);
 
         if (T.substr(0, 2) != "20") {
+            auto SentryReportError = [&](const std::string& transaction) {
+                if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
+                    && Application::Settings.Key.size() == 36) {
+                    auto Lock = Sentry.CreateExclusiveContext();
+                    Sentry.SetExtra("response-body", T);
+                    Sentry.SetExtra("request-body", Body);
+                    Sentry.SetTransaction(transaction);
+                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
+                }
+            };
+            SentryReportError(Application::GetBackendHostname() + Target);
+
             //Backend system refused server startup!
-            warn("Backend system refused server! Server might not show in the public list");
-            debug("server returned \"" + T + "\"");
-            if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
-                && Application::Settings.Key.size() == 36) {
-                auto Lock = Sentry.CreateExclusiveContext();
-                Sentry.AddExtra("response-body", T);
-                Sentry.AddExtra("request-body", Body);
-                Sentry.SetTransaction(Application::GetBackendHostname() + Target);
-                Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
-            }
-            isAuth = false;
-        }
-
-        if (!isAuth) {
-            if (T == "2000") {
-                info(("Authenticated!"));
-                isAuth = true;
-            } else if (T == "200") {
-                info(("Resumed authenticated session!"));
-                isAuth = true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false);
+            if (T.substr(0, 2) != "20") {
+                SentryReportError(Application::GetBackup1Hostname() + Target);
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false);
+                if (T.substr(0, 2) != "20") {
+                    warn("Backend system refused server! Server might not show in the public list");
+                    isAuth = false;
+                    SentryReportError(Application::GetBackup2Hostname() + Target);
+                }
             }
         }
-
-        //SocketIO::Get().SetAuthenticated(isAuth);
     }
+
+    if (!isAuth) {
+        if (T == "2000") {
+            info(("Authenticated!"));
+            isAuth = true;
+        } else if (T == "200") {
+            info(("Resumed authenticated session!"));
+            isAuth = true;
+        }
+    }
+
+    //SocketIO::Get().SetAuthenticated(isAuth);
+}
 }
 std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
