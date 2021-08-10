@@ -58,7 +58,6 @@ int main(int argc, char** argv) try {
     TServer Server(argc, argv);
     TConfig Config;
 
-    Sentry.PrintWelcome();
 
     if (Config.Failed()) {
         info("Closing in 10 seconds");
@@ -67,6 +66,8 @@ int main(int argc, char** argv) try {
     }
 
     RegisterThread("Main");
+
+    Sentry.PrintWelcome();
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
