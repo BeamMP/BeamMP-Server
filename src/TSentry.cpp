@@ -32,7 +32,6 @@ void TSentry::PrintWelcome() {
 void TSentry::SetupUser() {
     sentry_value_t user = sentry_value_new_object();
     sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));
-    sentry_value_set_by_key(user, "authkey", sentry_value_new_string(Application::Settings.Key.c_str()));
     sentry_set_user(user);
 }
 
@@ -45,9 +44,9 @@ void TSentry::Log(sentry_level_t level, const std::string& logger, const std::st
     sentry_remove_transaction();
 }
 
-void TSentry::LogDebug(const std::string& text, const std::string& file, const std::string& line) {
+void TSentry::LogError(const std::string& text, const std::string& file, const std::string& line) {
     SetTransaction(file + ":" + line);
-    Log(SENTRY_LEVEL_DEBUG, "default", file + ": " + text);
+    Log(SENTRY_LEVEL_ERROR, "default", file + ": " + text);
 }
 
 void TSentry::AddExtra(const std::string& key, const sentry_value_t& value) {
@@ -68,6 +67,7 @@ void TSentry::LogException(const std::exception& e, const std::string& file, con
     if (!mValid) {
         return;
     }
+    SetTransaction(file + ":" + line);
     Log(SENTRY_LEVEL_ERROR, "exceptions", std::string(e.what()) + " @ " + file + ":" + line);
 }
 
