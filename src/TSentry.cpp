@@ -45,6 +45,11 @@ void TSentry::Log(sentry_level_t level, const std::string& logger, const std::st
     sentry_remove_transaction();
 }
 
+void TSentry::LogDebug(const std::string& text, const std::string& file, const std::string& line) {
+    SetTransaction(file + ":" + line);
+    Log(SENTRY_LEVEL_DEBUG, "default", file +  ": "  + text);
+}
+
 void TSentry::AddExtra(const std::string& key, const sentry_value_t& value) {
     if (!mValid) {
         return;
