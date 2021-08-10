@@ -51,7 +51,6 @@ void THeartbeatThread::operator()() {
             };
             SentryReportError(Application::GetBackendHostname() + Target);
 
-            //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false);
             if (T.substr(0, 2) != "20") {

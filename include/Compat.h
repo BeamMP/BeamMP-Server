@@ -22,7 +22,7 @@ inline void CloseSocketProper(int TheSocket) {
 
 #ifdef WIN32
 #include <conio.h>
-#include <winsock2.h>
+#include <ws2def.h>
 inline void CloseSocketProper(SOCKET TheSocket) {
     shutdown(TheSocket, SD_BOTH);
     closesocket(TheSocket);
