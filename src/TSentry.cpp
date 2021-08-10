@@ -12,11 +12,6 @@ TSentry::TSentry(const std::string& SentryUrl) {
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
         sentry_init(options);
-        sentry_value_t user = sentry_value_new_object();
-        sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));
-        sentry_value_set_by_key(user, "username", sentry_value_new_string(Application::Settings.Key.c_str()));
-        sentry_value_set_by_key(user, "authkey", sentry_value_new_string(Application::Settings.Key.c_str()));
-        sentry_set_user(user);
     }
 }
 
@@ -32,6 +27,13 @@ void TSentry::PrintWelcome() {
     } else {
         info("Sentry disabled in unofficial build");
     }
+}
+
+void TSentry::SetupUser() {
+    sentry_value_t user = sentry_value_new_object();
+    sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));
+    sentry_value_set_by_key(user, "authkey", sentry_value_new_string(Application::Settings.Key.c_str()));
+    sentry_set_user(user);
 }
 
 void TSentry::Log(sentry_level_t level, const std::string& logger, const std::string& text) {
