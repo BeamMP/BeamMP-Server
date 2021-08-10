@@ -40,15 +40,17 @@ void THeartbeatThread::operator()() {
         if (T.substr(0, 2) != "20") {
             //Backend system refused server startup!
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST(Application::GetBackendHostname(), "/heartbeat", {}, Body, false);
+            auto Target = "/heartbeat";
+            T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false);
             // TODO backup2 + HTTP flag (no TSL)
             if (T.substr(0, 2) != "20") {
                 warn("Backend system refused server! Server might not show in the public list");
                 debug("server returned \"" + T + "\"");
                 if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
                     && Application::Settings.Key.size() == 36) {
-                    Sentry.AddExtra("response", T);
-                    Sentry.AddExtra("body", Body);
+                    Sentry.AddExtra("response-body", T);
+                    Sentry.AddExtra("request-body", Body);
+                    Sentry.SetTransaction(Application::GetBackendHostname() + Target);
                     Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
                 }
                 isAuth = false;

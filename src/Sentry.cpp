@@ -11,6 +11,10 @@ TSentry::TSentry(const std::string& SentryUrl) {
         auto ReleaseString = "BeamMP-Server@" + Application::ServerVersion();
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
+        sentry_value_t user = sentry_value_new_object();
+        sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));
+        sentry_value_set_by_key(user, "ip_address", sentry_value_new_string("{{auto}}"));
+        sentry_set_user(user);
         sentry_init(options);
     }
 }
@@ -35,6 +39,7 @@ void TSentry::Log(sentry_level_t level, const std::string& logger, const std::st
     }
     auto Msg = sentry_value_new_message_event(level, logger.c_str(), text.c_str());
     sentry_capture_event(Msg);
+    sentry_remove_transaction();
 }
 
 void TSentry::AddExtra(const std::string& key, const sentry_value_t& value) {
@@ -65,4 +70,11 @@ void TSentry::AddErrorBreadcrumb(const std::string& msg, const std::string& file
     auto crumb = sentry_value_new_breadcrumb("default", (msg + " @ " + file + ":" + line).c_str());
     sentry_value_set_by_key(crumb, "level", sentry_value_new_string("error"));
     sentry_add_breadcrumb(crumb);
+}
+
+void TSentry::SetTransaction(const std::string& id) {
+    if (!mValid) {
+        return;
+    }
+    sentry_set_transaction(id.c_str());
 }

@@ -282,8 +282,9 @@ void TNetwork::Authentication(SOCKET TCPSock) {
 
     auto RequestString = R"({"key":")" + Rc + "\"}";
 
+    auto Target = "/pkToUser";
     if (!Rc.empty()) {
-        Rc = Http::POST(Application::GetBackendUrlForAuth(), "/pkToUser", {}, RequestString, true);
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), Target, {}, RequestString, true);
     }
 
     json::Document AuthResponse;
@@ -296,8 +297,9 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     if (!AuthResponse.IsObject() && Rc != "0") {
         ClientKick(*Client, "Backend returned invalid auth response format.");
         error("Backend returned invalid auth response format. This should never happen.");
-        Sentry.AddExtra("response", Rc);
+        Sentry.AddExtra("response-body", Rc);
         Sentry.AddExtra("key", RequestString);
+        Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
         Sentry.Log(SENTRY_LEVEL_ERROR, "default", "auth: wrong backend response format");
         return;
     }
