@@ -38,6 +38,9 @@ if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
     message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
     This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
     set(BEAMMP_SECRET_SENTRY_URL "")
+else()
+    string(LENGTH BEAMMP_SECRET_SENTRY_URL URL_LEN)
+    message(STATUS "Sentry URL is length ${URL_LEN}")
 endif()
 
 message(STATUS "Adding local source dependencies")
