@@ -11,11 +11,11 @@ TSentry::TSentry(const std::string& SentryUrl) {
         auto ReleaseString = "BeamMP-Server@" + Application::ServerVersion();
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
+        sentry_init(options);
         sentry_value_t user = sentry_value_new_object();
         sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));
         sentry_value_set_by_key(user, "ip_address", sentry_value_new_string("{{auto}}"));
         sentry_set_user(user);
-        sentry_init(options);
     }
 }
 
