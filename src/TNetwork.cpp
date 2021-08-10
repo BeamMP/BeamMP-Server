@@ -452,7 +452,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
 #endif // DEBUG
     if (!CheckBytes(c, BytesRcv)) {
 #ifdef DEBUG
-        error(std::string(__func__) + (": failed on CheckBytes"));
+        warn(std::string(__func__) + (": failed on CheckBytes"));
 #endif // DEBUG
         return "";
     }
@@ -468,7 +468,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], Header - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
 #ifdef DEBUG
-            error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < Header)"));
+            warn(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < Header)"));
 #endif // DEBUG
 
             return "";
