@@ -324,9 +324,9 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     if (VD.empty()) {
         error("Tried to apply change to vehicle that does not exist");
         auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.AddExtra("packet", Packet);
-        Sentry.AddExtra("vehicle-id", std::to_string(VID));
-        Sentry.AddExtra("client-car-count", std::to_string(c.GetCarCount()));
+        Sentry.SetExtra("packet", Packet);
+        Sentry.SetExtra("vehicle-id", std::to_string(VID));
+        Sentry.SetExtra("client-car-count", std::to_string(c.GetCarCount()));
         Sentry.LogError("attempt to apply change to nonexistent vehicle", _file_basename, _line);
         return;
     }
@@ -335,7 +335,7 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     FoundPos = VD.find('{');
     if (FoundPos == std::string::npos) {
         auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.AddExtra("packet", VD);
+        Sentry.SetExtra("packet", VD);
         Sentry.LogError("malformed packet", _file_basename, _line);
         error("Malformed packet received, no '{' found");
         return;

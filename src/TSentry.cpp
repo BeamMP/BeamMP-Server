@@ -49,18 +49,18 @@ void TSentry::LogError(const std::string& text, const std::string& file, const s
     Log(SENTRY_LEVEL_ERROR, "default", file + ": " + text);
 }
 
-void TSentry::AddExtra(const std::string& key, const sentry_value_t& value) {
+void TSentry::SetExtra(const std::string& key, const sentry_value_t& value) {
     if (!mValid) {
         return;
     }
     sentry_set_extra(key.c_str(), value);
 }
 
-void TSentry::AddExtra(const std::string& key, const std::string& value) {
+void TSentry::SetExtra(const std::string& key, const std::string& value) {
     if (!mValid) {
         return;
     }
-    AddExtra(key.c_str(), sentry_value_new_string(value.c_str()));
+    SetExtra(key.c_str(), sentry_value_new_string(value.c_str()));
 }
 
 void TSentry::LogException(const std::exception& e, const std::string& file, const std::string& line) {

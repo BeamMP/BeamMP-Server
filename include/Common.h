@@ -62,6 +62,8 @@ public:
 
     static std::string GetBackendUrlForAuth() { return "auth.beammp.com"; }
     static std::string GetBackendHostname() { return "backend.beammp.com"; }
+    static std::string GetBackup1Hostname() { return "backup1.beammp.com"; }
+    static std::string GetBackup2Hostname() { return "backup2.beammp.com"; }
     static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
 
 private:
