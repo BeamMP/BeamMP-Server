@@ -9,6 +9,7 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+include_directories("include/sentry-native/include")
 add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
@@ -83,7 +84,7 @@ target_include_directories(BeamMP-Server PUBLIC
     ${CURL_INCLUDE_DIRS}
     "socket.io-client-cpp/src" 
     "include/tomlplusplus" 
-    "include/sentry-native" 
+    "include/sentry-native/include"
     "include/curl/include")
 
 message(STATUS "Looking for SSL")
