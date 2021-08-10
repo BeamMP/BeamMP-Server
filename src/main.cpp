@@ -1,6 +1,7 @@
+#include "TSentry.h"
+
 #include "Common.h"
 #include "Http.h"
-#include "TSentry.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
@@ -9,7 +10,6 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 
-#include <sentry.h>
 #include <thread>
 
 #ifdef __unix
@@ -57,7 +57,6 @@ int main(int argc, char** argv) try {
 
     TServer Server(argc, argv);
     TConfig Config;
-
 
     if (Config.Failed()) {
         info("Closing in 10 seconds");

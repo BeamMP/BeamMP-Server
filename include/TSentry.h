@@ -2,6 +2,7 @@
 #define SENTRY_H
 
 #include <sentry.h>
+
 #include <string>
 
 // TODO possibly use attach_stacktrace

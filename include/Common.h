@@ -1,5 +1,8 @@
 #pragma once
 
+#include "TSentry.h"
+extern TSentry Sentry;
+
 #include <atomic>
 #include <deque>
 #include <functional>
@@ -78,9 +81,6 @@ void RegisterThread(const std::string str);
 #define _file_basename std::filesystem::path(__FILE__).filename().string()
 #define _line std::to_string(__LINE__)
 #define _in_lambda (std::string(__func__) == "operator()")
-
-#include "TSentry.h"
-extern TSentry Sentry;
 
 // we would like the full function signature 'void a::foo() const'
 // on windows this is __FUNCSIG__, on GCC it's __PRETTY_FUNCTION__,
