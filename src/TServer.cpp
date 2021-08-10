@@ -327,13 +327,16 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
         Sentry.AddExtra("packet", Packet);
         Sentry.AddExtra("vehicle-id", std::to_string(VID));
         Sentry.AddExtra("client-car-count", std::to_string(c.GetCarCount()));
-        Sentry.LogDebug("attempt to apply change to nonexistent vehicle", _file_basename, _line);
+        Sentry.LogError("attempt to apply change to nonexistent vehicle", _file_basename, _line);
         return;
     }
     std::string Header = VD.substr(0, VD.find('{'));
 
     FoundPos = VD.find('{');
     if (FoundPos == std::string::npos) {
+        auto Lock = Sentry.CreateExclusiveContext();
+        Sentry.AddExtra("packet", VD);
+        Sentry.LogError("malformed packet", _file_basename, _line);
         error("Malformed packet received, no '{' found");
         return;
     }
