@@ -323,6 +323,10 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     std::string VD = c.GetCarData(VID);
     if (VD.empty()) {
         error("Tried to apply change to vehicle that does not exist");
+        Sentry.AddExtra("packet", Packet);
+        Sentry.AddExtra("vehicle-id", std::to_string(VID));
+        Sentry.AddExtra("client-car-count", std::to_string(c.GetCarCount()));
+        Sentry.LogDebug("attempt to apply change to nonexistent vehicle", _file_basename, _line);
         return;
     }
     std::string Header = VD.substr(0, VD.find('{'));

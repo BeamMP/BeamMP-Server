@@ -12,9 +12,9 @@ using DWORD = unsigned long;
 using PDWORD = unsigned long*;
 using LPDWORD = unsigned long*;
 char _getch();
-inline void CloseSocketProper(int socket) {
-    shutdown(socket, SHUT_RDWR);
-    close(socket);
+inline void CloseSocketProper(int TheSocket) {
+    shutdown(TheSocket, SHUT_RDWR);
+    close(TheSocket);
 }
 #endif // unix
 
@@ -23,9 +23,9 @@ inline void CloseSocketProper(int socket) {
 #ifdef WIN32
 #include <conio.h>
 #include <winsock2.h>
-inline void CloseSocketProper(SOCKET socket) {
-    shutdown(socket, SD_BOTH);
-    closesocket(socket);
+inline void CloseSocketProper(SOCKET TheSocket) {
+    shutdown(TheSocket, SD_BOTH);
+    closesocket(TheSocket);
 }
 #endif // WIN32
 
