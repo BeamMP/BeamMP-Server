@@ -79,7 +79,7 @@ void THeartbeatThread::operator()() {
 
     //SocketIO::Get().SetAuthenticated(isAuth);
 }
-}
+
 std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
 
