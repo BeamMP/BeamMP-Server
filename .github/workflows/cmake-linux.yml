@@ -27,7 +27,9 @@ jobs:
     - name: Configure CMake
       shell: bash
       working-directory: ${{github.workspace}}/build-linux
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10
+      env:
+        beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL=$beammp_sentry_url
 
     - name: Build
       working-directory: ${{github.workspace}}/build-linux
