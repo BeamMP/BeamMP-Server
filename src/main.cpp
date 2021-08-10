@@ -55,6 +55,8 @@ int main(int argc, char** argv) try {
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
 
+    Sentry.PrintWelcome();
+
     TServer Server(argc, argv);
     TConfig Config;
 
