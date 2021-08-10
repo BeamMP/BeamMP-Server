@@ -1,4 +1,4 @@
-#include "Sentry.h"
+#include "TSentry.h"
 #include "Common.h"
 
 TSentry::TSentry(const std::string& SentryUrl) {

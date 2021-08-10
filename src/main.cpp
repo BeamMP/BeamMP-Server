@@ -1,6 +1,6 @@
 #include "Common.h"
 #include "Http.h"
-#include "Sentry.h"
+#include "TSentry.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
