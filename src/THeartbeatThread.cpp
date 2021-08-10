@@ -48,6 +48,7 @@ void THeartbeatThread::operator()() {
                 debug("server returned \"" + T + "\"");
                 if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
                     && Application::Settings.Key.size() == 36) {
+                    auto Lock = Sentry.CreateExclusiveContext();
                     Sentry.AddExtra("response-body", T);
                     Sentry.AddExtra("request-body", Body);
                     Sentry.SetTransaction(Application::GetBackendHostname() + Target);

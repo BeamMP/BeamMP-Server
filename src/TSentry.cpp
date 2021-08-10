@@ -47,7 +47,7 @@ void TSentry::Log(sentry_level_t level, const std::string& logger, const std::st
 
 void TSentry::LogDebug(const std::string& text, const std::string& file, const std::string& line) {
     SetTransaction(file + ":" + line);
-    Log(SENTRY_LEVEL_DEBUG, "default", file +  ": "  + text);
+    Log(SENTRY_LEVEL_DEBUG, "default", file + ": " + text);
 }
 
 void TSentry::AddExtra(const std::string& key, const sentry_value_t& value) {
@@ -85,4 +85,8 @@ void TSentry::SetTransaction(const std::string& id) {
         return;
     }
     sentry_set_transaction(id.c_str());
+}
+
+std::unique_lock<std::mutex> TSentry::CreateExclusiveContext() {
+    return std::unique_lock<std::mutex>(mMutex);
 }

@@ -297,6 +297,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     if (!AuthResponse.IsObject() && Rc != "0") {
         ClientKick(*Client, "Backend returned invalid auth response format.");
         error("Backend returned invalid auth response format. This should never happen.");
+        auto Lock = Sentry.CreateExclusiveContext();
         Sentry.AddExtra("response-body", Rc);
         Sentry.AddExtra("key", RequestString);
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);

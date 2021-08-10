@@ -24,6 +24,7 @@ public:
     void AddErrorBreadcrumb(const std::string& msg, const std::string& file, const std::string& line);
     // cleared when Logged
     void SetTransaction(const std::string& id);
+    [[nodiscard]] std::unique_lock<std::mutex> CreateExclusiveContext();
 
 private:
     bool mValid { true };
