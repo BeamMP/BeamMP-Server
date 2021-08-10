@@ -79,7 +79,7 @@ void RegisterThread(const std::string str);
 #define _line std::to_string(__LINE__)
 #define _in_lambda (std::string(__func__) == "operator()")
 
-#include "Sentry.h"
+#include "TSentry.h"
 extern TSentry Sentry;
 
 // we would like the full function signature 'void a::foo() const'
