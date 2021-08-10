@@ -323,6 +323,7 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     std::string VD = c.GetCarData(VID);
     if (VD.empty()) {
         error("Tried to apply change to vehicle that does not exist");
+        auto Lock = Sentry.CreateExclusiveContext();
         Sentry.AddExtra("packet", Packet);
         Sentry.AddExtra("vehicle-id", std::to_string(VID));
         Sentry.AddExtra("client-car-count", std::to_string(c.GetCarCount()));
