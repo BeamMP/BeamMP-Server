@@ -9,6 +9,7 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+set(SENTRY_TRANSPORT "curl")
 include_directories("include/sentry-native/include")
 add_subdirectory("include/sentry-native")
 
