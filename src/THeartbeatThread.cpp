@@ -43,8 +43,9 @@ void THeartbeatThread::operator()() {
                 if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
                     && Application::Settings.Key.size() == 36) {
                     auto Lock = Sentry.CreateExclusiveContext();
-                    Sentry.SetExtra("response-body", T);
-                    Sentry.SetExtra("request-body", Body);
+                    Sentry.SetContext("heartbeat",
+                        { { "response-body", T },
+                            { "request-body", Body } });
                     Sentry.SetTransaction(transaction);
                     Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
                 }

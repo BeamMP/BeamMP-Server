@@ -118,7 +118,7 @@ bool CheckLua(lua_State* L, int r) {
             warn(a + " | " + msg);
             return false;
         }
-        // What the fuck, what do we do?!
+        // This should never happen since it's not directly called from "userspace" Lua.
         AssertNotReachable();
     }
     return true;
@@ -127,7 +127,10 @@ bool CheckLua(lua_State* L, int r) {
 int lua_RegisterEvent(lua_State* L) {
     int Args = lua_gettop(L);
     auto MaybeScript = Engine().GetScript(L);
-    Assert(MaybeScript.has_value());
+    if (!MaybeScript.has_value()) {
+        error("RegisterEvent: There is no script associated with this lua_State.");
+        return 0;
+    }
     TLuaFile& Script = MaybeScript.value();
     if (Args == 2 && lua_isstring(L, 1) && lua_isstring(L, 2)) {
         Script.RegisterEvent(lua_tostring(L, 1), lua_tostring(L, 2));
@@ -139,7 +142,10 @@ int lua_RegisterEvent(lua_State* L) {
 int lua_TriggerEventL(lua_State* L) {
     int Args = lua_gettop(L);
     auto MaybeScript = Engine().GetScript(L);
-    Assert(MaybeScript.has_value());
+    if (!MaybeScript.has_value()) {
+        error("TriggerEvent: There is no script associated with this lua_State.");
+        return 0;
+    }
     TLuaFile& Script = MaybeScript.value();
     if (Args > 0) {
         if (lua_isstring(L, 1)) {
@@ -155,7 +161,10 @@ int lua_TriggerEventL(lua_State* L) {
 int lua_TriggerEventG(lua_State* L) {
     int Args = lua_gettop(L);
     auto MaybeScript = Engine().GetScript(L);
-    Assert(MaybeScript.has_value());
+    if (!MaybeScript.has_value()) {
+        error("TriggerGlobalEvent: There is no script associated with this lua_State.");
+        return 0;
+    }
     TLuaFile& Script = MaybeScript.value();
     if (Args > 0) {
         if (lua_isstring(L, 1)) {
@@ -194,8 +203,11 @@ void CallAsync(TLuaFile* lua, const std::string& Func, int U) {
 
 int lua_StopThread(lua_State* L) {
     auto MaybeScript = Engine().GetScript(L);
-    Assert(MaybeScript.has_value());
-    // ugly, but whatever, this is safe as fuck
+    if (!MaybeScript.has_value()) {
+        error("StopThread: There is no script associated with this lua_State.");
+        return 0;
+    }
+    // ugly, but whatever, this is very safe
     MaybeScript.value().get().SetStopThread(true);
     return 0;
 }
@@ -209,7 +221,10 @@ int lua_CreateThread(lua_State* L) {
                 int U = int(lua_tointeger(L, 2));
                 if (U > 0 && U < 501) {
                     auto MaybeScript = Engine().GetScript(L);
-                    Assert(MaybeScript.has_value());
+                    if (!MaybeScript.has_value()) {
+                        error("CreateThread: There is no script associated with this lua_State.");
+                        return 0;
+                    }
                     TLuaFile& Script = MaybeScript.value();
                     std::thread t1(CallAsync, &Script, STR, U);
                     t1.detach();
@@ -397,7 +412,9 @@ int lua_sendChat(lua_State* L) {
         if (lua_isstring(L, 2)) {
             int ID = int(lua_tointeger(L, 1));
             if (ID == -1) {
-                std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
+                auto msg = std::string(lua_tostring(L, 2));
+                LogChatMessage("<Server> (to everyone) ", -1, msg);
+                std::string Packet = "C:Server: " + msg;
                 Engine().Network().SendToAll(nullptr, Packet, true, true);
             } else {
                 auto MaybeClient = GetClient(Engine().Server(), ID);
@@ -405,7 +422,9 @@ int lua_sendChat(lua_State* L) {
                     auto c = MaybeClient.value().lock();
                     if (!c->IsSynced())
                         return 0;
-                    std::string Packet = "C:Server: " + std::string(lua_tostring(L, 2));
+                    auto msg = std::string(lua_tostring(L, 2));
+                    LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, msg);
+                    std::string Packet = "C:Server: " + msg;
                     Engine().Network().Respond(*c, Packet, true);
                 } else
                     SendError(Engine(), L, ("SendChatMessage invalid argument [1] invalid ID"));

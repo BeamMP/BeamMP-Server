@@ -126,6 +126,8 @@ void RegisterThread(const std::string str);
         }                                                                                 \
     } while (false)
 
+void LogChatMessage(const std::string& name, int id, const std::string& msg);
+
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);

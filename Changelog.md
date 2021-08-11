@@ -1,6 +1,7 @@
 # v2.3.0
 
-- ADDED logging of errors to the backend
+- ADDED logging of various errors, crashes and exceptions to the backend
+- ADDED `[CHAT]` messages to server console
 
 # v2.2.0
 
