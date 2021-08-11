@@ -61,12 +61,14 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
 // In release build, these macros turn into NOPs. The compiler will optimize these out.
 #define Assert(cond)                                                  \
     do {                                                              \
+        bool result = (cond);                                         \
         if (!result) {                                                \
             Sentry.LogAssert(#cond, _file_basename, _line, __func__); \
         }                                                             \
     } while (false)
 #define AssertNotReachable()                                                          \
     do {                                                                              \
+        bool result = (cond);                                                         \
         if (!result) {                                                                \
             Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__); \
         }                                                                             \

@@ -54,7 +54,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
     }
 }
 
-std::string Http::POST(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json) {
+std::string Http::POST(const std::string& host, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, bool json, int* status) {
     try {
         net::io_context io;
 
@@ -136,6 +136,9 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
         std::unordered_map<std::string, std::string> response_data;
         response_data["reponse-code"] = std::to_string(response.result_int());
+        if (status) {
+            *status = response.result_int();
+        }
         for (const auto& header : response.base()) {
             // need to do explicit casts to convert string_view to string
             // since string_view may not be null-terminated (and in fact isn't, here)

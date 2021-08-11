@@ -36,7 +36,8 @@ void THeartbeatThread::operator()() {
         Body += "&pps=" + Application::PPS();
 
         auto Target = "/heartbeat";
-        T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false);
+        int ResponseCode = -1;
+        T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false, &ResponseCode);
 
         if (T.substr(0, 2) != "20") {
             auto SentryReportError = [&](const std::string& transaction) {
@@ -47,7 +48,7 @@ void THeartbeatThread::operator()() {
                         { { "response-body", T },
                             { "request-body", Body } });
                     Sentry.SetTransaction(transaction);
-                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format");
+                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format (" + std::to_string(ResponseCode) + ")");
                 }
             };
             SentryReportError(Application::GetBackendHostname() + Target);

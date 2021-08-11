@@ -283,8 +283,9 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     auto RequestString = R"({"key":")" + Rc + "\"}";
 
     auto Target = "/pkToUser";
+    int ResponseCode = -1;
     if (!Rc.empty()) {
-        Rc = Http::POST(Application::GetBackendUrlForAuth(), Target, {}, RequestString, true);
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), Target, {}, RequestString, true, &ResponseCode);
     }
 
     json::Document AuthResponse;
@@ -302,7 +303,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             { { "response-body", Rc },
                 { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "auth: wrong backend response format");
+        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format (" + std::to_string(ResponseCode) + ")");
         return;
     } else if (Rc == "0") {
         auto Lock = Sentry.CreateExclusiveContext();
@@ -310,7 +311,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             { { "response-body", Rc },
                 { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SENTRY_LEVEL_INFO, "default", "backend returned 0 instead of json");
+        Sentry.Log(SENTRY_LEVEL_INFO, "default", "backend returned 0 instead of json (" + std::to_string(ResponseCode) + ")");
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
