@@ -54,11 +54,11 @@ void THeartbeatThread::operator()() {
             SentryReportError(Application::GetBackendHostname() + Target);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false);
+            T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false, &ResponseCode);
             if (T.substr(0, 2) != "20") {
                 SentryReportError(Application::GetBackup1Hostname() + Target);
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false);
+                T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false, &ResponseCode);
                 if (T.substr(0, 2) != "20") {
                     warn("Backend system refused server! Server might not show in the public list");
                     isAuth = false;
