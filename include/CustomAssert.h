@@ -71,6 +71,4 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
             Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__); \
         }                                                                             \
     } while (false)
-}
-while (false)
 #endif // DEBUG
