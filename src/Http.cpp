@@ -111,6 +111,16 @@ std::string Http::POST(const std::string& host, const std::string& target, const
             req.set(pair.first, pair.second);
         }
 
+        std::unordered_map<std::string, std::string> request_data;
+        for (const auto& header : req.base()) {
+            // need to do explicit casts to convert string_view to string
+            // since string_view may not be null-terminated (and in fact isn't, here)
+            std::string KeyString(header.name_string());
+            std::string ValueString(header.value());
+            request_data[KeyString] = ValueString;
+        }
+        Sentry.SetContext("https-post-request-data", request_data);
+
         std::stringstream oss;
         oss << req;
 
@@ -133,7 +143,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
             std::string ValueString(header.value());
             response_data[KeyString] = ValueString;
         }
-        Sentry.SetContext("https-post-data", response_data);
+        Sentry.SetContext("https-post-response-data", response_data);
 
         std::stringstream result;
         result << response;
