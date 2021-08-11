@@ -48,7 +48,7 @@ void THeartbeatThread::operator()() {
                         { { "response-body", T },
                             { "request-body", Body } });
                     Sentry.SetTransaction(transaction);
-                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format (" + std::to_string(ResponseCode) + ")");
+                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
                 }
             };
             SentryReportError(Application::GetBackendHostname() + Target);

@@ -303,7 +303,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             { { "response-body", Rc },
                 { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "wrong backend response format (" + std::to_string(ResponseCode) + ")");
+        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
         return;
     } else if (Rc == "0") {
         auto Lock = Sentry.CreateExclusiveContext();
