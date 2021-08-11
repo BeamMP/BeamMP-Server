@@ -39,29 +39,32 @@ void THeartbeatThread::operator()() {
         int ResponseCode = -1;
         T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false, &ResponseCode);
 
-        if (T.substr(0, 2) != "20") {
-            auto SentryReportError = [&](const std::string& transaction) {
+        if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+            debug("response: " + T);
+            auto SentryReportError = [&](const std::string& transaction, int status) {
                 if (T != "YOU_SHALL_NOT_PASS") {
                     auto Lock = Sentry.CreateExclusiveContext();
                     Sentry.SetContext("heartbeat",
                         { { "response-body", T },
                             { "request-body", Body } });
                     Sentry.SetTransaction(transaction);
-                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
+                    Sentry.Log(SENTRY_LEVEL_ERROR, "default", "unexpected backend response (" + std::to_string(status) + ")");
                 }
             };
-            SentryReportError(Application::GetBackendHostname() + Target);
+            SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false, &ResponseCode);
-            if (T.substr(0, 2) != "20") {
-                SentryReportError(Application::GetBackup1Hostname() + Target);
+            if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+                debug("response 1: " + T);
+                SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false, &ResponseCode);
-                if (T.substr(0, 2) != "20") {
+                if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+                    debug("response 2: " + T);
                     warn("Backend system refused server! Server might not show in the public list");
                     isAuth = false;
-                    SentryReportError(Application::GetBackup2Hostname() + Target);
+                    SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
                 }
             }
         }
