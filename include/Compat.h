@@ -22,7 +22,6 @@ inline void CloseSocketProper(int TheSocket) {
 
 #ifdef WIN32
 #include <sentry.h>
-#include <winsock2.h>
 #include <ws2tcpip.h>
 inline void CloseSocketProper(SOCKET TheSocket) {
     shutdown(TheSocket, SD_BOTH);
