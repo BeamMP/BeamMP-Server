@@ -303,6 +303,12 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
         Sentry.Log(SENTRY_LEVEL_ERROR, "default", "auth: wrong backend response format");
         return;
+    } else if (Rc == "0") {
+        auto Lock = Sentry.CreateExclusiveContext();
+        Sentry.SetExtra("response-body", Rc);
+        Sentry.SetExtra("key", RequestString);
+        Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
+        Sentry.Log(SENTRY_LEVEL_INFO, "default", "backend returned 0 instead of json");
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
