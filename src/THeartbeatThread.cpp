@@ -40,15 +40,16 @@ void THeartbeatThread::operator()() {
         T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false, &ResponseCode);
 
         if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+#if DEBUG
+            debug("got " + T + " from backend");
+#endif // DEBUG
             auto SentryReportError = [&](const std::string& transaction, int status) {
-                if (T != "YOU_SHALL_NOT_PASS") {
-                    auto Lock = Sentry.CreateExclusiveContext();
-                    Sentry.SetContext("heartbeat",
-                        { { "response-body", T },
-                            { "request-body", Body } });
-                    Sentry.SetTransaction(transaction);
-                    Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(status) + ")");
-                }
+                auto Lock = Sentry.CreateExclusiveContext();
+                Sentry.SetContext("heartbeat",
+                    { { "response-body", T },
+                        { "request-body", Body } });
+                Sentry.SetTransaction(transaction);
+                Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(status) + ")");
             };
             SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
 
