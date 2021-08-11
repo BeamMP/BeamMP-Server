@@ -267,6 +267,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
             Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
         }
         return;
+
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()

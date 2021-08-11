@@ -17,9 +17,8 @@ TSentry::TSentry() {
         mValid = true;
         sentry_options_t* options = sentry_options_new();
         sentry_options_set_dsn(options, SECRET_SENTRY_URL);
-        sentry_options_set_debug(options, false); // needs to always be false
+        auto ReleaseString = "BeamMP-Server@" + Application::ServerVersionString();
         sentry_options_set_symbolize_stacktraces(options, true);
-        auto ReleaseString = "BeamMP-Server@" + Application::ServerVersion();
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
         sentry_init(options);
