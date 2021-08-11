@@ -41,8 +41,7 @@ void THeartbeatThread::operator()() {
 
         if (T.substr(0, 2) != "20") {
             auto SentryReportError = [&](const std::string& transaction) {
-                if (T.size() > std::string("YOU_SHALL_NOT_PASS").size()
-                    && Application::Settings.Key.size() == 36) {
+                if (T != "YOU_SHALL_NOT_PASS") {
                     auto Lock = Sentry.CreateExclusiveContext();
                     Sentry.SetContext("heartbeat",
                         { { "response-body", T },
