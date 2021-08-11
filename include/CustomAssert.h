@@ -66,11 +66,8 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
             Sentry.LogAssert(#cond, _file_basename, _line, __func__); \
         }                                                             \
     } while (false)
-#define AssertNotReachable()                                                          \
-    do {                                                                              \
-        bool result = (cond);                                                         \
-        if (!result) {                                                                \
-            Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__); \
-        }                                                                             \
+#define AssertNotReachable()                                                      \
+    do {                                                                          \
+        Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__); \
     } while (false)
 #endif // DEBUG
