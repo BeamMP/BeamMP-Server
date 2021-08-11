@@ -1,13 +1,16 @@
 #ifndef SENTRY_H
 #define SENTRY_H
 
-#include <sentry.h>
-
 #include <mutex>
 #include <string>
 #include <unordered_map>
-
-// TODO possibly use attach_stacktrace
+enum class SentryLevel {
+    Debug = -1,
+    Info = 0,
+    Warning = 1,
+    Error = 2,
+    Fatal = 3,
+};
 
 // singleton, dont make this twice
 class TSentry final {
@@ -17,7 +20,7 @@ public:
 
     void PrintWelcome();
     void SetupUser();
-    void Log(sentry_level_t level, const std::string& logger, const std::string& text);
+    void Log(SentryLevel level, const std::string& logger, const std::string& text);
     void LogError(const std::string& text, const std::string& file, const std::string& line);
     void SetContext(const std::string& context_name, const std::unordered_map<std::string, std::string>& map);
     void LogException(const std::exception& e, const std::string& file, const std::string& line);
@@ -30,7 +33,6 @@ public:
 private:
     bool mValid { true };
     std::mutex mMutex;
-    sentry_value_t mContext;
 };
 
 #endif // SENTRY_H

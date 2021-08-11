@@ -303,7 +303,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             { { "response-body", Rc },
                 { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SENTRY_LEVEL_ERROR, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
+        Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
         return;
     } else if (Rc == "0") {
         auto Lock = Sentry.CreateExclusiveContext();
@@ -311,7 +311,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             { { "response-body", Rc },
                 { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SENTRY_LEVEL_INFO, "default", "backend returned 0 instead of json (" + std::to_string(ResponseCode) + ")");
+        Sentry.Log(SentryLevel::Info, "default", "backend returned 0 instead of json (" + std::to_string(ResponseCode) + ")");
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
