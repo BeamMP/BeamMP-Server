@@ -73,8 +73,8 @@ std::string DeComp(std::string Compressed) {
 
 std::map<std::thread::id, std::string> threadNameMap;
 
-std::string ThreadName() {
-    if (Application::Settings.DebugModeEnabled) {
+std::string ThreadName(bool DebugModeOverride) {
+    if (DebugModeOverride || Application::Settings.DebugModeEnabled) {
         auto id = std::this_thread::get_id();
         if (threadNameMap.find(id) != threadNameMap.end()) {
             // found

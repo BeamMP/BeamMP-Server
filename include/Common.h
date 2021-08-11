@@ -73,7 +73,7 @@ private:
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 };
 
-std::string ThreadName();
+std::string ThreadName(bool DebugModeOverride = false);
 void RegisterThread(const std::string str);
 #define RegisterThreadAuto() RegisterThread(__func__)
 
