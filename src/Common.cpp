@@ -4,6 +4,7 @@
 #include <array>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <thread>
 #include <zlib.h>
 
@@ -85,4 +86,16 @@ std::string ThreadName() {
 
 void RegisterThread(const std::string str) {
     threadNameMap[std::this_thread::get_id()] = str;
+}
+
+void LogChatMessage(const std::string& name, int id, const std::string& msg) {
+    std::stringstream ss;
+    ss << "[CHAT] ";
+    if (id != -1) {
+        ss << "(" << id << ") <" << name << ">";
+    } else {
+        ss << name << "";
+    }
+    ss << msg;
+    Application::Console().Write(ss.str());
 }

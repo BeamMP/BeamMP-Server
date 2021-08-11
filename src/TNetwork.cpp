@@ -298,15 +298,17 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         ClientKick(*Client, "Backend returned invalid auth response format.");
         error("Backend returned invalid auth response format. This should never happen.");
         auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetExtra("response-body", Rc);
-        Sentry.SetExtra("key", RequestString);
+        Sentry.SetContext("auth",
+            { { "response-body", Rc },
+                { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
         Sentry.Log(SENTRY_LEVEL_ERROR, "default", "auth: wrong backend response format");
         return;
     } else if (Rc == "0") {
         auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetExtra("response-body", Rc);
-        Sentry.SetExtra("key", RequestString);
+        Sentry.SetContext("auth",
+            { { "response-body", Rc },
+                { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
         Sentry.Log(SENTRY_LEVEL_INFO, "default", "backend returned 0 instead of json");
     }

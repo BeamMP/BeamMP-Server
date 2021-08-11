@@ -7,7 +7,7 @@
 #include <any>
 #include <sstream>
 
-#undef GetObject //Fixes Windows
+#undef GetObject // Fixes Windows
 
 #include "Json.h"
 
@@ -126,6 +126,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
         Res = TriggerLuaEvent("onChatMessage", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }), true);
+        LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), Packet.substr(Packet.find(':', 3) + 1)); // FIXME: this needs to be adjusted once lua is merged
         if (std::any_cast<int>(Res))
             break;
         Network.SendToAll(nullptr, Packet, true, true);
@@ -324,9 +325,10 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     if (VD.empty()) {
         error("Tried to apply change to vehicle that does not exist");
         auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetExtra("packet", Packet);
-        Sentry.SetExtra("vehicle-id", std::to_string(VID));
-        Sentry.SetExtra("client-car-count", std::to_string(c.GetCarCount()));
+        Sentry.SetContext("vehicle-change",
+            { { "packet", Packet },
+                { "vehicle-id", std::to_string(VID) },
+                { "client-car-count", std::to_string(c.GetCarCount()) } });
         Sentry.LogError("attempt to apply change to nonexistent vehicle", _file_basename, _line);
         return;
     }
@@ -335,7 +337,8 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     FoundPos = VD.find('{');
     if (FoundPos == std::string::npos) {
         auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetExtra("packet", VD);
+        Sentry.SetContext("vehicle-change-packet",
+            { { "packet", VD } });
         Sentry.LogError("malformed packet", _file_basename, _line);
         error("Malformed packet received, no '{' found");
         return;

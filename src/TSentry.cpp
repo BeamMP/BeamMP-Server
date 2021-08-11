@@ -49,18 +49,20 @@ void TSentry::LogError(const std::string& text, const std::string& file, const s
     Log(SENTRY_LEVEL_ERROR, "default", file + ": " + text);
 }
 
-void TSentry::SetExtra(const std::string& key, const sentry_value_t& value) {
+void TSentry::SetContext(const std::string& context_name, const std::unordered_map<std::string, std::string>& map) {
     if (!mValid) {
         return;
     }
-    sentry_set_extra(key.c_str(), value);
-}
-
-void TSentry::SetExtra(const std::string& key, const std::string& value) {
-    if (!mValid) {
-        return;
+    mContext = sentry_value_new_object();
+    for (const auto& pair : map) {
+        std::string key = pair.first;
+        if (key == "type") {
+            // `type` is reserved
+            key = "_type";
+        }
+        sentry_value_set_by_key(mContext, key.c_str(), sentry_value_new_string(pair.second.c_str()));
     }
-    SetExtra(key.c_str(), sentry_value_new_string(value.c_str()));
+    sentry_set_context(context_name.c_str(), mContext);
 }
 
 void TSentry::LogException(const std::exception& e, const std::string& file, const std::string& line) {
@@ -68,7 +70,17 @@ void TSentry::LogException(const std::exception& e, const std::string& file, con
         return;
     }
     SetTransaction(file + ":" + line);
-    Log(SENTRY_LEVEL_ERROR, "exceptions", std::string(e.what()) + " @ " + file + ":" + line);
+    Log(SENTRY_LEVEL_FATAL, "exceptions", std::string(e.what()) + " @ " + file + ":" + line);
+}
+
+void TSentry::LogAssert(const std::string& condition_string, const std::string& file, const std::string& line, const std::string& function) {
+    if (!mValid) {
+        return;
+    }
+    SetTransaction(file + ":" + line + ":" + function);
+    std::stringstream ss;
+    ss << "\"" << condition_string << "\" failed @ " << file << ":" << line;
+    Log(SENTRY_LEVEL_FATAL, "asserts", ss.str());
 }
 
 void TSentry::AddErrorBreadcrumb(const std::string& msg, const std::string& file, const std::string& line) {

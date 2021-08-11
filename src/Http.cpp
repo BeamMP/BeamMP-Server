@@ -124,15 +124,16 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
         http::read(stream, buffer, response);
 
-        Sentry.SetExtra("reponse-code", std::to_string(response.result_int()));
-
+        std::unordered_map<std::string, std::string> response_data;
+        response_data["reponse-code"] = std::to_string(response.result_int());
         for (const auto& header : response.base()) {
             // need to do explicit casts to convert string_view to string
             // since string_view may not be null-terminated (and in fact isn't, here)
             std::string KeyString(header.name_string());
             std::string ValueString(header.value());
-            Sentry.SetExtra(KeyString, ValueString);
+            response_data[KeyString] = ValueString;
         }
+        Sentry.SetContext("https-post-data", response_data);
 
         std::stringstream result;
         result << response;
