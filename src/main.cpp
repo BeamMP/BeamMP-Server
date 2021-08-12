@@ -66,9 +66,10 @@ int main(int argc, char** argv) try {
     Assert(!Application::IsOutdated(std::array<int, 3> { 2, 0, 0 }, std::array<int, 3> { 1, 0, 1 }));
 
     TServer Server(argc, argv);
-    TConfig Config;
-
+    
     Application::CheckForUpdates();
+    
+    TConfig Config;
 
     if (Config.Failed()) {
         info("Closing in 10 seconds");

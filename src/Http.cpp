@@ -82,9 +82,8 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
         if (status) {
             *status = res.base().result_int();
         }
-
-        if (ec)
-            throw beast::system_error { ec };
+        
+        // ignore ec
 
         // If we get here then the connection is closed gracefully
         return std::string(res.body());

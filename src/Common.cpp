@@ -11,6 +11,7 @@
 #include <zlib.h>
 
 #include "Http.h"
+#include "CustomAssert.h"
 
 std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
 
@@ -54,14 +55,17 @@ bool Application::IsOutdated(const std::array<int, 3>& Current, const std::array
 
 void Application::CheckForUpdates() {
     // checks current version against latest version
-    std::regex VersionRegex { R"(\d\.\d\.\d)" };
-    auto Response = Http::GET("kortlepel.com", 443, "/v/s.html");
+    std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
+    auto Response = Http::GET(GetBackendHostname(), 443, "/v/s");
     bool Matches = std::regex_match(Response, VersionRegex);
     if (Matches) {
         auto MyVersion = VersionStrToInts(ServerVersion());
         auto RemoteVersion = VersionStrToInts(Response);
         if (IsOutdated(MyVersion, RemoteVersion)) {
-            warn("NEW VERSION OUT! There's a new version (v" + Response + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server.");
+            std::string RealVersionString = std::to_string(RemoteVersion[0]) + ".";
+            RealVersionString += std::to_string(RemoteVersion[1]) + ".";
+            RealVersionString += std::to_string(RemoteVersion[2]);
+            warn( "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server.");
         } else {
             info("Server up-to-date!");
         }
@@ -70,7 +74,7 @@ void Application::CheckForUpdates() {
 #if DEBUG
         debug("got " + Response);
 #endif // DEBUG
-        Sentry.CreateExclusiveContext();
+        auto Lock = Sentry.CreateExclusiveContext();
         Sentry.SetContext("get-response", { { "response", Response } });
         Sentry.LogError("failed to get server version", _file_basename, _line);
     }
