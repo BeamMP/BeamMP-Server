@@ -35,6 +35,21 @@ void THeartbeatThread::operator()() {
 
         Body += "&pps=" + Application::PPS();
 
+        auto SentryReportError = [&](const std::string& transaction, int status) {
+            if (status < 0) {
+                status = 0;
+            }
+            auto Lock = Sentry.CreateExclusiveContext();
+            Sentry.SetContext("heartbeat",
+                { { "response-body", T },
+                    { "request-body", Body } });
+            Sentry.SetTransaction(transaction);
+#if DEBUG
+            debug("sending log to sentry: " + std::to_string(status) + " for " + transaction);
+#endif // DEBUG
+            Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(status) + ")");
+        };
+
         auto Target = "/heartbeat";
         int ResponseCode = -1;
         T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false, &ResponseCode);
@@ -43,16 +58,7 @@ void THeartbeatThread::operator()() {
 #if DEBUG
             debug("got " + T + " from backend");
 #endif // DEBUG
-            auto SentryReportError = [&](const std::string& transaction, int status) {
-                auto Lock = Sentry.CreateExclusiveContext();
-                Sentry.SetContext("heartbeat",
-                    { { "response-body", T },
-                        { "request-body", Body } });
-                Sentry.SetTransaction(transaction);
-                Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(status) + ")");
-            };
             SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
-
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false, &ResponseCode);
             if (T.substr(0, 2) != "20" || ResponseCode != 200) {
