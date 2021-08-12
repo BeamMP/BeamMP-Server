@@ -35,7 +35,7 @@ std::array<int, 3> Application::VersionStrToInts(const std::string& str) {
     for (int& i : Version) {
         std::string Part;
         std::getline(ss, Part, '.');
-        std::from_chars(Part.begin().base(), Part.end().base(), i);
+        std::from_chars(&*Part.begin(), &*Part.begin() + Part.size(), i);
     }
     return Version;
 }
