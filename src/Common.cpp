@@ -2,11 +2,15 @@
 
 #include "TConsole.h"
 #include <array>
+#include <charconv>
 #include <iostream>
 #include <map>
+#include <regex>
 #include <sstream>
 #include <thread>
 #include <zlib.h>
+
+#include "Http.h"
 
 std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
 
@@ -22,6 +26,53 @@ void Application::GracefullyShutdown() {
     std::unique_lock Lock(mShutdownHandlersMutex);
     for (auto& Handler : mShutdownHandlers) {
         Handler();
+    }
+}
+
+std::array<int, 3> Application::VersionStrToInts(const std::string& str) {
+    std::array<int, 3> Version;
+    std::stringstream ss(str);
+    for (int& i : Version) {
+        std::string Part;
+        std::getline(ss, Part, '.');
+        std::from_chars(Part.begin().base(), Part.end().base(), i);
+    }
+    return Version;
+}
+
+bool Application::IsOutdated(const std::array<int, 3>& Current, const std::array<int, 3>& Newest) {
+    if (Newest[0] > Current[0]) {
+        return true;
+    } else if (Newest[0] == Current[0] && Newest[1] > Current[1]) {
+        return true;
+    } else if (Newest[0] == Current[0] && Newest[1] == Current[1] && Newest[2] > Current[2]) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void Application::CheckForUpdates() {
+    // checks current version against latest version
+    std::regex VersionRegex { R"(\d\.\d\.\d)" };
+    auto Response = Http::GET("kortlepel.com", 443, "/v/s.html");
+    bool Matches = std::regex_match(Response, VersionRegex);
+    if (Matches) {
+        auto MyVersion = VersionStrToInts(ServerVersion());
+        auto RemoteVersion = VersionStrToInts(Response);
+        if (IsOutdated(MyVersion, RemoteVersion)) {
+            warn("NEW VERSION OUT! There's a new version (v" + Response + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server.");
+        } else {
+            info("Server up-to-date!");
+        }
+    } else {
+        warn("Unable to fetch version from backend.");
+#if DEBUG
+        debug("got " + Response);
+#endif // DEBUG
+        Sentry.CreateExclusiveContext();
+        Sentry.SetContext("get-response", { { "response", Response } });
+        Sentry.LogError("failed to get server version", _file_basename, _line);
     }
 }
 

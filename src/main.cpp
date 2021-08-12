@@ -1,6 +1,7 @@
 #include "TSentry.h"
 
 #include "Common.h"
+#include "CustomAssert.h"
 #include "Http.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
@@ -39,6 +40,8 @@ void UnixSignalHandler(int sig) {
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry { SECRET_SENTRY_URL };
 
+#include <iostream>
+
 int main(int argc, char** argv) try {
 #ifdef __unix
 #if DEBUG
@@ -55,8 +58,17 @@ int main(int argc, char** argv) try {
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
 
+    Assert(!Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 1, 0, 0 }));
+    Assert(!Application::IsOutdated(std::array<int, 3> { 1, 0, 1 }, std::array<int, 3> { 1, 0, 0 }));
+    Assert(Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 1, 0, 1 }));
+    Assert(Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 1, 1, 0 }));
+    Assert(Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 2, 0, 0 }));
+    Assert(!Application::IsOutdated(std::array<int, 3> { 2, 0, 0 }, std::array<int, 3> { 1, 0, 1 }));
+
     TServer Server(argc, argv);
     TConfig Config;
+
+    Application::CheckForUpdates();
 
     if (Config.Failed()) {
         info("Closing in 10 seconds");
