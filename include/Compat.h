@@ -7,6 +7,10 @@
 #include <sys/socket.h>
 #include <termios.h>
 #include <unistd.h>
+using SOCKET = int;
+using DWORD = unsigned long;
+using PDWORD = unsigned long*;
+using LPDWORD = unsigned long*;
 char _getch();
 inline void CloseSocketProper(int TheSocket) {
     shutdown(TheSocket, SHUT_RDWR);
