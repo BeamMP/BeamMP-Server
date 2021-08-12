@@ -47,7 +47,7 @@ void THeartbeatThread::operator()() {
 #if DEBUG
             debug("sending log to sentry: " + std::to_string(status) + " for " + transaction);
 #endif // DEBUG
-            Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(status) + ")");
+            Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
         };
 
         auto Target = "/heartbeat";
@@ -66,7 +66,7 @@ void THeartbeatThread::operator()() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false, &ResponseCode);
                 if (T.substr(0, 2) != "20" || ResponseCode != 200) {
-                    warn("Backend system refused server! Server might not show in the public list");
+                    warn("Backend system refused server! Server will not show in the public server list.");
                     isAuth = false;
                     SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
                 }
