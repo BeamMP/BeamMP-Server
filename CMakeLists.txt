@@ -122,5 +122,6 @@ elseif (WIN32)
         ${LUA_LIBRARIES} 
         ${OPENSSL_LIBRARIES} 
         commandline
-        sioclient_tls)
+        sioclient_tls
+        sentry)
 endif ()
