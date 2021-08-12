@@ -11,6 +11,7 @@ project(BeamMP-Server
 
 set(SENTRY_TRANSPORT "curl")
 include_directories("include/sentry-native/include")
+set(SENTRY_BUILD_SHARED_LIBS OFF)
 add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
