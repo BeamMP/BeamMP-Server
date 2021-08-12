@@ -3,6 +3,7 @@
 #include "TSentry.h"
 extern TSentry Sentry;
 
+#include <array>
 #include <atomic>
 #include <deque>
 #include <functional>
@@ -65,6 +66,9 @@ public:
     static std::string GetBackup1Hostname() { return "backup1.beammp.com"; }
     static std::string GetBackup2Hostname() { return "backup2.beammp.com"; }
     static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
+    static void CheckForUpdates();
+    static std::array<int, 3> VersionStrToInts(const std::string& str);
+    static bool IsOutdated(const std::array<int, 3>& Current, const std::array<int, 3>& Newest);
 
 private:
     static inline std::string mPPS;
