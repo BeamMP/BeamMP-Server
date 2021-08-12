@@ -312,6 +312,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
                 { "key", RequestString } });
         Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
         Sentry.Log(SentryLevel::Info, "default", "backend returned 0 instead of json (" + std::to_string(ResponseCode) + ")");
+        return;
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
