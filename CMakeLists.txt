@@ -9,6 +9,13 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+if (WIN32)
+    # this has to happen before sentry, so that crashpad on windows links with these settings.
+    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
+    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+endif()
+
 set(SENTRY_TRANSPORT "curl")
 include_directories("include/sentry-native/include")
 set(SENTRY_BUILD_SHARED_LIBS OFF)
@@ -19,9 +26,6 @@ add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
-    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
-    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
     #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
     set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
     include_directories(${VcpkgRoot}/include)
