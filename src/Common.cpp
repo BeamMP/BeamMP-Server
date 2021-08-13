@@ -10,8 +10,8 @@
 #include <thread>
 #include <zlib.h>
 
-#include "Http.h"
 #include "CustomAssert.h"
+#include "Http.h"
 
 std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
 
@@ -65,7 +65,7 @@ void Application::CheckForUpdates() {
             std::string RealVersionString = std::to_string(RemoteVersion[0]) + ".";
             RealVersionString += std::to_string(RemoteVersion[1]) + ".";
             RealVersionString += std::to_string(RemoteVersion[2]);
-            warn( "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server.");
+            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
             info("Server up-to-date!");
         }
@@ -127,8 +127,10 @@ std::string DeComp(std::string Compressed) {
 // thread name stuff
 
 std::map<std::thread::id, std::string> threadNameMap;
+std::mutex ThreadNameMapMutex;
 
 std::string ThreadName(bool DebugModeOverride) {
+    auto Lock = std::unique_lock(ThreadNameMapMutex);
     if (DebugModeOverride || Application::Settings.DebugModeEnabled) {
         auto id = std::this_thread::get_id();
         if (threadNameMap.find(id) != threadNameMap.end()) {
@@ -140,6 +142,7 @@ std::string ThreadName(bool DebugModeOverride) {
 }
 
 void RegisterThread(const std::string str) {
+    auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
 }
 

@@ -27,12 +27,13 @@ public:
 
 private:
     void FolderList(const std::string& Path, bool HotSwap);
-    void RegisterFiles(const std::string& Path, bool HotSwap);
-    bool NewFile(const std::string& Path);
+    void RegisterFiles(const fs::path& Path, bool HotSwap);
+    bool IsNewFile(const std::string& Path);
 
     TNetwork& mNetwork;
     TServer& mServer;
     std::string mPath;
     bool mShutdown { false };
     TSetOfLuaFile mLuaFiles;
+    std::mutex mListMutex;
 };

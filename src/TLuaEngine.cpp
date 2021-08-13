@@ -66,37 +66,47 @@ std::optional<std::reference_wrapper<TLuaFile>> TLuaEngine::GetScript(lua_State*
 }
 
 void TLuaEngine::FolderList(const std::string& Path, bool HotSwap) {
+    auto Lock = std::unique_lock(mListMutex);
     for (const auto& entry : fs::directory_iterator(Path)) {
-        auto pos = entry.path().filename().string().find('.');
-        if (pos == std::string::npos) {
-            RegisterFiles(entry.path().string(), HotSwap);
+        if (fs::is_directory(entry)) {
+            RegisterFiles(entry.path(), HotSwap);
         }
     }
 }
 
-void TLuaEngine::RegisterFiles(const std::string& Path, bool HotSwap) {
-    std::string Name = Path.substr(Path.find_last_of('\\') + 1);
+void TLuaEngine::RegisterFiles(const fs::path& Path, bool HotSwap) {
+    std::string Name = Path.filename();
     if (!HotSwap)
         info(("Loading plugin : ") + Name);
+    std::vector<fs::path> Entries;
     for (const auto& entry : fs::directory_iterator(Path)) {
-        auto pos = entry.path().string().find((".lua"));
-        if (pos != std::string::npos && entry.path().string().length() - pos == 4) {
-            if (!HotSwap || NewFile(entry.path().string())) {
-                auto FileName = entry.path().string();
-                std::unique_ptr<TLuaFile> ScriptToInsert(new TLuaFile(*this));
-                auto& Script = *ScriptToInsert;
-                mLuaFiles.insert(std::move(ScriptToInsert));
-                Script.Init(Name, FileName, fs::last_write_time(FileName));
-                if (HotSwap)
-                    info(("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
-            }
+        if (entry.path().extension() == ".lua") {
+            Entries.push_back(entry);
+        }
+    }
+    std::sort(Entries.begin(), Entries.end(), [](const fs::path& first, const fs::path& second) {
+        auto firstStr = first.string();
+        auto secondStr = second.string();
+        std::transform(firstStr.begin(), firstStr.end(), firstStr.begin(), ::tolower);
+        std::transform(secondStr.begin(), secondStr.end(), secondStr.begin(), ::tolower);
+        return firstStr < secondStr;
+    });
+    for (const fs::path& Entry : Entries) {
+        if (!HotSwap || IsNewFile(Entry.string())) {
+            auto FileName = Entry.string();
+            std::unique_ptr<TLuaFile> ScriptToInsert(new TLuaFile(*this));
+            auto& Script = *ScriptToInsert;
+            mLuaFiles.insert(std::move(ScriptToInsert));
+            Script.Init(Name, FileName, fs::last_write_time(FileName));
+            if (HotSwap)
+                info(("[HOTSWAP] Added : ") + Script.GetFileName().substr(Script.GetFileName().find('\\')));
         }
     }
 }
 
-bool TLuaEngine::NewFile(const std::string& Path) {
+bool TLuaEngine::IsNewFile(const std::string& Path) {
     for (auto& Script : mLuaFiles) {
-        if (Path == Script->GetFileName())
+        if (fs::absolute(Path) == fs::absolute(Script->GetFileName()))
             return false;
     }
     return true;
