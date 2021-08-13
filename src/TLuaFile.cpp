@@ -110,7 +110,13 @@ bool ConsoleCheck(lua_State* L, int r) {
 
 bool CheckLua(lua_State* L, int r) {
     if (r != LUA_OK) {
-        std::string msg = lua_tostring(L, -1);
+        std::string msg = "Unknown";
+        if (lua_isstring(L, -1)) {
+            auto MsgMaybe = lua_tostring(L, -1);
+            if (MsgMaybe) {
+                msg = MsgMaybe;
+            }
+        }
         auto MaybeS = Engine().GetScript(L);
         if (MaybeS.has_value()) {
             TLuaFile& S = MaybeS.value();
@@ -623,6 +629,7 @@ int lua_Print(lua_State* L) {
 int lua_TempFix(lua_State* L);
 
 void TLuaFile::Init(const std::string& PluginName, const std::string& FileName, fs::file_time_type LastWrote) {
+    auto Lock = std::unique_lock(mInitMutex);
     // set global engine for lua_* functions
     if (!TheEngine) {
         TheEngine = &mEngine;

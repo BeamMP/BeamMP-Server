@@ -54,6 +54,7 @@ private:
     bool mStopThread = false;
     bool mConsole = false;
     void Load();
+    std::mutex mInitMutex;
 };
 
 std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaFile* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
