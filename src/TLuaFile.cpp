@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "Defer.h"
 #include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TServer.h"
@@ -44,7 +45,6 @@ void ClearStack(lua_State* L) {
 }
 
 std::any Trigger(TLuaFile* lua, const std::string& R, std::shared_ptr<TLuaArg> arg) {
-    RegisterThread(lua->GetFileName());
     std::lock_guard<std::mutex> lockGuard(lua->Lock);
     std::packaged_task<std::any(std::shared_ptr<TLuaArg>)> task([lua, R](std::shared_ptr<TLuaArg> arg) { return CallFunction(lua, R, arg); });
     std::future<std::any> f1 = task.get_future();
@@ -198,7 +198,6 @@ void ExecuteAsync(TLuaFile* lua, const std::string& FuncName) {
 }
 
 void CallAsync(TLuaFile* lua, const std::string& Func, int U) {
-    RegisterThread(lua->GetFileName());
     lua->SetStopThread(false);
     int D = 1000 / U;
     while (!lua->GetStopThread()) {
@@ -671,7 +670,6 @@ std::string TLuaFile::GetOrigin() {
 }
 
 std::any CallFunction(TLuaFile* lua, const std::string& FuncName, std::shared_ptr<TLuaArg> Arg) {
-    RegisterThread(lua->GetFileName());
     lua_State* luaState = lua->GetState();
     lua_getglobal(luaState, FuncName.c_str());
     if (lua_isfunction(luaState, -1)) {
