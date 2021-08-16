@@ -295,23 +295,24 @@ void TNetwork::Authentication(SOCKET TCPSock) {
         return;
     }
 
-    if (!AuthResponse.IsObject() && Rc != "0") {
-        ClientKick(*Client, "Backend returned invalid auth response format.");
-        error("Backend returned invalid auth response format. This should never happen.");
-        auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetContext("auth",
-            { { "response-body", Rc },
-                { "key", RequestString } });
-        Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
-        return;
-    } else if (Rc == "0") {
-        auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetContext("auth",
-            { { "response-body", Rc },
-                { "key", RequestString } });
-        Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
-        Sentry.Log(SentryLevel::Info, "default", "backend returned 0 instead of json (" + std::to_string(ResponseCode) + ")");
+    if (!AuthResponse.IsObject()) {
+        if (Rc == "0") {
+            auto Lock = Sentry.CreateExclusiveContext();
+            Sentry.SetContext("auth",
+                { { "response-body", Rc },
+                    { "key", RequestString } });
+            Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
+            Sentry.Log(SentryLevel::Info, "default", "backend returned 0 instead of json (" + std::to_string(ResponseCode) + ")");
+        } else { // Rc != "0"
+            ClientKick(*Client, "Backend returned invalid auth response format.");
+            error("Backend returned invalid auth response format. This should never happen.");
+            auto Lock = Sentry.CreateExclusiveContext();
+            Sentry.SetContext("auth",
+                { { "response-body", Rc },
+                    { "key", RequestString } });
+            Sentry.SetTransaction(Application::GetBackendUrlForAuth() + Target);
+            Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
+        }
         return;
     }
 
