@@ -141,7 +141,7 @@ std::string ThreadName(bool DebugModeOverride) {
     return "";
 }
 
-void RegisterThread(const std::string str) {
+void RegisterThread(const std::string& str) {
     auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
 }
