@@ -30,10 +30,14 @@ void Application::GracefullyShutdown() {
     }
 }
 
-std::array<int, 3> Application::VersionStrToInts(const std::string& str) {
-    std::array<int, 3> Version;
+std::string Application::ServerVersionString() {
+    return mVersion.AsString();
+}
+
+std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
+    std::array<uint8_t, 3> Version;
     std::stringstream ss(str);
-    for (int& i : Version) {
+    for (uint8_t& i : Version) {
         std::string Part;
         std::getline(ss, Part, '.');
         std::from_chars(&*Part.begin(), &*Part.begin() + Part.size(), i);
@@ -41,12 +45,13 @@ std::array<int, 3> Application::VersionStrToInts(const std::string& str) {
     return Version;
 }
 
-bool Application::IsOutdated(const std::array<int, 3>& Current, const std::array<int, 3>& Newest) {
-    if (Newest[0] > Current[0]) {
+// FIXME: This should be used by operator< on Version
+bool Application::IsOutdated(const Version& Current, const Version& Newest) {
+    if (Newest.major > Current.major) {
         return true;
-    } else if (Newest[0] == Current[0] && Newest[1] > Current[1]) {
+    } else if (Newest.major == Current.major && Newest.minor > Current.minor) {
         return true;
-    } else if (Newest[0] == Current[0] && Newest[1] == Current[1] && Newest[2] > Current[2]) {
+    } else if (Newest.major == Current.major && Newest.minor == Current.minor && Newest.patch > Current.patch) {
         return true;
     } else {
         return false;
@@ -59,12 +64,10 @@ void Application::CheckForUpdates() {
     auto Response = Http::GET(GetBackendHostname(), 443, "/v/s");
     bool Matches = std::regex_match(Response, VersionRegex);
     if (Matches) {
-        auto MyVersion = VersionStrToInts(ServerVersion());
-        auto RemoteVersion = VersionStrToInts(Response);
+        auto MyVersion = ServerVersion();
+        auto RemoteVersion = Version(VersionStrToInts(Response));
         if (IsOutdated(MyVersion, RemoteVersion)) {
-            std::string RealVersionString = std::to_string(RemoteVersion[0]) + ".";
-            RealVersionString += std::to_string(RemoteVersion[1]) + ".";
-            RealVersionString += std::to_string(RemoteVersion[2]);
+            std::string RealVersionString = RemoteVersion.AsString();
             warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
             info("Server up-to-date!");
@@ -149,10 +152,16 @@ Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
     , minor(minor)
     , patch(patch) { }
 
+Version::Version(const std::array<uint8_t, 3>& v)
+    : Version(v[0], v[1], v[2]) {
+}
+
 std::string Version::AsString() {
     std::stringstream ss {};
     ss << int(major) << "." << int(minor) << "." << int(patch);
     return ss.str();
+}
+
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     std::stringstream ss;
     ss << "[CHAT] ";
@@ -162,7 +171,6 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
         ss << name << "";
     }
     ss << msg;
-
 }
 
 std::string GetPlatformAgnosticErrorString() {

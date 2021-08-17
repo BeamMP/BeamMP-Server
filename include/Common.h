@@ -21,6 +21,7 @@ struct Version {
     uint8_t minor;
     uint8_t patch;
     Version(uint8_t major, uint8_t minor, uint8_t patch);
+    Version(const std::array<uint8_t, 3>& v);
     std::string AsString();
 };
 
@@ -81,8 +82,8 @@ public:
     static std::string GetBackup2Hostname() { return "backup2.beammp.com"; }
     static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
     static void CheckForUpdates();
-    static std::array<int, 3> VersionStrToInts(const std::string& str);
-    static bool IsOutdated(const std::array<int, 3>& Current, const std::array<int, 3>& Newest);
+    static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
+    static bool IsOutdated(const Version& Current, const Version& Newest);
 
 private:
     static inline std::string mPPS;

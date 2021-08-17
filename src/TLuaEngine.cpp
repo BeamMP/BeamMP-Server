@@ -72,17 +72,12 @@ void TLuaEngine::FolderList(const std::string& Path, bool HotSwap) {
     for (const auto& entry : fs::directory_iterator(Path)) {
         if (fs::is_directory(entry)) {
             RegisterFiles(entry.path(), HotSwap);
-
         }
     }
 }
 
 void TLuaEngine::RegisterFiles(const fs::path& Path, bool HotSwap) {
     std::string Name = Path.filename().string();
-    std::string Name = Path.substr(Path.find_last_of('/') + 1);
-#else
-
-#endif
     if (!HotSwap)
         info(("Loading plugin : ") + Name);
     std::vector<fs::path> Entries;
@@ -110,7 +105,6 @@ void TLuaEngine::RegisterFiles(const fs::path& Path, bool HotSwap) {
         }
     }
 }
-
 
 bool TLuaEngine::IsNewFile(const std::string& Path) {
     for (auto& Script : mLuaFiles) {

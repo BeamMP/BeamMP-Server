@@ -241,9 +241,9 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     auto RequestString = R"({"key":")" + Rc + "\"}";
 
     auto Target = "/pkToUser";
-    int ResponseCode = -1;
+    unsigned int ResponseCode = 0;
     if (!Rc.empty()) {
-        Rc = Http::POST(Application::GetBackendUrlForAuth(), Target, {}, RequestString, true, &ResponseCode);
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, {}, RequestString, "application/json", &ResponseCode);
     }
 
     json::Document AuthResponse;
@@ -272,7 +272,6 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
             Sentry.Log(SentryLevel::Error, "default", "unexpected backend response (" + std::to_string(ResponseCode) + ")");
         }
         return;
-
     }
 
     if (AuthResponse["username"].IsString() && AuthResponse["roles"].IsString()
