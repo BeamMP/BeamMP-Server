@@ -126,8 +126,8 @@ std::string DeComp(std::string Compressed) {
 
 // thread name stuff
 
-std::map<std::thread::id, std::string> threadNameMap;
-std::mutex ThreadNameMapMutex;
+static std::map<std::thread::id, std::string> threadNameMap {};
+static std::mutex ThreadNameMapMutex {};
 
 std::string ThreadName(bool DebugModeOverride) {
     auto Lock = std::unique_lock(ThreadNameMapMutex);
