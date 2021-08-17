@@ -57,7 +57,7 @@ public:
     static std::string ServerVersion() { return "2.3.0"; }
     static std::string ClientVersion() { return "2.0"; }
     static std::string PPS() { return mPPS; }
-    static void SetPPS(std::string NewPPS) { mPPS = NewPPS; }
+    static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
     static inline TSettings Settings {};
 
@@ -78,7 +78,7 @@ private:
 };
 
 std::string ThreadName(bool DebugModeOverride = false);
-void RegisterThread(const std::string str);
+void RegisterThread(const std::string& str);
 #define RegisterThreadAuto() RegisterThread(__func__)
 
 #define KB 1024

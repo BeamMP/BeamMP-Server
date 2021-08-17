@@ -75,7 +75,7 @@ void TLuaEngine::FolderList(const std::string& Path, bool HotSwap) {
 }
 
 void TLuaEngine::RegisterFiles(const fs::path& Path, bool HotSwap) {
-    std::string Name = Path.filename();
+    std::string Name = Path.filename().string();
     if (!HotSwap)
         info(("Loading plugin : ") + Name);
     std::vector<fs::path> Entries;
