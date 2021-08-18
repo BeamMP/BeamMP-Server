@@ -37,12 +37,13 @@ public:
     ~TLuaFile();
     void SetStopThread(bool StopThread) { mStopThread = StopThread; }
     TLuaEngine& Engine() { return mEngine; }
-    [[nodiscard]] std::string GetPluginName() const;
-    [[nodiscard]] std::string GetFileName() const;
-    [[nodiscard]] const lua_State* GetState() const;
-    [[nodiscard]] bool GetStopThread() const { return mStopThread; }
-    [[nodiscard]] const TLuaEngine& Engine() const { return mEngine; }
-    [[nodiscard]] std::string GetRegistered(const std::string& Event) const;
+    std::string GetPluginPath() const;
+    std::string GetPluginName() const;
+    std::string GetFileName() const;
+    const lua_State* GetState() const;
+    bool GetStopThread() const { return mStopThread; }
+    const TLuaEngine& Engine() const { return mEngine; }
+    std::string GetRegistered(const std::string& Event) const;
 
 private:
     TLuaEngine& mEngine;

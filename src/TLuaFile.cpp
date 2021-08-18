@@ -922,6 +922,31 @@ int lua_HttpsPOST(lua_State* L) {
     return 2;
 }
 
+int lua_GetPluginName(lua_State* L) {
+    auto MaybeFile = Engine().GetScript(L);
+    if (MaybeFile) {
+        lua_pushstring(L, MaybeFile.value().get().GetPluginName().c_str());
+        return 1;
+    } else {
+        warn("no plugin associated with this state");
+        return 0;
+    }
+}
+
+int lua_GetPluginPath(lua_State* L) {
+    auto MaybeFile = Engine().GetScript(L);
+    if (MaybeFile) {
+        lua_pushstring(L, MaybeFile.value().get().GetPluginPath().c_str());
+        return 1;
+    } else {
+        warn("no plugin associated with this state");
+        return 0;
+    }
+}
+
+int lua_Dump(lua_State* L) {
+}
+
 void TLuaFile::Load() {
     Assert(mLuaState);
     luaL_openlibs(mLuaState);
@@ -965,11 +990,14 @@ void TLuaFile::Load() {
     LuaTable::InsertFunction(mLuaState, "HttpsGET", lua_HttpsGET);
     LuaTable::InsertFunction(mLuaState, "HttpsPOST", lua_HttpsPOST);
     LuaTable::InsertFunction(mLuaState, "GetServerVersion", lua_GetServerVersion);
+    LuaTable::InsertFunction(mLuaState, "GetPluginName", lua_GetPluginName);
+    LuaTable::InsertFunction(mLuaState, "GetPluginPath", lua_GetPluginPath);
 
     LuaTable::End(mLuaState, "MP");
 
     lua_register(mLuaState, "print", lua_Print);
     lua_register(mLuaState, "printRaw", lua_PrintRaw);
+    lua_register(mLuaState, "dump", lua_Dump);
     lua_register(mLuaState, "exit", lua_ServerExit);
     if (!mConsole)
         Reload();
@@ -1030,6 +1058,13 @@ fs::file_time_type TLuaFile::GetLastWrite() {
 TLuaFile::~TLuaFile() {
     info("closing lua state");
     lua_close(mLuaState);
+}
+
+std::string TLuaFile::GetPluginPath() const {
+    auto path = fs::path(Application::Settings.Resource);
+    path /= "Server";
+    path /= mPluginName;
+    return path.string();
 }
 
 void SendError(TLuaEngine& Engine, lua_State* L, const std::string& msg) {
