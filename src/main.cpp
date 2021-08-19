@@ -36,6 +36,10 @@ void UnixSignalHandler(int sig) {
 }
 #endif // __unix
 
+int constexpr length(const char* str) {
+    return *str ? 1 + length(str + 1) : 0;
+}
+
 // this is provided by the build system, leave empty for source builds
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry { SECRET_SENTRY_URL };
@@ -55,6 +59,8 @@ int main(int argc, char** argv) try {
 #endif // __unix
     setlocale(LC_ALL, "C");
 
+    static_assert(length(SECRET_SENTRY_URL) != 0);
+
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
 
@@ -66,9 +72,9 @@ int main(int argc, char** argv) try {
     Assert(!Application::IsOutdated(std::array<int, 3> { 2, 0, 0 }, std::array<int, 3> { 1, 0, 1 }));
 
     TServer Server(argc, argv);
-    
+
     Application::CheckForUpdates();
-    
+
     TConfig Config;
 
     if (Config.Failed()) {

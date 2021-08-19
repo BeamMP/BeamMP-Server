@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.0)
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
-# ---- start of CXX section -----
 project(BeamMP-Server
     DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
     HOMEPAGE_URL https://beammp.com
@@ -84,6 +83,8 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp)
 
+target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
+
 target_include_directories(BeamMP-Server PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
@@ -105,7 +106,6 @@ find_package(OpenSSL REQUIRED)
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)
-    add_definitions(-DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
     target_link_libraries(BeamMP-Server 
         z 
         pthread 
@@ -117,7 +117,6 @@ if (UNIX)
         sioclient_tls 
         sentry)
 elseif (WIN32)
-    add_definitions(/DSECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
     include(FindLua)
     message(STATUS "Looking for libz")
     find_package(ZLIB REQUIRED)
