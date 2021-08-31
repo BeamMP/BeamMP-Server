@@ -4,13 +4,23 @@
 #include <sentry.h>
 #include <sstream>
 
-TSentry::TSentry(const std::string& SentryUrl) {
-    if (SentryUrl.empty()) {
+static size_t SentryUrlLen;
+
+// compile-time length of a string/array
+template <size_t N>
+constexpr size_t ConstexprLength(char const (&)[N]) {
+    return N - 1;
+}
+
+TSentry::TSentry() {
+    if constexpr (ConstexprLength(SECRET_SENTRY_URL) == 0) {
         mValid = false;
     } else {
         mValid = true;
         sentry_options_t* options = sentry_options_new();
-        sentry_options_set_dsn(options, SentryUrl.c_str());
+        sentry_options_set_dsn(options, SECRET_SENTRY_URL);
+        sentry_options_set_debug(options, false); // needs to always be false
+        sentry_options_set_symbolize_stacktraces(options, true);
         auto ReleaseString = "BeamMP-Server@" + Application::ServerVersion();
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
@@ -27,6 +37,7 @@ TSentry::~TSentry() {
 void TSentry::PrintWelcome() {
     if (mValid) {
         info("Sentry started");
+        debug("Sentry URL is length " + std::to_string(SentryUrlLen));
     } else {
         info("Sentry disabled in unofficial build");
     }

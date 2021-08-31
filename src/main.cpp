@@ -36,13 +36,9 @@ void UnixSignalHandler(int sig) {
 }
 #endif // __unix
 
-int constexpr length(const char* str) {
-    return *str ? 1 + length(str + 1) : 0;
-}
-
 // this is provided by the build system, leave empty for source builds
 // global, yes, this is ugly, no, it cant be done another way
-TSentry Sentry { SECRET_SENTRY_URL };
+TSentry Sentry {};
 
 #include <iostream>
 
@@ -56,8 +52,6 @@ int main(int argc, char** argv) try {
 #endif // DEBUG
 #endif // __unix
     setlocale(LC_ALL, "C");
-
-    static_assert(length(SECRET_SENTRY_URL) != 0);
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
