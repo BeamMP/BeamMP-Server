@@ -1,7 +1,12 @@
 # v2.3.0
 
+- ADDED version check - the server will now let you know when a new release is out
 - ADDED logging of various errors, crashes and exceptions to the backend
-- ADDED `[CHAT]` messages to server console
+- ADDED chat messages are now logged to the server console as [CHAT]
+- ADDED debug message telling you when the server heartbeats to the backend
+- REMOVED various [DEBUG] messages which were confusing (such as "breaking client loop")
+- FIXED various crashes and issues with handling unexpected backend responses
+- FIXED minor bugs due to code correctness
 
 # v2.2.0
 
