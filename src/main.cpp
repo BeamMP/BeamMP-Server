@@ -48,9 +48,7 @@ TSentry Sentry { SECRET_SENTRY_URL };
 
 int main(int argc, char** argv) try {
 #ifdef __unix
-#if DEBUG
-    info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
-#endif // DEBUG
+    trace("registering handlers for SIGINT, SIGTERM, SIGPIPE");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
 #ifndef DEBUG
@@ -84,6 +82,8 @@ int main(int argc, char** argv) try {
     }
 
     RegisterThread("Main");
+
+    trace("Running in debug mode on a debug build");
 
     Sentry.SetupUser();
     Sentry.PrintWelcome();
