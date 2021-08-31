@@ -129,6 +129,17 @@ void RegisterThread(const std::string& str);
             Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
         }                                                                                 \
     } while (false)
+// trace() is a debug-build debug()
+#if defined(DEBUG)
+#define trace(x)                                                                          \
+    do {                                                                                  \
+        if (Application::Settings.DebugModeEnabled) {                                     \
+            Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
+        }                                                                                 \
+    } while (false)
+#else
+#define trace(x)
+#endif // defined(DEBUG)
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);
 

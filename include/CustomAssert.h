@@ -40,7 +40,7 @@ static const char* const ANSI_WHITE_BOLD = "\u001b[37;1m";
 static const char* const ANSI_BOLD = "\u001b[1m";
 static const char* const ANSI_UNDERLINE = "\u001b[4m";
 
-#if DEBUG
+#ifdef DEBUG
 #include <iostream>
 inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const char* function, [[maybe_unused]] unsigned line,
     [[maybe_unused]] const char* condition_string, [[maybe_unused]] bool result) {

@@ -71,9 +71,7 @@ void Application::CheckForUpdates() {
         }
     } else {
         warn("Unable to fetch version from backend.");
-#if DEBUG
-        debug("got " + Response);
-#endif // DEBUG
+        trace("got " + Response);
         auto Lock = Sentry.CreateExclusiveContext();
         Sentry.SetContext("get-response", { { "response", Response } });
         Sentry.LogError("failed to get server version", _file_basename, _line);

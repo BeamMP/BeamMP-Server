@@ -44,9 +44,7 @@ void THeartbeatThread::operator()() {
                 { { "response-body", T },
                     { "request-body", Body } });
             Sentry.SetTransaction(transaction);
-#if DEBUG
-            debug("sending log to sentry: " + std::to_string(status) + " for " + transaction);
-#endif // DEBUG
+            trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
             Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
         };
 
@@ -55,9 +53,7 @@ void THeartbeatThread::operator()() {
         T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false, &ResponseCode);
 
         if (T.substr(0, 2) != "20" || ResponseCode != 200) {
-#if DEBUG
-            debug("got " + T + " from backend");
-#endif // DEBUG
+            trace("got " + T + " from backend");
             SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false, &ResponseCode);

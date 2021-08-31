@@ -331,7 +331,6 @@ void TNetwork::Authentication(SOCKET TCPSock) {
     }
 
     debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
-    debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> Cl;
         {
@@ -341,10 +340,7 @@ void TNetwork::Authentication(SOCKET TCPSock) {
             } else
                 return true;
         }
-        info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
         if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
-            info("New client matched with current iteration");
-            info("Old client (" + Cl->GetName() + ") kicked: Reconnecting");
             CloseSocketProper(Cl->GetTCPSock());
             Cl->SetStatus(-2);
             return false;
@@ -422,7 +418,7 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
 
 bool TNetwork::CheckBytes(TClient& c, int32_t BytesRcv) {
     if (BytesRcv == 0) {
-        debug("(TCP) Connection closing...");
+        trace("(TCP) Connection closing...");
         if (c.GetStatus() > -1)
             c.SetStatus(-1);
         return false;
@@ -434,7 +430,6 @@ bool TNetwork::CheckBytes(TClient& c, int32_t BytesRcv) {
 #endif // WIN32
         if (c.GetStatus() > -1)
             c.SetStatus(-1);
-        info(("Closing socket in CheckBytes, BytesRcv < 0"));
         CloseSocketProper(c.GetTCPSock());
         return false;
     }
@@ -450,22 +445,13 @@ std::string TNetwork::TCPRcv(TClient& c) {
     do {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], 4 - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
-#ifdef DEBUG
-            warn(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < 4)"));
-#endif // DEBUG
             return "";
         }
         BytesRcv += Temp;
     } while (size_t(BytesRcv) < sizeof(Header));
     memcpy(&Header, &Data[0], sizeof(Header));
 
-#ifdef DEBUG
-    //debug(std::string(__func__) + (": expecting ") + std::to_string(Header) + (" bytes."));
-#endif // DEBUG
     if (!CheckBytes(c, BytesRcv)) {
-#ifdef DEBUG
-        warn(std::string(__func__) + (": failed on CheckBytes"));
-#endif // DEBUG
         return "";
     }
     if (Header < 100 * MB) {
@@ -479,29 +465,15 @@ std::string TNetwork::TCPRcv(TClient& c) {
     do {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], Header - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
-#ifdef DEBUG
-            warn(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < Header)"));
-#endif // DEBUG
-
             return "";
         }
-#ifdef DEBUG
-        //debug(std::string(__func__) + (": Temp: ") + std::to_string(Temp) + (", BytesRcv: ") + std::to_string(BytesRcv));
-#endif // DEBUG
         BytesRcv += Temp;
     } while (BytesRcv < Header);
-#ifdef DEBUG
-    //debug(std::string(__func__) + (": finished recv with Temp: ") + std::to_string(Temp) + (", BytesRcv: ") + std::to_string(BytesRcv));
-#endif // DEBUG
     std::string Ret(Data.data(), Header);
 
     if (Ret.substr(0, 4) == "ABG:") {
         Ret = DeComp(Ret.substr(4));
     }
-#ifdef DEBUG
-    //debug("Parsing from " + c->GetName() + " -> " +std::to_string(Ret.size()));
-#endif
-
     return Ret;
 }
 
