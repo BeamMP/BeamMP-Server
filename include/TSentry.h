@@ -15,7 +15,7 @@ enum class SentryLevel {
 // singleton, dont make this twice
 class TSentry final {
 public:
-    TSentry(const std::string& SentryUrl);
+    TSentry();
     ~TSentry();
 
     void PrintWelcome();

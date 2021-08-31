@@ -44,7 +44,7 @@ void TPPSMonitor::operator()() {
                 V += c->GetCarCount();
             }
             // kick on "no ping"
-            if (c->SecondsSinceLastPing() > (5 * 60)) {
+            if (c->SecondsSinceLastPing() > (20 * 60)) {
                 debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
                 TimedOutClients.push_back(c);
             }
@@ -52,7 +52,7 @@ void TPPSMonitor::operator()() {
             return true;
         });
         for (auto& ClientToKick : TimedOutClients) {
-            Network().ClientKick(*ClientToKick, "Timeout (no ping for >5 min)");
+            Network().ClientKick(*ClientToKick, "Timeout (no ping for way too long)");
         }
         TimedOutClients.clear();
         if (C == 0 || mInternalPPS == 0) {
