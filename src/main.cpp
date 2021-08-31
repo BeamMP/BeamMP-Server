@@ -62,17 +62,7 @@ int main(int argc, char** argv) try {
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
 
-    Assert(!Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 1, 0, 0 }));
-    Assert(!Application::IsOutdated(std::array<int, 3> { 1, 0, 1 }, std::array<int, 3> { 1, 0, 0 }));
-    Assert(Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 1, 0, 1 }));
-    Assert(Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 1, 1, 0 }));
-    Assert(Application::IsOutdated(std::array<int, 3> { 1, 0, 0 }, std::array<int, 3> { 2, 0, 0 }));
-    Assert(!Application::IsOutdated(std::array<int, 3> { 2, 0, 0 }, std::array<int, 3> { 1, 0, 1 }));
-
     TServer Server(argc, argv);
-
-    Application::CheckForUpdates();
-
     TConfig Config;
 
     if (Config.Failed()) {
@@ -87,6 +77,7 @@ int main(int argc, char** argv) try {
 
     Sentry.SetupUser();
     Sentry.PrintWelcome();
+    Application::CheckForUpdates();
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
