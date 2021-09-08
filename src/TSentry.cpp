@@ -4,8 +4,6 @@
 #include <sentry.h>
 #include <sstream>
 
-static size_t SentryUrlLen;
-
 // compile-time length of a string/array
 template <size_t N>
 constexpr size_t ConstexprLength(char const (&)[N]) {
@@ -37,7 +35,6 @@ TSentry::~TSentry() {
 void TSentry::PrintWelcome() {
     if (mValid) {
         info("Sentry started");
-        debug("Sentry URL is length " + std::to_string(SentryUrlLen));
     } else {
         info("Sentry disabled in unofficial build");
     }
