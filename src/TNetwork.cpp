@@ -20,18 +20,14 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     });
     Application::RegisterShutdownHandler([&] {
         if (mUDPThread.joinable()) {
-            debug("shutting down TCPServer");
             mShutdown = true;
             mUDPThread.detach();
-            debug("shut down TCPServer");
         }
     });
     Application::RegisterShutdownHandler([&] {
         if (mTCPThread.joinable()) {
-            debug("shutting down TCPServer");
             mShutdown = true;
             mTCPThread.detach();
-            debug("shut down TCPServer");
         }
     });
     mTCPThread = std::thread(&TNetwork::TCPServerMain, this);

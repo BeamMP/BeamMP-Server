@@ -56,8 +56,9 @@ int main(int argc, char** argv) try {
 
     // TODO: replace
     while (!Shutdown) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
+    info("Shutdown.");
 } catch (const std::exception& e) {
     error(e.what());
     Sentry.LogException(e, _file_basename, _line);

@@ -107,10 +107,8 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     , mServer(Server) {
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
-            debug("shutting down Heartbeat");
             mShutdown = true;
             mThread.join();
-            debug("shut down Heartbeat");
         }
     });
     Start();

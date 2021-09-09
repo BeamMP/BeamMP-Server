@@ -7,10 +7,8 @@ TPPSMonitor::TPPSMonitor(TServer& Server)
     Application::SetPPS("-");
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
-            debug("shutting down PPSMonitor");
             mShutdown = true;
             mThread.join();
-            debug("shut down PPSMonitor");
         }
     });
     Start();
