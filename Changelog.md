@@ -3,7 +3,7 @@
 - ADDED Ctrl+C causes a graceful shutdown on windows (did already on linux)
 - ADDED more meaningful shutdown messages
 - ADDED even better backend connection error reporting
-- 
+- ADDED `SendErrors` config in `ServerConfig.toml` to opt-out of error reporting
 
 # v2.3.1
 

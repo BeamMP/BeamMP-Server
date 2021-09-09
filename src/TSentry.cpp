@@ -34,9 +34,14 @@ TSentry::~TSentry() {
 
 void TSentry::PrintWelcome() {
     if (mValid) {
-        info("Sentry started");
+        if (!Application::Settings.SendErrors) {
+            mValid = false;
+            info("Opted out of error reporting (SendErrors), Sentry disabled.");
+        } else {
+            info("Sentry started! Reporting errors automatically. You can opt-out of this in the ServerConfig.");
+        }
     } else {
-        info("Sentry disabled in unofficial build");
+        info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
     }
 }
 

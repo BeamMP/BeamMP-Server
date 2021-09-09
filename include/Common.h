@@ -30,7 +30,8 @@ public:
             , Private(false)
             , MaxCars(1)
             , DebugModeEnabled(false)
-            , Port(30814) { }
+            , Port(30814)
+            , SendErrors(true) { }
         std::string ServerName;
         std::string ServerDesc;
         std::string Resource;
@@ -42,6 +43,7 @@ public:
         bool DebugModeEnabled;
         int Port;
         std::string CustomIP;
+        bool SendErrors;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
     using TShutdownHandler = std::function<void()>;
