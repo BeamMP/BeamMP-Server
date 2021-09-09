@@ -81,7 +81,8 @@ add_executable(BeamMP-Server
         include/Http.h src/Http.cpp
         include/TSentry.h src/TSentry.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
-        include/TNetwork.h src/TNetwork.cpp)
+        include/TNetwork.h src/TNetwork.cpp
+        include/SignalHandling.h)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
 

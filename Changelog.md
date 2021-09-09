@@ -1,3 +1,7 @@
+# v2.3.2
+
+- ADDED Ctrl+C and closing the console causing a graceful shutdown
+
 # v2.3.1
 
 - CHANGED join/sync timeout to 20 minutes, players wont drop if loading takes >5 mins
