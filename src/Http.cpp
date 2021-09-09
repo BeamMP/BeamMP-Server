@@ -82,7 +82,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
         if (status) {
             *status = res.base().result_int();
         }
-        
+
         // ignore ec
 
         // If we get here then the connection is closed gracefully
@@ -270,12 +270,22 @@ static std::map<size_t, const char*> Map = {
     { 508, "Loop Detected" },
     { 510, "Not Extended" },
     { 511, "Network Authentication Required" },
+    // cloudflare status codes
+    { 520, "(CDN) Web Server Returns An Unknown Error" },
+    { 521, "(CDN) Web Server Is Down" },
+    { 522, "(CDN) Connection Timed Out" },
+    { 523, "(CDN) Origin Is Unreachable" },
+    { 524, "(CDN) A Timeout Occurred" },
+    { 525, "(CDN) SSL Handshake Failed" },
+    { 526, "(CDN) Invalid SSL Certificate" },
+    { 527, "(CDN) Railgun Listener To Origin Error" },
+    { 530, "(CDN) 1XXX Internal Error" },
 };
 
 std::string Http::Status::ToString(int code) {
     if (Map.find(code) != Map.end()) {
         return Map.at(code);
     } else {
-        return "Unassigned";
+        return std::to_string(code);
     }
 }
