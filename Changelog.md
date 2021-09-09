@@ -1,3 +1,7 @@
+# v2.3.1
+
+- CHANGED join/sync timeout to 20 minutes, players wont drop if loading takes >5 mins
+
 # v2.3.0
 
 - ADDED version check - the server will now let you know when a new release is out
