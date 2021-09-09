@@ -1,6 +1,9 @@
 # v2.3.2
 
-- ADDED Ctrl+C and closing the console causing a graceful shutdown
+- ADDED Ctrl+C causes a graceful shutdown on windows (did already on linux)
+- ADDED more meaningful shutdown messages
+- ADDED even better backend connection error reporting
+- 
 
 # v2.3.1
 
