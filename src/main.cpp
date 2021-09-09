@@ -10,48 +10,19 @@
 #include "TPPSMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+#include "SignalHandling.h"
 
+#include <iostream>
 #include <thread>
-
-#ifdef __unix
-#include <csignal>
-
-void UnixSignalHandler(int sig) {
-    switch (sig) {
-    case SIGPIPE:
-        warn("ignoring SIGPIPE");
-        break;
-    case SIGTERM:
-        info("gracefully shutting down via SIGTERM");
-        Application::GracefullyShutdown();
-        break;
-    case SIGINT:
-        info("gracefully shutting down via SIGINT");
-        Application::GracefullyShutdown();
-        break;
-    default:
-        debug("unhandled signal: " + std::to_string(sig));
-        break;
-    }
-}
-#endif // __unix
 
 // this is provided by the build system, leave empty for source builds
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry {};
 
-#include <iostream>
-
 int main(int argc, char** argv) try {
-#ifdef __unix
-    trace("registering handlers for SIGINT, SIGTERM, SIGPIPE");
-    signal(SIGPIPE, UnixSignalHandler);
-    signal(SIGTERM, UnixSignalHandler);
-#ifndef DEBUG
-    signal(SIGINT, UnixSignalHandler);
-#endif // DEBUG
-#endif // __unix
     setlocale(LC_ALL, "C");
+
+    SetupSignalHandlers();
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
@@ -61,7 +32,10 @@ int main(int argc, char** argv) try {
 
     if (Config.Failed()) {
         info("Closing in 10 seconds");
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        // loop to make it possible to ctrl+c instead
+        for (size_t i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
         return 1;
     }
 
@@ -88,3 +62,4 @@ int main(int argc, char** argv) try {
     error(e.what());
     Sentry.LogException(e, _file_basename, _line);
 }
+
