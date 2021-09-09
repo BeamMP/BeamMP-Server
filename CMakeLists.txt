@@ -123,7 +123,6 @@ if (UNIX)
         crypto
         ${OPENSSL_LIBRARIES} 
         commandline 
-        sioclient_tls 
         sentry)
 elseif (WIN32)
     include(FindLua)
@@ -138,6 +137,5 @@ elseif (WIN32)
         ${LUA_LIBRARIES} 
         ${OPENSSL_LIBRARIES} 
         commandline
-        sioclient_tls
         sentry)
 endif ()
