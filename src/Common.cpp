@@ -22,11 +22,20 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     }
 }
 
+static bool AlreadyShuttingDown = false;
 void Application::GracefullyShutdown() {
-    info("please wait while all subsystems are shutting down...");
+    if (AlreadyShuttingDown) {
+        info("already shutting down");
+        return;
+    } else {
+        AlreadyShuttingDown = true;
+    }
+    trace("waiting for lock release");
     std::unique_lock Lock(mShutdownHandlersMutex);
-    for (auto& Handler : mShutdownHandlers) {
-        Handler();
+    info("please wait while all subsystems are shutting down...");
+    for (size_t i = 0; i < mShutdownHandlers.size(); ++i) {
+        info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
+        mShutdownHandlers[i]();
     }
 }
 

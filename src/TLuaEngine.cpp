@@ -23,10 +23,8 @@ TLuaEngine::TLuaEngine(TServer& Server, TNetwork& Network)
     FolderList(Path, false);
     mPath = Path;
     Application::RegisterShutdownHandler([&] {if (mThread.joinable()) {
-        debug("shutting down LuaEngine");
         mShutdown = true;
         mThread.join();
-        debug("shut down LuaEngine");
     } });
     Start();
 }
