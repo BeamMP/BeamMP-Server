@@ -1,4 +1,5 @@
 .idea/
+.sentry-native/
 *.orig
 *.toml
 boost_*
