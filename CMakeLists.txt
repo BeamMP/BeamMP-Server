@@ -62,7 +62,6 @@ message(STATUS "Adding local source dependencies")
 include_directories("asio/asio/include")
 include_directories("rapidjson/include")
 include_directories("websocketpp")
-add_subdirectory("socket.io-client-cpp")
 add_subdirectory("include/commandline")
 
 
@@ -104,7 +103,6 @@ target_include_directories(BeamMP-Server PUBLIC
     ${Boost_INCLUDE_DIRS} 
     ${LUA_INCLUDE_DIR} 
     ${CURL_INCLUDE_DIRS}
-    "socket.io-client-cpp/src" 
     "include/tomlplusplus" 
     "include/sentry-native/include"
     "include/curl/include")
