@@ -19,6 +19,7 @@ static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
+static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 
 TConfig::TConfig() {
     if (!fs::exists(ConfigFileName) || !fs::is_regular_file(ConfigFileName)) {
@@ -35,7 +36,9 @@ TConfig::TConfig() {
 
 void WriteSendErrors(const std::string& name) {
     std::ofstream CfgFile { name, std::ios::out | std::ios::app };
-    CfgFile << "# If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar data. You can opt-out of this system by setting this to `false`."
+    CfgFile << "# You can turn on/off the SendErrors message you get on startup here" << std::endl
+            << StrSendErrorsMessageEnabled << " = true" << std::endl
+            << "# If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`."
             << std::endl
             << StrSendErrors << " = true" << std::endl;
 }
@@ -149,6 +152,12 @@ void TConfig::ParseFromFile(std::string_view name) {
         } else {
             // dont throw, instead write it into the file and use default
             WriteSendErrors(std::string(name));
+        }
+        if (auto val = GeneralTable[StrSendErrorsMessageEnabled].value<bool>(); val.has_value()) {
+            Application::Settings.SendErrorsMessageEnabled = val.value();
+        } else {
+            // no idea what to do here, ignore...?
+            // this entire toml parser sucks and is replaced in the upcoming lua.
         }
     } catch (const std::exception& err) {
         error("Error parsing config file value: " + std::string(err.what()));
