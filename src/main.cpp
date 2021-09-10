@@ -45,7 +45,6 @@ int main(int argc, char** argv) try {
 
     Sentry.SetupUser();
     Sentry.PrintWelcome();
-    Application::CheckForUpdates();
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
@@ -53,6 +52,7 @@ int main(int argc, char** argv) try {
     TLuaEngine LuaEngine(Server, Network);
     PPSMonitor.SetNetwork(Network);
     Application::Console().InitializeLuaConsole(LuaEngine);
+    Application::CheckForUpdates();
 
     // TODO: replace
     while (!Shutdown) {
