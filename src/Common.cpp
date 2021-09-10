@@ -22,10 +22,17 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     }
 }
 
-static bool AlreadyShuttingDown = false;
 void Application::GracefullyShutdown() {
+    static bool AlreadyShuttingDown = false;
+    static uint8_t ShutdownAttempts = 0;
     if (AlreadyShuttingDown) {
-        info("already shutting down");
+        ++ShutdownAttempts;
+        // hard shutdown at 2 additional tries
+        if (ShutdownAttempts == 2) {
+            info("hard shutdown forced by multiple shutdown requests");
+            exit(0);
+        }
+        info("already shutting down!");
         return;
     } else {
         AlreadyShuttingDown = true;

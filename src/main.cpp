@@ -3,6 +3,7 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "Http.h"
+#include "SignalHandling.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
@@ -10,7 +11,6 @@
 #include "TPPSMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
-#include "SignalHandling.h"
 
 #include <iostream>
 #include <thread>
@@ -63,4 +63,3 @@ int main(int argc, char** argv) try {
     error(e.what());
     Sentry.LogException(e, _file_basename, _line);
 }
-
