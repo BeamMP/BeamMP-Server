@@ -4,6 +4,8 @@
 - ADDED more meaningful shutdown messages
 - ADDED even better backend connection error reporting
 - ADDED `SendErrors` config in `ServerConfig.toml` to opt-out of error reporting
+- ADDED hard-shutdown if Ctrl+C pressed 3 times
+- FIXED issue with shells like bash being unusable after server exit
 
 # v2.3.1
 
