@@ -81,7 +81,7 @@ void Application::CheckForUpdates() {
             std::string RealVersionString = std::to_string(RemoteVersion[0]) + ".";
             RealVersionString += std::to_string(RemoteVersion[1]) + ".";
             RealVersionString += std::to_string(RemoteVersion[2]);
-            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
             info("Server up-to-date!");
         }
