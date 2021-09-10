@@ -30,7 +30,7 @@ void Application::GracefullyShutdown() {
         // hard shutdown at 2 additional tries
         if (ShutdownAttempts == 2) {
             info("hard shutdown forced by multiple shutdown requests");
-            exit(0);
+            std::exit(0);
         }
         info("already shutting down!");
         return;
