@@ -31,7 +31,8 @@ public:
             , MaxCars(1)
             , DebugModeEnabled(false)
             , Port(30814)
-            , SendErrors(true) { }
+            , SendErrors(true)
+            , SendErrorsMessageEnabled(true) { }
         std::string ServerName;
         std::string ServerDesc;
         std::string Resource;
@@ -44,6 +45,7 @@ public:
         int Port;
         std::string CustomIP;
         bool SendErrors;
+        bool SendErrorsMessageEnabled;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
     using TShutdownHandler = std::function<void()>;
