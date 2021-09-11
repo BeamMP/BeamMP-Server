@@ -24,7 +24,7 @@ jobs:
           tag_name: ${{ github.ref }}
           release_name: ${{ github.ref }}
           draft: false
-          prerelease: false 
+          prerelease: true
           body: |
               Files included in this release:
               - `BeamMP-Server.exe` is the windows build
