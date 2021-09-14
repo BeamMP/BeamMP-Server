@@ -87,6 +87,7 @@ void RegisterThread(const std::string& str);
 
 #define KB 1024
 #define MB (KB * 1024)
+#define SSU_UNRAW SECRET_SENTRY_URL
 
 #define _file_basename std::filesystem::path(__FILE__).filename().string()
 #define _line std::to_string(__LINE__)
@@ -112,9 +113,11 @@ void RegisterThread(const std::string& str);
 #else
 #define _this_location (ThreadName() + _file_basename + ":" + _line + " ")
 #endif
+#define SU_RAW SSU_UNRAW
 
 #else // !defined(DEBUG)
 
+#define SU_RAW RAWIFY(SSU_UNRAW)
 #define _this_location (ThreadName())
 
 #endif // defined(DEBUG)
@@ -150,3 +153,5 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg);
 #define Biggest 30000
 std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
+
+#define S_DSN SU_RAW
