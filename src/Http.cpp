@@ -210,6 +210,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
 // RFC 2616, RFC 7231
 static std::map<size_t, const char*> Map = {
+    { -1, "Invalid Response Code"},
     { 100, "Continue" },
     { 101, "Switching Protocols" },
     { 102, "Processing" },

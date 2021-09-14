@@ -36,9 +36,6 @@ void THeartbeatThread::operator()() {
         Body += "&pps=" + Application::PPS();
 
         auto SentryReportError = [&](const std::string& transaction, int status) {
-            if (status < 0) {
-                status = 0;
-            }
             auto Lock = Sentry.CreateExclusiveContext();
             Sentry.SetContext("heartbeat",
                 { { "response-body", T },
