@@ -1,3 +1,7 @@
+# v2.3.3
+
+- CHANGED servers to be private by default
+
 # v2.3.2
 
 - ADDED Ctrl+C causes a graceful shutdown on windows (did already on linux)
