@@ -127,6 +127,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
         bool ok = try_connect_with_protocol(tcp::v4());
         if (!ok) {
             Application::Console().Write("[ERROR] failed to resolve or connect in POST " + host + target);
+            Sentry.AddErrorBreadcrumb("failed to resolve or connect to " + host + target, __FILE__, std::to_string(__LINE__)); // FIXME: this is ugly.
             return "-1";
         }
         //}
@@ -202,6 +203,7 @@ std::string Http::POST(const std::string& host, const std::string& target, const
 
     } catch (const std::exception& e) {
         Application::Console().Write(e.what());
+        Sentry.AddErrorBreadcrumb(e.what(), __FILE__, std::to_string(__LINE__)); // FIXME: this is ugly.
         return "-1";
     }
 }
