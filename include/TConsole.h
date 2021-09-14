@@ -2,6 +2,7 @@
 
 #include "commandline/commandline.h"
 #include "TLuaFile.h"
+#include "Cryptography.h"
 #include <atomic>
 #include <fstream>
 

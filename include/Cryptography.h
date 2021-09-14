@@ -49,7 +49,7 @@ struct RandomChar {
 };
 
 template <size_t N, int K, typename Char>
-struct XorString {
+struct MangleString {
 private:
     const char _key;
     std::array<Char, N + 1> _encrypted;
@@ -64,7 +64,7 @@ private:
 
 public:
     template <size_t... Is>
-    constexpr XorString(const Char* str, std::index_sequence<Is...>)
+    constexpr MangleString(const Char* str, std::index_sequence<Is...>)
         : _key(RandomChar<K>::value)
         , _encrypted { enc(str[Is])... } { }
 
@@ -107,7 +107,8 @@ static auto w_sprintf_s_ret = [](char* buf, size_t buf_size, const char* fmt, ..
     return ret;
 };
 
-#define XOR_C(s) [] { constexpr XorCompileTime::XorString< sizeof(s)/sizeof(char) - 1, __COUNTER__, char > expr( s, std::make_index_sequence< sizeof(s)/sizeof(char) - 1>() ); return expr; }().decrypt()
-#define XOR_W(s) [] { constexpr XorCompileTime::XorString< sizeof(s)/sizeof(wchar_t) - 1, __COUNTER__, wchar_t > expr( s, std::make_index_sequence< sizeof(s)/sizeof(wchar_t) - 1>() ); return expr; }().decrypt()
+#define XOR_C(s) [] { constexpr Crypto::MangleString< sizeof(s)/sizeof(char) - 1, __COUNTER__, char > expr( s, std::make_index_sequence< sizeof(s)/sizeof(char) - 1>() ); return expr; }().decrypt()
+#define XOR_W(s) [] { constexpr Crypto::MangleString< sizeof(s)/sizeof(wchar_t) - 1, __COUNTER__, wchar_t > expr( s, std::make_index_sequence< sizeof(s)/sizeof(wchar_t) - 1>() ); return expr; }().decrypt()
+#define RAWIFY(s) XOR_C(s)
 
 }
