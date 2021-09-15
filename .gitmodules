@@ -1,15 +1,15 @@
 [submodule "include/commandline"]
-    path = include/commandline
+	path = deps/commandline
     url = https://github.com/lionkor/commandline
 [submodule "socket.io-client-cpp"]
-	path = socket.io-client-cpp
+	path = deps/socket.io-client-cpp
 	url = https://github.com/socketio/socket.io-client-cpp
 [submodule "asio"]
-	path = asio
+	path = deps/asio
 	url = https://github.com/chriskohlhoff/asio
 [submodule "rapidjson"]
-	path = rapidjson
+	path = deps/rapidjson
 	url = https://github.com/Tencent/rapidjson
 [submodule "include/toml11"]
-	path = include/toml11
+	path = deps/toml11
 	url = https://github.com/ToruNiina/toml11

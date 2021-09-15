@@ -20,11 +20,11 @@ elseif (UNIX)
 endif ()
 
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-include_directories("asio/asio/include")
-include_directories("rapidjson/include")
-include_directories("websocketpp")
-add_subdirectory("socket.io-client-cpp")
-add_subdirectory("include/commandline")
+include_directories("deps/asio/asio/include")
+include_directories("deps/rapidjson/include")
+include_directories("deps/websocketpp")
+add_subdirectory("deps/socket.io-client-cpp")
+add_subdirectory("deps/commandline")
 
 
 set(CMAKE_CXX_STANDARD 17)
@@ -50,12 +50,10 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp)
 
-target_include_directories(BeamMP-Server PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
+
+target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 find_package(Lua REQUIRED)
-
-target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} "socket.io-client-cpp/src")
-
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
