@@ -542,7 +542,7 @@ void TNetwork::UpdatePlayer(TClient& Client) {
 }
 
 void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked) {
-    Assert(!ClientPtr.expired());
+    beammp_assert(!ClientPtr.expired());
     auto LockedClientPtr = ClientPtr.lock();
     TClient& c = *LockedClientPtr;
     beammp_info(c.GetName() + (" Connection Terminated"));
@@ -591,7 +591,7 @@ int TNetwork::OpenID() {
 }
 
 void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
-    Assert(!c.expired());
+    beammp_assert(!c.expired());
     beammp_info("Client connected");
     auto LockedClient = c.lock();
     LockedClient->SetID(OpenID());
@@ -843,7 +843,7 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
 
 void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel) {
     if (!Self)
-        Assert(c);
+        beammp_assert(c);
     char C = Data.at(0);
     bool ret = true;
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {

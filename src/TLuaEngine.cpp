@@ -39,6 +39,6 @@ void TLuaEngine::CollectPlugins() {
 }
 
 void TLuaEngine::InitializePlugin(const fs::path& folder) {
-    Assert(fs::exists(folder));
-    Assert(fs::is_directory(folder));
+    beammp_assert(fs::exists(folder));
+    beammp_assert(fs::is_directory(folder));
 }
