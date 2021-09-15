@@ -13,6 +13,6 @@
 [submodule "include/toml11"]
 	path = deps/toml11
     url = https://github.com/ToruNiina/toml11
-[submodule "include/sol2"]
+[submodule "deps/sol2"]
 	path = deps/sol2
 	url = https://github.com/ThePhD/sol2
