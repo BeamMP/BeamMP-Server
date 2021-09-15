@@ -20,12 +20,7 @@ elseif (UNIX)
 endif ()
 
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-include_directories("deps/asio/asio/include")
-include_directories("deps/rapidjson/include")
-include_directories("deps/websocketpp")
-add_subdirectory("deps/socket.io-client-cpp")
-add_subdirectory("deps/commandline")
-
+add_subdirectory(deps)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -50,8 +45,13 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp)
 
+target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
+target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
+target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/websocketpp")
+target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/commandline")
+target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps")
 
-target_include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 find_package(Lua REQUIRED)
 find_package(OpenSSL REQUIRED)
