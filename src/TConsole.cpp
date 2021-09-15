@@ -45,22 +45,23 @@ TConsole::TConsole() {
     mCommandline.set_prompt("> ");
     bool success = mCommandline.enable_write_to_file("Server.log");
     if (!success) {
-        error("unable to open file for writing: \"Server.log\"");
+        beammp_error("unable to open file for writing: \"Server.log\"");
     }
     mCommandline.on_command = [this](Commandline& c) {
         auto cmd = c.get_command();
         mCommandline.write("> " + cmd);
         if (cmd == "exit") {
-            info("gracefully shutting down");
+            beammp_info("gracefully shutting down");
             Application::GracefullyShutdown();
         } else if (cmd == "clear" || cmd == "cls") {
             // TODO: clear screen
         } else {
-            if (mLuaConsole) {
+            /*if (mLuaConsole) {
                 mLuaConsole->Execute(cmd);
             } else {
                 error("Lua subsystem not yet initialized, please wait a few seconds and try again");
-            }
+            } BROKEN
+            */
         }
     };
 }
@@ -70,9 +71,11 @@ void TConsole::Write(const std::string& str) {
     mCommandline.write(ToWrite);
     // TODO write to logfile, too
 }
+/* BROKEN
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
     mLuaConsole = std::make_unique<TLuaFile>(Engine, true);
 }
+*/
 void TConsole::WriteRaw(const std::string& str) {
     mCommandline.write(str);
 }

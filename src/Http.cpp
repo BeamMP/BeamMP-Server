@@ -1,7 +1,7 @@
 #include "Http.h"
 
 #include "Common.h"
-#undef error
+#undef beammp_error
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>

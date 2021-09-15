@@ -13,7 +13,7 @@ void TClient::DeleteCar(int Ident) {
     if (iter != mVehicleData.end()) {
         mVehicleData.erase(iter);
     } else {
-        debug("tried to erase a vehicle that doesn't exist (not an error)");
+        beammp_debug("tried to erase a vehicle that doesn't exist (not an error)");
     }
 }
 

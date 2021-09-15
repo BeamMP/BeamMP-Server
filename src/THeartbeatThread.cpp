@@ -26,7 +26,7 @@ void THeartbeatThread::operator()() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-        debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
+        beammp_debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
 
         Last = Body;
         LastNormalUpdateTime = Now;
@@ -43,18 +43,18 @@ void THeartbeatThread::operator()() {
             T = Http::POST(Application::GetBackendHostname(), 443, "/heartbeat", {}, Body, "application/x-www-form-urlencoded");
             // TODO backup2 + HTTP flag (no TSL)
             if (T.substr(0, 2) != "20") {
-                warn("Backend system refused server! Server might not show in the public list");
-                debug("server returned \"" + T + "\"");
+                beammp_warn("Backend system refused server! Server might not show in the public list");
+                beammp_debug("server returned \"" + T + "\"");
                 isAuth = false;
             }
         }
 
         if (!isAuth) {
             if (T == "2000") {
-                info(("Authenticated!"));
+                beammp_info(("Authenticated!"));
                 isAuth = true;
             } else if (T == "200") {
-                info(("Resumed authenticated session!"));
+                beammp_info(("Resumed authenticated session!"));
                 isAuth = true;
             }
         }
@@ -86,10 +86,10 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     , mServer(Server) {
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
-            debug("shutting down Heartbeat");
+            beammp_debug("shutting down Heartbeat");
             mShutdown = true;
             mThread.join();
-            debug("shut down Heartbeat");
+            beammp_debug("shut down Heartbeat");
         }
     });
     Start();

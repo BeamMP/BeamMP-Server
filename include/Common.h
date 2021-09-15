@@ -122,11 +122,11 @@ void RegisterThread(const std::string str);
 
 #endif // defined(DEBUG)
 
-#define warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
-#define info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-#define error(x) Application::Console().Write(_this_location + std::string("[ERROR] ") + (x))
+#define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
+#define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
+#define beammp_error(x) Application::Console().Write(_this_location + std::string("[ERROR] ") + (x))
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
-#define debug(x)                                                                          \
+#define beammp_debug(x)                                                                   \
     do {                                                                                  \
         if (Application::Settings.DebugModeEnabled) {                                     \
             Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "TLuaFile.h"
 #include <atomic>
 #include <fstream>
 #include "commandline.h"
@@ -11,9 +10,9 @@ public:
 
     void Write(const std::string& str);
     void WriteRaw(const std::string& str);
-    void InitializeLuaConsole(TLuaEngine& Engine);
+   // BROKEN void InitializeLuaConsole(TLuaEngine& Engine);
 
 private:
-    std::unique_ptr<TLuaFile> mLuaConsole { nullptr };
+// BROKEN    std::unique_ptr<TLuaFile> mLuaConsole { nullptr };
     Commandline mCommandline;
 };

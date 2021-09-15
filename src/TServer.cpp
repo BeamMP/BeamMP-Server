@@ -14,16 +14,16 @@
 namespace json = rapidjson;
 
 TServer::TServer(int argc, char** argv) {
-    info("BeamMP Server v" + Application::ServerVersionString());
+    beammp_info("BeamMP Server v" + Application::ServerVersionString());
     if (argc > 1) {
         Application::Settings.CustomIP = argv[1];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
         auto p = Application::Settings.CustomIP.find_first_not_of(".0123456789");
         if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == "127") {
             Application::Settings.CustomIP.clear();
-            warn("IP Specified is invalid! Ignoring");
+            beammp_warn("IP Specified is invalid! Ignoring");
         } else {
-            info("server started with custom IP");
+            beammp_info("server started with custom IP");
         }
     }
 }
@@ -31,7 +31,7 @@ TServer::TServer(int argc, char** argv) {
 void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     if (!WeakClientPtr.expired()) {
         TClient& Client = *WeakClientPtr.lock();
-        debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
+        beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
         Client.ClearCars();
         WriteLock Lock(mClientsMutex);
         mClients.erase(WeakClientPtr.lock());
@@ -39,7 +39,7 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
 }
 
 std::weak_ptr<TClient> TServer::InsertNewClient() {
-    debug("inserting new client (" + std::to_string(ClientCount()) + ")");
+    beammp_debug("inserting new client (" + std::to_string(ClientCount()) + ")");
     WriteLock Lock(mClientsMutex);
     auto [Iter, Replaced] = mClients.insert(std::make_shared<TClient>(*this));
     return *Iter;
@@ -91,7 +91,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     switch (Code) {
     case 'H': // initial connection
 #ifdef DEBUG
-        debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
+        beammp_debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
 #endif
         if (!Network.SyncClient(Client)) {
             // TODO handle
@@ -109,19 +109,19 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         return;
     case 'O':
         if (Packet.length() > 1000) {
-            debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.length()));
+            beammp_debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.length()));
         }
         ParseVehicle(*LockedClient, Packet, Network);
         return;
     case 'J':
 #ifdef DEBUG
-        debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
     case 'C':
 #ifdef DEBUG
-        debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
@@ -132,12 +132,12 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         return;
     case 'E':
 #ifdef DEBUG
-        debug(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         HandleEvent(*LockedClient, Packet);
         return;
     case 'N':
-        debug("got 'N' packet (" + std::to_string(Packet.size()) + ")");
+        beammp_debug("got 'N' packet (" + std::to_string(Packet.size()) + ")");
         Network.SendToAll(LockedClient.get(), Packet, false, true);
     default:
         return;
@@ -168,7 +168,7 @@ bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
     rapidjson::Document Car;
     Car.Parse(CarJson.c_str(), CarJson.size());
     if (Car.HasParseError()) {
-        error("Failed to parse vehicle data -> " + CarJson);
+        beammp_error("Failed to parse vehicle data -> " + CarJson);
     } else if (Car["jbm"].IsString() && std::string(Car["jbm"].GetString()) == "unicycle") {
         return true;
     }
@@ -199,11 +199,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
 #ifdef DEBUG
-        debug(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         if (Data.at(0) == '0') {
             int CarID = c.GetOpenCarID();
-            debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
+            beammp_debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
 
             std::string CarJson = Packet.substr(5);
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
@@ -220,13 +220,13 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 if (!Network.Respond(c, Destroy, true)) {
                     // TODO: handle
                 }
-                debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
+                beammp_debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
             }
         }
         return;
     case 'c':
 #ifdef DEBUG
-        debug(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         pid = Data.substr(0, Data.find('-'));
         vid = Data.substr(Data.find('-') + 1, Data.find(':', 1) - Data.find('-') - 1);
@@ -259,7 +259,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         return;
     case 'd':
 #ifdef DEBUG
-        debug(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         pid = Data.substr(0, Data.find('-'));
         vid = Data.substr(Data.find('-') + 1);
@@ -275,12 +275,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             TriggerLuaEvent(("onVehicleDeleted"), false, nullptr,
                 std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID } }), false);
             c.DeleteCar(VID);
-            debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
+            beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
         }
         return;
     case 'r':
 #ifdef DEBUG
-        debug(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         Pos = int(Data.find('-'));
         pid = Data.substr(0, Pos++);
@@ -301,13 +301,13 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         return;
     case 't':
 #ifdef DEBUG
-        debug(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_debug(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
 #endif
         Network.SendToAll(&c, Packet, false, true);
         return;
     default:
 #ifdef DEBUG
-        warn(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
+        beammp_warn(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
 #endif // DEBUG
         return;
     }
@@ -316,32 +316,32 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     auto FoundPos = pckt.find('{');
     if (FoundPos == std::string::npos) {
-        error("Malformed packet received, no '{' found");
+        beammp_error("Malformed packet received, no '{' found");
         return;
     }
     std::string Packet = pckt.substr(FoundPos);
     std::string VD = c.GetCarData(VID);
     if (VD.empty()) {
-        error("Tried to apply change to vehicle that does not exist");
+        beammp_error("Tried to apply change to vehicle that does not exist");
         return;
     }
     std::string Header = VD.substr(0, VD.find('{'));
 
     FoundPos = VD.find('{');
     if (FoundPos == std::string::npos) {
-        error("Malformed packet received, no '{' found");
+        beammp_error("Malformed packet received, no '{' found");
         return;
     }
     VD = VD.substr(FoundPos);
     rapidjson::Document Veh, Pack;
     Veh.Parse(VD.c_str());
     if (Veh.HasParseError()) {
-        error("Could not get vehicle config!");
+        beammp_error("Could not get vehicle config!");
         return;
     }
     Pack.Parse(Packet.c_str());
     if (Pack.HasParseError() || Pack.IsNull()) {
-        error("Could not get active vehicle config!");
+        beammp_error("Could not get active vehicle config!");
         return;
     }
 
@@ -359,7 +359,7 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
 }
 
 void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
-    debug("inserting client (" + std::to_string(ClientCount()) + ")");
+    beammp_debug("inserting client (" + std::to_string(ClientCount()) + ")");
     WriteLock Lock(mClientsMutex); //TODO why is there 30+ threads locked here
     (void)mClients.insert(NewClient);
 }

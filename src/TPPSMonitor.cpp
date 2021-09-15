@@ -7,10 +7,10 @@ TPPSMonitor::TPPSMonitor(TServer& Server)
     Application::SetPPS("-");
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
-            debug("shutting down PPSMonitor");
+            beammp_debug("shutting down PPSMonitor");
             mShutdown = true;
             mThread.join();
-            debug("shut down PPSMonitor");
+            beammp_debug("shut down PPSMonitor");
         }
     });
     Start();
@@ -21,7 +21,7 @@ void TPPSMonitor::operator()() {
         // hard spi
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    info("PPSMonitor starting");
+    beammp_info("PPSMonitor starting");
     std::vector<std::shared_ptr<TClient>> TimedOutClients;
     while (!mShutdown) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -45,7 +45,7 @@ void TPPSMonitor::operator()() {
             }
             // kick on "no ping"
             if (c->SecondsSinceLastPing() > (5 * 60)) {
-                debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
+                beammp_debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
                 TimedOutClients.push_back(c);
             }
 

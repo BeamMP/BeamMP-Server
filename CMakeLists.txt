@@ -38,7 +38,7 @@ add_executable(BeamMP-Server
         include/VehicleData.h src/VehicleData.cpp
         include/TConfig.h src/TConfig.cpp
         include/TLuaEngine.h src/TLuaEngine.cpp
-        include/TLuaFile.h src/TLuaFile.cpp
+        include/TLuaPlugin.h src/TLuaPlugin.cpp
         include/TResourceManager.h src/TResourceManager.cpp
         include/THeartbeatThread.h src/THeartbeatThread.cpp
         include/Http.h src/Http.cpp
@@ -49,19 +49,19 @@ target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/asi
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/websocketpp")
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/commandline")
+target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/sol2/include")
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps")
 
 include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-find_package(Lua REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${LUA_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs ${SOL2_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
     find_package(RapidJSON CONFIG REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${LUA_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${SOL2_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls)
 endif ()

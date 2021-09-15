@@ -17,7 +17,7 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
 }
 
 void Application::GracefullyShutdown() {
-    info("please wait while all subsystems are shutting down...");
+    beammp_info("please wait while all subsystems are shutting down...");
     std::unique_lock Lock(mShutdownHandlersMutex);
     for (auto& Handler : mShutdownHandlers) {
         Handler();

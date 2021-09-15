@@ -10,7 +10,7 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     , mPPSMonitor(PPSMonitor)
     , mResourceManager(ResourceManager) {
     Application::RegisterShutdownHandler([&] {
-        debug("Kicking all players due to shutdown");
+        beammp_debug("Kicking all players due to shutdown");
         Server.ForEachClient([&](std::weak_ptr<TClient> client) -> bool {
             if (!client.expired()) {
                 ClientKick(*client.lock(), "Server shutdown");
@@ -20,18 +20,18 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     });
     Application::RegisterShutdownHandler([&] {
         if (mUDPThread.joinable()) {
-            debug("shutting down TCPServer");
+            beammp_debug("shutting down TCPServer");
             mShutdown = true;
             mUDPThread.detach();
-            debug("shut down TCPServer");
+            beammp_debug("shut down TCPServer");
         }
     });
     Application::RegisterShutdownHandler([&] {
         if (mTCPThread.joinable()) {
-            debug("shutting down TCPServer");
+            beammp_debug("shutting down TCPServer");
             mShutdown = true;
             mTCPThread.detach();
-            debug("shut down TCPServer");
+            beammp_debug("shut down TCPServer");
         }
     });
     mTCPThread = std::thread(&TNetwork::TCPServerMain, this);
@@ -56,13 +56,13 @@ void TNetwork::UDPServerMain() {
 
     // Try and bind the socket to the IP and port
     if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
-        error("bind() failed: " + GetPlatformAgnosticErrorString());
+        beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1);
         //return;
     }
 
-    info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
+    beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
     while (!mShutdown) {
         try {
@@ -94,7 +94,7 @@ void TNetwork::UDPServerMain() {
                 return true;
             });
         } catch (const std::exception& e) {
-            error(("fatal: ") + std::string(e.what()));
+            beammp_error(("fatal: ") + std::string(e.what()));
         }
     }
 }
@@ -118,40 +118,40 @@ void TNetwork::TCPServerMain() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Application::Settings.Port));
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        error("bind() failed: " + GetPlatformAgnosticErrorString());
+        beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1);
     }
     if (Listener == -1) {
-        error("Invalid listening socket");
+        beammp_error("Invalid listening socket");
         return;
     }
     if (listen(Listener, SOMAXCONN)) {
-        error("listen() failed: " + GetPlatformAgnosticErrorString());
+        beammp_error("listen() failed: " + GetPlatformAgnosticErrorString());
         // FIXME leak Listener
         return;
     }
-    info(("Vehicle event network online"));
+    beammp_info(("Vehicle event network online"));
     do {
         try {
             if (mShutdown) {
-                debug("shutdown during TCP wait for accept loop");
+                beammp_debug("shutdown during TCP wait for accept loop");
                 break;
             }
             client.SockAddrLen = sizeof(client.SockAddr);
             client.Socket = accept(Listener, &client.SockAddr, &client.SockAddrLen);
             if (client.Socket == -1) {
-                warn(("Got an invalid client socket on connect! Skipping..."));
+                beammp_warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
             std::thread ID(&TNetwork::Identify, this, client);
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
-            error(("fatal: ") + std::string(e.what()));
+            beammp_error(("fatal: ") + std::string(e.what()));
         }
     } while (client.Socket);
 
-    debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
+    beammp_debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
 
     CloseSocketProper(client.Socket);
 #ifdef WIN32
@@ -208,7 +208,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     Client->SetIdentifier("ip", str);
 
     std::string Rc;
-    info("Identifying new ClientConnection...");
+    beammp_info("Identifying new ClientConnection...");
 
     Rc = TCPRcv(*Client);
 
@@ -246,7 +246,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
 
     if (!AuthResponse.IsObject()) {
         ClientKick(*Client, "Backend returned invalid auth response format.");
-        error("Backend returned invalid auth response format. This should never happen.");
+        beammp_error("Backend returned invalid auth response format. This should never happen.");
         return;
     }
 
@@ -266,8 +266,8 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
         return;
     }
 
-    debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
-    debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
+    beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
+    beammp_debug("There are " + std::to_string(mServer.ClientCount()) + " known clients");
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> Cl;
         {
@@ -277,10 +277,10 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
             } else
                 return true;
         }
-        info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
+        beammp_info("Client Iteration: Name -> " + Cl->GetName() + ", Guest -> " + std::to_string(Cl->IsGuest()) + ", Roles -> " + Cl->GetRoles());
         if (Cl->GetName() == Client->GetName() && Cl->IsGuest() == Client->IsGuest()) {
-            info("New ClientConnection matched with current iteration");
-            info("Old ClientConnection (" + Cl->GetName() + ") kicked: Reconnecting");
+            beammp_info("New ClientConnection matched with current iteration");
+            beammp_info("Old ClientConnection (" + Cl->GetName() + ") kicked: Reconnecting");
             CloseSocketProper(Cl->GetTCPSock());
             Cl->SetStatus(-2);
             return false;
@@ -300,7 +300,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     }
 
     if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
-        info("Identification success");
+        beammp_info("Identification success");
         mServer.InsertClient(Client);
         TCPClient(Client);
     } else
@@ -339,12 +339,12 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
 #endif //WIN32
         if (Temp == 0) {
-            debug("send() == 0: " + GetPlatformAgnosticErrorString());
+            beammp_debug("send() == 0: " + GetPlatformAgnosticErrorString());
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             return false;
         } else if (Temp < 0) {
-            debug("send() < 0: " + GetPlatformAgnosticErrorString()); //TODO fix it was spamming yet everyone stayed on the server
+            beammp_debug("send() < 0: " + GetPlatformAgnosticErrorString()); //TODO fix it was spamming yet everyone stayed on the server
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             CloseSocketProper(c.GetTCPSock());
@@ -358,15 +358,15 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
 
 bool TNetwork::CheckBytes(TClient& c, int32_t BytesRcv) {
     if (BytesRcv == 0) {
-        debug("(TCP) Connection closing...");
+        beammp_debug("(TCP) Connection closing...");
         if (c.GetStatus() > -1)
             c.SetStatus(-1);
         return false;
     } else if (BytesRcv < 0) {
-        debug("(TCP) recv() failed: " + GetPlatformAgnosticErrorString());
+        beammp_debug("(TCP) recv() failed: " + GetPlatformAgnosticErrorString());
         if (c.GetStatus() > -1)
             c.SetStatus(-1);
-        info(("Closing socket in CheckBytes, BytesRcv < 0"));
+        beammp_info(("Closing socket in CheckBytes, BytesRcv < 0"));
         CloseSocketProper(c.GetTCPSock());
         return false;
     }
@@ -383,7 +383,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], 4 - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
 #ifdef DEBUG
-            error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < 4)"));
+            beammp_error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < 4)"));
 #endif // DEBUG
             return "";
         }
@@ -396,7 +396,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
 #endif // DEBUG
     if (!CheckBytes(c, BytesRcv)) {
 #ifdef DEBUG
-        error(std::string(__func__) + (": failed on CheckBytes"));
+        beammp_error(std::string(__func__) + (": failed on CheckBytes"));
 #endif // DEBUG
         return "";
     }
@@ -404,7 +404,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
         Data.resize(Header);
     } else {
         ClientKick(c, "Header size limit exceeded");
-        warn("Client " + c.GetName() + " (" + std::to_string(c.GetID()) + ") sent header of >100MB - assuming malicious intent and disconnecting the client.");
+        beammp_warn("Client " + c.GetName() + " (" + std::to_string(c.GetID()) + ") sent header of >100MB - assuming malicious intent and disconnecting the client.");
         return "";
     }
     BytesRcv = 0;
@@ -412,7 +412,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
         Temp = recv(c.GetTCPSock(), &Data[BytesRcv], Header - BytesRcv, 0);
         if (!CheckBytes(c, Temp)) {
 #ifdef DEBUG
-            error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < Header)"));
+            beammp_error(std::string(__func__) + (": failed on CheckBytes in while(BytesRcv < Header)"));
 #endif // DEBUG
 
             return "";
@@ -438,7 +438,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
 }
 
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
-    info("Client kicked: " + R);
+    beammp_info("Client kicked: " + R);
     if (!TCPSend(c, "E" + R)) {
         // TODO handle
     }
@@ -454,7 +454,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
     while (!c.expired()) {
         auto Client = c.lock();
         if (Client->GetStatus() < 0) {
-            debug("client status < 0, breaking client loop");
+            beammp_debug("client status < 0, breaking client loop");
             break;
         }
         if (!Client->IsSyncing() && Client->IsSynced() && Client->MissedPacketQueueSize() != 0) {
@@ -504,13 +504,13 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
             break;
         auto Client = c.lock();
         if (Client->GetStatus() < 0) {
-            debug("client status < 0, breaking client loop");
+            beammp_debug("client status < 0, breaking client loop");
             break;
         }
 
         auto res = TCPRcv(*Client);
         if (res == "") {
-            debug("TCPRcv error, break client loop");
+            beammp_debug("TCPRcv error, break client loop");
             break;
         }
         TServer::GlobalParser(c, res, mPPSMonitor, *this);
@@ -522,7 +522,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         auto Client = c.lock();
         OnDisconnect(c, Client->GetStatus() == -2);
     } else {
-        warn("client expired in TCPClient, should never happen");
+        beammp_warn("client expired in TCPClient, should never happen");
     }
 }
 
@@ -545,7 +545,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked
     Assert(!ClientPtr.expired());
     auto LockedClientPtr = ClientPtr.lock();
     TClient& c = *LockedClientPtr;
-    info(c.GetName() + (" Connection Terminated"));
+    beammp_info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
     TClient::TSetOfVehicleData VehicleData;
     { // Vehicle Data Lock Scope
@@ -592,16 +592,16 @@ int TNetwork::OpenID() {
 
 void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     Assert(!c.expired());
-    info("Client connected");
+    beammp_info("Client connected");
     auto LockedClient = c.lock();
     LockedClient->SetID(OpenID());
-    info("Assigned ID " + std::to_string(LockedClient->GetID()) + " to " + LockedClient->GetName());
+    beammp_info("Assigned ID " + std::to_string(LockedClient->GetID()) + " to " + LockedClient->GetName());
     TriggerLuaEvent("onPlayerConnecting", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
     SyncResources(*LockedClient);
     if (LockedClient->GetStatus() < 0)
         return;
     (void)Respond(*LockedClient, "M" + Application::Settings.MapName, true); //Send the Map on connect
-    info(LockedClient->GetName() + " : Connected");
+    beammp_info(LockedClient->GetName() + " : Connected");
     TriggerLuaEvent("onPlayerJoining", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
 }
 
@@ -639,7 +639,7 @@ void TNetwork::Parse(TClient& c, const std::string& Packet) {
         return;
     case 'S':
         if (SubCode == 'R') {
-            debug("Sending Mod Info");
+            beammp_debug("Sending Mod Info");
             std::string ToSend = mResourceManager.FileList() + mResourceManager.FileSizes();
             if (ToSend.empty())
                 ToSend = "-";
@@ -654,13 +654,13 @@ void TNetwork::Parse(TClient& c, const std::string& Packet) {
 }
 
 void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
-    info(c.GetName() + " requesting : " + UnsafeName.substr(UnsafeName.find_last_of('/')));
+    beammp_info(c.GetName() + " requesting : " + UnsafeName.substr(UnsafeName.find_last_of('/')));
 
     if (!fs::path(UnsafeName).has_filename()) {
         if (!TCPSend(c, "CO")) {
             // TODO: handle
         }
-        warn("File " + UnsafeName + " is not a file!");
+        beammp_warn("File " + UnsafeName + " is not a file!");
         return;
     }
     auto FileName = fs::path(UnsafeName).filename().string();
@@ -670,7 +670,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
         if (!TCPSend(c, "CO")) {
             // TODO: handle
         }
-        warn("File " + UnsafeName + " could not be accessed!");
+        beammp_warn("File " + UnsafeName + " could not be accessed!");
         return;
     }
 
@@ -686,7 +686,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
     }
 
     if (c.GetDownSock() < 1) {
-        error("Client doesn't have a download socket!");
+        beammp_error("Client doesn't have a download socket!");
         if (c.GetStatus() > -1)
             c.SetStatus(-1);
         return;
@@ -723,7 +723,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
         TCPSock = c.GetDownSock();
     else
         TCPSock = c.GetTCPSock();
-    info("Split load Socket " + std::to_string(TCPSock));
+    beammp_info("Split load Socket " + std::to_string(TCPSock));
     while (c.GetStatus() > -1 && Sent < Size) {
         size_t Diff = Size - Sent;
         if (Diff > Split) {
@@ -755,7 +755,7 @@ bool TNetwork::TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size) {
     do {
         intmax_t Temp = send(socket, &Data[Sent], int(Size - Sent), 0);
         if (Temp < 1) {
-            info("Socket Closed! " + std::to_string(socket));
+            beammp_info("Socket Closed! " + std::to_string(socket));
             CloseSocketProper(socket);
             return false;
         }
@@ -837,7 +837,7 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
         return res;
     }
     LockedClient->SetIsSynced(true);
-    info(LockedClient->GetName() + (" is now synced!"));
+    beammp_info(LockedClient->GetName() + (" is now synced!"));
     return true;
 }
 
@@ -907,12 +907,12 @@ bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
 
     sendOk = sendto(mUDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, int(AddrSize));
     if (sendOk == -1) {
-        debug("(UDP) sendto() failed: " + GetPlatformAgnosticErrorString());
+        beammp_debug("(UDP) sendto() failed: " + GetPlatformAgnosticErrorString());
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
         return false;
     } else if (sendOk == 0) {
-        debug(("(UDP) sendto() returned 0"));
+        beammp_debug(("(UDP) sendto() returned 0"));
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
         return false;
@@ -930,7 +930,7 @@ std::string TNetwork::UDPRcvFromClient(sockaddr_in& client) const {
 #endif // WIN32
 
     if (Rcv == -1) {
-        error("(UDP) Error receiving from client! recvfrom() failed: " + GetPlatformAgnosticErrorString());
+        beammp_error("(UDP) Error receiving from client! recvfrom() failed: " + GetPlatformAgnosticErrorString());
         return "";
     }
     return std::string(Ret.begin(), Ret.begin() + Rcv);

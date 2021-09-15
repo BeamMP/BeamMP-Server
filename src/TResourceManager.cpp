@@ -28,5 +28,5 @@ TResourceManager::TResourceManager() {
     }
 
     if (mModsLoaded)
-        info("Loaded " + std::to_string(mModsLoaded) + " Mods");
+        beammp_info("Loaded " + std::to_string(mModsLoaded) + " Mods");
 }

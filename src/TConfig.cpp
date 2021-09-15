@@ -23,12 +23,12 @@ static constexpr std::string_view StrAuthKey = "AuthKey";
 
 TConfig::TConfig() {
     if (!fs::exists(ConfigFileName) || !fs::is_regular_file(ConfigFileName)) {
-        info("No config file found! Generating one...");
+        beammp_info("No config file found! Generating one...");
         CreateConfigFile(ConfigFileName);
     }
     if (!mFailed) {
         if (fs::exists("Server.cfg")) {
-            warn("An old \"Server.cfg\" file still exists. Please note that this is no longer used. Instead, \"" + std::string(ConfigFileName) + "\" is used. You can safely delete the \"Server.cfg\".");
+            beammp_warn("An old \"Server.cfg\" file still exists. Please note that this is no longer used. Instead, \"" + std::string(ConfigFileName) + "\" is used. You can safely delete the \"Server.cfg\".");
         }
         ParseFromFile(ConfigFileName);
     }
@@ -60,7 +60,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
             ParseOldFormat();
         }
     } catch (const std::exception& e) {
-        error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
+        beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
     }
 
     { // create file context
@@ -88,10 +88,10 @@ void TConfig::CreateConfigFile(std::string_view name) {
                "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
             << '\n';
         ofs << data << '\n';
-        error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
+        beammp_error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
         mFailed = true;
     } else {
-        error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
+        beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
         mFailed = true;
     }
 }
@@ -110,30 +110,30 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
     } catch (const std::exception& err) {
-        error("Error parsing config file value: " + std::string(err.what()));
+        beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
         return;
     }
     PrintDebug();
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
-        error("No AuthKey specified in the \"" + std::string(ConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        beammp_error("No AuthKey specified in the \"" + std::string(ConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
         mFailed = true;
     }
 }
 
 void TConfig::PrintDebug() {
-    debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
-    debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
-    debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
-    debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.MaxCars));
-    debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.MaxPlayers));
-    debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
-    debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
-    debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
-    debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
+    beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
+    beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
+    beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
+    beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.MaxCars));
+    beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.MaxPlayers));
+    beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
+    beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
+    beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     // special!
-    debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
+    beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }
 
 void TConfig::ParseOldFormat() {
@@ -183,7 +183,7 @@ void TConfig::ParseOldFormat() {
         } else if (Key == "AuthKey") {
             Application::Settings.Key = Value.substr(1, Value.size() - 3);
         } else {
-            warn("unknown key in old auth file (ignored): " + Key);
+            beammp_warn("unknown key in old auth file (ignored): " + Key);
         }
         Str >> std::ws;
     }

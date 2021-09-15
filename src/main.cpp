@@ -15,18 +15,18 @@
 void UnixSignalHandler(int sig) {
     switch (sig) {
     case SIGPIPE:
-        warn("ignoring SIGPIPE");
+        beammp_warn("ignoring SIGPIPE");
         break;
     case SIGTERM:
-        info("gracefully shutting down via SIGTERM");
+        beammp_info("gracefully shutting down via SIGTERM");
         Application::GracefullyShutdown();
         break;
     case SIGINT:
-        info("gracefully shutting down via SIGINT");
+        beammp_info("gracefully shutting down via SIGINT");
         Application::GracefullyShutdown();
         break;
     default:
-        debug("unhandled signal: " + std::to_string(sig));
+        beammp_debug("unhandled signal: " + std::to_string(sig));
         break;
     }
 }
@@ -35,7 +35,7 @@ void UnixSignalHandler(int sig) {
 int main(int argc, char** argv) {
 #ifdef __unix
 #if DEBUG
-    info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
+    beammp_info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
 #endif // DEBUG
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     TConfig Config;
 
     if (Config.Failed()) {
-        info("Closing in 10 seconds");
+        beammp_info("Closing in 10 seconds");
         std::this_thread::sleep_for(std::chrono::seconds(10));
         return 1;
     }
