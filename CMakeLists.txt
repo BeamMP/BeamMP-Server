@@ -56,6 +56,7 @@ add_executable(BeamMP-Server
 include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 find_package(Lua REQUIRED)
+include_directories(${LUA_INCLUDE_DIR})
 find_package(OpenSSL REQUIRED)
 
 target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})

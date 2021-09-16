@@ -159,7 +159,10 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         [this](const std::string& EventName, const std::string& FunctionName) {
             RegisterEvent(EventName, FunctionName);
         });
-    Table.set_function("");
+    Table.set_function("TriggerGlobalEvent",
+        [&](const std::string& EventName) {
+            return mEngine->TriggerEvent(EventName);
+        });
     Table.create_named("Settings",
         "Debug", 0,
         "Private", 1,
