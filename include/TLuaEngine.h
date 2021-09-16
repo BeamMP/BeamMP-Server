@@ -11,6 +11,7 @@
 #include <toml11/toml.hpp>
 #include <unordered_map>
 #include <vector>
+#include <set>
 
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
@@ -44,6 +45,8 @@ public:
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
+    void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
+    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
@@ -54,10 +57,11 @@ private:
 
     class StateThreadData : IThreaded {
     public:
-        StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId);
+        StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName);
+        void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void operator()() override;
 
     private:
@@ -67,9 +71,10 @@ private:
         lua_State* mState;
         std::thread mThread;
         std::queue<std::pair<std::shared_ptr<std::string>, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
-        std::mutex mStateExecuteQueueMutex;
+        std::recursive_mutex mStateExecuteQueueMutex;
         std::queue<std::pair<std::string, std::shared_ptr<TLuaResult>>> mStateFunctionQueue;
-        std::mutex mStateFunctionQueueMutex;
+        std::recursive_mutex mStateFunctionQueueMutex;
+        TLuaEngine* mEngine;
     };
 
     TNetwork& mNetwork;
@@ -78,7 +83,9 @@ private:
     fs::path mResourceServerPath;
     std::vector<TLuaPlugin*> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
-    std::mutex mLuaStatesMutex;
+    std::recursive_mutex mLuaStatesMutex;
+    std::unordered_map<std::string /* event name */, std::unordered_map<TLuaStateId, std::set<std::string>>> mEvents;
+    std::recursive_mutex mEventsMutex;
 };
 
 #include <any>

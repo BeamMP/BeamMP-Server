@@ -93,7 +93,6 @@ void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Co
     auto ConfigFile = Folder / TLuaPluginConfig::FileName;
     if (fs::exists(ConfigFile) && fs::is_regular_file(ConfigFile)) {
         beammp_debug("\"" + ConfigFile.string() + "\" found");
-        // TODO use toml11 here to parse it
         try {
             auto Data = toml::parse(ConfigFile);
             if (Data.contains("LuaStateID")) {
@@ -112,10 +111,12 @@ void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Co
 }
 
 void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit) {
+    std::unique_lock Lock(mLuaStatesMutex);
     if (mLuaStates.find(StateId) == mLuaStates.end()) {
         beammp_debug("Creating lua state for state id \"" + StateId + "\"");
-        auto DataPtr = std::make_unique<StateThreadData>(Name, mShutdown, StateId);
+        auto DataPtr = std::make_unique<StateThreadData>(Name, mShutdown, StateId, *this);
         mLuaStates[StateId] = std::move(DataPtr);
+        RegisterEvent("onInit", StateId, "onInit");
         if (!DontCallOnInit) {
             auto Res = EnqueueFunctionCall(StateId, "onInit");
             Res->WaitUntilReady();
@@ -126,10 +127,27 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
     }
 }
 
-TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId)
+void TLuaEngine::RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName) {
+    std::unique_lock Lock(mEventsMutex);
+    mEvents[EventName][StateId].insert(FunctionName);
+}
+
+std::vector<std::shared_ptr<TLuaResult>> TLuaEngine::TriggerEvent(const std::string& EventName) {
+    std::unique_lock Lock(mEventsMutex);
+    std::vector<std::shared_ptr<TLuaResult>> Results;
+    for (const auto& Entry : mEvents[EventName]) {
+        for (const auto& Function : Entry.second) {
+            Results.emplace_back(EnqueueFunctionCall(Entry.first, Function));
+        }
+    }
+    return Results;
+}
+
+TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
-    , mStateId(StateId) {
+    , mStateId(StateId)
+    , mEngine(&Engine) {
     mState = luaL_newstate();
     luaL_openlibs(mState);
     sol::state_view StateView(mState);
@@ -137,6 +155,19 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     auto Table = StateView.create_named_table("MP");
     Table.set_function("GetOSName", &LuaAPI::MP::GetOSName);
     Table.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
+    Table.set_function("RegisterEvent",
+        [this](const std::string& EventName, const std::string& FunctionName) {
+            RegisterEvent(EventName, FunctionName);
+        });
+    Table.set_function("");
+    Table.create_named("Settings",
+        "Debug", 0,
+        "Private", 1,
+        "MaxCars", 2,
+        "MaxPlayers", 3,
+        "Map", 4,
+        "Name", 5,
+        "Description", 6);
     Start();
 }
 
@@ -154,6 +185,10 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(con
     auto Result = std::make_shared<TLuaResult>();
     mStateFunctionQueue.push({ FunctionName, Result });
     return Result;
+}
+
+void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, const std::string& FunctionName) {
+    mEngine->RegisterEvent(EventName, mStateId, FunctionName);
 }
 
 void TLuaEngine::StateThreadData::operator()() {

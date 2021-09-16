@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
 project(Server)
 
+include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
+include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
+include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps")
+
 if (WIN32)
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
@@ -45,14 +52,6 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp
         include/LuaAPI.h src/LuaAPI.cpp)
-
-include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
-include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
-include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps")
 
 include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
