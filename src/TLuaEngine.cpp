@@ -252,6 +252,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     Table.set_function("IsPlayerGuest", &LuaAPI::MP::IsPlayerGuest);
     Table.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
+    Table.set_function("GetOSTimeMS", []() -> size_t {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    });
     Table.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
     });
