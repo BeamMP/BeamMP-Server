@@ -5,6 +5,9 @@
 #include <chrono>
 #include <random>
 
+#define SOL_ALL_SAFETIES_ON 1
+#include <sol/sol.hpp>
+
 static std::mt19937_64 MTGen64;
 
 static TLuaStateId GenerateUniqueStateId() {
@@ -106,6 +109,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     , mShutdown(Shutdown) {
     mState = luaL_newstate();
     luaL_openlibs(mState);
+    sol::state_view StateView(mState);
+    auto LuaPrint = [](const std::string& Msg) { luaprint(Msg); };
+    StateView.set_function("print", LuaPrint);
     Start();
 }
 
@@ -129,15 +135,17 @@ void TLuaEngine::StateThreadData::operator()() {
             mStateExecuteQueue.pop();
             Lock.unlock();
             beammp_debug("Running script");
-            luaL_dostring(mState, S.first->data());
+            sol::state_view StateView(mState);
+            auto Res = StateView.safe_script(*S.first, sol::script_pass_on_error);
+            if (Res.valid()) {
+                S.second->Error = false;
+            } else {
+                S.second->Error = true;
+                sol::error Err = Res;
+                S.second->ErrorMessage = Err.what();
+            }
             S.second->Ready = true;
         }
-    }
-}
-
-TLuaEngine::StateThreadData::~StateThreadData() {
-    if (mThread.joinable()) {
-        mThread.join();
     }
 }
 

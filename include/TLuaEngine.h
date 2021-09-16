@@ -19,14 +19,15 @@ class TLuaPlugin;
 
 struct TLuaResult {
     std::atomic_bool Ready;
+    std::atomic_bool Error;
+    std::string ErrorMessage;
     // TODO: Add condition_variable
-    std::any Result;
 };
 
 struct TLuaPluginConfig {
     static inline const std::string FileName = "PluginConfig.toml";
     TLuaStateId StateId;
-    // TODO: Execute list
+    // TODO: Add execute list
 };
 
 class TLuaEngine : IThreaded {
@@ -49,7 +50,6 @@ private:
         StateThreadData(const StateThreadData&) = delete;
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
         void operator()() override;
-        ~StateThreadData();
 
     private:
         std::string mName;

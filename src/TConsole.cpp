@@ -64,9 +64,11 @@ TConsole::TConsole() {
             auto Future = mLuaEngine->EnqueueScript(mStateId, std::make_shared<std::string>(cmd));
             // wait for it to finish
             while (!Future->Ready) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-            mCommandline.write("Result ready.");
+            if (Future->Error) {
+                beammp_error(Future->ErrorMessage);
+            }
         }
     };
 }
@@ -82,6 +84,6 @@ void TConsole::WriteRaw(const std::string& str) {
 }
 
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
-    Engine.EnsureStateExists(mStateId, "<>");
+    Engine.EnsureStateExists(mStateId, "Console");
     mLuaEngine = &Engine;
 }
