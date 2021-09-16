@@ -30,7 +30,7 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
     std::vector<std::pair<fs::path, std::shared_ptr<TLuaResult>>> ResultsToCheck;
     for (const auto& Entry : Entries) {
         // read in entire file
-        std::FILE* File = std::fopen(static_cast<const char*>(Entry.c_str()), "r");
+        std::FILE* File = std::fopen(reinterpret_cast<const char*>(Entry.c_str()), "r");
         if (File) {
             auto Size = std::filesystem::file_size(Entry);
             auto Contents = std::make_shared<std::string>();
