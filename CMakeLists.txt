@@ -52,16 +52,19 @@ target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/com
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/sol2/include")
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps")
 
-include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${LUA_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+find_package(Lua REQUIRED)
 find_package(OpenSSL REQUIRED)
 
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
+
 if (UNIX)
-    target_link_libraries(BeamMP-Server z pthread stdc++fs ${SOL2_LIBRARIES} crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server z pthread stdc++fs crypto ${OPENSSL_LIBRARIES} commandline sioclient_tls)
 elseif (WIN32)
     include(FindLua)
     find_package(ZLIB REQUIRED)
     find_package(RapidJSON CONFIG REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${SOL2_LIBRARIES} ${OPENSSL_LIBRARIES} commandline sioclient_tls)
+    target_link_libraries(BeamMP-Server PRIVATE ws2_32 ZLIB::ZLIB ${OPENSSL_LIBRARIES} commandline sioclient_tls)
 endif ()

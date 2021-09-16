@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
     TNetwork Network(Server, PPSMonitor, ResourceManager);
     TLuaEngine LuaEngine(Server, Network);
     PPSMonitor.SetNetwork(Network);
-    Application::Console().InitializeLuaConsole(LuaEngine);
+    // BROKEN Application::Console().InitializeLuaConsole(LuaEngine);
 
     // TODO: replace
     while (!Shutdown) {

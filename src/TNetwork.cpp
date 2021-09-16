@@ -2,6 +2,7 @@
 #include "Client.h"
 #include <CustomAssert.h>
 #include <Http.h>
+#include <TLuaPlugin.h>
 #include <array>
 #include <cstring>
 
@@ -43,7 +44,7 @@ void TNetwork::UDPServerMain() {
 #ifdef WIN32
     WSADATA data;
     if (WSAStartup(514, &data)) {
-        error(("Can't start Winsock!"));
+        beammp_error(("Can't start Winsock!"));
         //return;
     }
 #endif // WIN32
@@ -104,7 +105,7 @@ void TNetwork::TCPServerMain() {
 #ifdef WIN32
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)) {
-        error("Can't start Winsock!");
+        beammp_error("Can't start Winsock!");
         return;
     }
 #endif // WIN32
@@ -621,7 +622,7 @@ void TNetwork::SyncResources(TClient& c) {
         }
 #ifndef DEBUG
     } catch (std::exception& e) {
-        error("Exception! : " + std::string(e.what()));
+        beammp_error("Exception! : " + std::string(e.what()));
         c.SetStatus(-1);
     }
 #endif

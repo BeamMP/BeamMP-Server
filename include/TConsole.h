@@ -1,8 +1,10 @@
 #pragma once
 
+#include "commandline.h"
 #include <atomic>
 #include <fstream>
-#include "commandline.h"
+
+class TLuaEngine;
 
 class TConsole {
 public:
@@ -10,9 +12,10 @@ public:
 
     void Write(const std::string& str);
     void WriteRaw(const std::string& str);
-   // BROKEN void InitializeLuaConsole(TLuaEngine& Engine);
+    void InitializeLuaConsole(TLuaEngine& Engine);
 
 private:
-// BROKEN    std::unique_ptr<TLuaFile> mLuaConsole { nullptr };
     Commandline mCommandline;
+    TLuaEngine& mLuaEngine;
+    const std::string mStateId = "BEAMMP_SERVER_CONSOLE";
 };

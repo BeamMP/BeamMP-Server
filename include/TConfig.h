@@ -4,6 +4,8 @@
 
 #include <atomic>
 
+namespace fs = std::filesystem;
+
 class TConfig {
 public:
     explicit TConfig();

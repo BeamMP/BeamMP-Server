@@ -2,6 +2,8 @@
 #include "Common.h"
 #include "Compat.h"
 
+#include "TLuaEngine.h"
+
 #include <ctime>
 #include <sstream>
 
@@ -55,13 +57,8 @@ TConsole::TConsole() {
             Application::GracefullyShutdown();
         } else if (cmd == "clear" || cmd == "cls") {
             // TODO: clear screen
+            mLuaEngine.EnqueueScript(mStateId, std::make_shared<std::string>(cmd));
         } else {
-            /*if (mLuaConsole) {
-                mLuaConsole->Execute(cmd);
-            } else {
-                error("Lua subsystem not yet initialized, please wait a few seconds and try again");
-            } BROKEN
-            */
         }
     };
 }
@@ -71,11 +68,11 @@ void TConsole::Write(const std::string& str) {
     mCommandline.write(ToWrite);
     // TODO write to logfile, too
 }
-/* BROKEN
-void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
-    mLuaConsole = std::make_unique<TLuaFile>(Engine, true);
-}
-*/
+
 void TConsole::WriteRaw(const std::string& str) {
     mCommandline.write(str);
+}
+
+void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
+    Engine.EnsureStateExists(mStateId, "<>");
 }

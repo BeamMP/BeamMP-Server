@@ -56,13 +56,13 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
 }
 
 #define beammp_assert(cond) _assert(__FILE__, __func__, __LINE__, #cond, (cond))
-#define AssertNotReachable() _assert(__FILE__, __func__, __LINE__, "reached unreachable code", false)
+#define beammp_assert_not_reachable() _assert(__FILE__, __func__, __LINE__, "reached unreachable code", false)
 #else
 // In release build, these macros turn into NOPs. The compiler will optimize these out.
-#define Assert(x) \
+#define beammp_assert(x) \
     do {          \
     } while (false)
-#define AssertNotReachable() \
+#define beammp_assert_not_reachable() \
     do {                     \
     } while (false)
 #endif // DEBUG
