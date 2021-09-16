@@ -16,6 +16,6 @@ public:
 
 private:
     Commandline mCommandline;
-    TLuaEngine& mLuaEngine;
+    TLuaEngine* mLuaEngine { nullptr };
     const std::string mStateId = "BEAMMP_SERVER_CONSOLE";
 };

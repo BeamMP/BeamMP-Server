@@ -41,9 +41,11 @@ void TLuaEngine::operator()() {
     }
 }
 
-void TLuaEngine::EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script) {
+std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script) {
     std::unique_lock Lock(mLuaStatesMutex);
-    mLuaStates.at(StateID)->EnqueueScript(Script);
+    TLuaResult Result;
+    beammp_debug("enqueuing script into \"" + StateID + "\"");
+    return mLuaStates.at(StateID)->EnqueueScript(Script);
 }
 
 void TLuaEngine::CollectPlugins() {
@@ -102,18 +104,21 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name)
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown)
     : mName(Name)
     , mShutdown(Shutdown) {
-    mState.open_libraries(sol::lib::base);
+    mState = luaL_newstate();
+    luaL_openlibs(mState);
     Start();
 }
 
-void TLuaEngine::StateThreadData::EnqueueScript(const std::shared_ptr<std::string>& Script) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const std::shared_ptr<std::string>& Script) {
     beammp_debug("enqueuing script into \"" + mName + "\"");
     std::unique_lock Lock(mStateExecuteQueueMutex);
-    mStateExecuteQueue.push(Script);
+    auto Result = std::make_shared<TLuaResult>();
+    mStateExecuteQueue.push({ Script, Result });
+    return Result;
 }
 
 void TLuaEngine::StateThreadData::operator()() {
-    RegisterThreadAuto();
+    RegisterThread(mName);
     while (!mShutdown) {
         std::unique_lock Lock(mStateExecuteQueueMutex);
         if (mStateExecuteQueue.empty()) {
@@ -123,7 +128,9 @@ void TLuaEngine::StateThreadData::operator()() {
             auto S = mStateExecuteQueue.front();
             mStateExecuteQueue.pop();
             Lock.unlock();
-            mState.do_string(*S);
+            beammp_debug("Running script");
+            luaL_dostring(mState, S.first->data());
+            S.second->Ready = true;
         }
     }
 }

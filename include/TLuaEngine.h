@@ -2,16 +2,15 @@
 
 #include "TNetwork.h"
 #include "TServer.h"
+#include <any>
 #include <filesystem>
+#include <lua.hpp>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <toml11/toml.hpp>
 #include <unordered_map>
 #include <vector>
-
-#define SOL_ALL_SAFETIES_ON 1
-#include <sol/sol.hpp>
 
 using TLuaStateId = std::string;
 namespace fs = std::filesystem;
@@ -21,7 +20,7 @@ class TLuaPlugin;
 struct TLuaResult {
     std::atomic_bool Ready;
     // TODO: Add condition_variable
-    sol::protected_function_result Result;
+    std::any Result;
 };
 
 struct TLuaPluginConfig {
@@ -36,7 +35,7 @@ public:
 
     void operator()() override;
 
-    TLuaResult EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name);
 
 private:
@@ -48,16 +47,16 @@ private:
     public:
         StateThreadData(const std::string& Name, std::atomic_bool& Shutdown);
         StateThreadData(const StateThreadData&) = delete;
-        void EnqueueScript(const std::shared_ptr<std::string>& Script);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
         void operator()() override;
         ~StateThreadData();
 
     private:
         std::string mName;
         std::atomic_bool& mShutdown;
-        sol::state mState;
+        lua_State* mState;
         std::thread mThread;
-        std::queue<std::shared_ptr<std::string>> mStateExecuteQueue;
+        std::queue<std::pair<std::shared_ptr<std::string>, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::mutex mStateExecuteQueueMutex;
     };
 
