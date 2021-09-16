@@ -46,12 +46,13 @@ add_executable(BeamMP-Server
         include/TNetwork.h src/TNetwork.cpp
         include/LuaAPI.h src/LuaAPI.cpp)
 
-target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
-target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
-target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/websocketpp")
-target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/commandline")
-target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/sol2/include")
-target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps")
+include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
+include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
+include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps")
 
 include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
