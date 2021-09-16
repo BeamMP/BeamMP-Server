@@ -117,7 +117,18 @@ void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
     }
 }
 
-void LuaAPI::MP::RemoveVehicle(int PlayerID, int VehicleID) {
+void LuaAPI::MP::RemoveVehicle(int PID, int VID) {
+    auto MaybeClient = GetClient(Engine->Server(), PID);
+    if (!MaybeClient || MaybeClient.value().expired()) {
+        beammp_lua_error("RemoveVehicle invalid Player ID");
+        return;
+    }
+    auto c = MaybeClient.value().lock();
+    if (!c->GetCarData(VID).empty()) {
+        std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
+        Engine->Network().SendToAll(nullptr, Destroy, true, true);
+        c->DeleteCar(VID);
+    }
 }
 
 void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
@@ -128,7 +139,13 @@ void LuaAPI::MP::Sleep(size_t Ms) {
 }
 
 bool LuaAPI::MP::IsPlayerConnected(int ID) {
+    auto MaybeClient = GetClient(Engine->Server(), ID);
+    if (MaybeClient && !MaybeClient.value().expired()) {
+        return MaybeClient.value().lock()->IsConnected();
+    } else {
+        return false;
+    }
 }
 
-bool LuaAPI::MP::GetPlayerGuest(int ID) {
+bool LuaAPI::MP::IsPlayerGuest(int ID) {
 }

@@ -256,7 +256,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     Table.set_function("GetPlayers", [&]() -> sol::table {
         return Lua_GetPlayers();
     });
-    Table.set_function("GetPlayerGuest", &LuaAPI::MP::GetPlayerGuest);
+    Table.set_function("IsPlayerGuest", &LuaAPI::MP::IsPlayerGuest);
     Table.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
     Table.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
