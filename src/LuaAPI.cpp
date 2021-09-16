@@ -4,11 +4,32 @@
 
 static std::string LuaToString(const sol::object& Value, size_t Indent = 1) {
     switch (Value.get_type()) {
+    case sol::type::userdata: {
+        std::stringstream ss;
+        ss << "[[userdata: " << Value.as<sol::userdata>().pointer() << "]]";
+        return ss.str();
+    }
+    case sol::type::thread: {
+        std::stringstream ss;
+        ss << "[[thread: " << Value.as<sol::thread>().pointer() << "]] {"
+           << "\n";
+        for (size_t i = 0; i < Indent; ++i) {
+            ss << "\t";
+        }
+        ss << "status: " << std::to_string(int(Value.as<sol::thread>().status())) << "\n}";
+        return ss.str();
+    }
+    case sol::type::lightuserdata: {
+        std::stringstream ss;
+        ss << "[[lightuserdata: " << Value.as<sol::lightuserdata>().pointer() << "]]";
+        return ss.str();
+    }
     case sol::type::string:
         return Value.as<std::string>();
     case sol::type::number:
         return std::to_string(Value.as<float>());
     case sol::type::nil:
+    case sol::type::none:
         return "<nil>";
     case sol::type::boolean:
         return Value.as<bool>() ? "true" : "false";
@@ -130,13 +151,13 @@ void LuaAPI::MP::RemoveVehicle(int PID, int VID) {
         c->DeleteCar(VID);
     }
 }
-
+/*
 void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
     switch (ConfigID) {
     case 0: //debug
         if (lua_isboolean(L, 2)) {
             Application::Settings.DebugModeEnabled = NewValue.as<bool>();
-            beammp_info("Set `Debug` to ") + (Application::Settings.DebugModeEnabled ? "true" : "false"));
+            beammp_info("Set `Debug` to " + (Application::Settings.DebugModeEnabled ? "true" : "false"));
         } else
             SendError(Engine(), L, ("set invalid argument [2] expected boolean for ID : 0"));
         break;
@@ -187,6 +208,7 @@ void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
         break;
     }
 }
+*/
 
 void LuaAPI::MP::Sleep(size_t Ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(Ms));

@@ -133,6 +133,9 @@ void RegisterThread(const std::string str);
             Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
         }                                                                                 \
     } while (false)
+// for those times when you just need to ignore something :^)
+// explicity disables a [[nodiscard]] warning
+#define beammp_ignore(x) (void)x
 
 #define Biggest 30000
 std::string Comp(std::string Data);

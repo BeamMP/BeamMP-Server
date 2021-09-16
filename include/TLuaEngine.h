@@ -4,6 +4,7 @@
 #include "TServer.h"
 #include <any>
 #include <filesystem>
+#include <initializer_list>
 #include <lua.hpp>
 #include <memory>
 #include <mutex>
@@ -40,21 +41,39 @@ struct TLuaPluginConfig {
 
 class TLuaEngine : IThreaded {
 public:
-    TLuaEngine(TServer& Server, TNetwork& Network);
+    TLuaEngine();
     ~TLuaEngine() noexcept {
         beammp_debug("Lua Engine terminated");
     }
 
     void operator()() override;
 
-    TNetwork& Network() { return mNetwork; }
-    TServer& Server() { return mServer; }
+    TNetwork& Network() { return *mNetwork; }
+    TServer& Server() { return *mServer; }
 
+    void SetNetwork(TNetwork* Network) { mNetwork = Network; }
+    void SetServer(TServer* Server) { mServer = Server; }
+
+    static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::initializer_list<std::any>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
-    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName);
+    template <typename... ArgsT>
+    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, ArgsT&&... Args) {
+        std::unique_lock Lock(mEventsMutex);
+        if (mEvents.find(EventName) == mEvents.end()) {
+            return {};
+        }
+        std::vector<std::shared_ptr<TLuaResult>> Results;
+        for (const auto& Event : mEvents.at(EventName)) {
+            for (const auto& Function : Event.second) {
+                beammp_debug("TriggerEvent: triggering \"" + Function + "\" on \"" + Event.first + "\"");
+                Results.push_back(EnqueueFunctionCall(Event.first, Function, { std::forward<ArgsT>(Args)... }));
+            }
+        }
+        return Results;
+    }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
@@ -70,7 +89,7 @@ private:
         StateThreadData(const StateThreadData&) = delete;
         ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::initializer_list<std::any>& Args);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void operator()() override;
 
@@ -87,14 +106,14 @@ private:
         std::thread mThread;
         std::queue<std::pair<std::shared_ptr<std::string>, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
-        std::queue<std::pair<std::string, std::shared_ptr<TLuaResult>>> mStateFunctionQueue;
+        std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::initializer_list<std::any>>> mStateFunctionQueue;
         std::recursive_mutex mStateFunctionQueueMutex;
         TLuaEngine* mEngine;
         sol::state_view mStateView { mState };
     };
 
-    TNetwork& mNetwork;
-    TServer& mServer;
+    TNetwork* mNetwork;
+    TServer* mServer;
     std::atomic_bool mShutdown { false };
     fs::path mResourceServerPath;
     std::vector<TLuaPlugin*> mLuaPlugins;
@@ -104,10 +123,4 @@ private:
     std::recursive_mutex mEventsMutex;
 };
 
-#include <any>
-// DEAD CODE
-struct TLuaArg {
-    std::vector<std::any> args;
-    void PushArgs(lua_State* State);
-};
-std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
+//std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

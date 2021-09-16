@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "Http.h"
+#include "LuaAPI.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
@@ -48,10 +49,15 @@ int main(int argc, char** argv) {
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
-    Application::RegisterShutdownHandler([] { TriggerLuaEvent("onShutdown", false, nullptr, {}, true); });
+    Application::RegisterShutdownHandler([] {
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown");
+        TLuaEngine::WaitForAll(Futures);
+    });
 
     TServer Server(argc, argv);
     TConfig Config;
+    TLuaEngine LuaEngine;
+    LuaEngine.SetServer(&Server);
 
     if (Config.Failed()) {
         beammp_info("Closing in 10 seconds");
@@ -64,7 +70,7 @@ int main(int argc, char** argv) {
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
-    TLuaEngine LuaEngine(Server, Network);
+    LuaEngine.SetNetwork(&Network);
     PPSMonitor.SetNetwork(Network);
     Application::Console().InitializeLuaConsole(LuaEngine);
 

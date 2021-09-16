@@ -6,6 +6,8 @@
 #include <array>
 #include <cstring>
 
+#include "LuaAPI.h"
+
 TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
@@ -289,14 +291,27 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
 
         return true;
     });
+    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", Client->GetName(), Client->GetRoles(), Client->IsGuest());
+    TLuaEngine::WaitForAll(Futures);
+    bool NotAllowed = std::any_of(Futures.begin(), Futures.end(),
+        [](const std::shared_ptr<TLuaResult>& Result) {
+            return !Result->Error && Result->Result.is<int>() && bool(Result->Result.as<int>());
+        });
+    std::string Reason;
+    bool NotAllowedWithReason = std::any_of(Futures.begin(), Futures.end(),
+        [&Reason](const std::shared_ptr<TLuaResult>& Result) -> bool {
+            if (!Result->Error && Result->Result.is<std::string>()) {
+                Reason = Result->Result.as<std::string>();
+                return true;
+            }
+            return false;
+        });
 
-    auto arg = std::make_unique<TLuaArg>(TLuaArg { { Client->GetName(), Client->GetRoles(), Client->IsGuest() } });
-    std::any Res = TriggerLuaEvent("onPlayerAuth", false, nullptr, std::move(arg), true);
-    if (Res.type() == typeid(int) && std::any_cast<int>(Res)) {
+    if (NotAllowed) {
         ClientKick(*Client, "you are not allowed on the server!");
         return;
-    } else if (Res.type() == typeid(std::string)) {
-        ClientKick(*Client, std::any_cast<std::string>(Res));
+    } else if (NotAllowedWithReason) {
+        ClientKick(*Client, Reason);
         return;
     }
 
@@ -563,7 +578,8 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked
         Packet = ("L") + c.GetName() + (" left the server!");
     SendToAll(&c, Packet, false, true);
     Packet.clear();
-    TriggerLuaEvent(("onPlayerDisconnect"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID() } }), false);
+    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", c.GetID());
+    beammp_ignore(Futures);
     if (c.GetTCPSock())
         CloseSocketProper(c.GetTCPSock());
     if (c.GetDownSock())
@@ -597,13 +613,13 @@ void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     auto LockedClient = c.lock();
     LockedClient->SetID(OpenID());
     beammp_info("Assigned ID " + std::to_string(LockedClient->GetID()) + " to " + LockedClient->GetName());
-    TriggerLuaEvent("onPlayerConnecting", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
+    beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onPlayerConnecting", LockedClient->GetID()));
     SyncResources(*LockedClient);
     if (LockedClient->GetStatus() < 0)
         return;
     (void)Respond(*LockedClient, "M" + Application::Settings.MapName, true); //Send the Map on connect
     beammp_info(LockedClient->GetName() + " : Connected");
-    TriggerLuaEvent("onPlayerJoining", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
+    beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoining", LockedClient->GetID()));
 }
 
 void TNetwork::SyncResources(TClient& c) {
@@ -802,7 +818,7 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     // ignore error
     (void)SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
 
-    TriggerLuaEvent(("onPlayerJoin"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID() } }), false);
+    beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoin", LockedClient->GetID()));
     LockedClient->SetIsSyncing(true);
     bool Return = false;
     bool res = true;

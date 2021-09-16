@@ -84,6 +84,6 @@ void TConsole::WriteRaw(const std::string& str) {
 }
 
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
-    Engine.EnsureStateExists(mStateId, "Console");
     mLuaEngine = &Engine;
+    Engine.EnsureStateExists(mStateId, "Console");
 }
