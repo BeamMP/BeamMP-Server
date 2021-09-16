@@ -229,6 +229,20 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     StateView.set_function("print", &LuaAPI::Print);
     StateView.set_function("exit", &Application::GracefullyShutdown);
     auto Table = StateView.create_named_table("MP");
+    Table.set_function("CreateTimer", [&]() -> sol::table {
+        sol::state_view StateView(mState);
+        sol::table Result = StateView.create_table();
+        Result["__StartTime"] = std::chrono::high_resolution_clock::now();
+        Result.set_function("GetCurrent", [&](const sol::table& Table) -> float {
+            auto End = std::chrono::high_resolution_clock::now();
+            auto Start = Table.get<std::chrono::high_resolution_clock::time_point>("__StartTime");
+            return std::chrono::duration_cast<std::chrono::microseconds>(End - Start).count() / 1000000.0f;
+        });
+        Result.set_function("Start", [&](sol::table Table) {
+            Table["__StartTime"] = std::chrono::high_resolution_clock::now();
+        });
+        return Result;
+    });
     Table.set_function("GetOSName", &LuaAPI::MP::GetOSName);
     Table.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
     Table.set_function("RegisterEvent", [this](const std::string& EventName, const std::string& FunctionName) {
@@ -252,9 +266,6 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     Table.set_function("IsPlayerGuest", &LuaAPI::MP::IsPlayerGuest);
     Table.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
-    Table.set_function("GetOSTimeMS", []() -> size_t {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-    });
     Table.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
     });
