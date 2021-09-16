@@ -32,7 +32,14 @@ static std::string LuaToString(const sol::object& Value) {
     }
 }
 
-void LuaAPI::MP::GetOSName() {
+std::string LuaAPI::MP::GetOSName() {
+#if WIN32
+    return "Windows";
+#elif __linux
+    return "Linux";
+#else
+    return "Other";
+#endif
 }
 
 std::tuple<int, int, int> LuaAPI::MP::GetServerVersion() {
