@@ -125,6 +125,7 @@ void RegisterThread(const std::string str);
 #define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
 #define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
 #define beammp_error(x) Application::Console().Write(_this_location + std::string("[ERROR] ") + (x))
+#define beammp_lua_error(x) Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x))
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
 #define beammp_debug(x)                                                                   \
     do {                                                                                  \

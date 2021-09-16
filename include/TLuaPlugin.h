@@ -2,7 +2,7 @@
 
 class TLuaPlugin {
 public:
-    TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config);
+    TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const fs::path& MainFolder);
     TLuaPlugin(const TLuaPlugin&) = delete;
     TLuaPlugin& operator=(const TLuaPlugin&) = delete;
     ~TLuaPlugin() noexcept = default;
@@ -12,4 +12,7 @@ public:
 private:
     TLuaPluginConfig mConfig;
     TLuaEngine& mEngine;
+    fs::path mFolder;
+    std::string mPluginName;
+    std::unordered_map<std::string, std::shared_ptr<std::string>> mFileContents;
 };

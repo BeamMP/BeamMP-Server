@@ -12,6 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
+#define SOL_ALL_SAFETIES_ON 1
+#include <sol/sol.hpp>
+
 using TLuaStateId = std::string;
 namespace fs = std::filesystem;
 
@@ -21,7 +24,9 @@ struct TLuaResult {
     std::atomic_bool Ready;
     std::atomic_bool Error;
     std::string ErrorMessage;
+    sol::protected_function_result Result;
     // TODO: Add condition_variable
+    void WaitUntilReady();
 };
 
 struct TLuaPluginConfig {
@@ -37,27 +42,34 @@ public:
     void operator()() override;
 
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
-    void EnsureStateExists(TLuaStateId StateId, const std::string& Name);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName);
+    void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
+
+    static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
 private:
-    void CollectPlugins();
+    void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
     void FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config);
 
     class StateThreadData : IThreaded {
     public:
-        StateThreadData(const std::string& Name, std::atomic_bool& Shutdown);
+        StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId);
         StateThreadData(const StateThreadData&) = delete;
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName);
         void operator()() override;
 
     private:
         std::string mName;
         std::atomic_bool& mShutdown;
+        TLuaStateId mStateId;
         lua_State* mState;
         std::thread mThread;
         std::queue<std::pair<std::shared_ptr<std::string>, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::mutex mStateExecuteQueueMutex;
+        std::queue<std::pair<std::string, std::shared_ptr<TLuaResult>>> mStateFunctionQueue;
+        std::mutex mStateFunctionQueueMutex;
     };
 
     TNetwork& mNetwork;

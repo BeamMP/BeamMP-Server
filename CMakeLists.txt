@@ -43,7 +43,8 @@ add_executable(BeamMP-Server
         include/THeartbeatThread.h src/THeartbeatThread.cpp
         include/Http.h src/Http.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
-        include/TNetwork.h src/TNetwork.cpp)
+        include/TNetwork.h src/TNetwork.cpp
+        include/LuaAPI.h src/LuaAPI.cpp)
 
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
 target_include_directories(BeamMP-Server PRIVATE "${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
