@@ -26,6 +26,8 @@ struct TLuaResult {
     std::atomic_bool Error;
     std::string ErrorMessage;
     sol::protected_function_result Result;
+    TLuaStateId StateId;
+    std::string Function;
     // TODO: Add condition_variable
     void WaitUntilReady();
 };

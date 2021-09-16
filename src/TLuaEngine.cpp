@@ -111,6 +111,7 @@ void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Co
 }
 
 void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit) {
+    beammp_assert(!StateId.empty());
     std::unique_lock Lock(mLuaStatesMutex);
     if (mLuaStates.find(StateId) == mLuaStates.end()) {
         beammp_debug("Creating lua state for state id \"" + StateId + "\"");
@@ -134,10 +135,14 @@ void TLuaEngine::RegisterEvent(const std::string& EventName, TLuaStateId StateId
 
 std::vector<std::shared_ptr<TLuaResult>> TLuaEngine::TriggerEvent(const std::string& EventName) {
     std::unique_lock Lock(mEventsMutex);
+    if (mEvents.find(EventName) == mEvents.end()) {
+        return {};
+    }
     std::vector<std::shared_ptr<TLuaResult>> Results;
-    for (const auto& Entry : mEvents[EventName]) {
-        for (const auto& Function : Entry.second) {
-            Results.emplace_back(EnqueueFunctionCall(Entry.first, Function));
+    for (const auto& Event : mEvents.at(EventName)) {
+        for (const auto& Function : Event.second) {
+            beammp_debug("TriggerEvent: triggering \"" + Function + "\" on \"" + Event.first + "\"");
+            Results.push_back(EnqueueFunctionCall(Event.first, Function));
         }
     }
     return Results;
@@ -151,6 +156,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     mState = luaL_newstate();
     luaL_openlibs(mState);
     sol::state_view StateView(mState);
+    // StateView.globals()["package"].get()
     StateView.set_function("print", &LuaAPI::Print);
     auto Table = StateView.create_named_table("MP");
     Table.set_function("GetOSName", &LuaAPI::MP::GetOSName);
@@ -160,8 +166,32 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
             RegisterEvent(EventName, FunctionName);
         });
     Table.set_function("TriggerGlobalEvent",
-        [&](const std::string& EventName) {
-            return mEngine->TriggerEvent(EventName);
+        [&](const std::string& EventName) -> sol::table {
+            auto Return = mEngine->TriggerEvent(EventName);
+            beammp_debug("Triggering event \"" + EventName + "\" in \"" + mStateId + "\"");
+            sol::state_view StateView(mState);
+            sol::table AsyncEventReturn = StateView.create_table();
+            AsyncEventReturn["ReturnValueImpl"] = Return;
+            AsyncEventReturn.set_function("Wait",
+                [&](const sol::table& Self) -> sol::table {
+                    sol::state_view StateView(mState);
+                    sol::table Result = StateView.create_table();
+                    beammp_debug("beginning to loop");
+                    auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
+                    for (const auto& Value : Vector) {
+                        beammp_debug("waiting on a value");
+                        Value->WaitUntilReady();
+                        if (Value->Error) {
+                            if (Value->ErrorMessage != BeamMPFnNotFoundError) {
+                                beammp_lua_error("\"" + StateId + "\"" + Value->ErrorMessage);
+                            }
+                        } else {
+                            Result.add(Value->Result);
+                        }
+                    }
+                    return Result;
+                });
+            return AsyncEventReturn;
         });
     Table.create_named("Settings",
         "Debug", 0,
@@ -186,6 +216,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(con
     beammp_debug("calling \"" + FunctionName + "\" in \"" + mName + "\"");
     std::unique_lock Lock(mStateFunctionQueueMutex);
     auto Result = std::make_shared<TLuaResult>();
+    Result->StateId = mStateId;
     mStateFunctionQueue.push({ FunctionName, Result });
     return Result;
 }
@@ -199,10 +230,7 @@ void TLuaEngine::StateThreadData::operator()() {
     while (!mShutdown) {
         { // StateExecuteQueue Scope
             std::unique_lock Lock(mStateExecuteQueueMutex);
-            if (mStateExecuteQueue.empty()) {
-                Lock.unlock();
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            } else {
+            if (!mStateExecuteQueue.empty()) {
                 auto S = mStateExecuteQueue.front();
                 mStateExecuteQueue.pop();
                 Lock.unlock();
@@ -222,19 +250,17 @@ void TLuaEngine::StateThreadData::operator()() {
         }
         { // StateFunctionQueue Scope
             std::unique_lock Lock(mStateFunctionQueueMutex);
-            if (mStateFunctionQueue.empty()) {
-                Lock.unlock();
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            } else {
+            if (!mStateFunctionQueue.empty()) {
                 auto FnNameResultPair = mStateFunctionQueue.front();
                 mStateFunctionQueue.pop();
                 Lock.unlock();
-                beammp_debug("Running function");
+                FnNameResultPair.second->StateId = mStateId;
+                beammp_debug("Running function \"" + FnNameResultPair.first + "\"");
                 sol::state_view StateView(mState);
                 auto Fn = StateView[FnNameResultPair.first];
+                beammp_debug("Done running function \"" + FnNameResultPair.first + "\"");
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
                     auto Res = Fn();
-                    FnNameResultPair.second->Ready = true;
                     if (Res.valid()) {
                         FnNameResultPair.second->Error = false;
                         FnNameResultPair.second->Result = std::move(Res);
@@ -243,10 +269,11 @@ void TLuaEngine::StateThreadData::operator()() {
                         sol::error Err = Res;
                         FnNameResultPair.second->ErrorMessage = Err.what();
                     }
-                } else {
                     FnNameResultPair.second->Ready = true;
+                } else {
                     FnNameResultPair.second->Error = true;
                     FnNameResultPair.second->ErrorMessage = BeamMPFnNotFoundError; // special error kind that we can ignore later
+                    FnNameResultPair.second->Ready = true;
                 }
             }
         }
