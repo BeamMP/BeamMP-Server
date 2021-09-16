@@ -204,6 +204,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
         return sol::nil;
     }
 }
+
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
     sol::table Result = mStateView.create_table();
     mEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
