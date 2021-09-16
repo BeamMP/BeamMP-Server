@@ -7,6 +7,8 @@ static std::string LuaToString(const sol::object& Value, size_t Indent = 1) {
         return Value.as<std::string>();
     case sol::type::number:
         return std::to_string(Value.as<float>());
+    case sol::type::nil:
+        return "<nil>";
     case sol::type::boolean:
         return Value.as<bool>() ? "true" : "false";
     case sol::type::table: {

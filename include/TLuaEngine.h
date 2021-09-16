@@ -8,10 +8,10 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <set>
 #include <toml11/toml.hpp>
 #include <unordered_map>
 #include <vector>
-#include <set>
 
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
@@ -25,7 +25,7 @@ struct TLuaResult {
     std::atomic_bool Ready;
     std::atomic_bool Error;
     std::string ErrorMessage;
-    sol::protected_function_result Result;
+    sol::object Result { sol::nil };
     TLuaStateId StateId;
     std::string Function;
     // TODO: Add condition_variable
@@ -41,6 +41,9 @@ struct TLuaPluginConfig {
 class TLuaEngine : IThreaded {
 public:
     TLuaEngine(TServer& Server, TNetwork& Network);
+    ~TLuaEngine() noexcept {
+        beammp_debug("Lua Engine terminated");
+    }
 
     void operator()() override;
 
@@ -49,6 +52,7 @@ public:
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName);
+    std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
@@ -61,12 +65,16 @@ private:
     public:
         StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
+        ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void operator()() override;
-
+        
     private:
+        sol::table Lua_TriggerGlobalEvent(const std::string& EventName);
+        sol::table Lua_TriggerLocalEvent(const std::string& EventName);
+        
         std::string mName;
         std::atomic_bool& mShutdown;
         TLuaStateId mStateId;

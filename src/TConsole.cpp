@@ -62,13 +62,12 @@ TConsole::TConsole() {
                 beammp_info("Lua not started yet, please try again in a second");
             } else {
                 auto Future = mLuaEngine->EnqueueScript(mStateId, std::make_shared<std::string>(cmd));
-                // wait for it to finish
-                /*while (!Future->Ready) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-            if (Future->Error) {
-                beammp_error(Future->ErrorMessage);
-            }*/
+                while (!Future->Ready) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                if (Future->Error) {
+                    beammp_lua_error(Future->ErrorMessage);
+                }
             }
         }
     };

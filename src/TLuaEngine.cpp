@@ -148,6 +148,54 @@ std::vector<std::shared_ptr<TLuaResult>> TLuaEngine::TriggerEvent(const std::str
     return Results;
 }
 
+std::set<std::string> TLuaEngine::GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId) {
+    return mEvents[EventName][StateId];
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName) {
+    auto Return = mEngine->TriggerEvent(EventName);
+    beammp_debug("Triggering event \"" + EventName + "\" in \"" + mStateId + "\"");
+    sol::state_view StateView(mState);
+    sol::table AsyncEventReturn = StateView.create_table();
+    AsyncEventReturn["ReturnValueImpl"] = Return;
+    AsyncEventReturn.set_function("IsDone",
+        [&](const sol::table& Self) -> bool {
+            auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
+            for (const auto& Value : Vector) {
+                if (!Value->Ready) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    AsyncEventReturn.set_function("GetResults",
+        [&](const sol::table& Self) -> sol::table {
+            sol::state_view StateView(mState);
+            sol::table Result = StateView.create_table();
+            auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
+            for (const auto& Value : Vector) {
+                if (!Value->Ready) {
+                    return sol::nil;
+                }
+                Result.add(Value->Result);
+            }
+            return Result;
+        });
+    return AsyncEventReturn;
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string& EventName) {
+    sol::state_view StateView(mState);
+    sol::table Result = StateView.create_table();
+    for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
+        auto Fn = StateView[Handler];
+        if (Fn.valid() && Fn.get_type() == sol::type::function) {
+            Result.add(Fn());
+        }
+    }
+    return Result;
+}
+
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
@@ -167,31 +215,11 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         });
     Table.set_function("TriggerGlobalEvent",
         [&](const std::string& EventName) -> sol::table {
-            auto Return = mEngine->TriggerEvent(EventName);
-            beammp_debug("Triggering event \"" + EventName + "\" in \"" + mStateId + "\"");
-            sol::state_view StateView(mState);
-            sol::table AsyncEventReturn = StateView.create_table();
-            AsyncEventReturn["ReturnValueImpl"] = Return;
-            AsyncEventReturn.set_function("Wait",
-                [&](const sol::table& Self) -> sol::table {
-                    sol::state_view StateView(mState);
-                    sol::table Result = StateView.create_table();
-                    beammp_debug("beginning to loop");
-                    auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
-                    for (const auto& Value : Vector) {
-                        beammp_debug("waiting on a value");
-                        Value->WaitUntilReady();
-                        if (Value->Error) {
-                            if (Value->ErrorMessage != BeamMPFnNotFoundError) {
-                                beammp_lua_error("\"" + StateId + "\"" + Value->ErrorMessage);
-                            }
-                        } else {
-                            Result.add(Value->Result);
-                        }
-                    }
-                    return Result;
-                });
-            return AsyncEventReturn;
+            return Lua_TriggerGlobalEvent(EventName);
+        });
+    Table.set_function("TriggerLocalEvent",
+        [&](const std::string& EventName) -> sol::table {
+            return Lua_TriggerLocalEvent(EventName);
         });
     Table.create_named("Settings",
         "Debug", 0,
@@ -214,9 +242,10 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const std
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName) {
     beammp_debug("calling \"" + FunctionName + "\" in \"" + mName + "\"");
-    std::unique_lock Lock(mStateFunctionQueueMutex);
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
+    Result->Function = FunctionName;
+    std::unique_lock Lock(mStateFunctionQueueMutex);
     mStateFunctionQueue.push({ FunctionName, Result });
     return Result;
 }
@@ -277,6 +306,7 @@ void TLuaEngine::StateThreadData::operator()() {
                 }
             }
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
