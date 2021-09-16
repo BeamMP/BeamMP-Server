@@ -249,9 +249,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     Table.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
     Table.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
     Table.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
-    Table.set_function("GetPlayerName", &LuaAPI::MP::GetPlayerName);
+    Table.set_function("GetPlayerName", &Lua_GetPlayerName);
     Table.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
-    Table.set_function("GetPlayerVehicles", &LuaAPI::MP::GetPlayerVehicles);
+    Table.set_function("GetPlayerVehicles", &Lua_GetPlayerVehicles);
     Table.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
     Table.set_function("GetPlayers", [&]() -> sol::table {
         return Lua_GetPlayers();

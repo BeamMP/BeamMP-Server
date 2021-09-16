@@ -132,6 +132,60 @@ void LuaAPI::MP::RemoveVehicle(int PID, int VID) {
 }
 
 void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
+    switch (ConfigID) {
+    case 0: //debug
+        if (lua_isboolean(L, 2)) {
+            Application::Settings.DebugModeEnabled = NewValue.as<bool>();
+            beammp_info("Set `Debug` to ") + (Application::Settings.DebugModeEnabled ? "true" : "false"));
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected boolean for ID : 0"));
+        break;
+    case 1: //private
+        if (lua_isboolean(L, 2)) {
+            Application::Settings.Private = lua_toboolean(L, 2);
+            beammp_info("Set `Private` to ") + (Application::Settings.Private ? "true" : "false"));
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected boolean for ID : 1"));
+        break;
+    case 2: //max cars
+        if (lua_isnumber(L, 2)) {
+            Application::Settings.MaxCars = int(lua_tointeger(L, 2));
+            beammp_info("Set `MaxCars` to ") + std::to_string(Application::Settings.MaxCars));
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected number for ID : 2"));
+        break;
+    case 3: //max players
+        if (lua_isnumber(L, 2)) {
+            Application::Settings.MaxPlayers = int(lua_tointeger(L, 2));
+            beammp_info("Set `MaxPlayers` to ") + std::to_string(Application::Settings.MaxPlayers));
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected number for ID : 3"));
+        break;
+    case 4: //Map
+        if (lua_isstring(L, 2)) {
+            Application::Settings.MapName = lua_tostring(L, 2);
+            beammp_info("Set `Map` to ") + Application::Settings.MapName);
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected string for ID : 4"));
+        break;
+    case 5: //Name
+        if (lua_isstring(L, 2)) {
+            Application::Settings.ServerName = lua_tostring(L, 2);
+            beammp_info("Set `Name` to ") + Application::Settings.ServerName);
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected string for ID : 5"));
+        break;
+    case 6: //Desc
+        if (lua_isstring(L, 2)) {
+            Application::Settings.ServerDesc = lua_tostring(L, 2);
+            beammp_info("Set `Description` to ") + Application::Settings.ServerDesc);
+        } else
+            SendError(Engine(), L, ("set invalid argument [2] expected string for ID : 6"));
+        break;
+    default:
+        warn(("Invalid config ID : ") + std::to_string(C));
+        break;
+    }
 }
 
 void LuaAPI::MP::Sleep(size_t Ms) {
@@ -148,4 +202,10 @@ bool LuaAPI::MP::IsPlayerConnected(int ID) {
 }
 
 bool LuaAPI::MP::IsPlayerGuest(int ID) {
+    auto MaybeClient = GetClient(Engine->Server(), ID);
+    if (MaybeClient && !MaybeClient.value().expired()) {
+        return MaybeClient.value().lock()->IsGuest();
+    } else {
+        return false;
+    }
 }

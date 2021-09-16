@@ -16,7 +16,7 @@ namespace MP {
     void SendChatMessage(int ID, const std::string& Message);
     void RemoveVehicle(int PlayerID, int VehicleID);
     void Set(int ConfigID, sol::object NewValue);
-    bool GetPlayerGuest(int ID);
+    bool IsPlayerGuest(int ID);
     bool IsPlayerConnected(int ID);
     void Sleep(size_t Ms);
 }
