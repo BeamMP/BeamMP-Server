@@ -1,8 +1,8 @@
 #include "TLuaEngine.h"
+#include "Client.h"
 #include "CustomAssert.h"
-#include "TLuaPlugin.h"
-
 #include "LuaAPI.h"
+#include "TLuaPlugin.h"
 
 #include <chrono>
 #include <random>
@@ -185,14 +185,41 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string& EventName) {
-    sol::state_view StateView(mState);
-    sol::table Result = StateView.create_table();
+    sol::table Result = mStateView.create_table();
     for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
-        auto Fn = StateView[Handler];
+        auto Fn = mStateView[Handler];
         if (Fn.valid() && Fn.get_type() == sol::type::function) {
             Result.add(Fn());
         }
     }
+    return Result;
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
+    auto MaybeClient = GetClient(mEngine->Server(), ID);
+    if (MaybeClient && !MaybeClient.value().expired()) {
+        auto IDs = MaybeClient.value().lock()->GetIdentifiers();
+        if (IDs.empty()) {
+            return sol::nil;
+        }
+        sol::table Result = mStateView.create_table();
+        for (const auto& Pair : IDs) {
+            Result[Pair.first] = Pair.second;
+        }
+        return Result;
+    } else {
+        return sol::nil;
+    }
+}
+sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
+    sol::table Result = mStateView.create_table();
+    mEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto locked = Client.lock();
+            Result[locked->GetID()] = locked->GetName();
+        }
+        return true;
+    });
     return Result;
 }
 
@@ -206,21 +233,38 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     sol::state_view StateView(mState);
     // StateView.globals()["package"].get()
     StateView.set_function("print", &LuaAPI::Print);
+    StateView.set_function("exit", &Application::GracefullyShutdown);
     auto Table = StateView.create_named_table("MP");
     Table.set_function("GetOSName", &LuaAPI::MP::GetOSName);
     Table.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
-    Table.set_function("RegisterEvent",
-        [this](const std::string& EventName, const std::string& FunctionName) {
-            RegisterEvent(EventName, FunctionName);
-        });
-    Table.set_function("TriggerGlobalEvent",
-        [&](const std::string& EventName) -> sol::table {
-            return Lua_TriggerGlobalEvent(EventName);
-        });
-    Table.set_function("TriggerLocalEvent",
-        [&](const std::string& EventName) -> sol::table {
-            return Lua_TriggerLocalEvent(EventName);
-        });
+    Table.set_function("RegisterEvent", [this](const std::string& EventName, const std::string& FunctionName) {
+        RegisterEvent(EventName, FunctionName);
+    });
+    Table.set_function("TriggerGlobalEvent", [&](const std::string& EventName) -> sol::table {
+        return Lua_TriggerGlobalEvent(EventName);
+    });
+    Table.set_function("TriggerLocalEvent", [&](const std::string& EventName) -> sol::table {
+        return Lua_TriggerLocalEvent(EventName);
+    });
+    Table.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
+    Table.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
+    Table.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
+    Table.set_function("GetPlayerName", &LuaAPI::MP::GetPlayerName);
+    Table.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
+    Table.set_function("GetPlayerVehicles", &LuaAPI::MP::GetPlayerVehicles);
+    Table.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
+    Table.set_function("GetPlayers", [&]() -> sol::table {
+        return Lua_GetPlayers();
+    });
+    Table.set_function("GetPlayerGuest", &LuaAPI::MP::GetPlayerGuest);
+    Table.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
+    Table.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
+        return Lua_GetPlayerIdentifiers(ID);
+    });
+    Table.set_function("Sleep", &LuaAPI::MP::Sleep);
+    Table.set_function("Set", &LuaAPI::MP::Set);
+    //Table.set_function("HttpsGET", &LuaAPI::MP::HttpsGET);
+    //Table.set_function("HttpsPOST", &LuaAPI::MP::HttpsPOST);
     Table.create_named("Settings",
         "Debug", 0,
         "Private", 1,

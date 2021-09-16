@@ -47,6 +47,9 @@ public:
 
     void operator()() override;
 
+    TNetwork& Network() { return mNetwork; }
+    TServer& Server() { return mServer; }
+
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
@@ -70,11 +73,13 @@ private:
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void operator()() override;
-        
+
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName);
         sol::table Lua_TriggerLocalEvent(const std::string& EventName);
-        
+        sol::table Lua_GetPlayerIdentifiers(int ID);
+        sol::table Lua_GetPlayers();
+
         std::string mName;
         std::atomic_bool& mShutdown;
         TLuaStateId mStateId;
@@ -85,6 +90,7 @@ private:
         std::queue<std::pair<std::string, std::shared_ptr<TLuaResult>>> mStateFunctionQueue;
         std::recursive_mutex mStateFunctionQueueMutex;
         TLuaEngine* mEngine;
+        sol::state_view mStateView { mState };
     };
 
     TNetwork& mNetwork;

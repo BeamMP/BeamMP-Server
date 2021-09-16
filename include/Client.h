@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <unordered_set>
@@ -98,3 +99,5 @@ private:
     int mID = -1;
     std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
 };
+
+std::optional<std::weak_ptr<TClient>> GetClient(class TServer& Server, int ID);

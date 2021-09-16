@@ -1,4 +1,5 @@
 #include "LuaAPI.h"
+#include "Client.h"
 #include "TLuaEngine.h"
 
 static std::string LuaToString(const sol::object& Value, size_t Indent = 1) {
@@ -62,4 +63,72 @@ void LuaAPI::Print(sol::variadic_args Args) {
         ToPrint += "\t";
     }
     luaprint(ToPrint);
+}
+
+bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
+    std::string Packet = "E:" + EventName + ":" + Data;
+    if (PlayerID == -1)
+        Engine->Network().SendToAll(nullptr, Packet, true, true);
+    else {
+        auto MaybeClient = GetClient(Engine->Server(), PlayerID);
+        if (!MaybeClient || MaybeClient.value().expired()) {
+            beammp_lua_error("TriggerClientEvent invalid Player ID");
+            return false;
+        }
+        auto c = MaybeClient.value().lock();
+        if (!Engine->Network().Respond(*c, Packet, true)) {
+            beammp_lua_error("Respond failed");
+            return false;
+        }
+    }
+    return true;
+}
+
+void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
+    auto MaybeClient = GetClient(Engine->Server(), ID);
+    if (!MaybeClient || MaybeClient.value().expired()) {
+        return;
+    }
+    auto c = MaybeClient.value().lock();
+    if (!Engine->Network().Respond(*c, "C:Server:You have been Kicked from the server! Reason: " + MaybeReason.value_or("No reason"), true)) {
+        // Ignore
+    }
+    c->SetStatus(-2);
+    beammp_info("Closing socket due to kick");
+    CloseSocketProper(c->GetTCPSock());
+}
+
+void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
+    std::string Packet = "C:Server: " + Message;
+    if (ID == -1) {
+        //LogChatMessage("<Server> (to everyone) ", -1, Message);
+        Engine->Network().SendToAll(nullptr, Packet, true, true);
+    } else {
+        auto MaybeClient = GetClient(Engine->Server(), ID);
+        if (MaybeClient && !MaybeClient.value().expired()) {
+            auto c = MaybeClient.value().lock();
+            if (!c->IsSynced())
+                return;
+            //LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, msg);
+            Engine->Network().Respond(*c, Packet, true);
+        } else {
+            beammp_lua_error("SendChatMessage invalid argument [1] invalid ID");
+        }
+    }
+}
+
+void LuaAPI::MP::RemoveVehicle(int PlayerID, int VehicleID) {
+}
+
+void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
+}
+
+void LuaAPI::MP::Sleep(size_t Ms) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(Ms));
+}
+
+bool LuaAPI::MP::IsPlayerConnected(int ID) {
+}
+
+bool LuaAPI::MP::GetPlayerGuest(int ID) {
 }
