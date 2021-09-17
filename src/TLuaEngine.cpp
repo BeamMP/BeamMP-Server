@@ -40,11 +40,11 @@ void TLuaEngine::operator()() {
     // lua engine main thread
     CollectAndInitPlugins();
     // now call all onInit's
-    for (const auto& Pair : mLuaStates) {
-        auto Res = EnqueueFunctionCall(Pair.first, "onInit", {});
-        Res->WaitUntilReady(); // FIXME this dumb, dont do this, this is smelly!
-        if (Res->Error && Res->ErrorMessage != TLuaEngine::BeamMPFnNotFoundError) {
-            beammp_lua_error("Calling \"onInit\" on \"" + Pair.first + "\" failed: " + Res->ErrorMessage);
+    auto Futures = TriggerEvent("onInit");
+    WaitForAll(Futures);
+    for (const auto& Future : Futures) {
+        if (Future->Error) {
+            beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }
     // this thread handles timers
