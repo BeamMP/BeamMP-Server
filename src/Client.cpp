@@ -94,7 +94,6 @@ TClient::TClient(TServer& Server)
 
 void TClient::UpdatePingTime() {
     mLastPingTime = std::chrono::high_resolution_clock::now();
-    //debug(GetName() + ": " + std::string("ping time updated!: ") + ((SecondsSinceLastPing() == 0) ? "OK" : "ERR"));
 }
 int TClient::SecondsSinceLastPing() {
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(

@@ -13,6 +13,11 @@
 
 class TServer;
 
+#ifdef WIN32
+// for socklen_t
+#include <WS2tcpip.h>
+#endif // WIN32
+
 struct TConnection final {
     SOCKET Socket;
     struct sockaddr SockAddr;

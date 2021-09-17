@@ -6,5 +6,8 @@
 namespace Http {
 std::string GET(const std::string& host, int port, const std::string& target, unsigned int* status = nullptr);
 std::string POST(const std::string& host, int port, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, const std::string& ContentType, unsigned int* status = nullptr);
-static inline const char* ErrorString = "!BeamMPHttpsError!";
+namespace Status {
+    std::string ToString(int code);
+}
+const std::string ErrorString = "-1";
 }

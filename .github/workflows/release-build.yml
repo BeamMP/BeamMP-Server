@@ -37,12 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'true'
+            submodules: 'recursive'
 
       - name: Install Dependencies
         run: |
             sudo apt-get update
-            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev
+            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev
             sudo add-apt-repository ppa:mhier/libboost-latest
             sudo apt-get install -y libboost1.70-dev libboost1.70
 
@@ -52,13 +52,14 @@ jobs:
       - name: Configure CMake
         shell: bash
         working-directory: ${{github.workspace}}/build-linux
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10
+        env:
+          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
       - name: Build
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
         run: cmake --build . --config $BUILD_TYPE
-
 
       - name: Upload Release Asset
         id: upload-release-asset 
@@ -78,13 +79,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'true'
+            submodules: 'recursive'
       
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
         uses: lukka/run-vcpkg@main
         id: runvcpkg
         with:
-            vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp'
+            vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp curl'
             vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
             vcpkgGitCommitId: '8dddc6c899ce6fdbeab38b525a31e7f23cb2d5bb'
             vcpkgTriplet: 'x64-windows-static'
@@ -95,7 +96,9 @@ jobs:
       - name: Configure CMake
         shell: bash
         working-directory: ${{github.workspace}}/build-windows
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static
+        env:
+          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
+        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
       - name: Build
         working-directory: ${{github.workspace}}/build-windows

@@ -2,10 +2,16 @@
 
 #include "TConsole.h"
 #include <array>
+#include <charconv>
 #include <iostream>
 #include <map>
+#include <regex>
+#include <sstream>
 #include <thread>
 #include <zlib.h>
+
+#include "CustomAssert.h"
+#include "Http.h"
 
 std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
 
@@ -17,7 +23,7 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
 }
 
 void Application::GracefullyShutdown() {
-    beammp_info("please wait while all subsystems are shutting down...");
+    info("please wait while all subsystems are shutting down...");
     std::unique_lock Lock(mShutdownHandlersMutex);
     for (auto& Handler : mShutdownHandlers) {
         Handler();
@@ -26,6 +32,53 @@ void Application::GracefullyShutdown() {
 
 std::string Application::ServerVersionString() {
     return mVersion.AsString();
+}
+
+std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
+    std::array<uint8_t, 3> Version;
+    std::stringstream ss(str);
+    for (uint8_t& i : Version) {
+        std::string Part;
+        std::getline(ss, Part, '.');
+        std::from_chars(&*Part.begin(), &*Part.begin() + Part.size(), i);
+    }
+    return Version;
+}
+
+// FIXME: This should be used by operator< on Version
+bool Application::IsOutdated(const Version& Current, const Version& Newest) {
+    if (Newest.major > Current.major) {
+        return true;
+    } else if (Newest.major == Current.major && Newest.minor > Current.minor) {
+        return true;
+    } else if (Newest.major == Current.major && Newest.minor == Current.minor && Newest.patch > Current.patch) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+void Application::CheckForUpdates() {
+    // checks current version against latest version
+    std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
+    auto Response = Http::GET(GetBackendHostname(), 443, "/v/s");
+    bool Matches = std::regex_match(Response, VersionRegex);
+    if (Matches) {
+        auto MyVersion = ServerVersion();
+        auto RemoteVersion = Version(VersionStrToInts(Response));
+        if (IsOutdated(MyVersion, RemoteVersion)) {
+            std::string RealVersionString = RemoteVersion.AsString();
+            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+        } else {
+            info("Server up-to-date!");
+        }
+    } else {
+        warn("Unable to fetch version from backend.");
+        trace("got " + Response);
+        auto Lock = Sentry.CreateExclusiveContext();
+        Sentry.SetContext("get-response", { { "response", Response } });
+        Sentry.LogError("failed to get server version", _file_basename, _line);
+    }
 }
 
 std::string Comp(std::string Data) {
@@ -74,10 +127,12 @@ std::string DeComp(std::string Compressed) {
 
 // thread name stuff
 
-std::map<std::thread::id, std::string> threadNameMap;
+static std::map<std::thread::id, std::string> threadNameMap {};
+static std::mutex ThreadNameMapMutex {};
 
-std::string ThreadName() {
-    if (Application::Settings.DebugModeEnabled) {
+std::string ThreadName(bool DebugModeOverride) {
+    auto Lock = std::unique_lock(ThreadNameMapMutex);
+    if (DebugModeOverride || Application::Settings.DebugModeEnabled) {
         auto id = std::this_thread::get_id();
         if (threadNameMap.find(id) != threadNameMap.end()) {
             // found
@@ -87,7 +142,8 @@ std::string ThreadName() {
     return "";
 }
 
-void RegisterThread(const std::string str) {
+void RegisterThread(const std::string& str) {
+    auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
 }
 
@@ -96,10 +152,25 @@ Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
     , minor(minor)
     , patch(patch) { }
 
+Version::Version(const std::array<uint8_t, 3>& v)
+    : Version(v[0], v[1], v[2]) {
+}
+
 std::string Version::AsString() {
     std::stringstream ss {};
     ss << int(major) << "." << int(minor) << "." << int(patch);
     return ss.str();
+}
+
+void LogChatMessage(const std::string& name, int id, const std::string& msg) {
+    std::stringstream ss;
+    ss << "[CHAT] ";
+    if (id != -1) {
+        ss << "(" << id << ") <" << name << ">";
+    } else {
+        ss << name << "";
+    }
+    ss << msg;
 }
 
 std::string GetPlatformAgnosticErrorString() {
@@ -127,16 +198,4 @@ std::string GetPlatformAgnosticErrorString() {
 #else // posix
     return std::strerror(errno);
 #endif
-}
-
-void LogChatMessage(const std::string& name, int id, const std::string& msg) {
-    std::stringstream ss;
-    ss << "[CHAT] ";
-    if (id != -1) {
-        ss << "(" << id << ") <" << name << ">";
-    } else {
-        ss << name << "";
-    }
-    ss << msg;
-    Application::Console().Write(ss.str());
 }

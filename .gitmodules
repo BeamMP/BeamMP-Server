@@ -1,18 +1,19 @@
 [submodule "include/commandline"]
-	path = deps/commandline
+    path = include/commandline
     url = https://github.com/lionkor/commandline
-[submodule "socket.io-client-cpp"]
-	path = deps/socket.io-client-cpp
-	url = https://github.com/socketio/socket.io-client-cpp
 [submodule "asio"]
-	path = deps/asio
+	path = asio
 	url = https://github.com/chriskohlhoff/asio
 [submodule "rapidjson"]
-	path = deps/rapidjson
+	path = rapidjson
 	url = https://github.com/Tencent/rapidjson
 [submodule "include/toml11"]
+	path = include/toml11
+	url = https://github.com/ToruNiina/toml11
+[submodule "include/sentry-native"]
+	path = include/sentry-native
 	path = deps/toml11
     url = https://github.com/ToruNiina/toml11
 [submodule "deps/sol2"]
 	path = deps/sol2
-	url = https://github.com/ThePhD/sol2
+	url = https://github.com/getsentry/sentry-native

@@ -11,7 +11,7 @@ The server is the point throug which all clients communicate. You can write lua 
 These values are guesstimated and are subject to change with each release.
 
 * RAM: 50+ MiB usable (not counting OS overhead)
-* CPU: Any Hz, preferably multicore
+* CPU: >1GHz, preferably multicore
 * OS: Windows, Linux (theoretically any POSIX)
 * GPU: None
 * HDD: 10 MiB + Mods/Plugins
@@ -61,6 +61,7 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `make`
 - `cmake`
 - `g++`
+- `libcurl4-openssl-dev` or similar (search for `libcurl` and look for one with `-dev`)
   
   Must support ISO C++17. If your distro's `g++` doesn't support C++17, chances are that it has a `g++-8` or `g++-10` package that does. If this is the case. you just need to run CMake with `-DCMAKE_CXX_COMPILER=g++-10` (replace `g++-10` with your compiler's name).
 - `liblua5.3-dev` 
@@ -72,6 +73,13 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `libopenssl-dev` or `libssl-dev`
 
 **If** you're building it from source, you'll need `libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
+If you can't find this version of boost (only 1.6x, for example), you can either update to a newer version of your distro, build boost yourself, or use an unstable rolling release (like Debian `sid` aka `unstable`).
+
+In the end you should end up with a command something like this:
+
+```sh
+sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev libboost1.71-all-dev
+```
 
 In the end you should end up with a command something like this:
 
@@ -81,14 +89,15 @@ sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopens
 
 ### How to build
 
-On windows. use git-bash for these commands. On linux, these should work in your shell.
+On windows, use git-bash for these commands. On Linux, these should work in your shell.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with `git clone --recursive https://github.com/BeamMP/BeamMP-Server`. Now change into the cloned directory by running `cd BeamMP-Server`.
-3. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-4. Run `cmake .` (with `.`)
-5. Run `make`
-6. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
+2. Clone the repository in a location of your choice with `git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`. 
+3. Ensure that all submodules are initialized by running `git submodule update --init --recursive`. Then change into the cloned directory by running `cd BeamMP-Server`.
+4. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
+5. Run `cmake .` (with `.`)
+6. Run `make`
+7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
 *tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 

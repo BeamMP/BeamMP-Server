@@ -1,5 +1,9 @@
 #pragma once
 
+#include "TSentry.h"
+extern TSentry Sentry;
+
+#include <array>
 #include <atomic>
 #include <cstring>
 #include <deque>
@@ -17,6 +21,7 @@ struct Version {
     uint8_t minor;
     uint8_t patch;
     Version(uint8_t major, uint8_t minor, uint8_t patch);
+    Version(const std::array<uint8_t, 3>& v);
     std::string AsString();
 };
 
@@ -67,13 +72,18 @@ public:
     static const Version& ServerVersion() { return mVersion; }
     static std::string ClientVersionString() { return "2.0"; }
     static std::string PPS() { return mPPS; }
-    static void SetPPS(std::string NewPPS) { mPPS = NewPPS; }
+    static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
     static inline TSettings Settings {};
 
     static std::string GetBackendUrlForAuth() { return "auth.beammp.com"; }
     static std::string GetBackendHostname() { return "backend.beammp.com"; }
+    static std::string GetBackup1Hostname() { return "backup1.beammp.com"; }
+    static std::string GetBackup2Hostname() { return "backup2.beammp.com"; }
     static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
+    static void CheckForUpdates();
+    static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
+    static bool IsOutdated(const Version& Current, const Version& Newest);
 
 private:
     static inline std::string mPPS;
@@ -81,11 +91,11 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 2, 3, 0 };
+    static inline Version mVersion { 2, 4, 0 };
 };
 
-std::string ThreadName();
-void RegisterThread(const std::string str);
+std::string ThreadName(bool DebugModeOverride = false);
+void RegisterThread(const std::string& str);
 #define RegisterThreadAuto() RegisterThread(__func__)
 
 #define KB 1024
@@ -124,8 +134,11 @@ void RegisterThread(const std::string str);
 
 #define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
 #define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-#define beammp_error(x) Application::Console().Write(_this_location + std::string("[ERROR] ") + (x))
-#define beammp_lua_error(x) Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x))
+#define error(x)                                                                      \
+    do {                                                                              \
+        Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
+        Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
+    } while (false)
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
 #define beammp_debug(x)                                                                   \
     do {                                                                                  \
@@ -136,6 +149,19 @@ void RegisterThread(const std::string str);
 // for those times when you just need to ignore something :^)
 // explicity disables a [[nodiscard]] warning
 #define beammp_ignore(x) (void)x
+// trace() is a debug-build debug()
+#if defined(DEBUG)
+#define trace(x)                                                                          \
+    do {                                                                                  \
+        if (Application::Settings.DebugModeEnabled) {                                     \
+            Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
+        }                                                                                 \
+    } while (false)
+#else
+#define trace(x)
+#endif // defined(DEBUG)
+
+void LogChatMessage(const std::string& name, int id, const std::string& msg);
 
 #define Biggest 30000
 std::string Comp(std::string Data);

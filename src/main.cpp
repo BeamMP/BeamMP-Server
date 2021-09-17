@@ -1,4 +1,7 @@
+#include "TSentry.h"
+
 #include "Common.h"
+#include "CustomAssert.h"
 #include "Http.h"
 #include "LuaAPI.h"
 #include "TConfig.h"
@@ -8,6 +11,7 @@
 #include "TPPSMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+
 #include <thread>
 
 #ifdef __unix
@@ -33,18 +37,21 @@ void UnixSignalHandler(int sig) {
 }
 #endif // __unix
 
-int main(int argc, char** argv) {
+// this is provided by the build system, leave empty for source builds
+// global, yes, this is ugly, no, it cant be done another way
+TSentry Sentry {};
+
+#include <iostream>
+
+int main(int argc, char** argv) try {
 #ifdef __unix
-#if DEBUG
-    beammp_info("registering handlers for SIGINT, SIGTERM, SIGPIPE");
-#endif // DEBUG
+    trace("registering handlers for SIGINT, SIGTERM, SIGPIPE");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
 #ifndef DEBUG
     signal(SIGINT, UnixSignalHandler);
 #endif // DEBUG
 #endif // __unix
-
     setlocale(LC_ALL, "C");
 
     bool Shutdown = false;
@@ -66,6 +73,12 @@ int main(int argc, char** argv) {
     }
 
     RegisterThread("Main");
+
+    trace("Running in debug mode on a debug build");
+
+    Sentry.SetupUser();
+    Sentry.PrintWelcome();
+    Application::CheckForUpdates();
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
@@ -78,4 +91,7 @@ int main(int argc, char** argv) {
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+} catch (const std::exception& e) {
+    error(e.what());
+    Sentry.LogException(e, _file_basename, _line);
 }

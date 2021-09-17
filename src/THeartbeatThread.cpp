@@ -26,7 +26,7 @@ void THeartbeatThread::operator()() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-        beammp_debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
+        debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
 
         Last = Body;
         LastNormalUpdateTime = Now;
@@ -35,26 +35,48 @@ void THeartbeatThread::operator()() {
 
         Body += "&pps=" + Application::PPS();
 
-        T = Http::POST(Application::GetBackendHostname(), 443, "/heartbeat", {}, Body, "application/x-www-form-urlencoded");
+        auto SentryReportError = [&](const std::string& transaction, int status) {
+            if (status < 0) {
+                status = 0;
+            }
 
-        if (T.substr(0, 2) != "20") {
-            //Backend system refused server startup!
+            auto Lock = Sentry.CreateExclusiveContext();
+            Sentry.SetContext("heartbeat",
+                { { "response-body", T },
+                    { "request-body", Body } });
+            Sentry.SetTransaction(transaction);
+            trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
+            Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
+        };
+
+        auto Target = "/heartbeat";
+        unsigned int ResponseCode = 0;
+        T = Http::POST(Application::GetBackendHostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
+
+        if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+            trace("got " + T + " from backend");
+            SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST(Application::GetBackendHostname(), 443, "/heartbeat", {}, Body, "application/x-www-form-urlencoded");
-            // TODO backup2 + HTTP flag (no TSL)
-            if (T.substr(0, 2) != "20") {
-                beammp_warn("Backend system refused server! Server might not show in the public list");
-                beammp_debug("server returned \"" + T + "\"");
-                isAuth = false;
+            T = Http::POST(Application::GetBackup1Hostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
+            if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+                SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                T = Http::POST(Application::GetBackup2Hostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
+                if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+                    warn("Backend system refused server! Server will not show in the public server list.");
+
+                    isAuth = false;
+                    SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
+                }
             }
         }
 
         if (!isAuth) {
             if (T == "2000") {
-                beammp_info(("Authenticated!"));
+                info(("Authenticated!"));
                 isAuth = true;
             } else if (T == "200") {
-                beammp_info(("Resumed authenticated session!"));
+                info(("Resumed authenticated session!"));
                 isAuth = true;
             }
         }
@@ -62,6 +84,7 @@ void THeartbeatThread::operator()() {
         //SocketIO::Get().SetAuthenticated(isAuth);
     }
 }
+
 std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
 
@@ -86,10 +109,10 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     , mServer(Server) {
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
-            beammp_debug("shutting down Heartbeat");
+            debug("shutting down Heartbeat");
             mShutdown = true;
             mThread.join();
-            beammp_debug("shut down Heartbeat");
+            debug("shut down Heartbeat");
         }
     });
     Start();

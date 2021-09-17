@@ -1,18 +1,14 @@
 #include "VehicleData.h"
 
-#include <utility>
 #include "Common.h"
+#include <utility>
 
 TVehicleData::TVehicleData(int ID, std::string Data)
     : mID(ID)
     , mData(std::move(Data)) {
-#ifdef DEBUG
-    beammp_debug("vehicle " + std::to_string(mID) + " constructed");
-#endif
+    trace("vehicle " + std::to_string(mID) + " constructed");
 }
 
 TVehicleData::~TVehicleData() {
-#ifdef DEBUG
-    beammp_debug("vehicle " + std::to_string(mID) + " destroyed");
-#endif
+    trace("vehicle " + std::to_string(mID) + " destroyed");
 }

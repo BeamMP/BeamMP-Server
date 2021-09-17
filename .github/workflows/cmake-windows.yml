@@ -12,13 +12,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'true'
+            submodules: 'recursive'
       
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
         uses: lukka/run-vcpkg@main
         id: runvcpkg
         with:
-            vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp'
+            vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp curl'
             vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
             vcpkgGitCommitId: '8dddc6c899ce6fdbeab38b525a31e7f23cb2d5bb'
             vcpkgTriplet: 'x64-windows-static'
@@ -29,7 +29,9 @@ jobs:
       - name: Configure CMake
         shell: bash
         working-directory: ${{github.workspace}}/build-windows
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static
+        env:
+          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
+        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
       - name: Build
         working-directory: ${{github.workspace}}/build-windows
