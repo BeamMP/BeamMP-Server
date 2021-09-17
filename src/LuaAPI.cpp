@@ -2,7 +2,7 @@
 #include "Client.h"
 #include "TLuaEngine.h"
 
-static std::string LuaToString(const sol::object& Value, size_t Indent = 1) {
+static std::string LuaToString(sol::object Value, size_t Indent = 1) {
     switch (Value.get_type()) {
     case sol::type::userdata: {
         std::stringstream ss;
