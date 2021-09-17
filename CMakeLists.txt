@@ -1,10 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 
-
-
-
-
-
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
@@ -33,7 +28,7 @@ if (MSVC)
     set(SENTRY_BUILD_RUNTIMESTATIC ON)
 endif()
 set(SENTRY_BACKEND breakpad)
-add_subdirectory("include/sentry-native")
+add_subdirectory("deps/sentry-native")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
