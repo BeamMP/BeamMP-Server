@@ -218,6 +218,15 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
     return Result;
 }
 
+std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
+    auto MaybeClient = GetClient(mEngine->Server(), ID);
+    if (MaybeClient && !MaybeClient.value().expired()) {
+        return MaybeClient.value().lock()->GetName();
+    } else {
+        return "";
+    }
+}
+
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
@@ -258,7 +267,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     Table.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
     Table.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
     Table.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
-    //Table.set_function("GetPlayerName", &Lua_GetPlayerName);
+    Table.set_function("GetPlayerName", [&](int ID) -> std::string {
+        return Lua_GetPlayerName(ID);
+    });
     Table.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
     //Table.set_function("GetPlayerVehicles", &Lua_GetPlayerVehicles);
     Table.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);

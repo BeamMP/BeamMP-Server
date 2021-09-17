@@ -99,6 +99,7 @@ private:
         sol::table Lua_TriggerLocalEvent(const std::string& EventName);
         sol::table Lua_GetPlayerIdentifiers(int ID);
         sol::table Lua_GetPlayers();
+        std::string Lua_GetPlayerName(int ID);
 
         std::string mName;
         std::atomic_bool& mShutdown;
