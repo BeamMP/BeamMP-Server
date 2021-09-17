@@ -42,7 +42,7 @@ void TLuaEngine::operator()() {
     // now call all onInit's
     for (const auto& Pair : mLuaStates) {
         auto Res = EnqueueFunctionCall(Pair.first, "onInit", {});
-        Res->WaitUntilReady();
+        Res->WaitUntilReady(); // FIXME this dumb, dont do this, this is smelly!
         if (Res->Error && Res->ErrorMessage != TLuaEngine::BeamMPFnNotFoundError) {
             beammp_lua_error("Calling \"onInit\" on \"" + Pair.first + "\" failed: " + Res->ErrorMessage);
         }
@@ -93,6 +93,7 @@ void TLuaEngine::InitializePlugin(const fs::path& Folder, const TLuaPluginConfig
     beammp_assert(fs::is_directory(Folder));
     std::unique_lock Lock(mLuaStatesMutex);
     EnsureStateExists(Config.StateId, Folder.stem().string(), true);
+    mLuaStates[Config.StateId]->AddPath(Folder); // add to cpath + path
     Lock.unlock();
     TLuaPlugin Plugin(*this, Config, Folder);
 }
@@ -315,6 +316,33 @@ void TLuaEngine::StateThreadData::operator()() {
                 auto S = mStateExecuteQueue.front();
                 mStateExecuteQueue.pop();
                 Lock.unlock();
+
+                { // Paths Scope
+                    std::unique_lock Lock(mPathsMutex);
+                    if (!mPaths.empty()) {
+                        std::stringstream PathAdditions;
+                        std::stringstream CPathAdditions;
+                        while (!mPaths.empty()) {
+                            auto Path = mPaths.front();
+                            mPaths.pop();
+                            PathAdditions << ";" << (Path / "?.lua").string();
+                            PathAdditions << ";" << (Path / "lua/?.lua").string();
+#if WIN32
+                            CPathAdditions << ";" << (Path / "?.dll").string();
+                            CPathAdditions << ";" << (Path / "lib/?.dll").string();
+#else // unix
+                            CPathAdditions << ";" << (Path / "?.so").string();
+                            CPathAdditions << ";" << (Path / "lib/?.so").string();
+#endif
+                        }
+                        sol::state_view StateView(mState);
+                        auto PackageTable = StateView.globals().get<sol::table>("package");
+                        PackageTable["path"] = PackageTable.get<std::string>("path") + PathAdditions.str();
+                        PackageTable["cpath"] = PackageTable.get<std::string>("cpath") + CPathAdditions.str();
+                        StateView.globals()["package"] = PackageTable;
+                    }
+                }
+
                 beammp_debug("Running script");
                 sol::state_view StateView(mState);
                 auto Res = StateView.safe_script(*S.first, sol::script_pass_on_error);
@@ -363,6 +391,11 @@ void TLuaEngine::StateThreadData::operator()() {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+}
+
+void TLuaEngine::StateThreadData::AddPath(const fs::path& Path) {
+    std::unique_lock Lock(mPathsMutex);
+    mPaths.push(Path);
 }
 
 void TLuaResult::WaitUntilReady() {

@@ -91,6 +91,7 @@ private:
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::initializer_list<std::any>& Args);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
+        void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
 
     private:
@@ -110,6 +111,8 @@ private:
         std::recursive_mutex mStateFunctionQueueMutex;
         TLuaEngine* mEngine;
         sol::state_view mStateView { mState };
+        std::queue<fs::path> mPaths;
+        std::recursive_mutex mPathsMutex;
     };
 
     TNetwork* mNetwork;
