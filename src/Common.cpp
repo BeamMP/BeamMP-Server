@@ -128,3 +128,15 @@ std::string GetPlatformAgnosticErrorString() {
     return std::strerror(errno);
 #endif
 }
+
+void LogChatMessage(const std::string& name, int id, const std::string& msg) {
+    std::stringstream ss;
+    ss << "[CHAT] ";
+    if (id != -1) {
+        ss << "(" << id << ") <" << name << ">";
+    } else {
+        ss << name << "";
+    }
+    ss << msg;
+    Application::Console().Write(ss.str());
+}

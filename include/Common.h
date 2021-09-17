@@ -142,3 +142,5 @@ std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
 
 std::string GetPlatformAgnosticErrorString();
+
+void LogChatMessage(const std::string& name, int id, const std::string& msg);

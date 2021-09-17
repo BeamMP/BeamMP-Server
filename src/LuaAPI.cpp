@@ -1,5 +1,6 @@
 #include "LuaAPI.h"
 #include "Client.h"
+#include "Common.h"
 #include "TLuaEngine.h"
 
 static std::string LuaToString(const sol::object Value, size_t Indent = 1) {
@@ -122,7 +123,7 @@ void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
 void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
     std::string Packet = "C:Server: " + Message;
     if (ID == -1) {
-        //LogChatMessage("<Server> (to everyone) ", -1, Message);
+        LogChatMessage("<Server> (to everyone) ", -1, Message);
         Engine->Network().SendToAll(nullptr, Packet, true, true);
     } else {
         auto MaybeClient = GetClient(Engine->Server(), ID);
@@ -130,7 +131,7 @@ void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
             auto c = MaybeClient.value().lock();
             if (!c->IsSynced())
                 return;
-            //LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, msg);
+            LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, msg);
             Engine->Network().Respond(*c, Packet, true);
         } else {
             beammp_lua_error("SendChatMessage invalid argument [1] invalid ID");
