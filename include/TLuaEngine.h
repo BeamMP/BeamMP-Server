@@ -39,6 +39,12 @@ struct TLuaPluginConfig {
     // TODO: Add execute list
 };
 
+struct TLuaChunk {
+    std::shared_ptr<std::string> Content;
+    std::string FileName;
+    std::string PluginPath;
+};
+
 class TLuaEngine : IThreaded {
 public:
     TLuaEngine();
@@ -55,7 +61,7 @@ public:
     void SetServer(TServer* Server) { mServer = Server; }
 
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::initializer_list<std::any>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
@@ -91,7 +97,7 @@ private:
         StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
         ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const std::shared_ptr<std::string>& Script);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::initializer_list<std::any>& Args);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
@@ -110,7 +116,7 @@ private:
         TLuaStateId mStateId;
         lua_State* mState;
         std::thread mThread;
-        std::queue<std::pair<std::shared_ptr<std::string>, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
+        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
         std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::initializer_list<std::any>>> mStateFunctionQueue;
         std::recursive_mutex mStateFunctionQueueMutex;

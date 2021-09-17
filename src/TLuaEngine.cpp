@@ -63,7 +63,7 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
     }
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const std::shared_ptr<std::string>& Script) {
+std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script) {
     std::unique_lock Lock(mLuaStatesMutex);
     beammp_debug("enqueuing script into \"" + StateID + "\"");
     return mLuaStates.at(StateID)->EnqueueScript(Script);
@@ -349,7 +349,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     Start();
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const std::shared_ptr<std::string>& Script) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLuaChunk& Script) {
     beammp_debug("enqueuing script into \"" + mStateId + "\"");
     std::unique_lock Lock(mStateExecuteQueueMutex);
     auto Result = std::make_shared<TLuaResult>();
@@ -409,7 +409,7 @@ void TLuaEngine::StateThreadData::operator()() {
 
                 beammp_debug("Running script");
                 sol::state_view StateView(mState);
-                auto Res = StateView.safe_script(*S.first, sol::script_pass_on_error);
+                auto Res = StateView.safe_script(*S.first.Content, sol::script_pass_on_error, S.first.FileName);
                 S.second->Ready = true;
                 if (Res.valid()) {
                     S.second->Error = false;
