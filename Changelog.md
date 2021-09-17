@@ -10,6 +10,8 @@
 - ADDED plugin directories to `package.path` and `package.cpath` before `onInit`
 - ADDED ability to add `PluginConfig.toml` to your plugin folder to change some settings
 - ADDED ability to share a lua state with other plugins via `StateId` setting in `PluginConfig.toml`
+- ADDED `MP.HttpsGET(host,port,target) -> status,body`: Does a synchronous HTTPS GET request
+- ADDED `MP.HttpsPOST(host,port,target,body,content_type) -> status,body`: Does a synchronous HTTPS POST request
 
 # v2.3.3
 
