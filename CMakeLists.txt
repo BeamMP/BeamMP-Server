@@ -133,7 +133,7 @@ elseif (WIN32)
     message(STATUS "Looking for RapidJSON")
     find_package(RapidJSON CONFIG REQUIRED)
     target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE 
+    target_link_libraries(BeamMP-Server
         ws2_32 
         ZLIB::ZLIB 
         ${LUA_LIBRARIES} 
