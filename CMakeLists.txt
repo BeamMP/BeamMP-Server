@@ -40,10 +40,10 @@ if (WIN32)
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -s -fno-builtin")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -gz -fno-builtin")
     if (SANITIZE)
         message(STATUS "sanitize is ON")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLanAGS} -fsanitize=undefined,thread")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
     endif (SANITIZE)
 endif ()
 
@@ -90,6 +90,7 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp
         include/LuaAPI.h src/LuaAPI.cpp)
+        include/SignalHandling.h src/SignalHandling.cpp)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
 include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)

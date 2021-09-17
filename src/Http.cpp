@@ -49,6 +49,7 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
         bool ok = try_connect_with_protocol(tcp::v4());
         if (!ok) {
             Application::Console().Write("[ERROR] failed to resolve or connect in POST " + host + target);
+            Sentry.AddErrorBreadcrumb("failed to resolve or connect to " + host + target, __FILE__, std::to_string(__LINE__)); // FIXME: this is ugly.
             return "-1";
         }
         //}
@@ -127,6 +128,7 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
 
     } catch (const std::exception& e) {
         Application::Console().Write(__func__ + std::string(": ") + e.what());
+        Sentry.AddErrorBreadcrumb(e.what(), __FILE__, std::to_string(__LINE__)); // FIXME: this is ugly.
         return Http::ErrorString;
     }
 }
@@ -141,6 +143,7 @@ std::string Http::POST(const std::string& host, int port, const std::string& tar
 
 // RFC 2616, RFC 7231
 static std::map<size_t, const char*> Map = {
+    { -1, "Invalid Response Code"},
     { 100, "Continue" },
     { 101, "Switching Protocols" },
     { 102, "Processing" },
@@ -203,12 +206,22 @@ static std::map<size_t, const char*> Map = {
     { 508, "Loop Detected" },
     { 510, "Not Extended" },
     { 511, "Network Authentication Required" },
+    // cloudflare status codes
+    { 520, "(CDN) Web Server Returns An Unknown Error" },
+    { 521, "(CDN) Web Server Is Down" },
+    { 522, "(CDN) Connection Timed Out" },
+    { 523, "(CDN) Origin Is Unreachable" },
+    { 524, "(CDN) A Timeout Occurred" },
+    { 525, "(CDN) SSL Handshake Failed" },
+    { 526, "(CDN) Invalid SSL Certificate" },
+    { 527, "(CDN) Railgun Listener To Origin Error" },
+    { 530, "(CDN) 1XXX Internal Error" },
 };
 
 std::string Http::Status::ToString(int code) {
     if (Map.find(code) != Map.end()) {
         return Map.at(code);
     } else {
-        return "Unassigned";
+        return std::to_string(code);
     }
 }

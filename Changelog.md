@@ -1,3 +1,20 @@
+# v2.3.3
+
+- CHANGED servers to be private by default
+
+# v2.3.2
+
+- ADDED Ctrl+C causes a graceful shutdown on windows (did already on linux)
+- ADDED more meaningful shutdown messages
+- ADDED even better backend connection error reporting
+- ADDED `SendErrors` config in `ServerConfig.toml` to opt-out of error reporting
+- ADDED hard-shutdown if Ctrl+C pressed 3 times
+- FIXED issue with shells like bash being unusable after server exit
+
+# v2.3.1
+
+- CHANGED join/sync timeout to 20 minutes, players wont drop if loading takes >5 mins
+
 # v2.3.0
 
 - ADDED version check - the server will now let you know when a new release is out

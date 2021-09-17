@@ -20,6 +20,8 @@ static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+static constexpr std::string_view StrSendErrors = "SendErrors";
+static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 
 TConfig::TConfig() {
     if (!fs::exists(ConfigFileName) || !fs::is_regular_file(ConfigFileName)) {
@@ -32,6 +34,15 @@ TConfig::TConfig() {
         }
         ParseFromFile(ConfigFileName);
     }
+}
+
+void WriteSendErrors(const std::string& name) {
+    std::ofstream CfgFile { name, std::ios::out | std::ios::app };
+    CfgFile << "# You can turn on/off the SendErrors message you get on startup here" << std::endl
+            << StrSendErrorsMessageEnabled << " = true" << std::endl
+            << "# If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`."
+            << std::endl
+            << StrSendErrors << " = true" << std::endl;
 }
 
 void TConfig::FlushToFile() {
@@ -68,6 +79,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
     }
 
     auto data = toml::parse<toml::preserve_comments>(name.data());
+                //{ StrSendErrors, Application::Settings.SendErrors },
 
     data["General"] = toml::table();
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
@@ -90,6 +102,8 @@ void TConfig::CreateConfigFile(std::string_view name) {
         ofs << data << '\n';
         beammp_error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
         mFailed = true;
+        ofs.close();
+        WriteSendErrors(std::string(name));
     } else {
         beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
         mFailed = true;
@@ -109,6 +123,19 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.ServerDesc = data["General"][StrDescription.data()].as_string();
         Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
+        }
+        // added later, so behaves differently
+        if (auto val = GeneralTable[StrSendErrors].value<bool>(); val.has_value()) {
+            Application::Settings.SendErrors = val.value();
+        } else {
+            // dont throw, instead write it into the file and use default
+            WriteSendErrors(std::string(name));
+        }
+        if (auto val = GeneralTable[StrSendErrorsMessageEnabled].value<bool>(); val.has_value()) {
+            Application::Settings.SendErrorsMessageEnabled = val.value();
+        } else {
+            // no idea what to do here, ignore...?
+            // this entire toml parser sucks and is replaced in the upcoming lua.
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;

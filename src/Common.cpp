@@ -23,10 +23,26 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
 }
 
 void Application::GracefullyShutdown() {
-    info("please wait while all subsystems are shutting down...");
+    static bool AlreadyShuttingDown = false;
+    static uint8_t ShutdownAttempts = 0;
+    if (AlreadyShuttingDown) {
+        ++ShutdownAttempts;
+        // hard shutdown at 2 additional tries
+        if (ShutdownAttempts == 2) {
+            info("hard shutdown forced by multiple shutdown requests");
+            std::exit(0);
+        }
+        info("already shutting down!");
+        return;
+    } else {
+        AlreadyShuttingDown = true;
+    }
+    trace("waiting for lock release");
     std::unique_lock Lock(mShutdownHandlersMutex);
-    for (auto& Handler : mShutdownHandlers) {
-        Handler();
+    info("please wait while all subsystems are shutting down...");
+    for (size_t i = 0; i < mShutdownHandlers.size(); ++i) {
+        info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
+        mShutdownHandlers[i]();
     }
 }
 
@@ -68,7 +84,7 @@ void Application::CheckForUpdates() {
         auto RemoteVersion = Version(VersionStrToInts(Response));
         if (IsOutdated(MyVersion, RemoteVersion)) {
             std::string RealVersionString = RemoteVersion.AsString();
-            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For info on how to update your server, visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
             info("Server up-to-date!");
         }

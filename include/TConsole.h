@@ -1,6 +1,7 @@
 #pragma once
 
 #include "commandline.h"
+#include "Cryptography.h"
 #include <atomic>
 #include <fstream>
 

@@ -1,22 +1,17 @@
 #include "TSentry.h"
 #include "Common.h"
 
+#include <cstring>
 #include <sentry.h>
 #include <sstream>
 
-// compile-time length of a string/array
-template <size_t N>
-constexpr size_t ConstexprLength(char const (&)[N]) {
-    return N - 1;
-}
-
 TSentry::TSentry() {
-    if constexpr (ConstexprLength(SECRET_SENTRY_URL) == 0) {
+    if (std::strlen(S_DSN) == 0) {
         mValid = false;
     } else {
         mValid = true;
         sentry_options_t* options = sentry_options_new();
-        sentry_options_set_dsn(options, SECRET_SENTRY_URL);
+        sentry_options_set_dsn(options, S_DSN);
         auto ReleaseString = "BeamMP-Server@" + Application::ServerVersionString();
         sentry_options_set_symbolize_stacktraces(options, true);
         sentry_options_set_release(options, ReleaseString.c_str());
@@ -33,9 +28,26 @@ TSentry::~TSentry() {
 
 void TSentry::PrintWelcome() {
     if (mValid) {
-        info("Sentry started");
+        if (!Application::Settings.SendErrors) {
+            mValid = false;
+            if (Application::Settings.SendErrorsMessageEnabled) {
+                info("Opted out of error reporting (SendErrors), Sentry disabled.");
+            } else {
+                info("Sentry disabled");
+            }
+        } else {
+            if (Application::Settings.SendErrorsMessageEnabled) {
+                info("Sentry started! Reporting errors automatically. This sends data to the developers in case of errors and crashes. You can learn more, turn this message off or opt-out of this in the ServerConfig.toml.");
+            } else {
+                info("Sentry started");
+            }
+        }
     } else {
-        info("Sentry disabled in unofficial build");
+        if (Application::Settings.SendErrorsMessageEnabled) {
+            info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
+        } else {
+            info("Sentry disabled in unofficial build");
+        }
     }
 }
 

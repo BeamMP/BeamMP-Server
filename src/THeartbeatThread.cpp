@@ -36,9 +36,6 @@ void THeartbeatThread::operator()() {
         Body += "&pps=" + Application::PPS();
 
         auto SentryReportError = [&](const std::string& transaction, int status) {
-            if (status < 0) {
-                status = 0;
-            }
 
             auto Lock = Sentry.CreateExclusiveContext();
             Sentry.SetContext("heartbeat",
@@ -53,16 +50,16 @@ void THeartbeatThread::operator()() {
         unsigned int ResponseCode = 0;
         T = Http::POST(Application::GetBackendHostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
 
-        if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+        if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
             trace("got " + T + " from backend");
             SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
-            if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+            if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
                 SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 T = Http::POST(Application::GetBackup2Hostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
-                if (T.substr(0, 2) != "20" || ResponseCode != 200) {
+                if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
                     warn("Backend system refused server! Server will not show in the public server list.");
 
                     isAuth = false;
@@ -109,10 +106,8 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     , mServer(Server) {
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
-            debug("shutting down Heartbeat");
             mShutdown = true;
             mThread.join();
-            debug("shut down Heartbeat");
         }
     });
     Start();

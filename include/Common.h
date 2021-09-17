@@ -40,10 +40,12 @@ public:
             , Resource("Resources")
             , MapName("/levels/gridmap_v2/info.json")
             , MaxPlayers(10)
-            , Private(false)
+            , Private(true)
             , MaxCars(1)
             , DebugModeEnabled(false)
-            , Port(30814) { }
+            , Port(30814)
+            , SendErrors(true)
+            , SendErrorsMessageEnabled(true) { }
         std::string ServerName;
         std::string ServerDesc;
         std::string Resource;
@@ -55,6 +57,8 @@ public:
         bool DebugModeEnabled;
         int Port;
         std::string CustomIP;
+        bool SendErrors;
+        bool SendErrorsMessageEnabled;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
 
@@ -100,6 +104,7 @@ void RegisterThread(const std::string& str);
 
 #define KB 1024
 #define MB (KB * 1024)
+#define SSU_UNRAW SECRET_SENTRY_URL
 
 #define _file_basename std::filesystem::path(__FILE__).filename().string()
 #define _line std::to_string(__LINE__)
@@ -125,9 +130,11 @@ void RegisterThread(const std::string& str);
 #else
 #define _this_location (ThreadName() + _file_basename + ":" + _line + " ")
 #endif
+#define SU_RAW SSU_UNRAW
 
 #else // !defined(DEBUG)
 
+#define SU_RAW RAWIFY(SSU_UNRAW)
 #define _this_location (ThreadName())
 
 #endif // defined(DEBUG)
@@ -168,5 +175,6 @@ std::string Comp(std::string Data);
 std::string DeComp(std::string Compressed);
 
 std::string GetPlatformAgnosticErrorString();
+#define S_DSN SU_RAW
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);
