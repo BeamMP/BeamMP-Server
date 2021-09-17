@@ -31,22 +31,22 @@ void TSentry::PrintWelcome() {
         if (!Application::Settings.SendErrors) {
             mValid = false;
             if (Application::Settings.SendErrorsMessageEnabled) {
-                info("Opted out of error reporting (SendErrors), Sentry disabled.");
+                beammp_info("Opted out of error reporting (SendErrors), Sentry disabled.");
             } else {
-                info("Sentry disabled");
+                beammp_info("Sentry disabled");
             }
         } else {
             if (Application::Settings.SendErrorsMessageEnabled) {
-                info("Sentry started! Reporting errors automatically. This sends data to the developers in case of errors and crashes. You can learn more, turn this message off or opt-out of this in the ServerConfig.toml.");
+                beammp_info("Sentry started! Reporting errors automatically. This sends data to the developers in case of errors and crashes. You can learn more, turn this message off or opt-out of this in the ServerConfig.toml.");
             } else {
-                info("Sentry started");
+                beammp_info("Sentry started");
             }
         }
     } else {
         if (Application::Settings.SendErrorsMessageEnabled) {
-            info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
+            beammp_info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
         } else {
-            info("Sentry disabled in unofficial build");
+            beammp_info("Sentry disabled in unofficial build");
         }
     }
 }

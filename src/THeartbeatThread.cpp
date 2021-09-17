@@ -26,7 +26,7 @@ void THeartbeatThread::operator()() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
             continue;
         }
-        debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
+        beammp_debug("heartbeat (after " + std::to_string(std::chrono::duration_cast<std::chrono::seconds>(TimePassed).count()) + "s)");
 
         Last = Body;
         LastNormalUpdateTime = Now;
@@ -42,7 +42,7 @@ void THeartbeatThread::operator()() {
                 { { "response-body", T },
                     { "request-body", Body } });
             Sentry.SetTransaction(transaction);
-            trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
+            beammp_trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
             Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
         };
 
@@ -51,7 +51,7 @@ void THeartbeatThread::operator()() {
         T = Http::POST(Application::GetBackendHostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
 
         if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-            trace("got " + T + " from backend");
+            beammp_trace("got " + T + " from backend");
             SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
@@ -60,7 +60,7 @@ void THeartbeatThread::operator()() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 T = Http::POST(Application::GetBackup2Hostname(), 443, Target, {}, Body, "application/x-www-form-urlencoded", &ResponseCode);
                 if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                    warn("Backend system refused server! Server will not show in the public server list.");
+                    beammp_warn("Backend system refused server! Server will not show in the public server list.");
 
                     isAuth = false;
                     SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
@@ -70,10 +70,10 @@ void THeartbeatThread::operator()() {
 
         if (!isAuth) {
             if (T == "2000") {
-                info(("Authenticated!"));
+                beammp_info(("Authenticated!"));
                 isAuth = true;
             } else if (T == "200") {
-                info(("Resumed authenticated session!"));
+                beammp_info(("Resumed authenticated session!"));
                 isAuth = true;
             }
         }

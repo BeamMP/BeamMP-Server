@@ -141,10 +141,14 @@ void RegisterThread(const std::string& str);
 
 #define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
 #define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-#define error(x)                                                                      \
+#define beammp_error(x)                                                               \
     do {                                                                              \
         Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
         Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
+    } while (false)
+#define beammp_lua_error(x)                                                               \
+    do {                                                                                  \
+        Application::Console().Write(_this_location + std::string("[LUA_ERROR] ") + (x)); \
     } while (false)
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
 #define beammp_debug(x)                                                                   \
@@ -158,14 +162,14 @@ void RegisterThread(const std::string& str);
 #define beammp_ignore(x) (void)x
 // trace() is a debug-build debug()
 #if defined(DEBUG)
-#define trace(x)                                                                          \
+#define beammp_trace(x)                                                                   \
     do {                                                                                  \
         if (Application::Settings.DebugModeEnabled) {                                     \
             Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
         }                                                                                 \
     } while (false)
 #else
-#define trace(x)
+#define beammp_trace(x)
 #endif // defined(DEBUG)
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);

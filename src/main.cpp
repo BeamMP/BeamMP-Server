@@ -48,7 +48,7 @@ int main(int argc, char** argv) try {
 
     RegisterThread("Main");
 
-    trace("Running in debug mode on a debug build");
+    beammp_trace("Running in debug mode on a debug build");
 
     Sentry.SetupUser();
     Sentry.PrintWelcome();
@@ -65,8 +65,8 @@ int main(int argc, char** argv) try {
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
-    info("Shutdown.");
+    beammp_info("Shutdown.");
 } catch (const std::exception& e) {
-    error(e.what());
+    beammp_error(e.what());
     Sentry.LogException(e, _file_basename, _line);
 }

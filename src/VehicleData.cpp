@@ -6,9 +6,9 @@
 TVehicleData::TVehicleData(int ID, std::string Data)
     : mID(ID)
     , mData(std::move(Data)) {
-    trace("vehicle " + std::to_string(mID) + " constructed");
+    beammp_trace("vehicle " + std::to_string(mID) + " constructed");
 }
 
 TVehicleData::~TVehicleData() {
-    trace("vehicle " + std::to_string(mID) + " destroyed");
+    beammp_trace("vehicle " + std::to_string(mID) + " destroyed");
 }

@@ -58,6 +58,8 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
     std::ofstream Stream(ConfigFileName);
     Stream << data << std::flush;
 }
@@ -79,7 +81,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
     }
 
     auto data = toml::parse<toml::preserve_comments>(name.data());
-                //{ StrSendErrors, Application::Settings.SendErrors },
+    //{ StrSendErrors, Application::Settings.SendErrors },
 
     data["General"] = toml::table();
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
@@ -92,6 +94,8 @@ void TConfig::CreateConfigFile(std::string_view name) {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
 
     std::ofstream ofs { std::string(name) };
     if (ofs.good()) {
@@ -123,19 +127,13 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.ServerDesc = data["General"][StrDescription.data()].as_string();
         Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
-        }
-        // added later, so behaves differently
-        if (auto val = GeneralTable[StrSendErrors].value<bool>(); val.has_value()) {
-            Application::Settings.SendErrors = val.value();
-        } else {
-            // dont throw, instead write it into the file and use default
+        if (!data["General"][StrSendErrors.data()].is_boolean()
+            || !data["General"][StrSendErrorsMessageEnabled.data()].is_boolean()) {
             WriteSendErrors(std::string(name));
-        }
-        if (auto val = GeneralTable[StrSendErrorsMessageEnabled].value<bool>(); val.has_value()) {
-            Application::Settings.SendErrorsMessageEnabled = val.value();
         } else {
-            // no idea what to do here, ignore...?
-            // this entire toml parser sucks and is replaced in the upcoming lua.
+            Application::Settings.SendErrors = data["General"][StrSendErrors.data()].as_boolean();
+            Application::Settings.SendErrorsMessageEnabled = data["General"][StrSendErrorsMessageEnabled.data()].as_boolean();
+        }
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;

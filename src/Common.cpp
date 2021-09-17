@@ -29,19 +29,19 @@ void Application::GracefullyShutdown() {
         ++ShutdownAttempts;
         // hard shutdown at 2 additional tries
         if (ShutdownAttempts == 2) {
-            info("hard shutdown forced by multiple shutdown requests");
+            beammp_info("hard shutdown forced by multiple shutdown requests");
             std::exit(0);
         }
-        info("already shutting down!");
+        beammp_info("already shutting down!");
         return;
     } else {
         AlreadyShuttingDown = true;
     }
-    trace("waiting for lock release");
+    beammp_trace("waiting for lock release");
     std::unique_lock Lock(mShutdownHandlersMutex);
-    info("please wait while all subsystems are shutting down...");
+    beammp_info("please wait while all subsystems are shutting down...");
     for (size_t i = 0; i < mShutdownHandlers.size(); ++i) {
-        info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
+        beammp_info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
         mShutdownHandlers[i]();
     }
 }
@@ -84,13 +84,13 @@ void Application::CheckForUpdates() {
         auto RemoteVersion = Version(VersionStrToInts(Response));
         if (IsOutdated(MyVersion, RemoteVersion)) {
             std::string RealVersionString = RemoteVersion.AsString();
-            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+            beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
-            info("Server up-to-date!");
+            beammp_info("Server up-to-date!");
         }
     } else {
-        warn("Unable to fetch version from backend.");
-        trace("got " + Response);
+        beammp_warn("Unable to fetch version from backend.");
+        beammp_trace("got " + Response);
         auto Lock = Sentry.CreateExclusiveContext();
         Sentry.SetContext("get-response", { { "response", Response } });
         Sentry.LogError("failed to get server version", _file_basename, _line);

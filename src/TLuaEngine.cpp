@@ -295,7 +295,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     Table.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
     Table.set_function("GetPlayerVehicles", [&](int ID) -> sol::table {
         return Lua_GetPlayerVehicles(ID);
-    }));
+    });
     Table.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
     Table.set_function("GetPlayers", [&]() -> sol::table {
         return Lua_GetPlayers();

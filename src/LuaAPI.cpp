@@ -131,7 +131,7 @@ void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
             auto c = MaybeClient.value().lock();
             if (!c->IsSynced())
                 return;
-            LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, msg);
+            LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, Message);
             Engine->Network().Respond(*c, Packet, true);
         } else {
             beammp_lua_error("SendChatMessage invalid argument [1] invalid ID");

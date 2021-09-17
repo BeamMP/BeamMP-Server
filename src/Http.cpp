@@ -63,11 +63,11 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
 
             req.set(http::field::content_length, std::to_string(body.size()));
             req.body() = body;
-            // info("body is " + body + " (" + req.body() + ")");
-            // info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");
+            // beammp_info("body is " + body + " (" + req.body() + ")");
+            // beammp_info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");
         }
         for (const auto& pair : fields) {
-            // info("setting " + pair.first + " to " + pair.second);
+            // beammp_info("setting " + pair.first + " to " + pair.second);
             req.set(pair.first, pair.second);
         }
 
@@ -119,7 +119,7 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
         stream.shutdown(ec);
         // IGNORING ec
 
-        // info(result.str());
+        // beammp_info(result.str());
         std::string debug_response_str;
         std::getline(result, debug_response_str);
 
