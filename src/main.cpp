@@ -28,7 +28,7 @@ int main(int argc, char** argv) try {
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
     Application::RegisterShutdownHandler([] {
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown");
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
         TLuaEngine::WaitForAll(Futures);
     });
 

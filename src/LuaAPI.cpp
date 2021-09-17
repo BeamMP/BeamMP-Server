@@ -3,6 +3,9 @@
 #include "Common.h"
 #include "TLuaEngine.h"
 
+#define SOL_ALL_SAFETIES_ON 1
+#include <sol/sol.hpp>
+
 static std::string LuaToString(const sol::object Value, size_t Indent = 1) {
     switch (Value.get_type()) {
     case sol::type::userdata: {

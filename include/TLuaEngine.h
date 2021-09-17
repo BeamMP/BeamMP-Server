@@ -60,7 +60,8 @@ public:
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     template <typename... ArgsT>
-    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, ArgsT&&... Args) {
+    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
+        beammp_info("TriggerEvent called from: ");
         std::unique_lock Lock(mEventsMutex);
         if (mEvents.find(EventName) == mEvents.end()) {
             return {};
@@ -69,7 +70,9 @@ public:
         for (const auto& Event : mEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
                 beammp_debug("TriggerEvent: triggering \"" + Function + "\" on \"" + Event.first + "\"");
-                Results.push_back(EnqueueFunctionCall(Event.first, Function, { std::forward<ArgsT>(Args)... }));
+                if (Event.first != IgnoreId) {
+                    Results.push_back(EnqueueFunctionCall(Event.first, Function, { std::forward<ArgsT>(Args)... }));
+                }
             }
         }
         return Results;
@@ -95,8 +98,8 @@ private:
         void operator()() override;
 
     private:
-        sol::table Lua_TriggerGlobalEvent(const std::string& EventName);
-        sol::table Lua_TriggerLocalEvent(const std::string& EventName);
+        sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
+        sol::table Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_GetPlayerIdentifiers(int ID);
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);

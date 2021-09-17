@@ -124,7 +124,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         beammp_debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1));
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1));
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), Packet.substr(Packet.find(':', 3) + 1)); // FIXME: this needs to be adjusted once lua is merged
         if (std::any_of(Futures.begin(), Futures.end(),
@@ -162,7 +162,7 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
             Name = t;
             break;
         case 2:
-            beammp_ignore(LuaAPI::MP::Engine->TriggerEvent(Name, c.GetID(), t));
+            beammp_ignore(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), t));
             break;
         default:
             break;
@@ -213,7 +213,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
             std::string CarJson = Packet.substr(5);
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
-            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", c.GetID(), CarID, Packet.substr(3));
+            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", "", c.GetID(), CarID, Packet.substr(3));
             TLuaEngine::WaitForAll(Futures);
             bool ShouldntSpawn = std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Result) {
@@ -244,7 +244,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleEdited", c.GetID(), VID, Packet.substr(3));
+            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleEdited", "", c.GetID(), VID, Packet.substr(3));
             TLuaEngine::WaitForAll(Futures);
             bool ShouldntAllow = std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Result) {
@@ -282,7 +282,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 c.SetUnicycleID(-1);
             }
             Network.SendToAll(nullptr, Packet, true, true);
-            beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", c.GetID(), VID));
+            beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
             c.DeleteCar(VID);
             beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
         }
@@ -300,7 +300,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             Data = Data.substr(Data.find('{'));
-            beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", c.GetID(), VID, Data));
+            beammp_ignore(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", "", c.GetID(), VID, Data));
             Network.SendToAll(&c, Packet, false, true);
         }
         return;

@@ -42,7 +42,7 @@ void TLuaEngine::operator()() {
     // lua engine main thread
     CollectAndInitPlugins();
     // now call all onInit's
-    auto Futures = TriggerEvent("onInit");
+    auto Futures = TriggerEvent("onInit", "");
     WaitForAll(Futures);
     for (const auto& Future : Futures) {
         if (Future->Error && Future->ErrorMessage != BeamMPFnNotFoundError) {
@@ -83,7 +83,7 @@ void TLuaEngine::CollectAndInitPlugins() {
             beammp_error("\"" + Dir.path().string() + "\" is not a directory, skipping");
         } else {
             beammp_debug("found plugin directory: " + Path.string());
-            TLuaPluginConfig Config { GenerateUniqueStateId() };
+            TLuaPluginConfig Config { Path.string() };
             FindAndParseConfig(Path, Config);
             InitializePlugin(Path, Config);
         }
@@ -148,8 +148,26 @@ std::set<std::string> TLuaEngine::GetEventHandlersForState(const std::string& Ev
     return mEvents[EventName][StateId];
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName) {
-    auto Return = mEngine->TriggerEvent(EventName);
+sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
+    auto Return = mEngine->TriggerEvent(EventName, mStateId, EventArgs);
+    // TODO Synchronous call to the event handlers
+    auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
+    for (const auto& Handler : MyHandlers) {
+        auto Fn = mStateView[Handler];
+        if (Fn.valid()) {
+            auto LuaResult = Fn(EventArgs);
+            auto Result = std::make_shared<TLuaResult>();
+            Result->Ready = true;
+            if (LuaResult.valid()) {
+                Result->Error = false;
+                Result->Result = LuaResult;
+            } else {
+                Result->Error = true;
+                Result->ErrorMessage = "Function result in TriggerGlobalEvent was invalid";
+            }
+            Return.push_back(Result);
+        }
+    }
     beammp_debug("Triggering event \"" + EventName + "\" in \"" + mStateId + "\"");
     sol::state_view StateView(mState);
     sol::table AsyncEventReturn = StateView.create_table();
@@ -180,12 +198,13 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
     return AsyncEventReturn;
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string& EventName) {
+sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
+    // TODO: make asynchronous?
     sol::table Result = mStateView.create_table();
     for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
         auto Fn = mStateView[Handler];
         if (Fn.valid() && Fn.get_type() == sol::type::function) {
-            Result.add(Fn());
+            Result.add(Fn(EventArgs));
         }
     }
     return Result;
@@ -282,11 +301,11 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     Table.set_function("RegisterEvent", [this](const std::string& EventName, const std::string& FunctionName) {
         RegisterEvent(EventName, FunctionName);
     });
-    Table.set_function("TriggerGlobalEvent", [&](const std::string& EventName) -> sol::table {
-        return Lua_TriggerGlobalEvent(EventName);
+    Table.set_function("TriggerGlobalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
+        return Lua_TriggerGlobalEvent(EventName, EventArgs);
     });
-    Table.set_function("TriggerLocalEvent", [&](const std::string& EventName) -> sol::table {
-        return Lua_TriggerLocalEvent(EventName);
+    Table.set_function("TriggerLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
+        return Lua_TriggerLocalEvent(EventName, EventArgs);
     });
     Table.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
     Table.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
