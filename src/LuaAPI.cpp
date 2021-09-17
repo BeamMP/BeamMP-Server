@@ -2,7 +2,7 @@
 #include "Client.h"
 #include "TLuaEngine.h"
 
-static std::string LuaToString(sol::object Value, size_t Indent = 1) {
+static std::string LuaToString(const sol::object Value, size_t Indent = 1) {
     switch (Value.get_type()) {
     case sol::type::userdata: {
         std::stringstream ss;
@@ -80,7 +80,7 @@ std::tuple<int, int, int> LuaAPI::MP::GetServerVersion() {
 void LuaAPI::Print(sol::variadic_args Args) {
     std::string ToPrint = "";
     for (const auto& Arg : Args) {
-        ToPrint += LuaToString(Arg);
+        ToPrint += LuaToString(static_cast<const sol::object>(Arg));
         ToPrint += "\t";
     }
     luaprint(ToPrint);
