@@ -158,7 +158,7 @@ void TNetwork::TCPServerMain() {
 
     CloseSocketProper(client.Socket);
 #ifdef WIN32
-    CloseSocketProper(client);
+    CloseSocketProper(client.Socket);
     WSACleanup();
 #endif // WIN32
 }
