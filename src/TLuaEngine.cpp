@@ -1,11 +1,13 @@
 #include "TLuaEngine.h"
 #include "Client.h"
 #include "CustomAssert.h"
+#include "Http.h"
 #include "LuaAPI.h"
 #include "TLuaPlugin.h"
 
 #include <chrono>
 #include <random>
+#include <tuple>
 
 static std::mt19937_64 MTGen64;
 
@@ -307,8 +309,16 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     Table.set_function("Sleep", &LuaAPI::MP::Sleep);
     Table.set_function("Set", &LuaAPI::MP::Set);
-    //Table.set_function("HttpsGET", &LuaAPI::MP::HttpsGET);
-    //Table.set_function("HttpsPOST", &LuaAPI::MP::HttpsPOST);
+    Table.set_function("HttpsGET", [&](const std::string& Host, int Port, const std::string& Target) -> std::tuple<int, std::string> {
+        unsigned Status;
+        auto Body = Http::GET(Host, Port, Target, &Status);
+        return { Status, Body };
+    });
+    Table.set_function("HttpsPOST", [&](const std::string& Host, int Port, const std::string& Target, const std::string& Body, const std::string& ContentType) -> std::tuple<int, std::string> {
+        unsigned Status;
+        auto ResponseBody = Http::POST(Host, Port, Target, {}, Body, ContentType, &Status);
+        return { Status, ResponseBody };
+    });
     Table.create_named("Settings",
         "Debug", 0,
         "Private", 1,
