@@ -227,6 +227,28 @@ std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
     }
 }
 
+sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
+    auto MaybeClient = GetClient(mEngine->Server(), ID);
+    if (MaybeClient && !MaybeClient.value().expired()) {
+        auto Client = MaybeClient.value().lock();
+        TClient::TSetOfVehicleData VehicleData;
+        { // Vehicle Data Lock Scope
+            auto LockedData = Client->GetAllCars();
+            VehicleData = *LockedData.VehicleData;
+        } // End Vehicle Data Lock Scope
+        if (VehicleData.empty()) {
+            return sol::nil;
+        }
+        sol::state_view StateView(mState);
+        sol::table Result = StateView.create_table();
+        for (const auto& v : VehicleData) {
+            Result[v.ID()] = v.Data().substr(3);
+        }
+        return Result;
+    } else
+        return sol::nil;
+}
+
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
@@ -271,7 +293,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_GetPlayerName(ID);
     });
     Table.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
-    //Table.set_function("GetPlayerVehicles", &Lua_GetPlayerVehicles);
+    Table.set_function("GetPlayerVehicles", [&](int ID) -> sol::table {
+        return Lua_GetPlayerVehicles(ID);
+    }));
     Table.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
     Table.set_function("GetPlayers", [&]() -> sol::table {
         return Lua_GetPlayers();
@@ -282,7 +306,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_GetPlayerIdentifiers(ID);
     });
     Table.set_function("Sleep", &LuaAPI::MP::Sleep);
-    //Table.set_function("Set", &LuaAPI::MP::Set);
+    Table.set_function("Set", &LuaAPI::MP::Set);
     //Table.set_function("HttpsGET", &LuaAPI::MP::HttpsGET);
     //Table.set_function("HttpsPOST", &LuaAPI::MP::HttpsPOST);
     Table.create_named("Settings",

@@ -100,6 +100,7 @@ private:
         sol::table Lua_GetPlayerIdentifiers(int ID);
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);
+        sol::table Lua_GetPlayerVehicles(int ID);
 
         std::string mName;
         std::atomic_bool& mShutdown;
