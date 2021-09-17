@@ -38,10 +38,10 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
             auto NRead = std::fread(Contents->data(), 1, Contents->size(), File);
             if (NRead == Contents->size()) {
                 beammp_debug("Successfully read \"" + Entry.string() + "\" (" + std::to_string(NRead) + " Bytes)");
-                mFileContents[fs::relative(Entry)] = Contents;
+                mFileContents[fs::relative(Entry).string()] = Contents;
                 // Execute first time
                 auto Result = mEngine.EnqueueScript(mConfig.StateId, Contents);
-                ResultsToCheck.emplace_back(Entry, std::move(Result));
+                ResultsToCheck.emplace_back(Entry.string(), std::move(Result));
             } else {
                 beammp_error("Error while reading script file \"" + Entry.string() + "\". Did the file change while reading?");
             }
