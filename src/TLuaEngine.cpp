@@ -43,7 +43,7 @@ void TLuaEngine::operator()() {
     auto Futures = TriggerEvent("onInit");
     WaitForAll(Futures);
     for (const auto& Future : Futures) {
-        if (Future->Error) {
+        if (Future->Error && Future->ErrorMessage != BeamMPFnNotFoundError) {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }

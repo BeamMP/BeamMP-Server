@@ -114,7 +114,11 @@ void TNetwork::TCPServerMain() {
     TConnection client {};
     SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int optval = 1;
+#ifdef WIN32
+    setsockopt(Listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&optval), sizeof(optval));
+#else
     setsockopt(Listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<void*>(&optval), sizeof(optval));
+#endif
     // TODO: check optval or return value idk
     sockaddr_in addr {};
     addr.sin_addr.s_addr = INADDR_ANY;
