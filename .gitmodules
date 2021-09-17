@@ -1,4 +1,4 @@
-[submodule "commandline"]
+[submodule "include/commandline"]
     path = deps/commandline
     url = https://github.com/lionkor/commandline
 [submodule "asio"]

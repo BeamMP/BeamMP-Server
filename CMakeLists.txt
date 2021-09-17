@@ -89,7 +89,7 @@ add_executable(BeamMP-Server
         include/TSentry.h src/TSentry.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp
-        include/LuaAPI.h src/LuaAPI.cpp)
+        include/LuaAPI.h src/LuaAPI.cpp
         include/SignalHandling.h src/SignalHandling.cpp)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
