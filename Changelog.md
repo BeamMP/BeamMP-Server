@@ -7,6 +7,7 @@
 - ADDED `MP.GetServerVersion() -> string`: Returns major,minor,patch version
 - ADDED `MP.IsPlayerGuest(id) -> boolean`: Whether player with id is a guest
 - ADDED `MP.Settings` table providing aliases for 0,1,2,etc. in MP.Set(id,val)
+- ADDED `MP.PrintRaw` prints messages without `[TIME DATE] [LUA]` etc.
 - ADDED plugin directories to `package.path` and `package.cpath` before `onInit`
 - ADDED ability to add `PluginConfig.toml` to your plugin folder to change some settings
 - ADDED ability to share a lua state with other plugins via `StateId` setting in `PluginConfig.toml`
