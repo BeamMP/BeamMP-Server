@@ -48,18 +48,17 @@ BOOL WINAPI Win32CtrlC_Handler(DWORD CtrlType) {
 
 void SetupSignalHandlers() {
     // signal handlers for unix#include <windows.h>
-#ifdef __unix
-    beammp_trace("registering handlers for SIGINT, SIGTERM, SIGPIPE");
+#if defined(__unix) || defined(__linux)
+    beammp_trace("registering handlers for signals");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
 #ifndef DEBUG
     signal(SIGINT, UnixSignalHandler);
 #endif // DEBUG
-#endif // __unix
-
-    // signal handlers for win32
-#ifdef WIN32
+#elif defined(WIN32)
     beammp_trace("registering handlers for CTRL_*_EVENTs");
     SetConsoleCtrlHandler(Win32CtrlC_Handler, TRUE);
-#endif // WIN32
+#else
+#error "Please implement necessary signals like Ctrl+C handling here"
+#endif
 }
