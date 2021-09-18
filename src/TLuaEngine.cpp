@@ -274,8 +274,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     // StateView.globals()["package"].get()
     StateView.set_function("print", &LuaAPI::Print);
     StateView.set_function("exit", &Application::GracefullyShutdown);
-    auto Table = StateView.create_named_table("MP");
-    Table.set_function("CreateTimer", [&]() -> sol::table {
+
+    auto MPTable = StateView.create_named_table("MP");
+    MPTable.set_function("CreateTimer", [&]() -> sol::table {
         sol::state_view StateView(mState);
         sol::table Result = StateView.create_table();
         Result["__StartTime"] = std::chrono::high_resolution_clock::now();
@@ -289,50 +290,50 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         });
         return Result;
     });
-    Table.set_function("GetOSName", &LuaAPI::MP::GetOSName);
-    Table.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
-    Table.set_function("RegisterEvent", [this](const std::string& EventName, const std::string& FunctionName) {
+    MPTable.set_function("GetOSName", &LuaAPI::MP::GetOSName);
+    MPTable.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
+    MPTable.set_function("RegisterEvent", [this](const std::string& EventName, const std::string& FunctionName) {
         RegisterEvent(EventName, FunctionName);
     });
-    Table.set_function("TriggerGlobalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
+    MPTable.set_function("TriggerGlobalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
         return Lua_TriggerGlobalEvent(EventName, EventArgs);
     });
-    Table.set_function("TriggerLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
+    MPTable.set_function("TriggerLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
         return Lua_TriggerLocalEvent(EventName, EventArgs);
     });
-    Table.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
-    Table.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
-    Table.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
-    Table.set_function("GetPlayerName", [&](int ID) -> std::string {
+    MPTable.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
+    MPTable.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
+    MPTable.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
+    MPTable.set_function("GetPlayerName", [&](int ID) -> std::string {
         return Lua_GetPlayerName(ID);
     });
-    Table.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
-    Table.set_function("GetPlayerVehicles", [&](int ID) -> sol::table {
+    MPTable.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
+    MPTable.set_function("GetPlayerVehicles", [&](int ID) -> sol::table {
         return Lua_GetPlayerVehicles(ID);
     });
-    Table.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
-    Table.set_function("GetPlayers", [&]() -> sol::table {
+    MPTable.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
+    MPTable.set_function("GetPlayers", [&]() -> sol::table {
         return Lua_GetPlayers();
     });
-    Table.set_function("IsPlayerGuest", &LuaAPI::MP::IsPlayerGuest);
-    Table.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
-    Table.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
+    MPTable.set_function("IsPlayerGuest", &LuaAPI::MP::IsPlayerGuest);
+    MPTable.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
+    MPTable.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
     });
-    Table.set_function("Sleep", &LuaAPI::MP::Sleep);
-    Table.set_function("PrintRaw", &LuaAPI::MP::PrintRaw);
-    Table.set_function("Set", &LuaAPI::MP::Set);
-    Table.set_function("HttpsGET", [&](const std::string& Host, int Port, const std::string& Target) -> std::tuple<int, std::string> {
+    MPTable.set_function("Sleep", &LuaAPI::MP::Sleep);
+    MPTable.set_function("PrintRaw", &LuaAPI::MP::PrintRaw);
+    MPTable.set_function("Set", &LuaAPI::MP::Set);
+    MPTable.set_function("HttpsGET", [&](const std::string& Host, int Port, const std::string& Target) -> std::tuple<int, std::string> {
         unsigned Status;
         auto Body = Http::GET(Host, Port, Target, &Status);
         return { Status, Body };
     });
-    Table.set_function("HttpsPOST", [&](const std::string& Host, int Port, const std::string& Target, const std::string& Body, const std::string& ContentType) -> std::tuple<int, std::string> {
+    MPTable.set_function("HttpsPOST", [&](const std::string& Host, int Port, const std::string& Target, const std::string& Body, const std::string& ContentType) -> std::tuple<int, std::string> {
         unsigned Status;
         auto ResponseBody = Http::POST(Host, Port, Target, {}, Body, ContentType, &Status);
         return { Status, ResponseBody };
     });
-    Table.create_named("Settings",
+    MPTable.create_named("Settings",
         "Debug", 0,
         "Private", 1,
         "MaxCars", 2,
@@ -340,6 +341,17 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         "Map", 4,
         "Name", 5,
         "Description", 6);
+
+    auto FSTable = StateView.create_named_table("FS");
+    FSTable.set_function("CreateDirectory", [&](const std::string& Path) -> std::pair<bool, std::string> {
+        std::error_code errc;
+        std::pair<bool, std::string> Result;
+        Result.first = fs::create_directories(Path, errc);
+        if (!Result.first) {
+            Result.second = errc.message();
+        }
+        return Result;
+    });
     Start();
 }
 
