@@ -234,3 +234,12 @@ bool LuaAPI::MP::IsPlayerGuest(int ID) {
         return false;
     }
 }
+
+void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
+    std::string ToPrint = "";
+    for (const auto& Arg : Args) {
+        ToPrint += LuaToString(static_cast<const sol::object>(Arg));
+        ToPrint += "\t";
+    }
+    Application::Console().WriteRaw(ToPrint);
+}

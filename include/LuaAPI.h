@@ -19,5 +19,6 @@ namespace MP {
     bool IsPlayerGuest(int ID);
     bool IsPlayerConnected(int ID);
     void Sleep(size_t Ms);
+    void PrintRaw(sol::variadic_args);
 }
 }

@@ -9,13 +9,6 @@
 #include <random>
 #include <tuple>
 
-static std::mt19937_64 MTGen64;
-
-static TLuaStateId GenerateUniqueStateId() {
-    auto Time = std::chrono::high_resolution_clock::now().time_since_epoch();
-    return std::to_string(MTGen64()) + std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(Time).count());
-}
-
 TLuaEngine* LuaAPI::MP::Engine;
 
 TLuaEngine::TLuaEngine() {
@@ -327,6 +320,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_GetPlayerIdentifiers(ID);
     });
     Table.set_function("Sleep", &LuaAPI::MP::Sleep);
+    Table.set_function("PrintRaw", &LuaAPI::MP::PrintRaw);
     Table.set_function("Set", &LuaAPI::MP::Set);
     Table.set_function("HttpsGET", [&](const std::string& Host, int Port, const std::string& Target) -> std::tuple<int, std::string> {
         unsigned Status;
