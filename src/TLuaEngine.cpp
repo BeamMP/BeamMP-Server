@@ -205,7 +205,8 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
             if (FnRet.valid()) {
                 Result.add(FnRet);
             } else {
-                beammp_lua_error(sol::error(FnRet).what());
+                sol::error Err = FnRet;
+                beammp_lua_error(Err.what());
             }
         }
     }
