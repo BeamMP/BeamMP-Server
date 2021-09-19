@@ -44,8 +44,18 @@ void TLuaEngine::operator()() {
     }
     // this thread handles timers
     while (!mShutdown) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        beammp_debug("Lua uses " + std::to_string(CalculateMemoryUsage()) + " B of memory");
     }
+}
+
+size_t TLuaEngine::CalculateMemoryUsage() {
+    size_t Usage = 0;
+    std::unique_lock Lock(mLuaStatesMutex);
+    for (auto& State : mLuaStates) {
+        Usage += State.second->State().memory_used();
+    }
+    return Usage;
 }
 
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
@@ -269,8 +279,13 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     , mStateId(StateId)
     , mState(luaL_newstate())
     , mEngine(&Engine) {
+    if (!mState) {
+        beammp_error("failed to create lua state for \"" + StateId + "\"");
+        return;
+    }
     luaL_openlibs(mState);
     sol::state_view StateView(mState);
+    lua_atpanic(mState, LuaAPI::PanicHandler);
     // StateView.globals()["package"].get()
     StateView.set_function("print", &LuaAPI::Print);
     StateView.set_function("exit", &Application::GracefullyShutdown);
@@ -317,6 +332,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     MPTable.set_function("IsPlayerGuest", &LuaAPI::MP::IsPlayerGuest);
     MPTable.set_function("DropPlayer", &LuaAPI::MP::DropPlayer);
+    MPTable.set_function("GetStateMemoryUsage", [&]() -> size_t {
+        return mStateView.memory_used();
+    });
     MPTable.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
     });

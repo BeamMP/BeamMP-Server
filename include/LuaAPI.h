@@ -4,6 +4,8 @@
 #include <tuple>
 
 namespace LuaAPI {
+int PanicHandler(lua_State* State);
+
 void Print(sol::variadic_args);
 namespace MP {
     extern TLuaEngine* Engine;

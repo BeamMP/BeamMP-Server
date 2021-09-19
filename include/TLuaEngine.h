@@ -98,6 +98,7 @@ private:
     void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
     void FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config);
+    size_t CalculateMemoryUsage();
 
     class StateThreadData : IThreaded {
     public:
@@ -109,6 +110,7 @@ private:
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
+        sol::state_view State() { return sol::state_view(mState); }
 
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);

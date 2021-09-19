@@ -246,3 +246,8 @@ void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
     }
     Application::Console().WriteRaw(ToPrint);
 }
+
+int LuaAPI::PanicHandler(lua_State* State) {
+    beammp_lua_error("PANIC: " + sol::stack::get<std::string>(State, 1));
+    return 0;
+}
