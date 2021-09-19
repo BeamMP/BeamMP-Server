@@ -44,8 +44,7 @@ void TLuaEngine::operator()() {
     }
     // this thread handles timers
     while (!mShutdown) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        beammp_debug("Lua uses " + std::to_string(CalculateMemoryUsage()) + " B of memory");
+        std::this_thread::sleep_for(std::chrono::mi));
     }
 }
 
@@ -68,13 +67,11 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
 
 std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script) {
     std::unique_lock Lock(mLuaStatesMutex);
-    beammp_debug("enqueuing script into \"" + StateID + "\"");
     return mLuaStates.at(StateID)->EnqueueScript(Script);
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args) {
     std::unique_lock Lock(mLuaStatesMutex);
-    beammp_debug("calling \"" + FunctionName + "\" in \"" + StateID + "\"");
     return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args);
 }
 
@@ -85,7 +82,6 @@ void TLuaEngine::CollectAndInitPlugins() {
         if (!Dir.is_directory()) {
             beammp_error("\"" + Dir.path().string() + "\" is not a directory, skipping");
         } else {
-            beammp_debug("found plugin directory: " + Path.string());
             TLuaPluginConfig Config { Path.string() };
             FindAndParseConfig(Path, Config);
             InitializePlugin(Path, Config);
@@ -106,7 +102,6 @@ void TLuaEngine::InitializePlugin(const fs::path& Folder, const TLuaPluginConfig
 void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config) {
     auto ConfigFile = Folder / TLuaPluginConfig::FileName;
     if (fs::exists(ConfigFile) && fs::is_regular_file(ConfigFile)) {
-        beammp_debug("\"" + ConfigFile.string() + "\" found");
         try {
             auto Data = toml::parse(ConfigFile);
             if (Data.contains("LuaStateID")) {
@@ -171,7 +166,6 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
             Return.push_back(Result);
         }
     }
-    beammp_debug("Triggering event \"" + EventName + "\" in \"" + mStateId + "\"");
     sol::state_view StateView(mState);
     sol::table AsyncEventReturn = StateView.create_table();
     AsyncEventReturn["ReturnValueImpl"] = Return;
@@ -207,7 +201,12 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
     for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
         auto Fn = mStateView[Handler];
         if (Fn.valid() && Fn.get_type() == sol::type::function) {
-            Result.add(Fn(EventArgs));
+            auto FnRet = Fn(EventArgs);
+            if (FnRet.valid()) {
+                Result.add(FnRet);
+            } else {
+                beammp_lua_error(sol::error(FnRet).what());
+            }
         }
     }
     return Result;
@@ -335,6 +334,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     MPTable.set_function("GetStateMemoryUsage", [&]() -> size_t {
         return mStateView.memory_used();
     });
+    MPTable.set_function("GetLuaMemoryUsage", [&]() -> size_t {
+        return mEngine->CalculateMemoryUsage();
+    });
     MPTable.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
     });
@@ -375,7 +377,6 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLuaChunk& Script) {
-    beammp_debug("enqueuing script into \"" + mStateId + "\"");
     std::unique_lock Lock(mStateExecuteQueueMutex);
     auto Result = std::make_shared<TLuaResult>();
     mStateExecuteQueue.push({ Script, Result });
@@ -383,7 +384,6 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLu
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args) {
-    beammp_debug("calling \"" + FunctionName + "\" in \"" + mName + "\"");
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
     Result->Function = FunctionName;
@@ -431,8 +431,6 @@ void TLuaEngine::StateThreadData::operator()() {
                         StateView.globals()["package"] = PackageTable;
                     }
                 }
-
-                beammp_debug("Running script");
                 sol::state_view StateView(mState);
                 auto Res = StateView.safe_script(*S.first.Content, sol::script_pass_on_error, S.first.FileName);
                 S.second->Ready = true;
@@ -456,10 +454,8 @@ void TLuaEngine::StateThreadData::operator()() {
                 auto& Result = std::get<1>(FnNameResultPair);
                 auto Args = std::get<2>(FnNameResultPair);
                 Result->StateId = mStateId;
-                beammp_debug("Running function \"" + std::get<0>(FnNameResultPair) + "\"");
                 sol::state_view StateView(mState);
                 auto Fn = StateView[StateId];
-                beammp_debug("Done running function \"" + StateId + "\"");
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {

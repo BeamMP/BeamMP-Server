@@ -15,6 +15,8 @@
 - ADDED ability to share a lua state with other plugins via `StateId` setting in `PluginConfig.toml`
 - ADDED `MP.HttpsGET(host,port,target) -> status,body`: Does a synchronous HTTPS GET request
 - ADDED `MP.HttpsPOST(host,port,target,body,content_type) -> status,body`: Does a synchronous HTTPS POST request
+- ADDED `MP.GetStateMemoryUsage() -> number`: Current memory usage of the current state in bytes
+- ADDED `MP.GetLuaMemoryUsage() -> number`: Current memory usage of all states combined, in bytes
 
 # v2.3.3
 

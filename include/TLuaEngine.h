@@ -82,7 +82,6 @@ public:
         std::vector<std::shared_ptr<TLuaResult>> Results;
         for (const auto& Event : mEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
-                beammp_debug("TriggerEvent: triggering \"" + Function + "\" on \"" + Event.first + "\"");
                 if (Event.first != IgnoreId) {
                     Results.push_back(EnqueueFunctionCall(Event.first, Function, { TLuaArgTypes { std::forward<ArgsT>(Args) }... }));
                 }
