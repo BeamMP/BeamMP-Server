@@ -251,3 +251,63 @@ int LuaAPI::PanicHandler(lua_State* State) {
     beammp_lua_error("PANIC: " + sol::stack::get<std::string>(State, 1));
     return 0;
 }
+
+template <typename FnT, typename... ArgsT>
+static std::pair<bool, std::string> FSWrapper(FnT Fn, ArgsT&&... Args) {
+    std::error_code errc;
+    std::pair<bool, std::string> Result;
+    Fn(std::forward<ArgsT>(Args)..., errc);
+    Result.first = errc == std::error_code {};
+    if (!Result.first) {
+        Result.second = errc.message();
+    }
+    return Result;
+}
+
+std::pair<bool, std::string> LuaAPI::FS::CreateDirectory(const std::string& Path) {
+    std::error_code errc;
+    std::pair<bool, std::string> Result;
+    fs::create_directories(fs::relative(Path), errc);
+    Result.first = errc == std::error_code {};
+    if (!Result.first) {
+        Result.second = errc.message();
+    }
+    return Result;
+}
+
+std::pair<bool, std::string> LuaAPI::FS::Remove(const std::string& Path) {
+    std::error_code errc;
+    std::pair<bool, std::string> Result;
+    fs::remove(fs::relative(Path), errc);
+    Result.first = errc == std::error_code {};
+    if (!Result.first) {
+        Result.second = errc.message();
+    }
+    return Result;
+}
+
+std::pair<bool, std::string> LuaAPI::FS::Rename(const std::string& Path, const std::string& NewPath) {
+    std::error_code errc;
+    std::pair<bool, std::string> Result;
+    fs::rename(fs::relative(Path), fs::relative(NewPath), errc);
+    Result.first = errc == std::error_code {};
+    if (!Result.first) {
+        Result.second = errc.message();
+    }
+    return Result;
+}
+
+std::pair<bool, std::string> LuaAPI::FS::Copy(const std::string& Path, const std::string& NewPath) {
+    std::error_code errc;
+    std::pair<bool, std::string> Result;
+    fs::copy(fs::relative(Path), fs::relative(NewPath), fs::copy_options::recursive, errc);
+    Result.first = errc == std::error_code {};
+    if (!Result.first) {
+        Result.second = errc.message();
+    }
+    return Result;
+}
+
+bool LuaAPI::FS::Exists(const std::string& Path) {
+    return fs::exists(fs::relative(Path));
+}

@@ -14,7 +14,6 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
     std::vector<fs::path> Entries;
     for (const auto& Entry : fs::directory_iterator(mFolder)) {
         if (Entry.is_regular_file() && Entry.path().extension() == ".lua") {
-            beammp_debug("Found script \"" + Entry.path().string() + "\" in \"" + mFolder.string() + "\"");
             Entries.push_back(Entry);
         }
     }
@@ -37,7 +36,6 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
             Contents->resize(Size);
             auto NRead = std::fread(Contents->data(), 1, Contents->size(), File);
             if (NRead == Contents->size()) {
-                beammp_debug("Successfully read \"" + Entry.string() + "\" (" + std::to_string(NRead) + " Bytes)");
                 mFileContents[fs::relative(Entry).string()] = Contents;
                 // Execute first time
                 auto Result = mEngine.EnqueueScript(mConfig.StateId, TLuaChunk(Contents, Entry.string(), MainFolder.string()));

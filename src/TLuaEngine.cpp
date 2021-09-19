@@ -44,7 +44,7 @@ void TLuaEngine::operator()() {
     }
     // this thread handles timers
     while (!mShutdown) {
-        std::this_thread::sleep_for(std::chrono::mi));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
@@ -363,16 +363,11 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         "Description", 6);
 
     auto FSTable = StateView.create_named_table("FS");
-    FSTable.set_function("CreateDirectory", [&](const std::string& Path) -> std::pair<bool, std::string> {
-        std::error_code errc;
-        std::pair<bool, std::string> Result;
-        fs::create_directories(Path, errc);
-        Result.first = errc == std::error_code {};
-        if (!Result.first) {
-            Result.second = errc.message();
-        }
-        return Result;
-    });
+    FSTable.set_function("CreateDirectory", &LuaAPI::FS::CreateDirectory);
+    FSTable.set_function("Exists", &LuaAPI::FS::Exists);
+    FSTable.set_function("Remove", &LuaAPI::FS::Remove);
+    FSTable.set_function("Rename", &LuaAPI::FS::Rename);
+    FSTable.set_function("Copy", &LuaAPI::FS::Copy);
     Start();
 }
 
