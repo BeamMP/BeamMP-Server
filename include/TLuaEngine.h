@@ -72,7 +72,6 @@ public:
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     template <typename... ArgsT>
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
-        beammp_info("TriggerEvent called from: ");
         std::unique_lock Lock(mEventsMutex);
         if (mEvents.find(EventName) == mEvents.end()) {
             return {};

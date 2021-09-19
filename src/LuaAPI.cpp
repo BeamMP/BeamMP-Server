@@ -30,8 +30,11 @@ static std::string LuaToString(const sol::object Value, size_t Indent = 1) {
     }
     case sol::type::string:
         return Value.as<std::string>();
-    case sol::type::number:
-        return std::to_string(Value.as<float>());
+    case sol::type::number: {
+        std::stringstream ss;
+        ss << Value.as<float>();
+        return ss.str();
+    }
     case sol::type::nil:
     case sol::type::none:
         return "<nil>";
