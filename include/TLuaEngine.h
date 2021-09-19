@@ -19,6 +19,11 @@
 
 using TLuaStateId = std::string;
 namespace fs = std::filesystem;
+using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool>;
+static constexpr size_t TLuaArgTypes_String = 0;
+static constexpr size_t TLuaArgTypes_Int = 1;
+static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
+static constexpr size_t TLuaArgTypes_Bool = 3;
 
 class TLuaPlugin;
 
@@ -62,7 +67,7 @@ public:
 
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::initializer_list<std::any>& Args);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     template <typename... ArgsT>
@@ -77,7 +82,7 @@ public:
             for (const auto& Function : Event.second) {
                 beammp_debug("TriggerEvent: triggering \"" + Function + "\" on \"" + Event.first + "\"");
                 if (Event.first != IgnoreId) {
-                    Results.push_back(EnqueueFunctionCall(Event.first, Function, { std::forward<ArgsT>(Args)... }));
+                    Results.push_back(EnqueueFunctionCall(Event.first, Function, { TLuaArgTypes { std::forward<ArgsT>(Args) }... }));
                 }
             }
         }
@@ -98,7 +103,7 @@ private:
         StateThreadData(const StateThreadData&) = delete;
         ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::initializer_list<std::any>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
@@ -118,7 +123,7 @@ private:
         std::thread mThread;
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
-        std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::initializer_list<std::any>>> mStateFunctionQueue;
+        std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> mStateFunctionQueue;
         std::recursive_mutex mStateFunctionQueueMutex;
         TLuaEngine* mEngine;
         sol::state_view mStateView { mState };

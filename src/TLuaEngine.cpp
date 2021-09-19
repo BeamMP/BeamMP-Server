@@ -62,7 +62,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const
     return mLuaStates.at(StateID)->EnqueueScript(Script);
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::initializer_list<std::any>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args) {
     std::unique_lock Lock(mLuaStatesMutex);
     beammp_debug("calling \"" + FunctionName + "\" in \"" + StateID + "\"");
     return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args);
@@ -346,7 +346,8 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     FSTable.set_function("CreateDirectory", [&](const std::string& Path) -> std::pair<bool, std::string> {
         std::error_code errc;
         std::pair<bool, std::string> Result;
-        Result.first = fs::create_directories(Path, errc);
+        fs::create_directories(Path, errc);
+        Result.first = errc == std::error_code {};
         if (!Result.first) {
             Result.second = errc.message();
         }
@@ -363,7 +364,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLu
     return Result;
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::initializer_list<std::any>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args) {
     beammp_debug("calling \"" + FunctionName + "\" in \"" + mName + "\"");
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
@@ -430,19 +431,42 @@ void TLuaEngine::StateThreadData::operator()() {
         { // StateFunctionQueue Scope
             std::unique_lock Lock(mStateFunctionQueueMutex);
             if (!mStateFunctionQueue.empty()) {
-                auto FnNameResultPair = mStateFunctionQueue.front();
+                auto FnNameResultPair = std::move(mStateFunctionQueue.front());
                 mStateFunctionQueue.pop();
                 Lock.unlock();
                 auto& StateId = std::get<0>(FnNameResultPair);
                 auto& Result = std::get<1>(FnNameResultPair);
-                auto& Args = std::get<1>(FnNameResultPair);
+                auto Args = std::get<2>(FnNameResultPair);
                 Result->StateId = mStateId;
                 beammp_debug("Running function \"" + std::get<0>(FnNameResultPair) + "\"");
                 sol::state_view StateView(mState);
                 auto Fn = StateView[StateId];
                 beammp_debug("Done running function \"" + StateId + "\"");
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
-                    auto Res = Fn(Args);
+                    std::vector<sol::object> LuaArgs;
+                    for (const auto& Arg : Args) {
+                        if (Arg.valueless_by_exception()) {
+                            continue;
+                        }
+                        switch (Arg.index()) {
+                        case TLuaArgTypes_String:
+                            LuaArgs.push_back(sol::make_object(StateView, std::get<std::string>(Arg)));
+                            break;
+                        case TLuaArgTypes_Int:
+                            LuaArgs.push_back(sol::make_object(StateView, std::get<int>(Arg)));
+                            break;
+                        case TLuaArgTypes_VariadicArgs:
+                            LuaArgs.push_back(sol::make_object(StateView, std::get<sol::variadic_args>(Arg)));
+                            break;
+                        case TLuaArgTypes_Bool:
+                            LuaArgs.push_back(sol::make_object(StateView, std::get<bool>(Arg)));
+                            break;
+                        default:
+                            beammp_error("Unknown argument type, passed as nil");
+                            break;
+                        }
+                    }
+                    auto Res = Fn(sol::as_args(LuaArgs));
                     if (Res.valid()) {
                         Result->Error = false;
                         Result->Result = std::move(Res);
