@@ -40,7 +40,7 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
                 beammp_debug("Successfully read \"" + Entry.string() + "\" (" + std::to_string(NRead) + " Bytes)");
                 mFileContents[fs::relative(Entry).string()] = Contents;
                 // Execute first time
-                auto Result = mEngine.EnqueueScript(mConfig.StateId, TLuaChunk { Contents, Entry, MainFolder });
+                auto Result = mEngine.EnqueueScript(mConfig.StateId, TLuaChunk(Contents, Entry, MainFolder));
                 ResultsToCheck.emplace_back(Entry.string(), std::move(Result));
             } else {
                 beammp_error("Error while reading script file \"" + Entry.string() + "\". Did the file change while reading?");

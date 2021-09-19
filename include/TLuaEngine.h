@@ -45,6 +45,9 @@ struct TLuaPluginConfig {
 };
 
 struct TLuaChunk {
+    TLuaChunk(std::shared_ptr<std::string> Content,
+        std::string FileName,
+        std::string PluginPath);
     std::shared_ptr<std::string> Content;
     std::string FileName;
     std::string PluginPath;

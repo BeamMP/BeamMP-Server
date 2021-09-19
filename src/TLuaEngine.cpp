@@ -497,3 +497,9 @@ void TLuaResult::WaitUntilReady() {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
+
+TLuaChunk::TLuaChunk(std::shared_ptr<std::string> Content, std::string FileName, std::string PluginPath)
+    : Content(Content)
+    , FileName(FileName)
+    , PluginPath(PluginPath) {
+}
