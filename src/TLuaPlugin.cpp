@@ -30,11 +30,11 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
     for (const auto& Entry : Entries) {
         // read in entire file
         try {
-            std::ifstream FileStream(Entry.string());
+            std::ifstream FileStream(Entry.string(), std::ios::in | std::ios::binary);
             auto Size = std::filesystem::file_size(Entry);
             auto Contents = std::make_shared<std::string>();
             Contents->resize(Size);
-            FileStream.rdbuf()->sgetn(Contents->data(), Contents->size());
+            FileStream.read(Contents->data(), Contents->size());
             mFileContents[fs::relative(Entry).string()] = Contents;
             // Execute first time
             auto Result = mEngine.EnqueueScript(mConfig.StateId, TLuaChunk(Contents, Entry.string(), MainFolder.string()));
