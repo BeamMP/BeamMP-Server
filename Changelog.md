@@ -22,6 +22,7 @@
 - ADDED `MP.GetStateMemoryUsage() -> number`: Current memory usage of the current state in bytes
 - ADDED `MP.GetLuaMemoryUsage() -> number`: Current memory usage of all states combined, in bytes
 - ADDED `MP.CreateEventTimer(event,interval_ms)`: Replacement for `CreateThread` - calls the event in the given interval
+- ADDED `MP.CancelEventTimer(event)`: Cancels all event timers for that event
 
 # v2.3.3
 

@@ -91,9 +91,10 @@ public:
     }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS);
+    void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
-
+    
 private:
     void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
@@ -136,7 +137,7 @@ private:
     };
 
     struct TimedEvent {
-        const std::chrono::high_resolution_clock::duration Duration {};
+        std::chrono::high_resolution_clock::duration Duration {};
         std::chrono::high_resolution_clock::time_point LastCompletion {};
         std::string EventName;
         TLuaStateId StateId;
