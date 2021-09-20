@@ -53,6 +53,19 @@ struct TLuaChunk {
     std::string PluginPath;
 };
 
+class TPluginMonitor : IThreaded {
+public:
+    TPluginMonitor(const fs::path& Path, TLuaEngine& Engine, std::atomic_bool& Shutdown);
+
+    void operator()();
+
+private:
+    TLuaEngine& mEngine;
+    fs::path mPath;
+    std::atomic_bool& mShutdown;
+    std::unordered_map<std::string, fs::file_time_type> mFileTimes;
+};
+
 class TLuaEngine : IThreaded {
 public:
     TLuaEngine();
@@ -92,9 +105,11 @@ public:
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS);
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
+    sol::state_view GetStateForPlugin(const fs::path& PluginPath);
+    TLuaStateId GetStateIDForPlugin(const fs::path& PluginPath);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
-    
+
 private:
     void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
@@ -147,6 +162,7 @@ private:
 
     TNetwork* mNetwork;
     TServer* mServer;
+    TPluginMonitor mPluginMonitor;
     std::atomic_bool mShutdown { false };
     fs::path mResourceServerPath;
     std::vector<TLuaPlugin*> mLuaPlugins;

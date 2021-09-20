@@ -311,3 +311,11 @@ std::pair<bool, std::string> LuaAPI::FS::Copy(const std::string& Path, const std
 bool LuaAPI::FS::Exists(const std::string& Path) {
     return fs::exists(fs::relative(Path));
 }
+
+std::string LuaAPI::FS::GetFilename(const std::string& Path) {
+    return fs::path(Path).filename().string();
+}
+
+std::string LuaAPI::FS::GetExtension(const std::string& Path) {
+    return fs::path(Path).extension().string();
+}

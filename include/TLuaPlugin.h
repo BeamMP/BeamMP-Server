@@ -8,6 +8,7 @@ public:
     ~TLuaPlugin() noexcept = default;
 
     const TLuaPluginConfig& GetConfig() const { return mConfig; }
+    fs::path GetFolder() const { return mFolder; }
 
 private:
     TLuaPluginConfig mConfig;

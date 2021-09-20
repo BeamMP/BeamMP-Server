@@ -13,7 +13,8 @@
 
 TLuaEngine* LuaAPI::MP::Engine;
 
-TLuaEngine::TLuaEngine() {
+TLuaEngine::TLuaEngine()
+    : mPluginMonitor(fs::path(Application::Settings.Resource) / "Server", *this, mShutdown) {
     LuaAPI::MP::Engine = this;
     if (!fs::exists(Application::Settings.Resource)) {
         fs::create_directory(Application::Settings.Resource);
@@ -109,6 +110,28 @@ size_t TLuaEngine::CalculateMemoryUsage() {
         Usage += State.second->State().memory_used();
     }
     return Usage;
+}
+
+sol::state_view TLuaEngine::GetStateForPlugin(const fs::path& PluginPath) {
+    for (const auto& Plugin : mLuaPlugins) {
+        if (fs::equivalent(Plugin->GetFolder(), PluginPath)) {
+            std::unique_lock Lock(mLuaStatesMutex);
+            return mLuaStates.at(Plugin->GetConfig().StateId)->State();
+        }
+    }
+    beammp_assert_not_reachable();
+    return mLuaStates.begin()->second->State();
+}
+
+TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
+    for (const auto& Plugin : mLuaPlugins) {
+        if (fs::equivalent(Plugin->GetFolder(), PluginPath)) {
+            std::unique_lock Lock(mLuaStatesMutex);
+            return Plugin->GetConfig().StateId;
+        }
+    }
+    beammp_assert_not_reachable();
+    return "";
 }
 
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
@@ -432,6 +455,8 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     FSTable.set_function("Remove", &LuaAPI::FS::Remove);
     FSTable.set_function("Rename", &LuaAPI::FS::Rename);
     FSTable.set_function("Copy", &LuaAPI::FS::Copy);
+    FSTable.set_function("GetFilename", &LuaAPI::FS::GetFilename);
+    FSTable.set_function("GetExtension", &LuaAPI::FS::GetExtension);
     Start();
 }
 
@@ -611,4 +636,60 @@ bool TLuaEngine::TimedEvent::Expired() {
 
 void TLuaEngine::TimedEvent::Reset() {
     LastCompletion = std::chrono::high_resolution_clock::now();
+}
+
+TPluginMonitor::TPluginMonitor(const fs::path& Path, TLuaEngine& Engine, std::atomic_bool& Shutdown)
+    : mEngine(Engine)
+    , mPath(Path)
+    , mShutdown(Shutdown) {
+    for (const auto& Entry : fs::recursive_directory_iterator(mPath)) {
+        // TODO: trigger an event when a subfolder file changes
+        if (Entry.is_regular_file()) {
+            mFileTimes[Entry.path().string()] = fs::last_write_time(Entry.path());
+        }
+    }
+    Start();
+}
+
+void TPluginMonitor::operator()() {
+    RegisterThread("PluginMonitor");
+    beammp_info("PluginMonitor started");
+    while (!mShutdown) {
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        for (const auto& Pair : mFileTimes) {
+            auto CurrentTime = fs::last_write_time(Pair.first);
+            if (CurrentTime != Pair.second) {
+                mFileTimes[Pair.first] = CurrentTime;
+                if (fs::path(Pair.first)) {
+                    beammp_info("File \"" + Pair.first + "\" changed, reloading");
+                    // is in root folder, so reload
+                    std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
+                    auto Size = std::filesystem::file_size(Pair.first);
+                    auto Contents = std::make_shared<std::string>();
+                    Contents->resize(Size);
+                    FileStream.read(Contents->data(), Contents->size());
+                    TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
+                    auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
+                    auto Res = mEngine.EnqueueScript(StateID, Chunk);
+                    while (!Res->Ready) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    }
+                    if (Res->Error) {
+                        beammp_lua_error(Res->ErrorMessage);
+                    }
+                } else {
+                    beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");
+                    /*
+                    // is in subfolder, dont reload, just trigger an event
+                    auto Results = mEngine.TriggerEvent("onFileChanged", "", Pair.first);
+                    mEngine.WaitForAll(Results);
+                    for (const auto& Result : Results)  {
+                        if (Result->Error) {
+                            beammp_lua_error(Result->ErrorMessage);
+                        }
+                    }*/
+                }
+            }
+        }
+    }
 }
