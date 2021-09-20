@@ -3,7 +3,11 @@
 #include "Client.h"
 #include "Http.h"
 //#include "SocketIO.h"
+#include <rapidjson/document.h>
+#include <rapidjson/rapidjson.h>
 #include <sstream>
+
+namespace json = rapidjson;
 
 void THeartbeatThread::operator()() {
     RegisterThread("Heartbeat");
@@ -41,13 +45,68 @@ void THeartbeatThread::operator()() {
                 { { "response-body", T },
                     { "request-body", Body } });
             Sentry.SetTransaction(transaction);
-            trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
             Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
         };
 
         auto Target = "/heartbeat";
         int ResponseCode = -1;
-        T = Http::POST(Application::GetBackendHostname(), Target, {}, Body, false, &ResponseCode);
+        const std::vector<std::string> Urls = {
+            Application::GetBackendHostname(),
+            Application::GetBackup1Hostname(),
+            Application::GetBackup2Hostname(),
+        };
+
+        json::Document Doc;
+        bool Ok = false;
+        for (const auto& Url : Urls) {
+            T = Http::POST(Url, Target, {}, Body, false, &ResponseCode);
+            Doc.Parse(T.data(), T.size());
+            if (Doc.HasParseError() || !Doc.IsObject()) {
+                error("Backend response failed to parse as valid json");
+                debug("Response was: `" + T + "`");
+                Sentry.SetContext("JSON Response", { { "reponse", T } });
+                SentryReportError(Url + Target, ResponseCode);
+            } else if (ResponseCode != 200) {
+                SentryReportError(Url + Target, ResponseCode);
+            } else {
+                // all ok
+                Ok = true;
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        std::string Status {};
+        std::string Code {};
+        std::string Message {};
+        const auto StatusKey = "status";
+        const auto CodeKey = "code";
+        const auto MessageKey = "message";
+        if (!Ok) {
+            isAuth = false;
+        } else {
+            if (Doc.HasMember(StatusKey) && Doc[StatusKey].IsString()) {
+                Status = Doc[StatusKey].GetString();
+            } else {
+                Sentry.SetContext("JSON Response", { { StatusKey, "invalid string / missing" } });
+                Ok = false;
+            }
+            if (Doc.HasMember(CodeKey) && Doc[CodeKey].IsString()) {
+                Code = Doc[CodeKey].GetString();
+            } else {
+                Sentry.SetContext("JSON Response", { { CodeKey, "invalid string / missing" } });
+                Ok = false;
+            }
+            if (Doc.HasMember(MessageKey) && Doc[MessageKey].IsString()) {
+                Message = Doc[MessageKey].GetString();
+            } else {
+                Sentry.SetContext("JSON Response", { { MessageKey, "invalid string / missing" } });
+                Ok = false;
+            }
+            if (!Ok) {
+                error("Missing/invalid json members in backend response");
+                Sentry.LogError("Missing/invalid json members in backend response", __FILE__, std::to_string(__LINE__));
+            }
+        }
 
         if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
             trace("got " + T + " from backend");
@@ -55,12 +114,10 @@ void THeartbeatThread::operator()() {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false, &ResponseCode);
             if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                T = Http::POST(Application::GetBackup2Hostname(), Target, {}, Body, false, &ResponseCode);
+
                 if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
                     warn("Backend system refused server! Server will not show in the public server list.");
-                    isAuth = false;
+
                     SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
                 }
             }
