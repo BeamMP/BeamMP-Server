@@ -660,7 +660,7 @@ void TPluginMonitor::operator()() {
             auto CurrentTime = fs::last_write_time(Pair.first);
             if (CurrentTime != Pair.second) {
                 mFileTimes[Pair.first] = CurrentTime;
-                if (fs::path(Pair.first)) {
+                if (fs::equivalent(fs::path(Pair.first), mPath / "Server")) {
                     beammp_info("File \"" + Pair.first + "\" changed, reloading");
                     // is in root folder, so reload
                     std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
