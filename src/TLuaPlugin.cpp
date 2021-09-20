@@ -28,28 +28,19 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
     });
     std::vector<std::pair<fs::path, std::shared_ptr<TLuaResult>>> ResultsToCheck;
     for (const auto& Entry : Entries) {
-// read in entire file
-#if defined(WIN32)
-        std::FILE* File = _wfopen(reinterpret_cast<const wchar_t*>(Entry.c_str()), "r");
-#else
-        std::FILE* File = std::fopen(reinterpret_cast<const char*>(Entry.c_str()), "r");
-#endif
-        if (File) {
+        // read in entire file
+        try {
+            std::ifstream FileStream(Entry.string());
             auto Size = std::filesystem::file_size(Entry);
             auto Contents = std::make_shared<std::string>();
             Contents->resize(Size);
-            auto NRead = std::fread(Contents->data(), 1, Contents->size(), File);
-            if (NRead == Contents->size()) {
-                mFileContents[fs::relative(Entry).string()] = Contents;
-                // Execute first time
-                auto Result = mEngine.EnqueueScript(mConfig.StateId, TLuaChunk(Contents, Entry.string(), MainFolder.string()));
-                ResultsToCheck.emplace_back(Entry.string(), std::move(Result));
-            } else {
-                beammp_error("Error while reading script file \"" + Entry.string() + "\". Did the file change while reading?");
-            }
-            std::fclose(File);
-        } else {
-            beammp_error("Could not read script file \"" + Entry.string() + "\": " + std::strerror(errno));
+            FileStream.rdbuf()->sgetn(Contents->data(), Contents->size());
+            mFileContents[fs::relative(Entry).string()] = Contents;
+            // Execute first time
+            auto Result = mEngine.EnqueueScript(mConfig.StateId, TLuaChunk(Contents, Entry.string(), MainFolder.string()));
+            ResultsToCheck.emplace_back(Entry.string(), std::move(Result));
+        } catch (const std::exception& e) {
+            beammp_error("Error loading file \"" + Entry.string() + "\": " + e.what());
         }
     }
     for (auto& Result : ResultsToCheck) {
