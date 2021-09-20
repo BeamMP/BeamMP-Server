@@ -30,7 +30,7 @@ TLuaPlugin::TLuaPlugin(TLuaEngine& Engine, const TLuaPluginConfig& Config, const
     for (const auto& Entry : Entries) {
 // read in entire file
 #if defined(WIN32)
-        std::FILE* File = _wfopen(reinterpret_cast<const char*>(Entry.c_str()), "r");
+        std::FILE* File = _wfopen(reinterpret_cast<const wchar_t*>(Entry.c_str()), "r");
 #else
         std::FILE* File = std::fopen(reinterpret_cast<const char*>(Entry.c_str()), "r");
 #endif
