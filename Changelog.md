@@ -21,6 +21,7 @@
 - ADDED `MP.HttpsPOST(host,port,target,body,content_type) -> status,body`: Does a synchronous HTTPS POST request
 - ADDED `MP.GetStateMemoryUsage() -> number`: Current memory usage of the current state in bytes
 - ADDED `MP.GetLuaMemoryUsage() -> number`: Current memory usage of all states combined, in bytes
+- ADDED `MP.CreateTimedEvent(event,interval_ms)`: Replacement for `CreateThread` - calls the event in the given interval
 
 # v2.3.3
 

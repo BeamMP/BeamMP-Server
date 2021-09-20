@@ -75,12 +75,12 @@ public:
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     template <typename... ArgsT>
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
-        std::unique_lock Lock(mEventsMutex);
-        if (mEvents.find(EventName) == mEvents.end()) {
+        std::unique_lock Lock(mLuaEventsMutex);
+        if (mLuaEvents.find(EventName) == mLuaEvents.end()) {
             return {};
         }
         std::vector<std::shared_ptr<TLuaResult>> Results;
-        for (const auto& Event : mEvents.at(EventName)) {
+        for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
                 if (Event.first != IgnoreId) {
                     Results.push_back(EnqueueFunctionCall(Event.first, Function, { TLuaArgTypes { std::forward<ArgsT>(Args) }... }));
@@ -90,6 +90,7 @@ public:
         return Results;
     }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
+    void CreateTimedEvent(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
@@ -134,6 +135,15 @@ private:
         std::recursive_mutex mPathsMutex;
     };
 
+    struct TimedEvent {
+        const std::chrono::high_resolution_clock::duration Duration {};
+        std::chrono::high_resolution_clock::time_point LastCompletion {  };
+        std::string EventName;
+        TLuaStateId StateId;
+        bool Expired();
+        void Reset();
+    };
+
     TNetwork* mNetwork;
     TServer* mServer;
     std::atomic_bool mShutdown { false };
@@ -141,8 +151,10 @@ private:
     std::vector<TLuaPlugin*> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
     std::recursive_mutex mLuaStatesMutex;
-    std::unordered_map<std::string /* event name */, std::unordered_map<TLuaStateId, std::set<std::string>>> mEvents;
-    std::recursive_mutex mEventsMutex;
+    std::unordered_map<std::string /* event name */, std::unordered_map<TLuaStateId, std::set<std::string>>> mLuaEvents;
+    std::recursive_mutex mLuaEventsMutex;
+    std::vector<TimedEvent> mTimedEvents;
+    std::recursive_mutex mTimedEventsMutex;
 };
 
 //std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

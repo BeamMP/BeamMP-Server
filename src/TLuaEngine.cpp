@@ -42,9 +42,23 @@ void TLuaEngine::operator()() {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }
-    // this thread handles timers
+    // event loop
     while (!mShutdown) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        auto Before = std::chrono::high_resolution_clock::now();
+        std::unique_lock Lock(mTimedEventsMutex);
+        for (auto& Timer : mTimedEvents) {
+            if (Timer.Expired()) {
+                Timer.Reset();
+                std::unique_lock Lock2(mLuaStatesMutex);
+                beammp_ignore(mLuaStates[Timer.StateId]->EnqueueFunctionCall("TriggerLocalEvent", { Timer.EventName }));
+            }
+        }
+        // sleep for the remaining time to get to 1ms (our atom duration)
+        if (std::chrono::high_resolution_clock::duration Diff;
+            (Diff = Before - std::chrono::high_resolution_clock::now())
+            < std::chrono::milliseconds(1)) {
+            std::this_thread::sleep_for(Diff);
+        }
     }
 }
 
@@ -138,12 +152,12 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
 }
 
 void TLuaEngine::RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName) {
-    std::unique_lock Lock(mEventsMutex);
-    mEvents[EventName][StateId].insert(FunctionName);
+    std::unique_lock Lock(mLuaEventsMutex);
+    mLuaEvents[EventName][StateId].insert(FunctionName);
 }
 
 std::set<std::string> TLuaEngine::GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId) {
-    return mEvents[EventName][StateId];
+    return mLuaEvents[EventName][StateId];
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
@@ -343,6 +357,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     MPTable.set_function("Sleep", &LuaAPI::MP::Sleep);
     MPTable.set_function("PrintRaw", &LuaAPI::MP::PrintRaw);
+    MPTable.set_function("CreateTimedEvent", [&](const std::string& EventName, size_t IntervalMS) {
+        mEngine->CreateTimedEvent(EventName, mStateId, IntervalMS);
+    });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
     MPTable.set_function("HttpsGET", [&](const std::string& Host, int Port, const std::string& Target) -> std::tuple<int, std::string> {
         unsigned Status;
@@ -497,6 +514,17 @@ void TLuaEngine::StateThreadData::operator()() {
     }
 }
 
+void TLuaEngine::CreateTimedEvent(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS) {
+    std::unique_lock Lock(mTimedEventsMutex);
+    TimedEvent Event {
+        std::chrono::high_resolution_clock::duration { std::chrono::milliseconds(IntervalMS) },
+        std::chrono::high_resolution_clock::now(),
+        EventName,
+        StateId
+    };
+    mTimedEvents.push_back(std::move(Event));
+}
+
 void TLuaEngine::StateThreadData::AddPath(const fs::path& Path) {
     std::unique_lock Lock(mPathsMutex);
     mPaths.push(Path);
@@ -512,4 +540,13 @@ TLuaChunk::TLuaChunk(std::shared_ptr<std::string> Content, std::string FileName,
     : Content(Content)
     , FileName(FileName)
     , PluginPath(PluginPath) {
+}
+
+bool TLuaEngine::TimedEvent::Expired() {
+    auto Waited = (std::chrono::high_resolution_clock::now() - LastCompletion);
+    return Waited < Duration;
+}
+
+void TLuaEngine::TimedEvent::Reset() {
+    LastCompletion = std::chrono::high_resolution_clock::now();
 }
