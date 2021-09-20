@@ -321,5 +321,30 @@ std::string LuaAPI::FS::GetExtension(const std::string& Path) {
 }
 
 std::string LuaAPI::FS::GetParentFolder(const std::string& Path) {
-    return fs::relative(Path).parent_path().string();
+    return fs::path(Path).parent_path().string();
+}
+
+bool LuaAPI::FS::IsDirectory(const std::string& Path) {
+    return fs::is_directory(Path);
+}
+
+bool LuaAPI::FS::IsFile(const std::string& Path) {
+    return fs::is_regular_file(Path);
+}
+
+std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
+    fs::path Path;
+    for (size_t i = 0; i < Args.size(); ++i) {
+        auto Obj = Args[i];
+        if (!Obj.is<std::string>()) {
+            beammp_lua_error("FS.Concat called with non-string argument");
+            return "";
+        }
+        Path += Obj.as<std::string>();
+        if (i < Args.size() - 1 && !Path.empty()) {
+            Path += fs::path::preferred_separator;
+        }
+    }
+    auto Result = Path.lexically_normal().string();
+    return Result;
 }

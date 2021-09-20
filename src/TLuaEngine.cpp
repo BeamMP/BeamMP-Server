@@ -458,6 +458,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     FSTable.set_function("GetFilename", &LuaAPI::FS::GetFilename);
     FSTable.set_function("GetExtension", &LuaAPI::FS::GetExtension);
     FSTable.set_function("GetParentFolder", &LuaAPI::FS::GetParentFolder);
+    FSTable.set_function("IsDirectory", &LuaAPI::FS::IsDirectory);
+    FSTable.set_function("IsFile", &LuaAPI::FS::IsFile);
+    FSTable.set_function("ConcatPaths", &LuaAPI::FS::ConcatPaths);
     Start();
 }
 

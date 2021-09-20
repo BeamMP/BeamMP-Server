@@ -32,5 +32,8 @@ namespace FS {
     std::string GetExtension(const std::string& Path);
     std::string GetParentFolder(const std::string& Path);
     bool Exists(const std::string& Path);
+    bool IsDirectory(const std::string& Path);
+    bool IsFile(const std::string& Path);
+    std::string ConcatPaths(sol::variadic_args Args);
 }
 }
