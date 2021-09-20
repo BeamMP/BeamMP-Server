@@ -93,7 +93,7 @@ void TLuaEngine::operator()() {
             < std::chrono::milliseconds(10)) {
             std::this_thread::sleep_for(Diff);
         } else {
-            beammp_debug("Event loop cannot keep up!");
+            beammp_trace("Event loop cannot keep up!");
         }
         Before = std::chrono::high_resolution_clock::now();
     }
