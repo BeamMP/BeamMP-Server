@@ -30,6 +30,7 @@ namespace FS {
     std::pair<bool, std::string> Copy(const std::string& Path, const std::string& NewPath);
     std::string GetFilename(const std::string& Path);
     std::string GetExtension(const std::string& Path);
+    std::string GetParentFolder(const std::string& Path);
     bool Exists(const std::string& Path);
 }
 }

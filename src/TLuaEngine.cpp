@@ -457,6 +457,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     FSTable.set_function("Copy", &LuaAPI::FS::Copy);
     FSTable.set_function("GetFilename", &LuaAPI::FS::GetFilename);
     FSTable.set_function("GetExtension", &LuaAPI::FS::GetExtension);
+    FSTable.set_function("GetParentFolder", &LuaAPI::FS::GetParentFolder);
     Start();
 }
 

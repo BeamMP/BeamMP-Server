@@ -319,3 +319,7 @@ std::string LuaAPI::FS::GetFilename(const std::string& Path) {
 std::string LuaAPI::FS::GetExtension(const std::string& Path) {
     return fs::path(Path).extension().string();
 }
+
+std::string LuaAPI::FS::GetParentFolder(const std::string& Path) {
+    return fs::relative(Path).parent_path().string();
+}
