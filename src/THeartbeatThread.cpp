@@ -59,7 +59,7 @@ void THeartbeatThread::operator()() {
         json::Document Doc;
         bool Ok = false;
         for (const auto& Url : Urls) {
-            T = Http::POST(Url, Target, {}, Body, false, &ResponseCode);
+            T = Http::POST(Url, Target, {"heartbeat-api-v", "1.0.0"}, Body, false, &ResponseCode);
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
                 error("Backend response failed to parse as valid json");
