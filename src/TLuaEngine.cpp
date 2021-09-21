@@ -173,7 +173,8 @@ void TLuaEngine::InitializePlugin(const fs::path& Folder, const TLuaPluginConfig
     EnsureStateExists(Config.StateId, Folder.stem().string(), true);
     mLuaStates[Config.StateId]->AddPath(Folder); // add to cpath + path
     Lock.unlock();
-    TLuaPlugin Plugin(*this, Config, Folder);
+    auto Plugin = std::make_shared<TLuaPlugin>(*this, Config, Folder);
+    mLuaPlugins.emplace_back(std::move(Plugin));
 }
 
 void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config) {
@@ -661,10 +662,12 @@ void TPluginMonitor::operator()() {
     while (!mShutdown) {
         std::this_thread::sleep_for(std::chrono::seconds(3));
         for (const auto& Pair : mFileTimes) {
+            beammp_trace("checking for hot-reloadable files");
             auto CurrentTime = fs::last_write_time(Pair.first);
             if (CurrentTime != Pair.second) {
                 mFileTimes[Pair.first] = CurrentTime;
-                if (fs::equivalent(fs::path(Pair.first), mPath / "Server")) {
+                // grandparent of the path should be Resources/Server
+                if (fs::equivalent(fs::path(Pair.first).parent_path().parent_path(), mPath)) {
                     beammp_info("File \"" + Pair.first + "\" changed, reloading");
                     // is in root folder, so reload
                     std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
@@ -675,6 +678,7 @@ void TPluginMonitor::operator()() {
                     TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
                     auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
                     auto Res = mEngine.EnqueueScript(StateID, Chunk);
+                    // TODO: call onInit
                     while (!Res->Ready) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(10));
                     }
@@ -682,6 +686,7 @@ void TPluginMonitor::operator()() {
                         beammp_lua_error(Res->ErrorMessage);
                     }
                 } else {
+                    // TODO: trigger onFileChanged event
                     beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");
                     /*
                     // is in subfolder, dont reload, just trigger an event

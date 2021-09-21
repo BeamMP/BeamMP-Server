@@ -159,7 +159,9 @@ std::string ThreadName(bool DebugModeOverride) {
 }
 
 void RegisterThread(const std::string& str) {
+#if defined(__linux)
     beammp_trace(str + " is " + std::to_string(gettid()));
+#endif // __linux
     auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
 }

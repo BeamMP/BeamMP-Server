@@ -165,7 +165,7 @@ private:
     TPluginMonitor mPluginMonitor;
     std::atomic_bool mShutdown { false };
     fs::path mResourceServerPath;
-    std::vector<TLuaPlugin*> mLuaPlugins;
+    std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
     std::recursive_mutex mLuaStatesMutex;
     std::unordered_map<std::string /* event name */, std::unordered_map<TLuaStateId, std::set<std::string>>> mLuaEvents;
