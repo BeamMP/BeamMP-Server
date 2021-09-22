@@ -16,6 +16,7 @@ if (WIN32)
 endif()
 
 include_directories("include/sentry-native/include")
+
 set(SENTRY_BUILD_SHARED_LIBS OFF)
 if (MSVC)
     set(SENTRY_BUILD_RUNTIMESTATIC ON)
@@ -25,6 +26,7 @@ add_subdirectory("include/sentry-native")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
+    add_subdirectory("include/watchdog")
     #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
     set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
     include_directories(${VcpkgRoot}/include)
@@ -65,8 +67,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 message(STATUS "Looking for Boost")
 find_package(Boost REQUIRED COMPONENTS system thread)
 
-add_executable(BeamMP-Server
-        src/main.cpp
+file(GLOB source_files src/main.cpp
         include/TConsole.h src/TConsole.cpp
         include/TServer.h src/TServer.cpp
         include/Compat.h src/Compat.cpp
@@ -83,6 +84,8 @@ add_executable(BeamMP-Server
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp
         include/SignalHandling.h src/SignalHandling.cpp)
+
+add_executable(BeamMP-Server ${source_files})
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
 
@@ -118,6 +121,11 @@ if (UNIX)
         sioclient_tls 
         sentry)
 elseif (WIN32)
+    set_source_files_properties(${source_files} PROPERTIES COMPILE_FLAGS "/Gh /GH")
+    add_compile_options("$<$<NOT:$<CONFIG:Debug>>:/Zi>")
+    add_link_options("$<$<NOT:$<CONFIG:Debug>>:/DEBUG>")
+    add_link_options("$<$<NOT:$<CONFIG:Debug>>:/OPT:REF>")
+    add_link_options("$<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>")
     include(FindLua)
     message(STATUS "Looking for libz")
     find_package(ZLIB REQUIRED)
@@ -131,5 +139,7 @@ elseif (WIN32)
         ${OPENSSL_LIBRARIES} 
         commandline
         sioclient_tls
-        sentry)
+        sentry
+        watchdog
+        Dbghelp)
 endif ()
