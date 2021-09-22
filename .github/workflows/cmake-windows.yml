@@ -3,7 +3,7 @@ name: CMake Windows Build
 on: [push]
 
 env:
-  BUILD_TYPE: Release
+  BUILD_TYPE: RelWithDebInfo
 
 jobs:
   windows-build:
@@ -31,7 +31,7 @@ jobs:
         working-directory: ${{github.workspace}}/build-windows
         env:
           beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
+        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
       - name: Build
         working-directory: ${{github.workspace}}/build-windows
@@ -42,6 +42,12 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server.exe
-          path: ${{github.workspace}}/build-windows/Release/BeamMP-Server.exe
+          path: ${{github.workspace}}/build-windows/RelWithDebInfo/BeamMP-Server.exe
+          
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server.pdb
+          path: ${{github.workspace}}/build-windows/RelWithDebInfo/BeamMP-Server.pdb
 
 
