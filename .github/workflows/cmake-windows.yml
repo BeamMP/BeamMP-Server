@@ -31,7 +31,7 @@ jobs:
         working-directory: ${{github.workspace}}/build-windows
         env:
           beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
+        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
       - name: Build
         working-directory: ${{github.workspace}}/build-windows
