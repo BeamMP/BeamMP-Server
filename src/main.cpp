@@ -20,7 +20,9 @@
 TSentry Sentry {};
 
 int main(int argc, char** argv) {
-    watchdog_init("watchdog_crash.log", "C:\\Users\\Anonymous\\Documents\\GitHub\\BeamMP-Server\\RelWithDebInfo");
+#ifdef WIN32
+    watchdog_init("watchdog_crash.log", R"(C:\Users\Anonymous\Documents\GitHub\BeamMP-Server\RelWithDebInfo)");
+#endif
     try {
         setlocale(LC_ALL, "C");
 
