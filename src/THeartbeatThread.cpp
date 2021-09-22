@@ -59,7 +59,8 @@ void THeartbeatThread::operator()() {
         json::Document Doc;
         bool Ok = false;
         for (const auto& Url : Urls) {
-            T = Http::POST(Url, Target, {"heartbeat-api-v", "1.0.0"}, Body, false, &ResponseCode);
+            T = Http::POST(Url, Target, { { "api-v", "2" } }, Body, false, &ResponseCode);
+            trace(T);
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
                 error("Backend response failed to parse as valid json");
@@ -80,10 +81,9 @@ void THeartbeatThread::operator()() {
         std::string Message {};
         const auto StatusKey = "status";
         const auto CodeKey = "code";
-        const auto MessageKey = "message";
-        if (!Ok) {
-            isAuth = false;
-        } else {
+        const auto MessageKey = "msg";
+
+        if (Ok) {
             if (Doc.HasMember(StatusKey) && Doc[StatusKey].IsString()) {
                 Status = Doc[StatusKey].GetString();
             } else {
@@ -108,32 +108,20 @@ void THeartbeatThread::operator()() {
             }
         }
 
-        if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-            trace("got " + T + " from backend");
-            SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST(Application::GetBackup1Hostname(), Target, {}, Body, false, &ResponseCode);
-            if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-
-                if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                    warn("Backend system refused server! Server will not show in the public server list.");
-
-                    SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
-                }
-            }
-        }
-
-        if (!isAuth) {
-            if (T == "2000") {
+        if (Ok && !isAuth) {
+            if (Status == "2000") {
                 info(("Authenticated!"));
                 isAuth = true;
-            } else if (T == "200") {
+            } else if (Status == "200") {
                 info(("Resumed authenticated session!"));
                 isAuth = true;
+            } else {
+                if (Message.empty()) {
+                    Message = "Backend didn't provide a reason";
+                }
+                error("Backend REFUSED the auth key. " + Message);
             }
         }
-
-        //SocketIO::Get().SetAuthenticated(isAuth);
     }
 }
 
