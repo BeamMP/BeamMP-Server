@@ -662,7 +662,6 @@ void TPluginMonitor::operator()() {
     while (!mShutdown) {
         std::this_thread::sleep_for(std::chrono::seconds(3));
         for (const auto& Pair : mFileTimes) {
-            beammp_trace("checking for hot-reloadable files");
             auto CurrentTime = fs::last_write_time(Pair.first);
             if (CurrentTime != Pair.second) {
                 mFileTimes[Pair.first] = CurrentTime;
