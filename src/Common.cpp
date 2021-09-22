@@ -84,6 +84,8 @@ void Application::CheckForUpdates() {
             warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
             info("Server up-to-date!");
+            char* crasher = nullptr;
+            crasher[4555] = 'c';
         }
     } else {
         warn("Unable to fetch version from backend.");
