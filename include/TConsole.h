@@ -1,7 +1,7 @@
 #pragma once
 
-#include "commandline.h"
 #include "Cryptography.h"
+#include "commandline.h"
 #include <atomic>
 #include <fstream>
 
@@ -14,6 +14,7 @@ public:
     void Write(const std::string& str);
     void WriteRaw(const std::string& str);
     void InitializeLuaConsole(TLuaEngine& Engine);
+    void BackupOldLog();
 
 private:
     Commandline mCommandline;

@@ -19,3 +19,6 @@
 [submodule "deps/sol2"]
 	path = deps/sol2
 	url = https://github.com/ThePhD/sol2
+[submodule "deps/libzip"]
+	path = deps/libzip
+	url = https://github.com/nih-at/libzip

@@ -30,6 +30,13 @@ endif()
 set(SENTRY_BACKEND breakpad)
 add_subdirectory("deps/sentry-native")
 
+set(BUILD_SHARED_LIBS OFF)
+find_package(libzip)
+if (NOT LIBZIP_FOUND)
+add_subdirectory("deps/libzip")
+find_package(libzip REQUIRED)
+endif()
+
 message(STATUS "Setting compiler flags")
 if (WIN32)
 
@@ -63,8 +70,6 @@ message(STATUS "Adding local source dependencies")
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 add_subdirectory(deps)
 
-
-
 set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -93,7 +98,7 @@ add_executable(BeamMP-Server
         include/SignalHandling.h src/SignalHandling.cpp)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
-include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(BeamMP-Server PUBLIC ${libzip_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_include_directories(BeamMP-Server PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
@@ -113,7 +118,7 @@ message(STATUS "Looking for SSL")
 
 find_package(OpenSSL REQUIRED)
 
-target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES} libzip::zip)
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)

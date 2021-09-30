@@ -6,6 +6,7 @@
 
 #include <ctime>
 #include <sstream>
+#include <zip.h>
 
 std::string GetDate() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -41,10 +42,50 @@ std::string GetDate() {
     return date.str();
 }
 
+void TConsole::BackupOldLog() {
+    fs::path Path = "Server.log";
+    if (fs::exists(Path)) {
+        int err = 0;
+        zip* z = zip_open("ServerLogs.zip", ZIP_CREATE, &err);
+        if (!z) {
+            std::cerr << GetPlatformAgnosticErrorString() << std::endl;
+            return;
+        }
+        FILE* File = std::fopen(Path.string().c_str(), "r");
+        if (!File) {
+            std::cerr << GetPlatformAgnosticErrorString() << std::endl;
+            return;
+        }
+        std::vector<uint8_t> Buffer;
+        Buffer.resize(fs::file_size(Path));
+        std::fread(Buffer.data(), 1, Buffer.size(), File);
+        std::fclose(File);
+
+        auto s = zip_source_buffer(z, Buffer.data(), Buffer.size(), 0);
+
+        auto TimePoint = fs::last_write_time(Path);
+        auto Secs = TimePoint.time_since_epoch().count();
+        auto MyTimeT = std::time(&Secs);
+
+        std::string NewName = Path.stem().string();
+        NewName += "_";
+        std::string Time;
+        Time.resize(32);
+        size_t n = strftime(Time.data(), Time.size(), "%F_%H.%M.%S", localtime(&MyTimeT));
+        Time.resize(n);
+        NewName += Time;
+        NewName += ".log";
+
+        zip_file_add(z, NewName.c_str(), s, 0);
+        zip_close(z);
+    }
+}
+
 TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
     mCommandline.set_prompt("> ");
+    BackupOldLog();
     bool success = mCommandline.enable_write_to_file("Server.log");
     if (!success) {
         beammp_error("unable to open file for writing: \"Server.log\"");
