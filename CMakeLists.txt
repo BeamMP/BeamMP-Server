@@ -34,7 +34,7 @@ set(BUILD_SHARED_LIBS OFF)
 find_package(libzip)
 if (NOT LIBZIP_FOUND)
 add_subdirectory("deps/libzip")
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PROJECT_SOURCE_DIR}/deps/libzip/cmake")
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};${PROJECT_SOURCE_DIR}/deps/libzip/cmake")
 find_package(libzip REQUIRED)
 endif()
 
