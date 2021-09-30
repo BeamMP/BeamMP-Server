@@ -45,11 +45,11 @@ void TLuaEngine::operator()() {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }
-    std::queue<std::shared_ptr<TLuaResult>> ResultsToCheck;
+    /*std::queue<std::shared_ptr<TLuaResult>> ResultsToCheck;
     std::recursive_mutex ResultsToCheckMutex;
     std::thread ResultCheckThread([&] {
         while (!mShutdown) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             std::unique_lock Lock(ResultsToCheckMutex);
             if (!ResultsToCheck.empty()) {
                 auto Res = ResultsToCheck.front();
@@ -62,6 +62,7 @@ void TLuaEngine::operator()() {
                     Waited++;
                     if (Waited > 1000) {
                         beammp_lua_error(Res->Function + " in " + Res->StateId + " took >1s to respond, not printing possible errors");
+                        break;
                     }
                 }
                 if (Res->Error) {
@@ -70,6 +71,7 @@ void TLuaEngine::operator()() {
             }
         }
     });
+    */
     // event loop
     auto Before = std::chrono::high_resolution_clock::now();
     while (!mShutdown) {
@@ -80,15 +82,14 @@ void TLuaEngine::operator()() {
                     Timer.Reset();
                     auto Handlers = GetEventHandlersForState(Timer.EventName, Timer.StateId);
                     std::unique_lock StateLock(mLuaStatesMutex);
-                    std::unique_lock Lock2(ResultsToCheckMutex);
+                    //std::unique_lock Lock2(ResultsToCheckMutex);
                     for (auto& Handler : Handlers) {
                         auto Res = mLuaStates[Timer.StateId]->EnqueueFunctionCall(Handler, {});
-                        ResultsToCheck.push(Res);
+                        //ResultsToCheck.push(Res);
                     }
                 }
             }
         }
-        // sleep for the remaining time to get to 1ms (our atom duration)
         if (std::chrono::high_resolution_clock::duration Diff;
             (Diff = std::chrono::high_resolution_clock::now() - Before)
             < std::chrono::milliseconds(10)) {
@@ -98,9 +99,10 @@ void TLuaEngine::operator()() {
         }
         Before = std::chrono::high_resolution_clock::now();
     }
+    /*
     if (ResultCheckThread.joinable()) {
         ResultCheckThread.join();
-    }
+    }*/
 }
 
 size_t TLuaEngine::CalculateMemoryUsage() {
@@ -478,6 +480,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(con
     Result->Function = FunctionName;
     std::unique_lock Lock(mStateFunctionQueueMutex);
     mStateFunctionQueue.push({ FunctionName, Result, Args });
+    mStateFunctionQueueCond.notify_all();
     return Result;
 }
 
@@ -535,16 +538,20 @@ void TLuaEngine::StateThreadData::operator()() {
         }
         { // StateFunctionQueue Scope
             std::unique_lock Lock(mStateFunctionQueueMutex);
-            if (!mStateFunctionQueue.empty()) {
+            auto NotExpired = mStateFunctionQueueCond.wait_for(Lock,
+                std::chrono::milliseconds(500),
+                [&]() -> bool { return !mStateFunctionQueue.empty(); });
+            if (NotExpired) {
                 auto FnNameResultPair = std::move(mStateFunctionQueue.front());
                 mStateFunctionQueue.pop();
                 Lock.unlock();
-                auto& StateId = std::get<0>(FnNameResultPair);
+                auto& FnName = std::get<0>(FnNameResultPair);
                 auto& Result = std::get<1>(FnNameResultPair);
                 auto Args = std::get<2>(FnNameResultPair);
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
-                auto Fn = StateView[StateId];
+                auto Fn = StateView[FnName];
+                beammp_debug("something found in the queue: call to \"" + FnName + "\" in \"" + mStateId + "\"");
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
@@ -586,7 +593,6 @@ void TLuaEngine::StateThreadData::operator()() {
                 }
             }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 

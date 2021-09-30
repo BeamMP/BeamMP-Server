@@ -3,6 +3,7 @@
 #include "TNetwork.h"
 #include "TServer.h"
 #include <any>
+#include <condition_variable>
 #include <filesystem>
 #include <initializer_list>
 #include <lua.hpp>
@@ -144,7 +145,8 @@ private:
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
         std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> mStateFunctionQueue;
-        std::recursive_mutex mStateFunctionQueueMutex;
+        std::mutex mStateFunctionQueueMutex;
+        std::condition_variable mStateFunctionQueueCond;
         TLuaEngine* mEngine;
         sol::state_view mStateView { mState };
         std::queue<fs::path> mPaths;
