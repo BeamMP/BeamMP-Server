@@ -65,7 +65,9 @@ void TLuaEngine::operator()() {
                     }
                 }
                 if (Res->Error) {
-                    beammp_lua_error(Res->Function + ": " + Res->ErrorMessage);
+                    if (Res->ErrorMessage != BeamMPFnNotFoundError) {
+                        beammp_lua_error(Res->Function + ": " + Res->ErrorMessage);
+                    }
                 }
             }
         }
@@ -140,7 +142,9 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         if (Result->Error) {
-            beammp_lua_error(Result->Function + ": " + Result->ErrorMessage);
+            if (Result->ErrorMessage != BeamMPFnNotFoundError) {
+                beammp_lua_error(Result->Function + ": " + Result->ErrorMessage);
+            }
         }
     }
 }
