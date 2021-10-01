@@ -143,7 +143,7 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
 }
 
 // run this on the error checking thread
-void TLuaEngine::IgnoreIfNotError(const std::vector<std::shared_ptr<TLuaResult>>& Results) {
+void TLuaEngine::ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results) {
     std::unique_lock Lock2(mResultsToCheckMutex);
     for (const auto& Result : Results) {
         mResultsToCheck.push(Result);

@@ -162,7 +162,7 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
             Name = t;
             break;
         case 2:
-            LuaAPI::MP::Engine->IgnoreIfNotError(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), t));
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), t));
             break;
         default:
             break;
@@ -282,7 +282,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 c.SetUnicycleID(-1);
             }
             Network.SendToAll(nullptr, Packet, true, true);
-            LuaAPI::MP::Engine->IgnoreIfNotError(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
             c.DeleteCar(VID);
             beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
         }
@@ -300,7 +300,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             Data = Data.substr(Data.find('{'));
-            LuaAPI::MP::Engine->IgnoreIfNotError(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", "", c.GetID(), VID, Data));
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", "", c.GetID(), VID, Data));
             Network.SendToAll(&c, Packet, false, true);
         }
         return;

@@ -330,6 +330,8 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
         ClientKick(*Client, Reason);
         return;
     }
+    
+    LuaAPI::MP::Engine->ReportErrors(Futures);
 
     if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
         beammp_info("Identification success");
@@ -571,7 +573,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr, bool kicked
     SendToAll(&c, Packet, false, true);
     Packet.clear();
     auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", c.GetID());
-    LuaAPI::MP::Engine->IgnoreIfNotError(Futures);
+    LuaAPI::MP::Engine->ReportErrors(Futures);
     if (c.GetTCPSock())
         CloseSocketProper(c.GetTCPSock());
     if (c.GetDownSock())
@@ -605,13 +607,13 @@ void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     auto LockedClient = c.lock();
     LockedClient->SetID(OpenID());
     beammp_info("Assigned ID " + std::to_string(LockedClient->GetID()) + " to " + LockedClient->GetName());
-    LuaAPI::MP::Engine->IgnoreIfNotError(LuaAPI::MP::Engine->TriggerEvent("onPlayerConnecting", "", LockedClient->GetID()));
+    LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerConnecting", "", LockedClient->GetID()));
     SyncResources(*LockedClient);
     if (LockedClient->GetStatus() < 0)
         return;
     (void)Respond(*LockedClient, "M" + Application::Settings.MapName, true); //Send the Map on connect
     beammp_info(LockedClient->GetName() + " : Connected");
-    LuaAPI::MP::Engine->IgnoreIfNotError(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoining", "", LockedClient->GetID()));
+    LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoining", "", LockedClient->GetID()));
 }
 
 void TNetwork::SyncResources(TClient& c) {
@@ -810,7 +812,7 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     // ignore error
     (void)SendToAll(LockedClient.get(), ("JWelcome ") + LockedClient->GetName() + "!", false, true);
 
-    LuaAPI::MP::Engine->IgnoreIfNotError(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoin", "", LockedClient->GetID()));
+    LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoin", "", LockedClient->GetID()));
     LockedClient->SetIsSyncing(true);
     bool Return = false;
     bool res = true;
