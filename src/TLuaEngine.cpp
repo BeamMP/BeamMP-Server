@@ -564,7 +564,6 @@ void TLuaEngine::StateThreadData::operator()() {
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
                 auto Fn = StateView[FnName];
-                beammp_debug("something found in the queue: call to \"" + FnName + "\" in \"" + mStateId + "\"");
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
