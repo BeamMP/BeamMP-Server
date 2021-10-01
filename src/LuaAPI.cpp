@@ -7,6 +7,9 @@
 #include <sol/sol.hpp>
 
 static std::string LuaToString(const sol::object Value, size_t Indent = 1) {
+    if (Indent > 80) {
+        return "[[possible recursion, refusing to keep printing]]";
+    }
     switch (Value.get_type()) {
     case sol::type::userdata: {
         std::stringstream ss;
