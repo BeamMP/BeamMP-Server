@@ -118,15 +118,11 @@ bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, 
 void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (!MaybeClient || MaybeClient.value().expired()) {
+        beammp_lua_error("Tried to drop client with id " + std::to_string(ID) + ", who doesn't exist");
         return;
     }
     auto c = MaybeClient.value().lock();
-    if (!Engine->Network().Respond(*c, "C:Server:You have been Kicked from the server! Reason: " + MaybeReason.value_or("No reason"), true)) {
-        // Ignore
-    }
-    c->SetStatus(-2);
-    beammp_info("Closing socket due to kick");
-    CloseSocketProper(c->GetTCPSock());
+    LuaAPI::MP::Engine->Network().ClientKick(*c, MaybeReason.value_or("No reason"));
 }
 
 void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {

@@ -458,6 +458,7 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
     if (c.GetDownSock())
         CloseSocketProper(c.GetDownSock());
 }
+
 void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
     while (!c.expired()) {
         auto Client = c.lock();

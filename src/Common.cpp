@@ -142,6 +142,7 @@ std::string Version::AsString() {
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     std::stringstream ss;
+    ss << ThreadName();
     ss << "[CHAT] ";
     if (id != -1) {
         ss << "(" << id << ") <" << name << ">";
@@ -149,6 +150,7 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
         ss << name << "";
     }
     ss << msg;
+    Application::Console().Write(ss.str());
 }
 
 std::string GetPlatformAgnosticErrorString() {

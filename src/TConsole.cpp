@@ -107,7 +107,6 @@ TConsole::TConsole() {
 void TConsole::Write(const std::string& str) {
     auto ToWrite = GetDate() + str;
     mCommandline.write(ToWrite);
-    // TODO write to logfile, too
 }
 
 void TConsole::WriteRaw(const std::string& str) {
