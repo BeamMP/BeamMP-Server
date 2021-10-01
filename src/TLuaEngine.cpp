@@ -45,7 +45,7 @@ void TLuaEngine::operator()() {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }
-    /*std::queue<std::shared_ptr<TLuaResult>> ResultsToCheck;
+    std::queue<std::shared_ptr<TLuaResult>> ResultsToCheck;
     std::recursive_mutex ResultsToCheckMutex;
     std::thread ResultCheckThread([&] {
         while (!mShutdown) {
@@ -71,7 +71,6 @@ void TLuaEngine::operator()() {
             }
         }
     });
-    */
     // event loop
     auto Before = std::chrono::high_resolution_clock::now();
     while (!mShutdown) {
@@ -99,10 +98,10 @@ void TLuaEngine::operator()() {
         }
         Before = std::chrono::high_resolution_clock::now();
     }
-    /*
+    
     if (ResultCheckThread.joinable()) {
         ResultCheckThread.join();
-    }*/
+    }
 }
 
 size_t TLuaEngine::CalculateMemoryUsage() {
