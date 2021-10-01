@@ -65,7 +65,7 @@ void TLuaEngine::operator()() {
                     }
                 }
                 if (Res->Error) {
-                    beammp_lua_error(Res->ErrorMessage);
+                    beammp_lua_error(Res->Function + ": " + Res->ErrorMessage);
                 }
             }
         }
@@ -138,6 +138,9 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
     for (const auto& Result : Results) {
         while (!Result->Ready) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        if (Result->Error) {
+            beammp_lua_error(Result->Function + ": " + Result->ErrorMessage);
         }
     }
 }

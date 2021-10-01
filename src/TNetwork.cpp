@@ -331,8 +331,6 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
         return;
     }
     
-    LuaAPI::MP::Engine->ReportErrors(Futures);
-
     if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
         beammp_info("Identification success");
         mServer.InsertClient(Client);
