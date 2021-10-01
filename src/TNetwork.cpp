@@ -447,7 +447,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
 
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     beammp_info("Client kicked: " + R);
-    if (!TCPSend(c, "E" + R)) {
+    if (!TCPSend(c, "K" + R)) {
         // TODO handle
     }
     c.SetStatus(-2);
