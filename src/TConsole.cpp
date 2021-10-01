@@ -14,7 +14,6 @@ std::string GetDate() {
     auto local_tm = std::localtime(&tt);
     char buf[30];
     std::string date;
-#if defined(DEBUG)
     if (Application::Settings.DebugModeEnabled) {
         std::strftime(buf, sizeof(buf), "[%d/%m/%y %T.", local_tm);
         date += buf;
@@ -26,12 +25,9 @@ std::string GetDate() {
         date += fracstr;
         date += "] ";
     } else {
-#endif
         std::strftime(buf, sizeof(buf), "[%d/%m/%y %T] ", local_tm);
         date += buf;
-#if defined(DEBUG)
     }
-#endif
 
     return date;
 }
