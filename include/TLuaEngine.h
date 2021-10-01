@@ -83,6 +83,7 @@ public:
     void SetServer(TServer* Server) { mServer = Server; }
 
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
+    void IgnoreIfNotError(const std::vector<std::shared_ptr<TLuaResult> >& Results);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
@@ -174,6 +175,8 @@ private:
     std::recursive_mutex mLuaEventsMutex;
     std::vector<TimedEvent> mTimedEvents;
     std::recursive_mutex mTimedEventsMutex;
+    std::queue<std::shared_ptr<TLuaResult>> mResultsToCheck;
+    std::recursive_mutex mResultsToCheckMutex;
 };
 
 //std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

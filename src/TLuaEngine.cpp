@@ -45,15 +45,14 @@ void TLuaEngine::operator()() {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }
-    std::queue<std::shared_ptr<TLuaResult>> ResultsToCheck;
-    std::recursive_mutex ResultsToCheckMutex;
-    std::thread ResultCheckThread([&] {
+
+    auto ResultCheckThread = std::thread([&] {
         while (!mShutdown) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            std::unique_lock Lock(ResultsToCheckMutex);
-            if (!ResultsToCheck.empty()) {
-                auto Res = ResultsToCheck.front();
-                ResultsToCheck.pop();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::unique_lock Lock(mResultsToCheckMutex);
+            if (!mResultsToCheck.empty()) {
+                auto Res = mResultsToCheck.front();
+                mResultsToCheck.pop();
                 Lock.unlock();
 
                 size_t Waited = 0;
@@ -81,10 +80,10 @@ void TLuaEngine::operator()() {
                     Timer.Reset();
                     auto Handlers = GetEventHandlersForState(Timer.EventName, Timer.StateId);
                     std::unique_lock StateLock(mLuaStatesMutex);
-                    //std::unique_lock Lock2(ResultsToCheckMutex);
+                    std::unique_lock Lock2(mResultsToCheckMutex);
                     for (auto& Handler : Handlers) {
                         auto Res = mLuaStates[Timer.StateId]->EnqueueFunctionCall(Handler, {});
-                        //ResultsToCheck.push(Res);
+                        mResultsToCheck.push(Res);
                     }
                 }
             }
@@ -98,7 +97,7 @@ void TLuaEngine::operator()() {
         }
         Before = std::chrono::high_resolution_clock::now();
     }
-    
+
     if (ResultCheckThread.joinable()) {
         ResultCheckThread.join();
     }
@@ -140,6 +139,14 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
         while (!Result->Ready) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
+    }
+}
+
+// run this on the error checking thread
+void TLuaEngine::IgnoreIfNotError(const std::vector<std::shared_ptr<TLuaResult>>& Results) {
+    std::unique_lock Lock2(mResultsToCheckMutex);
+    for (const auto& Result : Results) {
+        mResultsToCheck.push(Result);
     }
 }
 
