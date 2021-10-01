@@ -30,11 +30,8 @@ endif()
 set(SENTRY_BACKEND breakpad)
 add_subdirectory("deps/sentry-native")
 
-find_package(libzip)
-if (NOT LIBZIP_FOUND)
-    set(BUILD_SHARED_LIBS OFF)
-    add_subdirectory("deps/libzip")
-endif()
+set(BUILD_SHARED_LIBS OFF)
+add_subdirectory("deps/libzip")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)

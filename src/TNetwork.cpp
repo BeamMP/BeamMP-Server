@@ -732,7 +732,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
         TCPSock = c.GetDownSock();
     else
         TCPSock = c.GetTCPSock();
-    beammp_info("Split load Socket " + std::to_string(TCPSock));
+    beammp_debug("Split load Socket " + std::to_string(TCPSock));
     while (c.GetStatus() > -1 && Sent < Size) {
         size_t Diff = Size - Sent;
         if (Diff > Split) {
