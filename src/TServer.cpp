@@ -282,6 +282,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 c.SetUnicycleID(-1);
             }
             Network.SendToAll(nullptr, Packet, true, true);
+            // TODO: should this trigger on all vehicle deletions?
             LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
             c.DeleteCar(VID);
             beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
