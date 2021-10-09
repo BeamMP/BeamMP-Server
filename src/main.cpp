@@ -59,8 +59,6 @@ int main(int argc, char** argv) try {
     // oh boy
     *a = -0;
     a[318008]++;
-    // ah yes
-    *((volatile void*)nullptr);
     // bye now
     abort();
 
