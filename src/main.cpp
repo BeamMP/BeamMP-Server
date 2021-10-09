@@ -61,8 +61,6 @@ int main(int argc, char** argv) try {
     a[318008]++;
     // ah yes
     *((volatile void*)nullptr);
-    // you ever just
-    *reinterpret_cast<int*>(main) = 0x69;
     // bye now
     abort();
 
