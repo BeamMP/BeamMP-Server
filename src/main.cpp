@@ -54,6 +54,8 @@ int main(int argc, char** argv) try {
     Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
+    Sentry.LogError("test error", __FILE__, std::to_string(__LINE__));
+
     error("goodbye, crashing now");
     volatile int* a = nullptr;
     // oh boy
