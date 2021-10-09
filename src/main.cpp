@@ -54,6 +54,18 @@ int main(int argc, char** argv) try {
     Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
+    error("goodbye, crashing now");
+    volatile int* a = nullptr;
+    // oh boy
+    *a = -0;
+    a[318008]++;
+    // ah yes
+    *((volatile void*)nullptr);
+    // you ever just
+    *reinterpret_cast<int*>(main) = 0x69;
+    // bye now
+    abort();
+
     // TODO: replace
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
