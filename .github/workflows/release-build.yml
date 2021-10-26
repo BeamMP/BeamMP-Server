@@ -82,7 +82,7 @@ jobs:
             submodules: 'recursive'
       
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
-        uses: lukka/run-vcpkg@main
+        uses: lukka/run-vcpkg@v7
         id: runvcpkg
         with:
             vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp curl'
