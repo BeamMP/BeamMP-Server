@@ -309,6 +309,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         beammp_trace(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         Network.SendToAll(&c, Packet, false, true);
         return;
+    case 'm':
+        Network.SendToAll(&c, Packet, false, true);
+        return;
     default:
         beammp_trace(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
         return;
