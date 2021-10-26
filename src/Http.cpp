@@ -58,8 +58,10 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
 
         req.set(http::field::host, host);
         if (!body.empty()) {
-            req.set(http::field::content_type, ContentType); // "application/json"
-            // "application/x-www-form-urlencoded"
+            if (!ContentType.empty()) {
+                req.set(http::field::content_type, ContentType); // "application/json"
+                // "application/x-www-form-urlencoded"
+            }
 
             req.set(http::field::content_length, std::to_string(body.size()));
             req.body() = body;
@@ -134,7 +136,7 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
 }
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
-    return GenericRequest(http::verb::get, host, port, target, {}, {}, content_type, status);
+    return GenericRequest(http::verb::get, host, port, target, {}, {}, "", status);
 }
 
 std::string Http::POST(const std::string& host, int port, const std::string& target, const std::unordered_map<std::string, std::string>& fields, const std::string& body, const std::string& ContentType, unsigned int* status) {
@@ -143,7 +145,7 @@ std::string Http::POST(const std::string& host, int port, const std::string& tar
 
 // RFC 2616, RFC 7231
 static std::map<size_t, const char*> Map = {
-    { -1, "Invalid Response Code"},
+    { -1, "Invalid Response Code" },
     { 100, "Continue" },
     { 101, "Switching Protocols" },
     { 102, "Processing" },
