@@ -8,6 +8,8 @@ The server is the point throug which all clients communicate. You can write lua 
 
 ## Support + Contact
 
+Feel free to ask any questions via the following channels:
+
 - **IRC**: `#beammp` on [irc.libera.chat](https://web.libera.chat/)
 - **Discord**: [click for invite](https://discord.gg/beammp)
 
