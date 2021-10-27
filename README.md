@@ -6,6 +6,11 @@
 This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** for the game [BeamNG.drive](https://www.beamng.com/).
 The server is the point throug which all clients communicate. You can write lua mods for the server, detailed instructions on the [BeamMP Wiki](https://wiki.beammp.com).
 
+## Support + Contact
+
+- **IRC**: `#beammp` on [irc.libera.chat](https://web.libera.chat/)
+- **Discord**: [click for invite](https://discord.gg/beammp)
+
 ## Minimum Requirements
 
 These values are guesstimated and are subject to change with each release.
