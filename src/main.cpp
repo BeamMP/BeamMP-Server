@@ -11,6 +11,7 @@
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include "TResourceManager.h"
+#include "TScopedTimer.h"
 #include "TServer.h"
 
 #include <iostream>
@@ -49,7 +50,6 @@ int main(int argc, char** argv) try {
     RegisterThread("Main");
 
     beammp_trace("Running in debug mode on a debug build");
-
     Sentry.SetupUser();
     Sentry.PrintWelcome();
     TResourceManager ResourceManager;
@@ -66,6 +66,7 @@ int main(int argc, char** argv) try {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     beammp_info("Shutdown.");
+    return 0;
 } catch (const std::exception& e) {
     beammp_error(e.what());
     Sentry.LogException(e, _file_basename, _line);

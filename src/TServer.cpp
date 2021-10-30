@@ -93,7 +93,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     switch (Code) {
     case 'H': // initial connection
         beammp_trace(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
-        beammp_debug(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
         if (!Network.SyncClient(Client)) {
             // TODO handle
         }
@@ -116,12 +115,10 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         return;
     case 'J':
         beammp_trace(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        beammp_debug(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
     case 'C': {
         beammp_trace(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        beammp_debug(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1));
@@ -140,7 +137,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     }
     case 'E':
         beammp_trace(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        beammp_debug(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         HandleEvent(*LockedClient, Packet);
         return;
     case 'N':
