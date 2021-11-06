@@ -21,7 +21,7 @@ void TPPSMonitor::operator()() {
         // hard spi
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    beammp_info("PPSMonitor starting");
+    beammp_debug("PPSMonitor starting");
     std::vector<std::shared_ptr<TClient>> TimedOutClients;
     while (!mShutdown) {
         std::this_thread::sleep_for(std::chrono::seconds(1));

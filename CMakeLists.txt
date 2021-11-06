@@ -30,9 +30,6 @@ endif()
 set(SENTRY_BACKEND breakpad)
 add_subdirectory("deps/sentry-native")
 
-set(BUILD_SHARED_LIBS OFF)
-add_subdirectory("deps/libzip")
-
 message(STATUS "Setting compiler flags")
 if (WIN32)
 
@@ -95,7 +92,7 @@ add_executable(BeamMP-Server
         include/SignalHandling.h src/SignalHandling.cpp)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
-include_directories(BeamMP-Server PUBLIC ${libzip_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_include_directories(BeamMP-Server PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
@@ -115,7 +112,7 @@ message(STATUS "Looking for SSL")
 
 find_package(OpenSSL REQUIRED)
 
-target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES} libzip::zip)
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)

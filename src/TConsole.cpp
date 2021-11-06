@@ -35,6 +35,14 @@ std::string GetDate() {
 void TConsole::BackupOldLog() {
     fs::path Path = "Server.log";
     if (fs::exists(Path)) {
+        auto OldLog = Path.filename().stem().string() + ".old.log";
+        try {
+            fs::rename(Path, OldLog);
+            beammp_debug("renamed old log file to '" + OldLog + "'");
+        } catch (const std::exception& e) {
+            beammp_warn(e.what());
+        }
+        /*
         int err = 0;
         zip* z = zip_open("ServerLogs.zip", ZIP_CREATE, &err);
         if (!z) {
@@ -68,6 +76,7 @@ void TConsole::BackupOldLog() {
 
         zip_file_add(z, NewName.c_str(), s, 0);
         zip_close(z);
+    */
     }
 }
 
