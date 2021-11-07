@@ -32,9 +32,6 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
                 results = resolver.resolve(protocol, host, std::to_string(port));
                 if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str())) {
                     boost::system::error_code ec { static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category() };
-                    // FIXME: we could throw and crash, if we like
-                    // throw boost::system::system_error { ec };
-                    //debug("POST " + host + target + " failed.");
                     return false;
                 }
                 beast::get_lowest_layer(stream).connect(results);
@@ -43,16 +40,12 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
             }
             return true;
         };
-        //bool ok = try_connect_with_protocol(tcp::v6());
-        //if (!ok) {
-        //debug("IPv6 connect failed, trying IPv4");
         bool ok = try_connect_with_protocol(tcp::v4());
         if (!ok) {
             Application::Console().Write("[ERROR] failed to resolve or connect in POST " + host + target);
             Sentry.AddErrorBreadcrumb("failed to resolve or connect to " + host + target, __FILE__, std::to_string(__LINE__)); // FIXME: this is ugly.
             return "-1";
         }
-        //}
         stream.handshake(ssl::stream_base::client);
         http::request<http::string_body> req { verb, target, 11 /* http 1.1 */ };
 
@@ -65,11 +58,8 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
 
             req.set(http::field::content_length, std::to_string(body.size()));
             req.body() = body;
-            // beammp_info("body is " + body + " (" + req.body() + ")");
-            // beammp_info("content size is " + std::to_string(body.size()) + " (" + boost::lexical_cast<std::string>(body.size()) + ")");
         }
         for (const auto& pair : fields) {
-            // beammp_info("setting " + pair.first + " to " + pair.second);
             req.set(pair.first, pair.second);
         }
 
@@ -81,7 +71,7 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
             std::string ValueString(header.value());
             request_data[KeyString] = ValueString;
         }
-        Sentry.SetContext("https-post-request-data", request_data);
+        Sentry.SetContext("https-request-data", request_data);
 
         std::stringstream oss;
         oss << req;
@@ -108,7 +98,7 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
             std::string ValueString(header.value());
             response_data[KeyString] = ValueString;
         }
-        Sentry.SetContext("https-post-response-data", response_data);
+        Sentry.SetContext("https-response-data", response_data);
 
         if (status) {
             *status = response.base().result_int();
@@ -121,11 +111,9 @@ std::string GenericRequest(http::verb verb, const std::string& host, int port, c
         stream.shutdown(ec);
         // IGNORING ec
 
-        // beammp_info(result.str());
         std::string debug_response_str;
         std::getline(result, debug_response_str);
 
-        //debug("POST " + host + target + ": " + debug_response_str);
         return std::string(response.body());
 
     } catch (const std::exception& e) {
