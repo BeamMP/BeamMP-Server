@@ -6,7 +6,6 @@
 
 #include <ctime>
 #include <sstream>
-#include <zip.h>
 
 std::string GetDate() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
