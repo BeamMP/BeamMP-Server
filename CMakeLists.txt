@@ -13,7 +13,10 @@ include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
 include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
 include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
 include_directories("${PROJECT_SOURCE_DIR}/deps")
+
+add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
 
 if (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
@@ -67,9 +70,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
-message(STATUS "Looking for Boost")
-find_package(Boost REQUIRED COMPONENTS system thread)
-
 add_executable(BeamMP-Server
         src/main.cpp
         include/TConsole.h src/TConsole.cpp
@@ -92,7 +92,7 @@ add_executable(BeamMP-Server
         include/SignalHandling.h src/SignalHandling.cpp)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
-include_directories(BeamMP-Server PUBLIC ${Boost_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(BeamMP-Server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_include_directories(BeamMP-Server PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
@@ -101,7 +101,6 @@ target_include_directories(BeamMP-Server PUBLIC
 message(STATUS "Looking for Lua")
 find_package(Lua REQUIRED)
 target_include_directories(BeamMP-Server PUBLIC 
-    ${Boost_INCLUDE_DIRS} 
     ${LUA_INCLUDE_DIR} 
     ${CURL_INCLUDE_DIRS}
     "include/tomlplusplus" 
@@ -131,7 +130,7 @@ elseif (WIN32)
     find_package(ZLIB REQUIRED)
     message(STATUS "Looking for RapidJSON")
     find_package(RapidJSON CONFIG REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
     target_link_libraries(BeamMP-Server
         ws2_32 
         ZLIB::ZLIB 

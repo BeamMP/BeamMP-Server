@@ -446,16 +446,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         mEngine->CancelEventTimers(EventName, mStateId);
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
-    MPTable.set_function("HttpsGET", [&](const std::string& Host, int Port, const std::string& Target) -> std::tuple<int, std::string> {
-        unsigned Status;
-        auto Body = Http::GET(Host, Port, Target, &Status);
-        return { Status, Body };
-    });
-    MPTable.set_function("HttpsPOST", [&](const std::string& Host, int Port, const std::string& Target, const std::string& Body, const std::string& ContentType) -> std::tuple<int, std::string> {
-        unsigned Status;
-        auto ResponseBody = Http::POST(Host, Port, Target, {}, Body, ContentType, &Status);
-        return { Status, ResponseBody };
-    });
+    auto HttpTable = StateView.create_named_table("Http");
+    //HttpTable.set_function("CreateConnection", &LuaAPI::Http::CreateConnection);
+
     MPTable.create_named("Settings",
         "Debug", 0,
         "Private", 1,

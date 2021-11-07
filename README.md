@@ -51,7 +51,7 @@ Currently only linux and windows are supported (generally). See [Releases](https
 
 Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
-Dependencies for windows can be installed with `vcpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, `boost-beast`, `boost-asio` and `openssl`.
+Dependencies for windows can be installed with `vcpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, and `openssl`.
 
 #### Linux / \*nix
 
@@ -72,19 +72,16 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `rapidjson-dev`
 - `libopenssl-dev` or `libssl-dev`
 
-**If** you're building it from source, you'll need `libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
-If you can't find this version of boost (only 1.6x, for example), you can either update to a newer version of your distro, build boost yourself, or use an unstable rolling release (like Debian `sid` aka `unstable`).
-
 In the end you should end up with a command something like this:
 
 ```sh
-sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev libboost1.71-all-dev
+sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev
 ```
 
 In the end you should end up with a command something like this:
 
 ```sh
-sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev libboost1.71-all-dev
+sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev
 ```
 
 ### How to build

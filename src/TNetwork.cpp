@@ -241,7 +241,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     auto Target = "/pkToUser";
     unsigned int ResponseCode = 0;
     if (!Rc.empty()) {
-        Rc = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, {}, RequestString, "application/json", &ResponseCode);
+        Rc = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, RequestString, "application/json", &ResponseCode);
     }
 
     json::Document AuthResponse;

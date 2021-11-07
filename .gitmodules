@@ -22,3 +22,6 @@
 [submodule "deps/libzip"]
 	path = deps/libzip
 	url = https://github.com/nih-at/libzip
+[submodule "deps/cpp-httplib"]
+	path = deps/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib
