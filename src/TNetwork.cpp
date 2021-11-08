@@ -205,9 +205,9 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
 
 void TNetwork::Authentication(const TConnection& ClientConnection) {
     auto Client = CreateClient(ClientConnection.Socket);
-    char AddrBuf[30];
-    inet_ntoa(reinterpret_cast<const struct sockaddr_in*>(&ClientConnection.SockAddr)->sin_addr);
-    auto str = inet_ntop(AF_INET, static_cast<const void*>(reinterpret_cast<const struct sockaddr_in*>(&ClientConnection.SockAddr)), AddrBuf, sizeof(struct sockaddr_in));
+    char AddrBuf[64];
+    // TODO: IPv6 would need this to be changed
+    auto str = inet_ntop(AF_INET, static_cast<const void*>(reinterpret_cast<const struct sockaddr_in*>(&ClientConnection.SockAddr)), AddrBuf, sizeof(ClientConnection.SockAddr));
     Client->SetIdentifier("ip", str);
 
     std::string Rc;
