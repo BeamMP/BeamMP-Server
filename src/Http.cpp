@@ -11,6 +11,7 @@
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
     httplib::SSLClient client(host, port);
     client.enable_server_certificate_verification(false);
+    client.set_address_family(AF_INET);
     auto res = client.Get(target.c_str());
     if (res) {
         if (status) {
@@ -25,6 +26,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
 std::string Http::POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status) {
     httplib::SSLClient client(host, port);
     client.enable_server_certificate_verification(false);
+    client.set_address_family(AF_INET);
     auto res = client.Post(target.c_str(), body.c_str(), body.size(), ContentType.c_str());
     if (res) {
         if (status) {

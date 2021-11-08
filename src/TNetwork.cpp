@@ -207,7 +207,8 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     auto Client = CreateClient(ClientConnection.Socket);
     char AddrBuf[64];
     // TODO: IPv6 would need this to be changed
-    auto str = inet_ntop(AF_INET, static_cast<const void*>(reinterpret_cast<const struct sockaddr_in*>(&ClientConnection.SockAddr)), AddrBuf, sizeof(ClientConnection.SockAddr));
+    auto str = inet_ntop(AF_INET, reinterpret_cast<const void*>(&ClientConnection.SockAddr), AddrBuf, sizeof(ClientConnection.SockAddr));
+    beammp_trace("This thread is ip " + std::string(str));
     Client->SetIdentifier("ip", str);
 
     std::string Rc;
