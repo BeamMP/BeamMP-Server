@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <condition_variable>
+#include <httplib.h>
 #include <random>
 #include <thread>
 #include <tuple>
@@ -90,12 +91,12 @@ void TLuaEngine::operator()() {
                 }
             }
         }
-        if (std::chrono::high_resolution_clock::duration Diff;
-            (Diff = std::chrono::high_resolution_clock::now() - Before)
+        std::chrono::high_resolution_clock::duration Diff;
+        if ((Diff = std::chrono::high_resolution_clock::now() - Before)
             < std::chrono::milliseconds(10)) {
             std::this_thread::sleep_for(Diff);
         } else {
-            beammp_trace("Event loop cannot keep up!");
+            beammp_trace("Event loop cannot keep up! Running " + std::to_string(Diff.count()) + "s behind");
         }
         Before = std::chrono::high_resolution_clock::now();
     }
@@ -366,6 +367,28 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
         return sol::nil;
 }
 
+sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
+    auto table = mStateView.create_table();
+    constexpr const char* InternalClient = "__InternalClient";
+    table["host"] = host;
+    table["port"] = port;
+    auto client = std::make_shared<httplib::Client>(host, port);
+    table[InternalClient] = client;
+    table.set_function("Get", [&InternalClient](const sol::table& table, const std::string& path, const sol::table& headers) {
+        httplib::Headers GetHeaders;
+        for (const auto& pair : headers) {
+            if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
+                GetHeaders.insert(std::pair(pair.first.as<std::string>(), pair.second.as<std::string>()));
+            } else {
+                beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
+            }
+        }
+        auto client = table[InternalClient].get<std::shared_ptr<httplib::Client>>();
+        client->Get(path.c_str(), GetHeaders);
+    });
+    return table;
+}
+
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
@@ -447,7 +470,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
     auto HttpTable = StateView.create_named_table("Http");
-    //HttpTable.set_function("CreateConnection", &LuaAPI::Http::CreateConnection);
+    HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
+        return Lua_HttpCreateConnection(host, port);
+    });
 
     MPTable.create_named("Settings",
         "Debug", 0,
@@ -658,6 +683,9 @@ TPluginMonitor::TPluginMonitor(const fs::path& Path, TLuaEngine& Engine, std::at
     : mEngine(Engine)
     , mPath(Path)
     , mShutdown(Shutdown) {
+    if (!fs::exists(mPath)) {
+        fs::create_directories(mPath);
+    }
     for (const auto& Entry : fs::recursive_directory_iterator(mPath)) {
         // TODO: trigger an event when a subfolder file changes
         if (Entry.is_regular_file()) {

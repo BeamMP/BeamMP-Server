@@ -21,7 +21,8 @@
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry {};
 
-int main(int argc, char** argv) try {
+int main(int argc, char** argv) //try {
+{
     setlocale(LC_ALL, "C");
 
     SetupSignalHandlers();
@@ -67,7 +68,8 @@ int main(int argc, char** argv) try {
     }
     beammp_info("Shutdown.");
     return 0;
-} catch (const std::exception& e) {
-    beammp_error(e.what());
-    Sentry.LogException(e, _file_basename, _line);
+//} catch (const std::exception& e) {
+//    beammp_error(e.what());
+//    Sentry.LogException(e, _file_basename, _line);
+//}
 }

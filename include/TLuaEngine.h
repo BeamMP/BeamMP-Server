@@ -137,6 +137,7 @@ private:
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
+        sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
 
         std::string mName;
         std::atomic_bool& mShutdown;

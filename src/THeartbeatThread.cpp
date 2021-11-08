@@ -30,13 +30,15 @@ void THeartbeatThread::operator()() {
 
         Last = Body;
         LastNormalUpdateTime = Now;
-        if (!Application::Settings.CustomIP.empty())
+        if (!Application::Settings.CustomIP.empty()) {
             Body += "&ip=" + Application::Settings.CustomIP;
+        }
 
         Body += "&pps=" + Application::PPS();
 
-        auto SentryReportError = [&](const std::string& transaction, int status) {
+        beammp_trace("heartbeat body: '" + Body + "'");
 
+        auto SentryReportError = [&](const std::string& transaction, int status) {
             auto Lock = Sentry.CreateExclusiveContext();
             Sentry.SetContext("heartbeat",
                 { { "response-body", T },
