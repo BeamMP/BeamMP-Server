@@ -99,7 +99,7 @@ target_include_directories(BeamMP-Server PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
 message(STATUS "Looking for Lua")
-find_package(Lua REQUIRED)
+find_package(Lua REQUIRED VERSION 5.3)
 target_include_directories(BeamMP-Server PUBLIC 
     ${LUA_INCLUDE_DIR} 
     ${CURL_INCLUDE_DIRS}
