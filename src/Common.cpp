@@ -96,10 +96,6 @@ void Application::CheckForUpdates() {
     }
 }
 
-
-
-
-
 // thread name stuff
 
 static std::map<std::thread::id, std::string> threadNameMap {};
