@@ -114,7 +114,13 @@ std::string ThreadName(bool DebugModeOverride) {
 }
 
 void RegisterThread(const std::string& str) {
-    beammp_debug("Thread \"" + str + "\" is TID " + std::to_string(gettid()));
+    std::string ThreadId;
+    #ifdef WIN32
+        ThreadId = std::to_string(GetCurrentThreadId());
+    #else
+        ThreadId = std::to_string(gettid());
+    #endif
+    beammp_debug("Thread \"" + str + "\" is TID " + ThreadId);
     auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
 }
