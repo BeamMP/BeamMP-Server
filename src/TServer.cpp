@@ -121,7 +121,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         beammp_trace(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1));
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 2));
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), Packet.substr(Packet.find(':', 3) + 1)); // FIXME: this needs to be adjusted once lua is merged
         if (std::any_of(Futures.begin(), Futures.end(),

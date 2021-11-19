@@ -21,8 +21,7 @@
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry {};
 
-int main(int argc, char** argv) //try {
-{
+int main(int argc, char** argv) try {
     setlocale(LC_ALL, "C");
 
     SetupSignalHandlers();
@@ -62,14 +61,12 @@ int main(int argc, char** argv) //try {
     Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
-    // TODO: replace
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     beammp_info("Shutdown.");
     return 0;
-//} catch (const std::exception& e) {
-//    beammp_error(e.what());
-//    Sentry.LogException(e, _file_basename, _line);
-//}
+} catch (const std::exception& e) {
+    beammp_error(e.what());
+    Sentry.LogException(e, _file_basename, _line);
 }
