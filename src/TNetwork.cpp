@@ -42,13 +42,13 @@ void TNetwork::UDPServerMain() {
     WSADATA data;
     if (WSAStartup(514, &data)) {
         beammp_error(("Can't start Winsock!"));
-        //return;
+        // return;
     }
 #endif // WIN32
     mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
     // Create a server hint structure for the server
     sockaddr_in serverAddr {};
-    serverAddr.sin_addr.s_addr = INADDR_ANY; //Any Local
+    serverAddr.sin_addr.s_addr = INADDR_ANY; // Any Local
     serverAddr.sin_family = AF_INET; // Address format is IPv4
     serverAddr.sin_port = htons(uint16_t(Application::Settings.Port)); // Convert from little to big endian
 
@@ -57,7 +57,7 @@ void TNetwork::UDPServerMain() {
         beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1);
-        //return;
+        // return;
     }
 
     beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
@@ -65,7 +65,7 @@ void TNetwork::UDPServerMain() {
     while (!mShutdown) {
         try {
             sockaddr_in client {};
-            std::string Data = UDPRcvFromClient(client); //Receives any data from Socket
+            std::string Data = UDPRcvFromClient(client); // Receives any data from Socket
             size_t Pos = Data.find(':');
             if (Data.empty() || Pos > 2)
                 continue;
@@ -163,7 +163,7 @@ void TNetwork::TCPServerMain() {
 #endif // WIN32
 }
 
-#undef GetObject //Fixes Windows
+#undef GetObject // Fixes Windows
 
 #include "Json.h"
 namespace json = rapidjson;
@@ -331,7 +331,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
         ClientKick(*Client, Reason);
         return;
     }
-    
+
     if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
         beammp_info("Identification success");
         mServer.InsertClient(Client);
@@ -368,16 +368,16 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     do {
 #ifdef WIN32
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, 0);
-#else //WIN32
+#else // WIN32
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
-#endif //WIN32
+#endif // WIN32
         if (Temp == 0) {
             beammp_debug("send() == 0: " + GetPlatformAgnosticErrorString());
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             return false;
         } else if (Temp < 0) {
-            beammp_debug("send() < 0: " + GetPlatformAgnosticErrorString()); //TODO fix it was spamming yet everyone stayed on the server
+            beammp_debug("send() < 0: " + GetPlatformAgnosticErrorString()); // TODO fix it was spamming yet everyone stayed on the server
             if (c.GetStatus() > -1)
                 c.SetStatus(-1);
             CloseSocketProper(c.GetTCPSock());
@@ -461,6 +461,7 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
 }
 
 void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
+    RegisterThreadAuto();
     while (!c.expired()) {
         auto Client = c.lock();
         if (Client->GetStatus() < 0) {
@@ -468,7 +469,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
             break;
         }
         if (!Client->IsSyncing() && Client->IsSynced() && Client->MissedPacketQueueSize() != 0) {
-            //debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
+            // debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
             while (Client->MissedPacketQueueSize() > 0) {
                 std::string QData {};
                 { // locked context
@@ -611,7 +612,7 @@ void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     SyncResources(*LockedClient);
     if (LockedClient->GetStatus() < 0)
         return;
-    (void)Respond(*LockedClient, "M" + Application::Settings.MapName, true); //Send the Map on connect
+    (void)Respond(*LockedClient, "M" + Application::Settings.MapName, true); // Send the Map on connect
     beammp_info(LockedClient->GetName() + " : Connected");
     LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoining", "", LockedClient->GetID()));
 }
@@ -689,7 +690,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
         // TODO: handle
     }
 
-    ///Wait for connections
+    /// Wait for connections
     int T = 0;
     while (c.GetDownSock() < 1 && T < 50) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -707,9 +708,11 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 
     std::thread SplitThreads[2] {
         std::thread([&] {
+            RegisterThread("SplitLoad_0");
             SplitLoad(c, 0, MSize, false, FileName);
         }),
         std::thread([&] {
+            RegisterThread("SplitLoad_1");
             SplitLoad(c, MSize, Size, true, FileName);
         })
     };
@@ -723,7 +726,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 
 void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
-    uint32_t Split = 0x7735940; //125MB
+    uint32_t Split = 0x7735940; // 125MB
     char* Data;
     if (Size > Split)
         Data = new char[Split];
@@ -876,10 +879,10 @@ void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Re
                         } else {
                             Client->EnqueuePacket(Data);
                         }
-                        //ret = SendLarge(*Client, Data);
+                        // ret = SendLarge(*Client, Data);
                     } else {
                         Client->EnqueuePacket(Data);
-                        //ret = TCPSend(*Client, Data);
+                        // ret = TCPSend(*Client, Data);
                     }
                 } else {
                     ret = UDPSend(*Client, Data);

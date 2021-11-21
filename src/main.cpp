@@ -61,6 +61,7 @@ int main(int argc, char** argv) try {
     Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
+    RegisterThread("Main(Waiting)");
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
