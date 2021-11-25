@@ -16,7 +16,13 @@ include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
 include_directories("${PROJECT_SOURCE_DIR}/deps")
 
-add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
+add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT __linux)
+
+if(APPLE)
+    set(LUA_INCLUDE_DIR /usr/local/Cellar/lua@5.3/5.3.6/include/lua5.3)
+    set(LUA_LIBRARIES lua)
+    link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
+endif()
 
 if (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
@@ -99,7 +105,7 @@ target_include_directories(BeamMP-Server PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
 message(STATUS "Looking for Lua")
-find_package(Lua REQUIRED VERSION 5.3)
+# find_package(Lua REQUIRED VERSION 5.3)
 target_include_directories(BeamMP-Server PUBLIC 
     ${LUA_INCLUDE_DIR} 
     ${CURL_INCLUDE_DIRS}
@@ -109,7 +115,7 @@ target_include_directories(BeamMP-Server PUBLIC
 
 message(STATUS "Looking for SSL")
 
-find_package(OpenSSL REQUIRED)
+# find_package(OpenSSL REQUIRED)
 
 target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
