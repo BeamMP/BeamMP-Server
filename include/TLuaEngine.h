@@ -32,7 +32,7 @@ struct TLuaResult {
     std::atomic_bool Ready;
     std::atomic_bool Error;
     std::string ErrorMessage;
-    sol::object Result { sol::nil };
+    sol::object Result { sol::lua_nil };
     TLuaStateId StateId;
     std::string Function;
     // TODO: Add condition_variable

@@ -1,7 +1,7 @@
 #include "SignalHandling.h"
 #include "Common.h"
 
-#ifdef __unix
+#if defined(__unix) || defined(__linux) || defined(__APPLE__)
 #include <csignal>
 static void UnixSignalHandler(int sig) {
     switch (sig) {
@@ -48,7 +48,7 @@ BOOL WINAPI Win32CtrlC_Handler(DWORD CtrlType) {
 
 void SetupSignalHandlers() {
     // signal handlers for unix#include <windows.h>
-#if defined(__unix) || defined(__linux)
+#if defined(__unix) || defined(__linux) || defined(__APPLE__)
     beammp_trace("registering handlers for signals");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);

@@ -21,7 +21,9 @@ add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT __linux)
 if(APPLE)
     set(LUA_INCLUDE_DIR /usr/local/Cellar/lua@5.3/5.3.6/include/lua5.3)
     set(LUA_LIBRARIES lua)
+    include_directories(/usr/local/opt/openssl@1.1/include)
     link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
+    link_directories(/usr/local/opt/openssl@1.1/lib)
 endif()
 
 if (WIN32)
@@ -121,15 +123,16 @@ target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server 
+    target_link_libraries(BeamMP-Server
         z 
-        pthread 
-        stdc++fs 
+        pthread
         ${LUA_LIBRARIES} 
         crypto
         ${OPENSSL_LIBRARIES} 
         commandline 
-        sentry)
+        sentry
+        ssl
+            )
 elseif (WIN32)
     include(FindLua)
     message(STATUS "Looking for libz")

@@ -281,7 +281,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
             auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
             for (const auto& Value : Vector) {
                 if (!Value->Ready) {
-                    return sol::nil;
+                    return sol::lua_nil;
                 }
                 Result.add(Value->Result);
             }
@@ -313,7 +313,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
     if (MaybeClient && !MaybeClient.value().expired()) {
         auto IDs = MaybeClient.value().lock()->GetIdentifiers();
         if (IDs.empty()) {
-            return sol::nil;
+            return sol::lua_nil;
         }
         sol::table Result = mStateView.create_table();
         for (const auto& Pair : IDs) {
@@ -321,7 +321,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
         }
         return Result;
     } else {
-        return sol::nil;
+        return sol::lua_nil;
     }
 }
 
@@ -356,7 +356,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
             VehicleData = *LockedData.VehicleData;
         } // End Vehicle Data Lock Scope
         if (VehicleData.empty()) {
-            return sol::nil;
+            return sol::lua_nil;
         }
         sol::state_view StateView(mState);
         sol::table Result = StateView.create_table();
@@ -365,7 +365,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
         }
         return Result;
     } else
-        return sol::nil;
+        return sol::lua_nil;
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
