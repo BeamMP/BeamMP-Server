@@ -117,6 +117,8 @@ void RegisterThread(const std::string& str) {
     std::string ThreadId;
 #ifdef WIN32
     ThreadId = std::to_string(GetCurrentThreadId());
+#elif __APPLE__
+    ThreadId = std::to_string(getpid());
 #else
     ThreadId = std::to_string(gettid());
 #endif
