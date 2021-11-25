@@ -42,7 +42,7 @@ static std::string LuaToString(const sol::object Value, size_t Indent = 1, bool 
         ss << Value.as<float>();
         return ss.str();
     }
-    case sol::type::nil:
+    case sol::type::lua_nil:
     case sol::type::none:
         return "<nil>";
     case sol::type::boolean:
