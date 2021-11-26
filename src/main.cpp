@@ -25,12 +25,6 @@ USAGE:
 ARGUMENTS:
     --help              
                         Displays this help and exits.
-    --ip=<ip>           
-                        Asks the server to bind to the 
-                        specified IPv4 address. ONLY allows
-                        IPv4 addresses of the format 
-                        A.B.C.D, where A-D are between 0 and 
-                        255 each.
     --config=/path/to/ServerConfig.toml
                         Absolute or relative path to the 
                         Server Config file, including the
@@ -90,7 +84,6 @@ int BeamMPServerMain(MainArguments Arguments) {
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "config" }, ArgsParser::HAS_VALUE);
-    Parser.RegisterArgument({ "ip" }, ArgsParser::HAS_VALUE);
     Parser.Parse(Arguments.List);
     if (!Parser.Verify()) {
         return 1;
