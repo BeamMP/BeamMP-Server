@@ -3,6 +3,7 @@
 - CHANGED entire plugin Lua implementation (rewrite)
 - CHANGED moved *all* functions into MP.\*
 - CHANGED all files of a Lua plugin to share a Lua state (no more state-per-file)
+- ADDED Commandline options. Run with `--help` to see all options.
 - ADDED `MP.GetOSName() -> string`: Returns "Linux", "Windows" or "Other"
 - ADDED `MP.GetServerVersion() -> string`: Returns major,minor,patch version
 - ADDED `MP.IsPlayerGuest(id) -> boolean`: Whether player with id is a guest
