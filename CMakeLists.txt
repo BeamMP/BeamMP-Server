@@ -106,8 +106,13 @@ target_include_directories(BeamMP-Server PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
-message(STATUS "Looking for Lua")
-# find_package(Lua REQUIRED VERSION 5.3)
+if (APPLE)
+    message(STATUS "NOT looking for Lua on APPLE")
+else()
+    message(STATUS "Looking for Lua")
+    find_package(Lua REQUIRED VERSION 5.3)
+endif()
+
 target_include_directories(BeamMP-Server PUBLIC 
     ${LUA_INCLUDE_DIR} 
     ${CURL_INCLUDE_DIRS}
@@ -117,7 +122,11 @@ target_include_directories(BeamMP-Server PUBLIC
 
 message(STATUS "Looking for SSL")
 
-# find_package(OpenSSL REQUIRED)
+if (APPLE)
+    set(OPENSSL_LIBRARIES ssl crypto)
+else()
+    find_package(OpenSSL REQUIRED)
+endif()
 
 target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
@@ -131,8 +140,7 @@ if (UNIX)
         ${OPENSSL_LIBRARIES} 
         commandline 
         sentry
-        ssl
-            )
+        ssl)
 elseif (WIN32)
     include(FindLua)
     message(STATUS "Looking for libz")
