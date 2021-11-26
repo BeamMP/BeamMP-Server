@@ -8,7 +8,7 @@ namespace fs = std::filesystem;
 
 class TConfig {
 public:
-    explicit TConfig();
+    explicit TConfig(const std::string& ConfigFileName);
 
     [[nodiscard]] bool Failed() const { return mFailed; }
 
@@ -22,4 +22,5 @@ private:
     void ParseOldFormat();
 
     bool mFailed { false };
+    std::string mConfigFileName;
 };

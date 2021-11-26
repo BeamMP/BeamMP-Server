@@ -1,5 +1,6 @@
 #include "TSentry.h"
 
+#include "ArgsParser.h"
 #include "Common.h"
 #include "CustomAssert.h"
 #include "Http.h"
@@ -17,14 +18,102 @@
 #include <iostream>
 #include <thread>
 
+static const std::string sCommandlineArguments = R"(
+USAGE: 
+    BeamMP-Server [arguments]
+    
+ARGUMENTS:
+    --help              
+                        Displays this help and exits.
+    --ip=<ip>           
+                        Asks the server to bind to the 
+                        specified IPv4 address. ONLY allows
+                        IPv4 addresses of the format 
+                        A.B.C.D, where A-D are between 0 and 
+                        255 each.
+    --config=/path/to/ServerConfig.toml
+                        Absolute or relative path to the 
+                        Server Config file, including the
+                        filename. For paths and filenames with 
+                        spaces, put quotes around the path.
+    --version
+                        Prints version info and exits.
+
+EXAMPLES:
+    BeamMP-Server --ip=203.0.113.0
+        Runs the BeamMP-Server and binds its address to the
+        specified IP '203.0.113.0'.
+    
+    BeamMP-Server --config=../MyWestCoastServerConfig.toml
+        Runs the BeamMP-Server and uses the server config file 
+        which is one directory above it and is named
+        'MyWestCoastServerConfig.toml'.
+)";
+
 // this is provided by the build system, leave empty for source builds
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry {};
 
-int main(int argc, char** argv) try {
+struct MainArguments {
+    int argc {};
+    char** argv {};
+    std::vector<std::string_view> List;
+    std::string InvokedAs;
+};
+
+int BeamMPServerMain(MainArguments Arguments);
+
+int main(int argc, char** argv) {
+    MainArguments Args { argc, argv, {}, argv[0] };
+    Args.List.reserve(argc);
+    for (int i = 1; i < argc; ++i) {
+        Args.List.push_back(argv[i]);
+    }
+    int MainRet = 0;
+    try {
+        MainRet = BeamMPServerMain(std::move(Args));
+    } catch (const std::exception& e) {
+        beammp_error("A fatal exception has occurred and the server is forcefully shutting down.");
+        beammp_error(e.what());
+        Sentry.LogException(e, _file_basename, _line);
+        MainRet = -1;
+    }
+    return MainRet;
+}
+
+int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
 
     SetupSignalHandlers();
+
+    ArgsParser Parser;
+    Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
+    Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
+    Parser.RegisterArgument({ "config" }, ArgsParser::HAS_VALUE);
+    Parser.RegisterArgument({ "ip" }, ArgsParser::HAS_VALUE);
+    Parser.Parse(Arguments.List);
+    if (!Parser.Verify()) {
+        return 1;
+    }
+    if (Parser.FoundArgument({ "help" })) {
+        Application::Console().Internal().set_prompt("");
+        Application::Console().WriteRaw(sCommandlineArguments);
+        return 0;
+    }
+    if (Parser.FoundArgument({ "version" })) {
+        Application::Console().Internal().set_prompt("");
+        Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
+        return 0;
+    }
+    
+    std::string ConfigPath = "ServerConfig.toml";
+    if (Parser.FoundArgument({ "config" })) {
+        auto MaybeConfigPath = Parser.GetValueOfArgument({ "config" });
+        if (MaybeConfigPath.has_value()) {
+            ConfigPath = MaybeConfigPath.value();
+            beammp_info("Custom config requested via commandline: '" + ConfigPath + "'");
+        }
+    }
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
@@ -33,8 +122,8 @@ int main(int argc, char** argv) try {
         TLuaEngine::WaitForAll(Futures);
     });
 
-    TServer Server(argc, argv);
-    TConfig Config;
+    TServer Server(Arguments.List);
+    TConfig Config(ConfigPath);
     TLuaEngine LuaEngine;
     LuaEngine.SetServer(&Server);
 
@@ -67,7 +156,4 @@ int main(int argc, char** argv) try {
     }
     beammp_info("Shutdown.");
     return 0;
-} catch (const std::exception& e) {
-    beammp_error(e.what());
-    Sentry.LogException(e, _file_basename, _line);
 }

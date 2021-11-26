@@ -15,10 +15,10 @@
 
 namespace json = rapidjson;
 
-TServer::TServer(int argc, char** argv) {
+TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
-    if (argc > 1) {
-        Application::Settings.CustomIP = argv[1];
+    if (Arguments.size() > 1) {
+        Application::Settings.CustomIP = Arguments[0];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
         auto p = Application::Settings.CustomIP.find_first_not_of(".0123456789");
         if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == "127") {
@@ -67,7 +67,7 @@ size_t TServer::ClientCount() const {
 
 void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
-        //abort();
+        // abort();
     }
     if (Packet.substr(0, 4) == "ABG:") {
         Packet = DeComp(Packet.substr(4));
@@ -84,7 +84,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     std::any Res;
     char Code = Packet.at(0);
 
-    //V to Z
+    // V to Z
     if (Code <= 90 && Code >= 86) {
         PPSMonitor.IncrementInternalPPS();
         Network.SendToAll(LockedClient.get(), Packet, false, false);
@@ -200,7 +200,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     int PID = -1;
     int VID = -1, Pos;
     std::string Data = Packet.substr(3), pid, vid;
-    switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
+    switch (Code) { // Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
         beammp_trace(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         if (Data.at(0) == '0') {
@@ -370,6 +370,6 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
 
 void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     beammp_debug("inserting client (" + std::to_string(ClientCount()) + ")");
-    WriteLock Lock(mClientsMutex); //TODO why is there 30+ threads locked here
+    WriteLock Lock(mClientsMutex); // TODO why is there 30+ threads locked here
     (void)mClients.insert(NewClient);
 }

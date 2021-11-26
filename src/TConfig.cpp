@@ -8,8 +8,6 @@
 #include <istream>
 #include <sstream>
 
-static const char* ConfigFileName = static_cast<const char*>("ServerConfig.toml");
-
 static constexpr std::string_view StrDebug = "Debug";
 static constexpr std::string_view StrPrivate = "Private";
 static constexpr std::string_view StrPort = "Port";
@@ -23,19 +21,6 @@ static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 
-TConfig::TConfig() {
-    if (!fs::exists(ConfigFileName) || !fs::is_regular_file(ConfigFileName)) {
-        beammp_info("No config file found! Generating one...");
-        CreateConfigFile(ConfigFileName);
-    }
-    if (!mFailed) {
-        if (fs::exists("Server.cfg")) {
-            beammp_warn("An old \"Server.cfg\" file still exists. Please note that this is no longer used. Instead, \"" + std::string(ConfigFileName) + "\" is used. You can safely delete the \"Server.cfg\".");
-        }
-        ParseFromFile(ConfigFileName);
-    }
-}
-
 void WriteSendErrors(const std::string& name) {
     std::ofstream CfgFile { name, std::ios::out | std::ios::app };
     CfgFile << "# You can turn on/off the SendErrors message you get on startup here" << std::endl
@@ -45,8 +30,22 @@ void WriteSendErrors(const std::string& name) {
             << StrSendErrors << " = true" << std::endl;
 }
 
+TConfig::TConfig(const std::string& ConfigFileName)
+    : mConfigFileName(ConfigFileName) {
+    if (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName)) {
+        beammp_info("No config file found! Generating one...");
+        CreateConfigFile(mConfigFileName);
+    }
+    if (!mFailed) {
+        if (fs::exists("Server.cfg")) {
+            beammp_warn("An old \"Server.cfg\" file still exists. Please note that this is no longer used. Instead, \"" + std::string(mConfigFileName) + "\" is used. You can safely delete the \"Server.cfg\".");
+        }
+        ParseFromFile(mConfigFileName);
+    }
+}
+
 void TConfig::FlushToFile() {
-    auto data = toml::parse(ConfigFileName);
+    auto data = toml::parse(mConfigFileName);
     data["General"] = toml::table();
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
@@ -60,7 +59,7 @@ void TConfig::FlushToFile() {
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
     data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
     data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    std::ofstream Stream(ConfigFileName);
+    std::ofstream Stream(mConfigFileName);
     Stream << data << std::flush;
 }
 
@@ -104,7 +103,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
                "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
             << '\n';
         ofs << data << '\n';
-        beammp_error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
+        beammp_error("There was no \"" + std::string(mConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
         mFailed = true;
         ofs.close();
         // FIXME
@@ -143,7 +142,7 @@ void TConfig::ParseFromFile(std::string_view name) {
     PrintDebug();
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
-        beammp_error("No AuthKey specified in the \"" + std::string(ConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
         mFailed = true;
     }
 }

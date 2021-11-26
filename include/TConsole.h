@@ -15,6 +15,7 @@ public:
     void WriteRaw(const std::string& str);
     void InitializeLuaConsole(TLuaEngine& Engine);
     void BackupOldLog();
+    Commandline& Internal() { return mCommandline; }
 
 private:
     Commandline mCommandline;

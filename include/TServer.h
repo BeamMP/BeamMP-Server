@@ -16,7 +16,7 @@ class TServer final {
 public:
     using TClientSet = std::unordered_set<std::shared_ptr<TClient>>;
 
-    TServer(int argc, char** argv);
+    TServer(const std::vector<std::string_view>& Arguments);
 
     void InsertClient(const std::shared_ptr<TClient>& Ptr);
     std::weak_ptr<TClient> InsertNewClient();
