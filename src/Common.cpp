@@ -150,7 +150,7 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     ss << ThreadName();
     ss << "[CHAT] ";
     if (id != -1) {
-        ss << "(" << id << ") <" << name << ">";
+        ss << "(" << id << ") <" << name << "> ";
     } else {
         ss << name << "";
     }
