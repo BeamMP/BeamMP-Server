@@ -34,10 +34,6 @@ ARGUMENTS:
                         Prints version info and exits.
 
 EXAMPLES:
-    BeamMP-Server --ip=203.0.113.0
-        Runs the BeamMP-Server and binds its address to the
-        specified IP '203.0.113.0'.
-    
     BeamMP-Server --config=../MyWestCoastServerConfig.toml
         Runs the BeamMP-Server and uses the server config file 
         which is one directory above it and is named
