@@ -98,7 +98,8 @@ add_executable(BeamMP-Server
         include/LuaAPI.h src/LuaAPI.cpp
         include/TScopedTimer.h src/TScopedTimer.cpp
         include/SignalHandling.h src/SignalHandling.cpp
-        include/ArgsParser.h src/ArgsParser.cpp)
+        include/ArgsParser.h src/ArgsParser.cpp
+        include/Environment.h)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
 include_directories(BeamMP-Server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

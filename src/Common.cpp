@@ -115,11 +115,11 @@ std::string ThreadName(bool DebugModeOverride) {
 
 void RegisterThread(const std::string& str) {
     std::string ThreadId;
-#ifdef WIN32
+#ifdef BEAMMP_WINDOWS
     ThreadId = std::to_string(GetCurrentThreadId());
-#elif __APPLE__
+#elif defined(BEAMMP_APPLE)
     ThreadId = std::to_string(getpid()); // todo: research if 'getpid()' is a valid, posix compliant alternative to 'gettid()'
-#else
+#elif defined(BEAMMP_LINUX)
     ThreadId = std::to_string(gettid());
 #endif
     if (Application::Settings.DebugModeEnabled) {
@@ -159,7 +159,7 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
 }
 
 std::string GetPlatformAgnosticErrorString() {
-#ifdef WIN32
+#ifdef BEAMMP_WINDOWS
     // This will provide us with the error code and an error message, all in one.
     int err;
     char msgbuf[256];
@@ -180,7 +180,7 @@ std::string GetPlatformAgnosticErrorString() {
     } else {
         return std::to_string(GetLastError());
     }
-#else // posix
+#elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
     return std::strerror(errno);
 #endif
 }

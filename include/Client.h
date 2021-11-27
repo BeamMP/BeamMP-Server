@@ -13,10 +13,10 @@
 
 class TServer;
 
-#ifdef WIN32
+#ifdef BEAMMP_WINDOWS
 // for socklen_t
 #include <WS2tcpip.h>
-#endif // WIN32
+#endif // WINDOWS
 
 struct TConnection final {
     SOCKET Socket;

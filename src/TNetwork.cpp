@@ -38,13 +38,13 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-#ifdef WIN32
+#if defined(BEAMMP_WINDOWS)
     WSADATA data;
     if (WSAStartup(514, &data)) {
         beammp_error(("Can't start Winsock!"));
         // return;
     }
-#endif // WIN32
+#endif // WINDOWS
     mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
     // Create a server hint structure for the server
     sockaddr_in serverAddr {};
@@ -99,19 +99,19 @@ void TNetwork::UDPServerMain() {
 
 void TNetwork::TCPServerMain() {
     RegisterThread("TCPServer");
-#ifdef WIN32
+#if defined(BEAMMP_WINDOWS)
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)) {
         beammp_error("Can't start Winsock!");
         return;
     }
-#endif // WIN32
+#endif // WINDOWS
     TConnection client {};
     SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     int optval = 1;
-#ifdef WIN32
+#if defined(BEAMMP_WINDOWS)
     const char* optval_ptr = reinterpret_cast<const char*>(&optval);
-#else
+#elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
     void* optval_ptr = reinterpret_cast<void*>(&optval);
 #endif
     setsockopt(Listener, SOL_SOCKET, SO_REUSEADDR, optval_ptr, sizeof(optval));
@@ -157,10 +157,10 @@ void TNetwork::TCPServerMain() {
     beammp_debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
 
     CloseSocketProper(client.Socket);
-#ifdef WIN32
+#ifdef BEAMMP_WINDOWS
     CloseSocketProper(client.Socket);
     WSACleanup();
-#endif // WIN32
+#endif // WINDOWS
 }
 
 #undef GetObject // Fixes Windows
@@ -366,11 +366,11 @@ bool TNetwork::TCPSend(TClient& c, const std::string& Data, bool IsSync) {
     Sent = 0;
     Size += 4;
     do {
-#ifdef WIN32
+#if defined(BEAMMP_WINDOWS)
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, 0);
-#else // WIN32
+#elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
         int32_t Temp = send(c.GetTCPSock(), &Send[Sent], Size - Sent, MSG_NOSIGNAL);
-#endif // WIN32
+#endif
         if (Temp == 0) {
             beammp_debug("send() == 0: " + GetPlatformAgnosticErrorString());
             if (c.GetStatus() > -1)

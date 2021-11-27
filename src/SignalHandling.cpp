@@ -1,7 +1,7 @@
 #include "SignalHandling.h"
 #include "Common.h"
 
-#if defined(__unix) || defined(__linux) || defined(__APPLE__)
+#if defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
 #include <csignal>
 static void UnixSignalHandler(int sig) {
     switch (sig) {
@@ -21,9 +21,9 @@ static void UnixSignalHandler(int sig) {
         break;
     }
 }
-#endif // __unix
+#endif // UNIX
 
-#ifdef WIN32
+#ifdef BEAMMP_WINDOWS
 #include <windows.h>
 // return TRUE if handled, FALSE if not
 BOOL WINAPI Win32CtrlC_Handler(DWORD CtrlType) {
@@ -44,21 +44,19 @@ BOOL WINAPI Win32CtrlC_Handler(DWORD CtrlType) {
     // we dont care for any others like CTRL_LOGOFF_EVENT and CTRL_SHUTDOWN_EVENT
     return FALSE;
 }
-#endif // WIN32
+#endif // WINDOWS
 
 void SetupSignalHandlers() {
     // signal handlers for unix#include <windows.h>
-#if defined(__unix) || defined(__linux) || defined(__APPLE__)
+#if defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
     beammp_trace("registering handlers for signals");
     signal(SIGPIPE, UnixSignalHandler);
     signal(SIGTERM, UnixSignalHandler);
 #ifndef DEBUG
     signal(SIGINT, UnixSignalHandler);
 #endif // DEBUG
-#elif defined(WIN32)
+#elif defined(BEAMMP_WINDOWS)
     beammp_trace("registering handlers for CTRL_*_EVENTs");
     SetConsoleCtrlHandler(Win32CtrlC_Handler, TRUE);
-#else
-#error "Please implement necessary signals like Ctrl+C handling here"
 #endif
 }

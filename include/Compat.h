@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Environment.h"
+
 // ======================= UNIX ========================
 
-#ifdef __unix
+#ifdef BEAMMP_LINUX
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <termios.h>
@@ -19,7 +21,9 @@ inline void CloseSocketProper(int TheSocket) {
 }
 #endif // unix
 
-#ifdef __APPLE__
+// ======================= APPLE ========================
+
+#ifdef BEAMMP_APPLE
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <termios.h>
@@ -36,9 +40,9 @@ inline void CloseSocketProper(int TheSocket) {
 }
 #endif // unix
 
-// ======================= WIN32 =======================
+// ======================= WINDOWS =======================
 
-#ifdef WIN32
+#ifdef BEAMMP_WINDOWS
 #include <conio.h>
 #include <winsock2.h>
 inline void CloseSocketProper(SOCKET TheSocket) {
@@ -47,9 +51,3 @@ inline void CloseSocketProper(SOCKET TheSocket) {
 
 }
 #endif // WIN32
-
-// ======================= OTHER =======================
-
-#if !defined(WIN32) && !defined(__unix) && !defined(__APPLE__)
-#error "OS not supported"
-#endif
