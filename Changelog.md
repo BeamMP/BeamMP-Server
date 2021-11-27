@@ -1,29 +1,20 @@
 # v2.4.0
 
 - CHANGED entire plugin Lua implementation (rewrite)
-- CHANGED moved *all* functions into MP.\*
+- CHANGED moved *almost all* functions into MP.\*
 - CHANGED all files of a Lua plugin to share a Lua state (no more state-per-file)
+- ADDED many new Lua API functions, which can be found at <https://wiki.beammp.com/en/Scripting/functions>
 - ADDED Commandline options. Run with `--help` to see all options.
-- ADDED `MP.GetOSName() -> string`: Returns "Linux", "Windows" or "Other"
-- ADDED `MP.GetServerVersion() -> string`: Returns major,minor,patch version
-- ADDED `MP.IsPlayerGuest(id) -> boolean`: Whether player with id is a guest
-- ADDED `MP.Settings` table providing aliases for 0,1,2,etc. in MP.Set(id,val)
-- ADDED `MP.PrintRaw(...)`: prints messages without `[TIME DATE] [LUA]` etc.
-- ADDED `FS` table to host some effective filesystem manipulation functions
-- ADDED `FS.CreateDirectory(path) -> bool,string`: Creates the path's directory (all missing pieces) and returns whether it fails and why if it did
-- ADDED `FS.Exists(path) -> bool`: Whether the file exists
-- ADDED `FS.Rename(old,new) -> bool,string`: Renames a file or folder (same as "move")
-- ADDED `FS.Remove(path) -> bool,string`: Removes a file or (empty) folder
-- ADDED `FS.Copy(original,copy) -> bool,string`: Copies a file or directory
 - ADDED plugin directories to `package.path` and `package.cpath` before `onInit`
 - ADDED ability to add `PluginConfig.toml` to your plugin folder to change some settings
 - ADDED ability to share a lua state with other plugins via `StateId` setting in `PluginConfig.toml`
-- ADDED `MP.HttpsGET(host,port,target) -> status,body`: Does a synchronous HTTPS GET request
-- ADDED `MP.HttpsPOST(host,port,target,body,content_type) -> status,body`: Does a synchronous HTTPS POST request
-- ADDED `MP.GetStateMemoryUsage() -> number`: Current memory usage of the current state in bytes
-- ADDED `MP.GetLuaMemoryUsage() -> number`: Current memory usage of all states combined, in bytes
-- ADDED `MP.CreateEventTimer(event,interval_ms)`: Replacement for `CreateThread` - calls the event in the given interval
-- ADDED `MP.CancelEventTimer(event)`: Cancels all event timers for that event
+- ADDED ability to see name-to-thread-ID association in debug mode
+- ADDED dumping tables with `print()` (try it with `print(MP)`)
+- ADDED `MP.GetOSName()`, `MP.CreateTimer()`, `MP.GetLuaMemoryUsage()` and many more (see <https://wiki.beammp.com/en/Scripting/functions>)
+- ADDED `MP.Settings` table to make usage of `MP.Set()` easier
+- ADDED `FS.*` table with common filesystem operations
+- FIXED i/o thread spin when stdout is /dev/null on linux
+- FIXED removed extra whitespace infront of onChatMessage message
 
 # v2.3.3
 
