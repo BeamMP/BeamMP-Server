@@ -162,6 +162,11 @@ void TLuaEngine::ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Re
     }
 }
 
+bool TLuaEngine::HasState(TLuaStateId StateId) {
+    std::unique_lock Lock(mLuaStatesMutex);
+    return mLuaStates.find(StateId) != mLuaStates.end();
+}
+
 std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script) {
     std::unique_lock Lock(mLuaStatesMutex);
     return mLuaStates.at(StateID)->EnqueueScript(Script);

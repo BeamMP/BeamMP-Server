@@ -2,6 +2,7 @@
 #include "Common.h"
 #include "Compat.h"
 
+#include "CustomAssert.h"
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
 
@@ -91,10 +92,15 @@ void TConsole::BackupOldLog() {
     }
 }
 
-void TConsole::ChangeToLuaConsole() {
+void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
     if (!mIsLuaConsole) {
+        mStateId = LuaStateId;
         mIsLuaConsole = true;
-        Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
+        if (mStateId != mDefaultStateId) {
+            Application::Console().WriteRaw("Entered Lua console for state '" + mStateId + "'. To exit, type `exit()`");
+        } else {
+            Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
+        }
         mCachedRegularHistory = mCommandline.history();
         mCommandline.set_history(mCachedLuaHistory);
         mCommandline.set_prompt("lua> ");
@@ -104,10 +110,15 @@ void TConsole::ChangeToLuaConsole() {
 void TConsole::ChangeToRegularConsole() {
     if (mIsLuaConsole) {
         mIsLuaConsole = false;
-        Application::Console().WriteRaw("Left Lua console.");
+        if (mStateId != mDefaultStateId) {
+            Application::Console().WriteRaw("Left Lua console for state '" + mStateId + "'.");
+        } else {
+            Application::Console().WriteRaw("Left Lua console.");
+        }
         mCachedLuaHistory = mCommandline.history();
         mCommandline.set_history(mCachedRegularHistory);
         mCommandline.set_prompt("> ");
+        mStateId = mDefaultStateId;
     }
 }
 
@@ -144,8 +155,18 @@ TConsole::TConsole() {
                     if (cmd == "exit") {
                         beammp_info("gracefully shutting down");
                         Application::GracefullyShutdown();
-                    } else if (cmd == "lua") {
-                        ChangeToLuaConsole();
+                    } else if (cmd.size() >= 3 && cmd.substr(0, 3) == "lua") {
+                        if (cmd.size() > 3) {
+                            auto NewStateId = cmd.substr(4);
+                            beammp_assert(!NewStateId.empty());
+                            if (mLuaEngine->HasState(NewStateId)) {
+                                ChangeToLuaConsole(NewStateId);
+                            } else {
+                                Application::Console().WriteRaw("Lua state '" + NewStateId + "' is not a known state. Didn't switch to Lua.");
+                            }
+                        } else {
+                            ChangeToLuaConsole(mDefaultStateId);
+                        }
                     } else if (!cmd.empty()) {
                         auto FutureIsNonNil =
                             [](const std::shared_ptr<TLuaResult>& Future) {
@@ -208,5 +229,5 @@ void TConsole::WriteRaw(const std::string& str) {
 
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
     mLuaEngine = &Engine;
-    Engine.EnsureStateExists(mStateId, "Console");
+    Engine.EnsureStateExists(mDefaultStateId, "Console");
 }

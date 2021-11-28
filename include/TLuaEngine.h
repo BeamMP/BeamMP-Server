@@ -84,6 +84,7 @@ public:
 
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult> >& Results);
+    bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
