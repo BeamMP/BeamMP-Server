@@ -94,7 +94,7 @@ void TConsole::BackupOldLog() {
 void TConsole::ChangeToLuaConsole() {
     if (!mIsLuaConsole) {
         mIsLuaConsole = true;
-        beammp_info("Entered Lua console. To exit, type `exit()`");
+        Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
         mCachedRegularHistory = mCommandline.history();
         mCommandline.set_history(mCachedLuaHistory);
         mCommandline.set_prompt("lua> ");
@@ -104,7 +104,7 @@ void TConsole::ChangeToLuaConsole() {
 void TConsole::ChangeToRegularConsole() {
     if (mIsLuaConsole) {
         mIsLuaConsole = false;
-        beammp_info("Left Lua console.");
+        Application::Console().WriteRaw("Left Lua console.");
         mCachedLuaHistory = mCommandline.history();
         mCommandline.set_history(mCachedRegularHistory);
         mCommandline.set_prompt("> ");
@@ -149,8 +149,11 @@ TConsole::TConsole() {
                     } else if (!cmd.empty()) {
                         auto FutureIsNonNil =
                             [](const std::shared_ptr<TLuaResult>& Future) {
-                                auto Type = Future->Result.get_type();
-                                return Type != sol::type::lua_nil && Type != sol::type::none;
+                                if (!Future->Error) {
+                                    auto Type = Future->Result.get_type();
+                                    return Type != sol::type::lua_nil && Type != sol::type::none;
+                                }
+                                return false;
                             };
                         std::vector<std::shared_ptr<TLuaResult>> NonNilFutures;
                         { // Futures scope

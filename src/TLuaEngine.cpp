@@ -408,6 +408,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     lua_atpanic(mState, LuaAPI::PanicHandler);
     // StateView.globals()["package"].get()
     StateView.set_function("print", &LuaAPI::Print);
+    StateView.set_function("printRaw", &LuaAPI::MP::PrintRaw);
     StateView.set_function("exit", &Application::GracefullyShutdown);
 
     auto MPTable = StateView.create_named_table("MP");
@@ -462,7 +463,6 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_GetPlayerIdentifiers(ID);
     });
     MPTable.set_function("Sleep", &LuaAPI::MP::Sleep);
-    MPTable.set_function("PrintRaw", &LuaAPI::MP::PrintRaw);
     MPTable.set_function("CreateEventTimer", [&](const std::string& EventName, size_t IntervalMS) {
         if (IntervalMS < 25) {
             beammp_warn("Timer for \"" + EventName + "\" on \"" + mStateId + "\" is set to trigger at <25ms, which is likely too fast and won't cancel properly.");
