@@ -77,6 +77,9 @@ void TLuaEngine::operator()() {
     // event loop
     auto Before = std::chrono::high_resolution_clock::now();
     while (!mShutdown) {
+        if (mLuaStates.size() == 0) {
+            std::this_thread::sleep_for(std::chrono::seconds(500));
+        }
         { // Timed Events Scope
             std::unique_lock Lock(mTimedEventsMutex);
             for (auto& Timer : mTimedEvents) {

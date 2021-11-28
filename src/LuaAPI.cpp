@@ -6,7 +6,7 @@
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
-static std::string LuaToString(const sol::object Value, size_t Indent = 1, bool QuoteStrings = false) {
+std::string LuaAPI::LuaToString(const sol::object Value, size_t Indent, bool QuoteStrings) {
     if (Indent > 80) {
         return "[[possible recursion, refusing to keep printing]]";
     }

@@ -203,7 +203,7 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
     });
 }
 
-void TNetwork::Authentication(const TConnection& ClientConnection) {
+void TNetwork:: Authentication(const TConnection& ClientConnection) {
     auto Client = CreateClient(ClientConnection.Socket);
     char AddrBuf[64];
     // TODO: IPv6 would need this to be changed

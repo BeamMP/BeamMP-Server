@@ -5,7 +5,7 @@
 
 namespace LuaAPI {
 int PanicHandler(lua_State* State);
-
+std::string LuaToString(const sol::object Value, size_t Indent = 1, bool QuoteStrings = false);
 void Print(sol::variadic_args);
 namespace MP {
     extern TLuaEngine* Engine;

@@ -2,10 +2,22 @@
 #include "Common.h"
 #include "Compat.h"
 
+#include "LuaAPI.h"
 #include "TLuaEngine.h"
 
 #include <ctime>
 #include <sstream>
+
+static inline std::string TrimString(std::string S) {
+    S.erase(S.begin(), std::find_if(S.begin(), S.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+    S.erase(std::find_if(S.rbegin(), S.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(),
+        S.end());
+    return S;
+}
 
 std::string GetDate() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
@@ -79,6 +91,26 @@ void TConsole::BackupOldLog() {
     }
 }
 
+void TConsole::ChangeToLuaConsole() {
+    if (!mIsLuaConsole) {
+        mIsLuaConsole = true;
+        beammp_info("Entered Lua console. To exit, type `exit()`");
+        mCachedRegularHistory = mCommandline.history();
+        mCommandline.set_history(mCachedLuaHistory);
+        mCommandline.set_prompt("lua> ");
+    }
+}
+
+void TConsole::ChangeToRegularConsole() {
+    if (mIsLuaConsole) {
+        mIsLuaConsole = false;
+        beammp_info("Left Lua console.");
+        mCachedLuaHistory = mCommandline.history();
+        mCommandline.set_history(mCachedRegularHistory);
+        mCommandline.set_prompt("> ");
+    }
+}
+
 TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
@@ -89,25 +121,75 @@ TConsole::TConsole() {
         beammp_error("unable to open file for writing: \"Server.log\"");
     }
     mCommandline.on_command = [this](Commandline& c) {
-        auto cmd = c.get_command();
-        mCommandline.write("> " + cmd);
-        if (cmd == "exit") {
-            beammp_info("gracefully shutting down");
-            Application::GracefullyShutdown();
-        } else if (cmd == "clear" || cmd == "cls") {
-            // TODO: clear screen
-        } else {
+        try {
+            auto cmd = c.get_command();
+            cmd = TrimString(cmd);
+            mCommandline.write(mCommandline.prompt() + cmd);
             if (!mLuaEngine) {
                 beammp_info("Lua not started yet, please try again in a second");
             } else {
-                auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
-                while (!Future->Ready) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
-                if (Future->Error) {
-                    beammp_lua_error(Future->ErrorMessage);
+                if (mIsLuaConsole) {
+                    if (cmd == "exit()") {
+                        ChangeToRegularConsole();
+                    } else {
+                        auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
+                        while (!Future->Ready) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // TODO: Add a timeout
+                        }
+                        if (Future->Error) {
+                            beammp_lua_error(Future->ErrorMessage);
+                        }
+                    }
+                } else {
+                    if (cmd == "exit") {
+                        beammp_info("gracefully shutting down");
+                        Application::GracefullyShutdown();
+                    } else if (cmd == "lua") {
+                        ChangeToLuaConsole();
+                    } else if (!cmd.empty()) {
+                        auto FutureIsNonNil =
+                            [](const std::shared_ptr<TLuaResult>& Future) {
+                                auto Type = Future->Result.get_type();
+                                return Type != sol::type::lua_nil && Type != sol::type::none;
+                            };
+                        std::vector<std::shared_ptr<TLuaResult>> NonNilFutures;
+                        { // Futures scope
+                            auto Futures = mLuaEngine->TriggerEvent("onConsoleInput", "", cmd);
+                            TLuaEngine::WaitForAll(Futures);
+                            size_t Count = 0;
+                            for (auto& Future : Futures) {
+                                if (!Future->Error) {
+                                    ++Count;
+                                }
+                            }
+                            for (const auto& Future : Futures) {
+                                if (FutureIsNonNil(Future)) {
+                                    NonNilFutures.push_back(Future);
+                                }
+                            }
+                        }
+                        if (NonNilFutures.size() == 0) {
+                            Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'");
+                        } else {
+                            std::stringstream Reply;
+                            if (NonNilFutures.size() > 1) {
+                                for (size_t i = 0; i < NonNilFutures.size(); ++i) {
+                                    Reply << NonNilFutures[i]->StateId << ": \n"
+                                          << LuaAPI::LuaToString(NonNilFutures[i]->Result);
+                                    if (i < NonNilFutures.size() - 1) {
+                                        Reply << "\n";
+                                    }
+                                }
+                            } else {
+                                Reply << LuaAPI::LuaToString(NonNilFutures[0]->Result);
+                            }
+                            Application::Console().WriteRaw(Reply.str());
+                        }
+                    }
                 }
             }
+        } catch (const std::exception& e) {
+            beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
     };
 }

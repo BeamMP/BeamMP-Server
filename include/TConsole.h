@@ -18,7 +18,14 @@ public:
     Commandline& Internal() { return mCommandline; }
 
 private:
+    void ChangeToLuaConsole();
+    void ChangeToRegularConsole();
+
     Commandline mCommandline;
+    std::vector<std::string> mCachedLuaHistory;
+    std::vector<std::string> mCachedRegularHistory;
     TLuaEngine* mLuaEngine { nullptr };
+    bool mIsLuaConsole { false };
+    bool mFirstTime { true };
     const std::string mStateId = "BEAMMP_SERVER_CONSOLE";
 };
