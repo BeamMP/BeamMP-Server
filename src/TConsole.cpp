@@ -185,6 +185,21 @@ void TConsole::Command_Kick(const std::string& cmd) {
 }
 
 void TConsole::Command_Say(const std::string& cmd) {
+    if (cmd.size() > 3) {
+        auto Message = cmd.substr(4);
+        LuaAPI::MP::SendChatMessage(-1, Message);
+    }
+}
+
+void TConsole::Command_List(const std::string& cmd) {
+    std::stringstream ss;
+    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto locked = Client.lock();
+            ss << 
+        }
+        return true;
+    });
 }
 
 void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {

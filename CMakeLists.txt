@@ -24,7 +24,6 @@ if(APPLE)
     include_directories(/usr/local/opt/openssl@1.1/include)
     link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
     link_directories(/usr/local/opt/openssl@1.1/lib)
-    add_compile_definitions(__linux)
 endif()
 
 if (WIN32)
