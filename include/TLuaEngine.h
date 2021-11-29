@@ -83,7 +83,7 @@ public:
     void SetServer(TServer* Server) { mServer = Server; }
 
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
-    void ReportErrors(const std::vector<std::shared_ptr<TLuaResult> >& Results);
+    void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
@@ -139,6 +139,7 @@ private:
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
+        int Lua_GetPlayerIDByName(const std::string& Name);
 
         std::string mName;
         std::atomic_bool& mShutdown;
@@ -181,4 +182,4 @@ private:
     std::recursive_mutex mResultsToCheckMutex;
 };
 
-//std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
+// std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

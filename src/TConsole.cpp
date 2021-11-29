@@ -9,6 +9,10 @@
 #include <ctime>
 #include <sstream>
 
+static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
+    return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
+}
+
 static inline std::string TrimString(std::string S) {
     S.erase(S.begin(), std::find_if(S.begin(), S.end(), [](unsigned char ch) {
         return !std::isspace(ch);
@@ -122,6 +126,81 @@ void TConsole::ChangeToRegularConsole() {
     }
 }
 
+void TConsole::Command_Lua(const std::string& cmd) {
+    if (cmd.size() > 3) {
+        auto NewStateId = cmd.substr(4);
+        beammp_assert(!NewStateId.empty());
+        if (mLuaEngine->HasState(NewStateId)) {
+            ChangeToLuaConsole(NewStateId);
+        } else {
+            Application::Console().WriteRaw("Lua state '" + NewStateId + "' is not a known state. Didn't switch to Lua.");
+        }
+    } else {
+        ChangeToLuaConsole(mDefaultStateId);
+    }
+}
+
+void TConsole::Command_Help(const std::string&) {
+    static constexpr const char* sHelpString = R"(
+    Commands:
+        help            displays this help
+        exit            shuts down the server
+        lua [state id]  switches to lua, optionally into a specific state id's lua
+)";
+    Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+}
+
+void TConsole::Command_Kick(const std::string& cmd) {
+    cmd.compare()
+}
+
+void TConsole::Command_Say(const std::string& cmd) {
+}
+
+void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
+    auto FutureIsNonNil =
+        [](const std::shared_ptr<TLuaResult>& Future) {
+            if (!Future->Error) {
+                auto Type = Future->Result.get_type();
+                return Type != sol::type::lua_nil && Type != sol::type::none;
+            }
+            return false;
+        };
+    std::vector<std::shared_ptr<TLuaResult>> NonNilFutures;
+    { // Futures scope
+        auto Futures = mLuaEngine->TriggerEvent("onConsoleInput", "", cmd);
+        TLuaEngine::WaitForAll(Futures);
+        size_t Count = 0;
+        for (auto& Future : Futures) {
+            if (!Future->Error) {
+                ++Count;
+            }
+        }
+        for (const auto& Future : Futures) {
+            if (FutureIsNonNil(Future)) {
+                NonNilFutures.push_back(Future);
+            }
+        }
+    }
+    if (NonNilFutures.size() == 0 && !IgnoreNotACommand) {
+        Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'");
+    } else {
+        std::stringstream Reply;
+        if (NonNilFutures.size() > 1) {
+            for (size_t i = 0; i < NonNilFutures.size(); ++i) {
+                Reply << NonNilFutures[i]->StateId << ": \n"
+                      << LuaAPI::LuaToString(NonNilFutures[i]->Result);
+                if (i < NonNilFutures.size() - 1) {
+                    Reply << "\n";
+                }
+            }
+        } else {
+            Reply << LuaAPI::LuaToString(NonNilFutures[0]->Result);
+        }
+        Application::Console().WriteRaw(Reply.str());
+    }
+}
+
 TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
@@ -155,60 +234,19 @@ TConsole::TConsole() {
                     if (cmd == "exit") {
                         beammp_info("gracefully shutting down");
                         Application::GracefullyShutdown();
-                    } else if (cmd.size() >= 3 && cmd.substr(0, 3) == "lua") {
-                        if (cmd.size() > 3) {
-                            auto NewStateId = cmd.substr(4);
-                            beammp_assert(!NewStateId.empty());
-                            if (mLuaEngine->HasState(NewStateId)) {
-                                ChangeToLuaConsole(NewStateId);
-                            } else {
-                                Application::Console().WriteRaw("Lua state '" + NewStateId + "' is not a known state. Didn't switch to Lua.");
-                            }
-                        } else {
-                            ChangeToLuaConsole(mDefaultStateId);
-                        }
+                    } else if (StringStartsWith(cmd, "lua")) {
+                        Command_Lua(cmd);
+                    } else if (StringStartsWith(cmd, "help")) {
+                        RunAsCommand(cmd, true);
+                        Command_Help(cmd);
+                    } else if (StringStartsWith(cmd, "kick")) {
+                        RunAsCommand(cmd, true);
+                        Command_Kick(cmd);
+                    } else if (StringStartsWith(cmd, "say")) {
+                        RunAsCommand(cmd, true);
+                        Command_Say(cmd);
                     } else if (!cmd.empty()) {
-                        auto FutureIsNonNil =
-                            [](const std::shared_ptr<TLuaResult>& Future) {
-                                if (!Future->Error) {
-                                    auto Type = Future->Result.get_type();
-                                    return Type != sol::type::lua_nil && Type != sol::type::none;
-                                }
-                                return false;
-                            };
-                        std::vector<std::shared_ptr<TLuaResult>> NonNilFutures;
-                        { // Futures scope
-                            auto Futures = mLuaEngine->TriggerEvent("onConsoleInput", "", cmd);
-                            TLuaEngine::WaitForAll(Futures);
-                            size_t Count = 0;
-                            for (auto& Future : Futures) {
-                                if (!Future->Error) {
-                                    ++Count;
-                                }
-                            }
-                            for (const auto& Future : Futures) {
-                                if (FutureIsNonNil(Future)) {
-                                    NonNilFutures.push_back(Future);
-                                }
-                            }
-                        }
-                        if (NonNilFutures.size() == 0) {
-                            Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'");
-                        } else {
-                            std::stringstream Reply;
-                            if (NonNilFutures.size() > 1) {
-                                for (size_t i = 0; i < NonNilFutures.size(); ++i) {
-                                    Reply << NonNilFutures[i]->StateId << ": \n"
-                                          << LuaAPI::LuaToString(NonNilFutures[i]->Result);
-                                    if (i < NonNilFutures.size() - 1) {
-                                        Reply << "\n";
-                                    }
-                                }
-                            } else {
-                                Reply << LuaAPI::LuaToString(NonNilFutures[0]->Result);
-                            }
-                            Application::Console().WriteRaw(Reply.str());
-                        }
+                        RunAsCommand(cmd);
                     }
                 }
             }

@@ -184,7 +184,7 @@ void TLuaEngine::CollectAndInitPlugins() {
         if (!Dir.is_directory()) {
             beammp_error("\"" + Dir.path().string() + "\" is not a directory, skipping");
         } else {
-            TLuaPluginConfig Config { Path.string() };
+            TLuaPluginConfig Config { Path.stem().string() };
             FindAndParseConfig(Path, Config);
             InitializePlugin(Path, Config);
         }
@@ -213,7 +213,7 @@ void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Co
                     beammp_debug("Plugin \"" + Folder.string() + "\" specified it wants LuaStateID \"" + ID + "\"");
                     Config.StateId = ID;
                 } else {
-                    beammp_debug("LuaStateID empty, using randomized state ID");
+                    beammp_debug("LuaStateID empty, using plugin name");
                 }
             }
         } catch (const std::exception& e) {
@@ -345,6 +345,21 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
     return Result;
 }
 
+int TLuaEngine::StateThreadData::Lua_GetPlayerIDByName(const std::string& Name) {
+    int Id = -1;
+    mEngine->mServer->ForEachClient([&Id, &Name](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto locked = Client.lock();
+            if (locked->GetName() == Name) {
+                Id = locked->GetID();
+                return false;
+            }
+        }
+        return true;
+    });
+    return Id;
+}
+
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
     if (MaybeClient && !MaybeClient.value().expired()) {
@@ -445,6 +460,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     MPTable.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
     MPTable.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
     MPTable.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
+    MPTable.set_function("GetPlayerIDByName", [&](const std::string& Name) -> std::string {
+        return Lua_GetPlayerIDByName(Name);
+    });
     MPTable.set_function("GetPlayerName", [&](int ID) -> std::string {
         return Lua_GetPlayerName(ID);
     });
