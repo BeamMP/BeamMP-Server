@@ -64,8 +64,9 @@ void TLuaEngine::operator()() {
                     if (Waited > 250) {
                         // FIXME: This should *eventually* timeout.
                         // beammp_lua_error(Res->Function + " in " + Res->StateId + " took >1s to respond, not printing possible errors");
-                        std::unique_lock Lock(mResultsToCheckMutex);
+                        Lock.lock();
                         mResultsToCheck.push(Res);
+                        Lock.unlock();
                         break;
                     }
                 }
