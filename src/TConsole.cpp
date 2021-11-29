@@ -181,6 +181,11 @@ void TConsole::Command_Kick(const std::string& cmd) {
             }
             return true;
         });
+        if (!Kicked) {
+            Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
+        } else {
+            Application::Console().WriteRaw("Kicked player '" + Name + "' for reason: '" + Reason + "'.");
+        }
     }
 }
 
@@ -191,15 +196,24 @@ void TConsole::Command_Say(const std::string& cmd) {
     }
 }
 
-void TConsole::Command_List(const std::string& cmd) {
-    std::stringstream ss;
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
-        if (!Client.expired()) {
-            auto locked = Client.lock();
-            ss << 
-        }
-        return true;
-    });
+void TConsole::Command_List(const std::string&) {
+    if (mLuaEngine->Server().ClientCount() == 0) {
+        Application::Console().WriteRaw("No players online.");
+    } else {
+        std::stringstream ss;
+        ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::endl;
+        mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+            if (!Client.expired()) {
+                auto locked = Client.lock();
+                ss << std::left << std::setw(25) << locked->GetName()
+                   << std::setw(6) << locked->GetID()
+                   << std::setw(6) << locked->GetCarCount() << "\n";
+            }
+            return true;
+        });
+        auto Str = ss.str();
+        Application::Console().WriteRaw(Str.substr(0, Str.size() - 1));
+    }
 }
 
 void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
@@ -292,6 +306,9 @@ TConsole::TConsole() {
                     } else if (StringStartsWith(cmd, "say")) {
                         RunAsCommand(cmd, true);
                         Command_Say(cmd);
+                    } else if (StringStartsWith(cmd, "list")) {
+                        RunAsCommand(cmd, true);
+                        Command_List(cmd);
                     } else if (!cmd.empty()) {
                         RunAsCommand(cmd);
                     }
