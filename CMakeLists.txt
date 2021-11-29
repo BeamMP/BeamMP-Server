@@ -16,7 +16,7 @@ include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
 include_directories("${PROJECT_SOURCE_DIR}/deps")
 
-add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT __linux)
+add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
 
 if(APPLE)
     set(LUA_INCLUDE_DIR /usr/local/Cellar/lua@5.3/5.3.6/include/lua5.3)
@@ -24,6 +24,7 @@ if(APPLE)
     include_directories(/usr/local/opt/openssl@1.1/include)
     link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
     link_directories(/usr/local/opt/openssl@1.1/lib)
+    add_compile_definitions(__linux)
 endif()
 
 if (WIN32)

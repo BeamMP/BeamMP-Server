@@ -2,6 +2,7 @@
 #include "Common.h"
 #include "Compat.h"
 
+#include "Client.h"
 #include "CustomAssert.h"
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
@@ -143,15 +144,44 @@ void TConsole::Command_Lua(const std::string& cmd) {
 void TConsole::Command_Help(const std::string&) {
     static constexpr const char* sHelpString = R"(
     Commands:
-        help            displays this help
-        exit            shuts down the server
-        lua [state id]  switches to lua, optionally into a specific state id's lua
+        help                    displays this help
+        exit                    shuts down the server
+        kick <name> [reason]    kicks specified player with an optional reason
+        list                    lists all players and info about them
+        say <message>           sends the message to all players in chat
+        lua [state id]          switches to lua, optionally into a specific state id's lua
 )";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
 void TConsole::Command_Kick(const std::string& cmd) {
-    cmd.compare()
+    if (cmd.size() > 4) {
+        auto Name = cmd.substr(5);
+        std::string Reason = "Kicked by server console";
+        auto SpacePos = Name.find(' ');
+        if (SpacePos != Name.npos) {
+            Reason = Name.substr(SpacePos + 1);
+            Name = cmd.substr(5, cmd.size() - Reason.size() - 5 - 1);
+        }
+        beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
+        bool Kicked = false;
+        auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
+            std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = tolower(c); });
+            std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = tolower(c); });
+            return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
+        };
+        mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+            if (!Client.expired()) {
+                auto locked = Client.lock();
+                if (NameCompare(locked->GetName(), Name)) {
+                    mLuaEngine->Network().ClientKick(*locked, Reason);
+                    Kicked = true;
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
 }
 
 void TConsole::Command_Say(const std::string& cmd) {
@@ -182,8 +212,10 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
             }
         }
     }
-    if (NonNilFutures.size() == 0 && !IgnoreNotACommand) {
-        Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'");
+    if (NonNilFutures.size() == 0) {
+        if (!IgnoreNotACommand) {
+            Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'");
+        }
     } else {
         std::stringstream Reply;
         if (NonNilFutures.size() > 1) {
