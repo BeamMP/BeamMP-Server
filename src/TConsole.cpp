@@ -149,8 +149,7 @@ void TConsole::Command_Help(const std::string&) {
         kick <name> [reason]    kicks specified player with an optional reason
         list                    lists all players and info about them
         say <message>           sends the message to all players in chat
-        lua [state id]          switches to lua, optionally into a specific state id's lua
-)";
+        lua [state id]          switches to lua, optionally into a specific state id's lua)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
