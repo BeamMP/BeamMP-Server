@@ -149,7 +149,8 @@ void TConsole::Command_Help(const std::string&) {
         kick <name> [reason]    kicks specified player with an optional reason
         list                    lists all players and info about them
         say <message>           sends the message to all players in chat
-        lua [state id]          switches to lua, optionally into a specific state id's lua)";
+        lua [state id]          switches to lua, optionally into a specific state id's lua
+        status                  how the server is doing and what it's up to)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
@@ -213,6 +214,52 @@ void TConsole::Command_List(const std::string&) {
         auto Str = ss.str();
         Application::Console().WriteRaw(Str.substr(0, Str.size() - 1));
     }
+}
+
+void TConsole::Command_Status(const std::string&) {
+    std::stringstream Status;
+
+    size_t CarCount = 0;
+    size_t ConnectedCount = 0;
+    size_t GuestCount = 0;
+    size_t SyncedCount = 0;
+    size_t SyncingCount = 0;
+    size_t MissedPacketQueueSum = 0;
+    int LargestSecondsSinceLastPing = 0;
+    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto Locked = Client.lock();
+            CarCount += Locked->GetCarCount();
+            ConnectedCount += Locked->IsConnected() ? 1 : 0;
+            GuestCount += Locked->IsGuest() ? 1 : 0;
+            SyncedCount += Locked->IsSynced() ? 1 : 0;
+            SyncingCount += Locked->IsSyncing() ? 1 : 0;
+            MissedPacketQueueSum += Locked->MissedPacketQueueSize();
+            if (Locked->SecondsSinceLastPing() < LargestSecondsSinceLastPing) {
+                LargestSecondsSinceLastPing = Locked->SecondsSinceLastPing();
+            }
+        }
+        return true;
+    });
+
+    auto ElapsedTime = mLuaEngine->Server().UptimeTimer.GetElapsedTime();
+
+    Status << "BeamMP-Server Status:\n"
+           << "\tTotal Players:             " << mLuaEngine->Server().ClientCount() << "\n"
+           << "\tSyncing Players:           " << SyncingCount << "\n"
+           << "\tSynced Players:            " << SyncedCount << "\n"
+           << "\tConnected Players:         " << ConnectedCount << "\n"
+           << "\tGuests:                    " << GuestCount << "\n"
+           << "\tCars:                      " << CarCount << "\n"
+           << "\tUptime:                    " << ElapsedTime << "ms (~" << size_t(ElapsedTime / 1000.0 / 60.0 / 60.0) << "h) \n"
+           << "\tLua:\n"
+           << "\t\tQueued results to check:     " << mLuaEngine->GetResultsToCheckSize() << "\n"
+           << "\t\tStates:                      " << mLuaEngine->GetLuaStateCount() << "\n"
+           << "\t\tEvent timers:                " << mLuaEngine->GetTimedEventsCount() << "\n"
+           << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
+           << "";
+
+    Application::Console().WriteRaw(Status.str());
 }
 
 void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
@@ -308,6 +355,9 @@ TConsole::TConsole() {
                     } else if (StringStartsWith(cmd, "list")) {
                         RunAsCommand(cmd, true);
                         Command_List(cmd);
+                    } else if (StringStartsWith(cmd, "status")) {
+                        RunAsCommand(cmd, true);
+                        Command_Status(cmd);
                     } else if (!cmd.empty()) {
                         RunAsCommand(cmd);
                     }

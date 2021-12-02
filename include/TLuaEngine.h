@@ -82,6 +82,29 @@ public:
     void SetNetwork(TNetwork* Network) { mNetwork = Network; }
     void SetServer(TServer* Server) { mServer = Server; }
 
+    size_t GetResultsToCheckSize() {
+        std::unique_lock Lock(mResultsToCheckMutex);
+        return mResultsToCheck.size();
+    }
+    size_t GetLuaStateCount() {
+        std::unique_lock Lock(mLuaStatesMutex);
+        return mLuaStates.size();
+    }
+    size_t GetTimedEventsCount() {
+        std::unique_lock Lock(mTimedEventsMutex);
+        return mTimedEvents.size();
+    }
+    size_t GetRegisteredEventHandlerCount() {
+        std::unique_lock Lock(mLuaEventsMutex);
+        size_t LuaEventsCount = 0;
+        for (const auto& State : mLuaEvents) {
+            for (const auto& Events : State.second) {
+                LuaEventsCount += Events.second.size();
+            }
+        }
+        return LuaEventsCount - GetLuaStateCount();
+    }
+
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);

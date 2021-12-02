@@ -29,6 +29,8 @@ public:
     static void HandleEvent(TClient& c, const std::string& Data);
     RWMutex& GetClientMutex() const { return mClientsMutex; }
 
+    
+    const TScopedTimer UptimeTimer;
 private:
     TClientSet mClients;
     mutable RWMutex mClientsMutex;

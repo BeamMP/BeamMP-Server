@@ -27,6 +27,7 @@ private:
     void Command_Kick(const std::string& cmd);
     void Command_Say(const std::string& cmd);
     void Command_List(const std::string& cmd);
+    void Command_Status(const std::string& cmd);
     
     Commandline mCommandline;
     std::vector<std::string> mCachedLuaHistory;
