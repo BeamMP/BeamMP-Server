@@ -6,6 +6,7 @@
 #include <sstream>
 
 void THeartbeatThread::operator()() {
+    return;/*
     RegisterThread("Heartbeat");
     std::string Body;
     std::string T;
@@ -82,6 +83,7 @@ void THeartbeatThread::operator()() {
 
         //SocketIO::Get().SetAuthenticated(isAuth);
     }
+    */
 }
 
 std::string THeartbeatThread::GenerateCall() {

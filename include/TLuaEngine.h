@@ -20,6 +20,9 @@
 
 using TLuaStateId = std::string;
 namespace fs = std::filesystem;
+/**
+ * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
+ */
 using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool>;
 static constexpr size_t TLuaArgTypes_String = 0;
 static constexpr size_t TLuaArgTypes_Int = 1;
@@ -90,11 +93,21 @@ public:
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     template <typename... ArgsT>
+    /**
+     *
+     * @tparam ArgsT Template Arguments for the event (Metadata) todo: figure out what this means
+     * @param EventName Name of the event
+     * @param IgnoreId
+     * @param Args
+     * @return
+     */
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
         std::unique_lock Lock(mLuaEventsMutex);
-        if (mLuaEvents.find(EventName) == mLuaEvents.end()) {
+        beammp_event(EventName);
+        if (mLuaEvents.find(EventName) == mLuaEvents.end()) { // if no event handler is defined for 'EventName', return immediately
             return {};
         }
+
         std::vector<std::shared_ptr<TLuaResult>> Results;
         for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
@@ -103,7 +116,7 @@ public:
                 }
             }
         }
-        return Results;
+        return Results; //
     }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS);

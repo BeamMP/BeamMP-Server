@@ -158,6 +158,12 @@ void RegisterThread(const std::string& str);
             Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
         }                                                                                 \
     } while (false)
+#define beammp_event(x)                                                                   \
+    do {                                                                                  \
+        if (Application::Settings.DebugModeEnabled) {                                     \
+            Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
+        }                                                                                 \
+    }while(false)
 // for those times when you just need to ignore something :^)
 // explicity disables a [[nodiscard]] warning
 #define beammp_ignore(x) (void)x

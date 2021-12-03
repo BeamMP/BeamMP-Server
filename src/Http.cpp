@@ -3,8 +3,7 @@
 #include "Common.h"
 
 #include <map>
-
-#include <httplib.h>
+#include <stdexcept>
 
 // TODO: Add sentry error handling back
 
@@ -121,4 +120,95 @@ std::string Http::Status::ToString(int code) {
     } else {
         return std::to_string(code);
     }
+}
+// Http::Server::THttpServerInstance::THttpServerInstance() { }
+
+EVP_PKEY* Http::Server::Tx509KeypairGenerator::generateKey() {
+    /**
+     * Allocate memory for the pkey
+     */
+    EVP_PKEY* pkey = EVP_PKEY_new();
+    if (pkey == nullptr) {
+        beammp_error("Could not allocate memory for X.509 private key (PKEY) generation.");
+        throw std::runtime_error { std::string { "X.509 PKEY allocation error" } };
+    }
+    BIGNUM* nonce = BN_new();
+    RSA* rsa = RSA_new();
+    RSA_generate_key_ex(rsa, Crypto::RSA_DEFAULT_KEYLENGTH, nonce, nullptr);
+    BN_free(nonce);
+    if (!EVP_PKEY_assign_RSA(pkey, rsa)) {
+        EVP_PKEY_free(pkey);
+        beammp_error(std::string("Could not generate " + std::to_string(Crypto::RSA_DEFAULT_KEYLENGTH) + "-bit RSA key."));
+        throw std::runtime_error { std::string("X.509 RSA key generation error") };
+    }
+    // todo: figure out if returning by reference instead of passing pointers is a security breach
+    return pkey;
+}
+X509* Http::Server::Tx509KeypairGenerator::generateCertificate(EVP_PKEY& pkey) {
+    X509* x509 = X509_new();
+    if (x509 == nullptr) {
+        X509_free(x509);
+        beammp_error("Could not allocate memory for X.509 certificate generation.");
+        throw std::runtime_error { std::string("X.509 certificate generation error") };
+    }
+
+    /**Set the metadata of the certificate*/
+    ASN1_INTEGER_set(X509_get_serialNumber(x509), 1);
+
+    /**Set the cert validity to a year*/
+    X509_gmtime_adj(X509_get_notBefore(x509), 0);
+    X509_gmtime_adj(X509_get_notAfter(x509), 31536000L);
+
+    /**Set the public key of the cert*/
+    X509_set_pubkey(x509, &pkey);
+
+    X509_NAME* name = X509_get_subject_name(x509);
+
+    /**Set cert metadata*/
+    X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (unsigned char*)"GB", -1, -1, 0);
+    X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (unsigned char*)"BeamMP Ltd.", -1, -1, 0);
+    X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (unsigned char*)"localhost", -1, -1, 0);
+
+    X509_set_issuer_name(x509, name);
+
+    // TODO: Hashing with sha256 might cause problems, check later
+    if (!X509_sign(x509, &pkey, EVP_sha256())) {
+        X509_free(x509);
+        beammp_error("Could not sign X.509 certificate.");
+        throw std::runtime_error { std::string("X.509 certificate signing error") };
+    }
+    return x509;
+}
+void Http::Server::Tx509KeypairGenerator::generateAndWriteToDisk() {
+    FILE* KeyFile = std::fopen("key.pem", "wb");
+    if (!KeyFile) {
+        beammp_error("Could not create file 'key.pem', check your permissions");
+        throw std::runtime_error("Could not create file 'key.pem'");
+    }
+    FILE* CertFile = std::fopen("cert.pem", "wb"); //x509 file
+    if (!CertFile) {
+        beammp_error("Could not create file 'cert.pem', check your permissions");
+        throw std::runtime_error("Could not create file 'cert.pem'");
+    }
+    EVP_PKEY* pkey = Http::Server::Tx509KeypairGenerator::generateKey();
+
+    bool writeOpResult = PEM_write_PrivateKey(KeyFile, pkey, nullptr, nullptr, 0, nullptr, nullptr);
+    fclose(KeyFile);
+
+    if(!writeOpResult){
+        beammp_error("Could not write to file 'key.pem', check your permissions");
+        throw std::runtime_error("Could not write to file 'key.pem'");
+    }
+
+    X509* x509 = Http::Server::Tx509KeypairGenerator::generateCertificate(*pkey);
+    writeOpResult = PEM_write_X509(CertFile, x509);
+    fclose(CertFile);
+
+    if(!writeOpResult){
+        beammp_error("Could not write to file 'cert.pem', check your permissions");
+        throw std::runtime_error("Could not write to file 'cert.pem'");
+    }
+    EVP_PKEY_free(pkey);
+    X509_free(x509);
+    return;
 }

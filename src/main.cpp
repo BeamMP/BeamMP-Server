@@ -140,6 +140,9 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::CheckForUpdates();
 
     RegisterThread("Main(Waiting)");
+
+    Http::Server::Tx509KeypairGenerator::generateAndWriteToDisk();
+
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
