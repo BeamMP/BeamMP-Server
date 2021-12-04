@@ -42,6 +42,7 @@ public:
             , MapName("/levels/gridmap_v2/info.json")
             , SSLKeyPath("./.ssl/HttpServer/key.pem")
             , SSLCertPath("./.ssl/HttpServer/cert.pem")
+            , HTTPServerPort(8080)
             , MaxPlayers(10)
             , Private(true)
             , MaxCars(1)
@@ -65,6 +66,7 @@ public:
         bool SendErrors;
         bool SendErrorsMessageEnabled;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
+        int HTTPServerPort;
     };
 
     using TShutdownHandler = std::function<void()>;

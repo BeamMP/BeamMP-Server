@@ -22,6 +22,7 @@ static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
 static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
+static constexpr std::string_view StrHTTPServerPort = "HTTPServerPath";
 
 void WriteSendErrors(const std::string& name) {
     std::ofstream CfgFile { name, std::ios::out | std::ios::app };
@@ -71,6 +72,7 @@ void TConfig::FlushToFile() {
     data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
     data["General"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
     data["General"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
+    data["General"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
     std::ofstream Stream(mConfigFileName);
     Stream << data << std::flush;
 }
@@ -107,6 +109,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
     data["General"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
     data["General"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
+    data["General"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
 
     std::ofstream ofs { std::string(name) };
     if (ofs.good()) {
