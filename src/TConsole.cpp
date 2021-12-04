@@ -289,7 +289,7 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
     }
     if (NonNilFutures.size() == 0) {
         if (!IgnoreNotACommand) {
-            Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'");
+            Application::Console().WriteRaw("Error: Unknown command: '" + cmd + "'. Type 'help' to see a list of valid commands.");
         }
     } else {
         std::stringstream Reply;
