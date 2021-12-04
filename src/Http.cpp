@@ -180,7 +180,7 @@ X509* Http::Server::Tx509KeypairGenerator::GenerateCertificate(EVP_PKEY& PKey) {
     X509_set_issuer_name(X509, Name);
 
     // TODO: Hashing with sha256 might cause problems, check later
-    if (!X509_sign(X509, &PKey, EVP_sha256())) {
+    if (!X509_sign(X509, &PKey, EVP_sha1())) {
         X509_free(X509);
         beammp_error("Could not sign X.509 certificate.");
         throw std::runtime_error { std::string("X.509 certificate signing error") };
@@ -249,13 +249,15 @@ void Http::Server::SetupEnvironment() {
     }
 }
 
-Http::Server::THttpServerInstance::THttpServerInstance() : mHttpLibServerInstance{Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str()} {
-    mHttpLibServerInstance.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests! Huzzah for even less security!</p></section></article></html>", "text/html");
-    });
+Http::Server::THttpServerInstance::THttpServerInstance(){
     Start();
 }
 void Http::Server::THttpServerInstance::operator()() {
     // todo: make this IP agnostic so people can set their own IP
-    mHttpLibServerInstance.listen("0.0.0.0", 23417);
+    this->mHttpLibServerInstancePtr = std::make_shared<httplib::SSLServer>(Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str());
+    this->mHttpLibServerInstancePtr->Get("/", [](const httplib::Request&, httplib::Response& res) {
+        res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
+    });
+    this->mHttpLibServerInstancePtr->listen("0.0.0.0", 23417);
+
 }

@@ -34,7 +34,13 @@ namespace Server {
     protected:
         void operator()();
     private:
-        httplib::SSLServer mHttpLibServerInstance;
+
+        /**
+         * the shared pointer is necessary because httplib is a blocking library and due lacking thread-safety
+         * will "forget" about its environment, when configured across multiple threads.
+         * So we need to able to start the server (make it "listen()") in a single Thread.
+         */
+        std::shared_ptr<httplib::SSLServer> mHttpLibServerInstancePtr;
     };
     // todo: all of these functions are likely unsafe,
     // todo: replace with something that's managed by a domain specific crypto library
