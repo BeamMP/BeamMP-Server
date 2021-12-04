@@ -32,9 +32,11 @@ namespace Server {
         httplib::SSLServer mhttplibServerInstance;
 
     };*/
-    // todo: likely unsafe, replace with something that's managed by a domain specific crypto library
+    // todo: all of these functions are likely unsafe,
+    // todo: replace with something that's managed by a domain specific crypto library
     class Tx509KeypairGenerator {
     public:
+        static bool EnsureTLSConfigExists();
         static X509* GenerateCertificate(EVP_PKEY& pkey);
         static EVP_PKEY* GenerateKey();
         static void GenerateAndWriteToDisk(const fs::path& KeyFilePath, const fs::path& CertFilePath);

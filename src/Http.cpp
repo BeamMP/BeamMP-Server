@@ -123,7 +123,6 @@ std::string Http::Status::ToString(int Code) {
     }
 }
 // Http::Server::THttpServerInstance::THttpServerInstance() { }
-
 EVP_PKEY* Http::Server::Tx509KeypairGenerator::GenerateKey() {
     /**
      * Allocate memory for the pkey
@@ -222,4 +221,12 @@ void Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk(const fs::path&
     EVP_PKEY_free(PKey);
     X509_free(x509);
     return;
+}
+bool Http::Server::Tx509KeypairGenerator::EnsureTLSConfigExists() {
+    if (fs::is_regular_file(Application::Settings.SSLKeyPath)
+        && fs::is_regular_file(Application::Settings.SSLCertPath)) {
+        return true;
+    }else{
+        return false;
+    }
 }

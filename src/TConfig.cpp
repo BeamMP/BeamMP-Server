@@ -20,6 +20,8 @@ static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
+static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
+static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 
 void WriteSendErrors(const std::string& name) {
     std::ofstream CfgFile { name, std::ios::out | std::ios::app };
@@ -43,7 +45,15 @@ TConfig::TConfig(const std::string& ConfigFileName)
         ParseFromFile(mConfigFileName);
     }
 }
-
+/**
+ * @brief Writes out the loaded application state into ServerConfig.toml
+ *
+ * This writes out the current state of application settings that are
+ * applied to the server instance (i.e. the current application settings loaded in the server).
+ * If the state of the application settings changes during runtime,
+ * call this function whenever something about the config changes
+ * whether it is in TConfig.cpp or the configuration file.
+ */
 void TConfig::FlushToFile() {
     auto data = toml::parse(mConfigFileName);
     data["General"] = toml::table();
@@ -59,6 +69,8 @@ void TConfig::FlushToFile() {
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
     data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
     data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
+    data["General"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
+    data["General"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
     std::ofstream Stream(mConfigFileName);
     Stream << data << std::flush;
 }
@@ -93,6 +105,8 @@ void TConfig::CreateConfigFile(std::string_view name) {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
+    data["General"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
 
     std::ofstream ofs { std::string(name) };
     if (ofs.good()) {
@@ -124,6 +138,8 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.ServerDesc = data["General"][StrDescription.data()].as_string();
         Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
+        Application::Settings.SSLKeyPath = data["General"][StrSSLKeyPath.data()].as_string();
+        Application::Settings.SSLCertPath = data["General"][StrSSLCertPath.data()].as_string();
         if (!data["General"][StrSendErrors.data()].is_boolean()
             || !data["General"][StrSendErrorsMessageEnabled.data()].is_boolean()) {
             WriteSendErrors(std::string(name));
@@ -154,6 +170,8 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
+    beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
+    beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }

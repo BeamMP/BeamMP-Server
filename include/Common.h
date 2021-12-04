@@ -40,6 +40,8 @@ public:
             , ServerDesc("BeamMP Default Description")
             , Resource("Resources")
             , MapName("/levels/gridmap_v2/info.json")
+            , SSLKeyPath("./.ssl/HttpServer/key.pem")
+            , SSLCertPath("./.ssl/HttpServer/cert.pem")
             , MaxPlayers(10)
             , Private(true)
             , MaxCars(1)
@@ -52,6 +54,8 @@ public:
         std::string Resource;
         std::string MapName;
         std::string Key;
+        std::string SSLKeyPath;
+        std::string SSLCertPath;
         int MaxPlayers;
         bool Private;
         int MaxCars;
