@@ -139,7 +139,8 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
-    Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk("./key.pem", "./cert.pem");
+    Http::Server::SetupEnvironment();
+    Http::Server::THttpServerInstance HttpServerInstance{};
     beammp_debug("cert.pem is " + std::to_string(fs::file_size("cert.pem")) + " bytes");
     beammp_debug("key.pem is " + std::to_string(fs::file_size("key.pem")) + " bytes");
 

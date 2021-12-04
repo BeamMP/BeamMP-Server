@@ -3,6 +3,7 @@
 #include <Common.h>
 #include <filesystem>
 #include <httplib.h>
+#include <IThreaded.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <string>
@@ -23,15 +24,18 @@ namespace Status {
 const std::string ErrorString = "-1";
 
 namespace Server {
-    /*class THttpServerInstance{
+    void SetupEnvironment();
+    // todo: Add non TLS Server Instance, this one is TLS only
+    class THttpServerInstance : IThreaded {
     public:
         THttpServerInstance();
-
+        static fs::path KeyFilePath;
+        static fs::path CertFilePath;
+    protected:
+        void operator()();
     private:
-        //todo: this should initialize inline
-        httplib::SSLServer mhttplibServerInstance;
-
-    };*/
+        httplib::SSLServer mHttpLibServerInstance;
+    };
     // todo: all of these functions are likely unsafe,
     // todo: replace with something that's managed by a domain specific crypto library
     class Tx509KeypairGenerator {

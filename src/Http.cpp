@@ -5,7 +5,8 @@
 
 #include <map>
 #include <stdexcept>
-
+fs::path Http::Server::THttpServerInstance::KeyFilePath;
+fs::path Http::Server::THttpServerInstance::CertFilePath;
 // TODO: Add sentry error handling back
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
@@ -188,6 +189,7 @@ X509* Http::Server::Tx509KeypairGenerator::GenerateCertificate(EVP_PKEY& PKey) {
 }
 
 void Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk(const fs::path& KeyFilePath, const fs::path& CertFilePath) {
+    // todo: generate directories for ssl keys
     FILE* KeyFile = std::fopen(KeyFilePath.c_str(), "wb");
     if (!KeyFile) {
         beammp_error("Could not create file 'key.pem', check your permissions");
@@ -226,7 +228,34 @@ bool Http::Server::Tx509KeypairGenerator::EnsureTLSConfigExists() {
     if (fs::is_regular_file(Application::Settings.SSLKeyPath)
         && fs::is_regular_file(Application::Settings.SSLCertPath)) {
         return true;
-    }else{
+    } else {
         return false;
     }
+}
+
+void Http::Server::SetupEnvironment() {
+    Application::TSettings defaultSettings {};
+    if (!Tx509KeypairGenerator::EnsureTLSConfigExists()) {
+        beammp_warn(std::string("No default TLS Key / Cert found. "
+                                "IF YOU HAVE NOT MODIFIED THE SSLKeyPath OR SSLCertPath VALUES "
+                                "THIS IS NORMAL ON FIRST STARTUP! BeamMP will generate it's own certs in the default directory "
+                                "(Check for permissions or corrupted key-/certfile)"));
+        Tx509KeypairGenerator::GenerateAndWriteToDisk(defaultSettings.SSLKeyPath, defaultSettings.SSLCertPath);
+        Http::Server::THttpServerInstance::KeyFilePath = defaultSettings.SSLKeyPath;
+        Http::Server::THttpServerInstance::CertFilePath = defaultSettings.SSLCertPath;
+    } else {
+        Http::Server::THttpServerInstance::KeyFilePath = Application::Settings.SSLKeyPath;
+        Http::Server::THttpServerInstance::CertFilePath = Application::Settings.SSLCertPath;
+    }
+}
+
+Http::Server::THttpServerInstance::THttpServerInstance() : mHttpLibServerInstance{Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str()} {
+    mHttpLibServerInstance.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests! Huzzah for even less security!</p></section></article></html>", "text/html");
+    });
+    Start();
+}
+void Http::Server::THttpServerInstance::operator()() {
+    // todo: make this IP agnostic so people can set their own IP
+    mHttpLibServerInstance.listen("0.0.0.0", 23417);
 }
