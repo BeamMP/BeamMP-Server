@@ -30,6 +30,10 @@ ARGUMENTS:
                         Server Config file, including the
                         filename. For paths and filenames with 
                         spaces, put quotes around the path.
+    --working-directory=/path/to/folder
+                        Sets the working directory of the Server.
+                        All paths are considered relative to this,
+                        including the path given in --path.
     --version
                         Prints version info and exits.
 
@@ -80,6 +84,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "config" }, ArgsParser::HAS_VALUE);
+    Parser.RegisterArgument({ "working-directory" }, ArgsParser::HAS_VALUE);
     Parser.Parse(Arguments.List);
     if (!Parser.Verify()) {
         return 1;
@@ -94,13 +99,24 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
         return 0;
     }
-    
+
     std::string ConfigPath = "ServerConfig.toml";
     if (Parser.FoundArgument({ "config" })) {
         auto MaybeConfigPath = Parser.GetValueOfArgument({ "config" });
         if (MaybeConfigPath.has_value()) {
             ConfigPath = MaybeConfigPath.value();
-            beammp_info("Custom config requested via commandline: '" + ConfigPath + "'");
+            beammp_info("Custom config requested via commandline arguments: '" + ConfigPath + "'");
+        }
+    }
+    if (Parser.FoundArgument({ "working-directory" })) {
+        auto MaybeWorkingDirectory = Parser.GetValueOfArgument({ "working-directory" });
+        if (MaybeWorkingDirectory.has_value()) {
+            beammp_info("Custom working directory requested via commandline arguments: '" + ConfigPath + "'");
+            try {
+                fs::current_path(fs::path(MaybeWorkingDirectory.value()));
+            } catch (const std::exception& e) {
+                beammp_error("Could not set working directory to '" + MaybeWorkingDirectory.value() + "': " + e.what());
+            }
         }
     }
 
