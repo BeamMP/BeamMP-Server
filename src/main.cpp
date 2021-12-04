@@ -140,7 +140,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::CheckForUpdates();
 
     Http::Server::SetupEnvironment();
-    Http::Server::THttpServerInstance HttpServerInstance{};
+    Http::Server::THttpServerInstance HttpServerInstance {};
 
     beammp_debug("cert.pem is " + std::to_string(fs::file_size("cert.pem")) + " bytes");
     beammp_debug("key.pem is " + std::to_string(fs::file_size("key.pem")) + " bytes");

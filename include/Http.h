@@ -1,9 +1,9 @@
 #pragma once
 
 #include <Common.h>
+#include <IThreaded.h>
 #include <filesystem>
 #include <httplib.h>
-#include <IThreaded.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <string>
@@ -31,10 +31,11 @@ namespace Server {
         THttpServerInstance();
         static fs::path KeyFilePath;
         static fs::path CertFilePath;
+
     protected:
         void operator()();
-    private:
 
+    private:
         /**
          * the shared pointer is necessary because httplib is a blocking library and due lacking thread-safety
          * will "forget" about its environment, when configured across multiple threads.
