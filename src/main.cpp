@@ -94,7 +94,7 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
         return 0;
     }
-    
+
     std::string ConfigPath = "ServerConfig.toml";
     if (Parser.FoundArgument({ "config" })) {
         auto MaybeConfigPath = Parser.GetValueOfArgument({ "config" });
@@ -139,9 +139,11 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
-    RegisterThread("Main(Waiting)");
+    Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk("./key.pem", "./cert.pem");
+    beammp_debug("cert.pem is " + std::to_string(fs::file_size("cert.pem")) + " bytes");
+    beammp_debug("key.pem is " + std::to_string(fs::file_size("key.pem")) + " bytes");
 
-    Http::Server::Tx509KeypairGenerator::generateAndWriteToDisk();
+    RegisterThread("Main(Waiting)");
 
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));

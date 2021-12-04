@@ -1,14 +1,17 @@
 #pragma once
 
-#include <string>
-#include <unordered_map>
+#include <Common.h>
+#include <filesystem>
+#include <httplib.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
-#include <httplib.h>
-#include <Common.h>
+#include <string>
+#include <unordered_map>
 
-namespace Crypto{
-constexpr size_t RSA_DEFAULT_KEYLENGTH{2048};
+namespace fs = std::filesystem;
+
+namespace Crypto {
+constexpr size_t RSA_DEFAULT_KEYLENGTH { 2048 };
 }
 
 namespace Http {
@@ -19,7 +22,7 @@ namespace Status {
 }
 const std::string ErrorString = "-1";
 
-namespace Server{
+namespace Server {
     /*class THttpServerInstance{
     public:
         THttpServerInstance();
@@ -29,12 +32,12 @@ namespace Server{
         httplib::SSLServer mhttplibServerInstance;
 
     };*/
-    //todo: likely unsafe, replace with something that's managed by a domain specific crypto library
-    class Tx509KeypairGenerator{
+    // todo: likely unsafe, replace with something that's managed by a domain specific crypto library
+    class Tx509KeypairGenerator {
     public:
-        static X509* generateCertificate(EVP_PKEY& pkey);
-        static EVP_PKEY* generateKey();
-        static void generateAndWriteToDisk();
+        static X509* GenerateCertificate(EVP_PKEY& pkey);
+        static EVP_PKEY* GenerateKey();
+        static void GenerateAndWriteToDisk(const fs::path& KeyFilePath, const fs::path& CertFilePath);
     };
 }
 }
