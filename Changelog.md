@@ -2,6 +2,7 @@
 
 - CHANGED entire plugin Lua implementation (rewrite)
 - CHANGED moved *almost all* functions into MP.\*
+- CHANGED console to use a custom language (type `help`!)
 - CHANGED all files of a Lua plugin to share a Lua state (no more state-per-file)
 - ADDED many new Lua API functions, which can be found at <https://wiki.beammp.com/en/Scripting/functions>
 - ADDED Commandline options. Run with `--help` to see all options.
