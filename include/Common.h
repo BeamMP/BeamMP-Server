@@ -40,6 +40,9 @@ public:
             , ServerDesc("BeamMP Default Description")
             , Resource("Resources")
             , MapName("/levels/gridmap_v2/info.json")
+            , SSLKeyPath("./.ssl/HttpServer/key.pem")
+            , SSLCertPath("./.ssl/HttpServer/cert.pem")
+            , HTTPServerPort(8080)
             , MaxPlayers(10)
             , Private(true)
             , MaxCars(1)
@@ -52,6 +55,8 @@ public:
         std::string Resource;
         std::string MapName;
         std::string Key;
+        std::string SSLKeyPath;
+        std::string SSLCertPath;
         int MaxPlayers;
         bool Private;
         int MaxCars;
@@ -61,6 +66,7 @@ public:
         bool SendErrors;
         bool SendErrorsMessageEnabled;
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
+        int HTTPServerPort;
     };
 
     using TShutdownHandler = std::function<void()>;
@@ -162,6 +168,12 @@ void RegisterThread(const std::string& str);
             Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
         }                                                                                 \
     } while (false)
+#define beammp_event(x)                                                                   \
+    do {                                                                                  \
+        if (Application::Settings.DebugModeEnabled) {                                     \
+            Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
+        }                                                                                 \
+    }while(false)
 // for those times when you just need to ignore something :^)
 // explicity disables a [[nodiscard]] warning
 #define beammp_ignore(x) (void)x

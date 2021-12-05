@@ -211,7 +211,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     beammp_trace("This thread is ip " + std::string(str));
     Client->SetIdentifier("ip", str);
 
-    std::string Rc;
+    std::string Rc; //TODO: figure out why this is not default constructed
     beammp_info("Identifying new ClientConnection...");
 
     Rc = TCPRcv(*Client);

@@ -20,7 +20,8 @@ private:
     void PrintDebug();
 
     void ParseOldFormat();
-
+    bool IsDefault();
     bool mFailed { false };
     std::string mConfigFileName;
 };
+
