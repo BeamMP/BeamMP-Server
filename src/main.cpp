@@ -33,7 +33,7 @@ ARGUMENTS:
     --working-directory=/path/to/folder
                         Sets the working directory of the Server.
                         All paths are considered relative to this,
-                        including the path given in --path.
+                        including the path given in --config.
     --version
                         Prints version info and exits.
 
@@ -111,7 +111,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     if (Parser.FoundArgument({ "working-directory" })) {
         auto MaybeWorkingDirectory = Parser.GetValueOfArgument({ "working-directory" });
         if (MaybeWorkingDirectory.has_value()) {
-            beammp_info("Custom working directory requested via commandline arguments: '" + ConfigPath + "'");
+            beammp_info("Custom working directory requested via commandline arguments: '" + MaybeWorkingDirectory.value() + "'");
             try {
                 fs::current_path(fs::path(MaybeWorkingDirectory.value()));
             } catch (const std::exception& e) {
@@ -156,6 +156,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::CheckForUpdates();
 
     RegisterThread("Main(Waiting)");
+
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
