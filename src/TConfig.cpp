@@ -1,3 +1,4 @@
+#include "Common.h"
 #define TOML11_PRESERVE_COMMENTS_BY_DEFAULT
 
 #include <toml11/toml.hpp> // header-only version of TOML++
@@ -143,6 +144,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
         Application::Settings.SSLKeyPath = data["General"][StrSSLKeyPath.data()].as_string();
         Application::Settings.SSLCertPath = data["General"][StrSSLCertPath.data()].as_string();
+        Application::Settings.HTTPServerPort = data["General"][StrHTTPServerPort.data()].as_string();
         if (!data["General"][StrSendErrors.data()].is_boolean()
             || !data["General"][StrSendErrorsMessageEnabled.data()].is_boolean()) {
             WriteSendErrors(std::string(name));
