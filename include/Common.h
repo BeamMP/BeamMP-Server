@@ -149,7 +149,11 @@ void RegisterThread(const std::string& str);
     } while (false)
 #define beammp_lua_error(x)                                                               \
     do {                                                                                  \
-        Application::Console().Write(_this_location + std::string("[LUA_ERROR] ") + (x)); \
+        Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x)); \
+    } while (false)
+#define beammp_lua_warn(x)                                                               \
+    do {                                                                                 \
+        Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
     } while (false)
 #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
 #define beammp_debug(x)                                                                   \
