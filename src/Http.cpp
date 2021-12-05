@@ -4,8 +4,8 @@
 #include "CustomAssert.h"
 
 #include <map>
-#include <stdexcept>
 #include <random>
+#include <stdexcept>
 fs::path Http::Server::THttpServerInstance::KeyFilePath;
 fs::path Http::Server::THttpServerInstance::CertFilePath;
 // TODO: Add sentry error handling back
@@ -126,10 +126,10 @@ std::string Http::Status::ToString(int Code) {
 }
 
 long Http::Server::Tx509KeypairGenerator::GenerateRandomId() {
-    std::random_device r;
-    std::default_random_engine e1(r());
-    std::uniform_int_distribution<unsigned long> uniform_dist(0,ULONG_MAX);
-    return uniform_dist(e1);
+    std::random_device R;
+    std::default_random_engine E1(R());
+    std::uniform_int_distribution<long> UniformDist(0, ULONG_MAX);
+    return UniformDist(E1);
 }
 
 // Http::Server::THttpServerInstance::THttpServerInstance() { }
@@ -170,7 +170,7 @@ X509* Http::Server::Tx509KeypairGenerator::GenerateCertificate(EVP_PKEY& PKey) {
     }
 
     /**Set the metadata of the certificate*/
-    ASN1_INTEGER_set(X509_get_serialNumber(X509),  GenerateRandomId());
+    ASN1_INTEGER_set(X509_get_serialNumber(X509), GenerateRandomId());
 
     /**Set the cert validity to a year*/
     X509_gmtime_adj(X509_get_notBefore(X509), 0);
