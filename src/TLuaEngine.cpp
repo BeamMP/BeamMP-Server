@@ -145,18 +145,21 @@ TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
     return "";
 }
 
-void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::chrono::high_resolution_clock::duration& max) {
-    size_t ms = 0;
-    bool Cancelled = false;
+void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
     for (const auto& Result : Results) {
+        bool Cancelled = false;
+        size_t ms = 0;
         while (!Result->Ready && !Cancelled) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             ms += 10;
-            if (std::chrono::milliseconds(ms) > max) {
+            if (Max.has_value() && std::chrono::milliseconds(ms) > Max.value()) {
+                beammp_trace("'" + Result->Function + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms)");
                 Cancelled = true;
             }
         }
-        if (Result->Error) {
+        if (Cancelled) {
+            beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' failed to execute in time and was not waited for. It may still finish executing at a later time.");
+        } else if (Result->Error) {
             if (Result->ErrorMessage != BeamMPFnNotFoundError) {
                 beammp_lua_error(Result->Function + ": " + Result->ErrorMessage);
             }

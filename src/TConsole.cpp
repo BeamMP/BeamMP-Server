@@ -265,7 +265,7 @@ void TConsole::Command_Status(const std::string&) {
 void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
     auto FutureIsNonNil =
         [](const std::shared_ptr<TLuaResult>& Future) {
-            if (!Future->Error) {
+            if (!Future->Error && Future->Result.valid()) {
                 auto Type = Future->Result.get_type();
                 return Type != sol::type::lua_nil && Type != sol::type::none;
             }
@@ -274,7 +274,7 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
     std::vector<std::shared_ptr<TLuaResult>> NonNilFutures;
     { // Futures scope
         auto Futures = mLuaEngine->TriggerEvent("onConsoleInput", "", cmd);
-        TLuaEngine::WaitForAll(Futures);
+        TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
         size_t Count = 0;
         for (auto& Future : Futures) {
             if (!Future->Error) {
