@@ -5,6 +5,7 @@
 
 #include <map>
 #include <stdexcept>
+#include <random>
 fs::path Http::Server::THttpServerInstance::KeyFilePath;
 fs::path Http::Server::THttpServerInstance::CertFilePath;
 // TODO: Add sentry error handling back
@@ -123,6 +124,14 @@ std::string Http::Status::ToString(int Code) {
         return std::to_string(Code);
     }
 }
+
+long Http::Server::Tx509KeypairGenerator::GenerateRandomId() {
+    std::random_device r;
+    std::default_random_engine e1(r());
+    std::uniform_int_distribution<unsigned long> uniform_dist(0,ULONG_MAX);
+    return uniform_dist(e1);
+}
+
 // Http::Server::THttpServerInstance::THttpServerInstance() { }
 EVP_PKEY* Http::Server::Tx509KeypairGenerator::GenerateKey() {
     /**
@@ -161,7 +170,7 @@ X509* Http::Server::Tx509KeypairGenerator::GenerateCertificate(EVP_PKEY& PKey) {
     }
 
     /**Set the metadata of the certificate*/
-    ASN1_INTEGER_set(X509_get_serialNumber(X509), 1);
+    ASN1_INTEGER_set(X509_get_serialNumber(X509),  GenerateRandomId());
 
     /**Set the cert validity to a year*/
     X509_gmtime_adj(X509_get_notBefore(X509), 0);
@@ -235,7 +244,7 @@ bool Http::Server::Tx509KeypairGenerator::EnsureTLSConfigExists() {
 
 void Http::Server::SetupEnvironment() {
     auto parent = fs::path(Application::Settings.SSLKeyPath).parent_path();
-    if(!fs::exists(parent))
+    if (!fs::exists(parent))
         fs::create_directories(parent);
 
     Application::TSettings defaultSettings {};
@@ -261,6 +270,10 @@ void Http::Server::THttpServerInstance::operator()() {
     this->mHttpLibServerInstancePtr = std::make_shared<httplib::SSLServer>(Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str());
     this->mHttpLibServerInstancePtr->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
+    });
+    this->mHttpLibServerInstancePtr->Get("/health", [](const httplib::Request& req, httplib::Response& res) {
+        res.set_content("1", "text/plain");
+        res.status = 200;
     });
     this->mHttpLibServerInstancePtr->listen("0.0.0.0", Application::Settings.HTTPServerPort);
 }
