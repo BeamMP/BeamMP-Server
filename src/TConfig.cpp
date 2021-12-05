@@ -23,7 +23,7 @@ static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
 static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
-static constexpr std::string_view StrHTTPServerPort = "HTTPServerPath";
+static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
 
 void WriteSendErrors(const std::string& name) {
     std::ofstream CfgFile { name, std::ios::out | std::ios::app };
@@ -144,7 +144,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
         Application::Settings.SSLKeyPath = data["General"][StrSSLKeyPath.data()].as_string();
         Application::Settings.SSLCertPath = data["General"][StrSSLCertPath.data()].as_string();
-        Application::Settings.HTTPServerPort = data["General"][StrHTTPServerPort.data()].as_string();
+        Application::Settings.HTTPServerPort = data["General"][StrHTTPServerPort.data()].as_integer();
         if (!data["General"][StrSendErrors.data()].is_boolean()
             || !data["General"][StrSendErrorsMessageEnabled.data()].is_boolean()) {
             WriteSendErrors(std::string(name));

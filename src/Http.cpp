@@ -234,6 +234,10 @@ bool Http::Server::Tx509KeypairGenerator::EnsureTLSConfigExists() {
 }
 
 void Http::Server::SetupEnvironment() {
+    auto parent = fs::path(Application::Settings.SSLKeyPath).parent_path();
+    if(!fs::exists(parent))
+        fs::create_directories(parent);
+
     Application::TSettings defaultSettings {};
     if (!Tx509KeypairGenerator::EnsureTLSConfigExists()) {
         beammp_warn(std::string("No default TLS Key / Cert found. "
