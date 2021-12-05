@@ -145,10 +145,16 @@ TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
     return "";
 }
 
-void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results) {
+void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::chrono::high_resolution_clock::duration& max) {
+    size_t ms = 0;
+    bool Cancelled = false;
     for (const auto& Result : Results) {
-        while (!Result->Ready) {
+        while (!Result->Ready && !Cancelled) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            ms += 10;
+            if (std::chrono::milliseconds(ms) > max) {
+                Cancelled = true;
+            }
         }
         if (Result->Error) {
             if (Result->ErrorMessage != BeamMPFnNotFoundError) {

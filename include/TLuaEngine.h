@@ -105,7 +105,8 @@ public:
         return LuaEventsCount - GetLuaStateCount();
     }
 
-    static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results);
+    static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results,
+        const std::chrono::high_resolution_clock::duration& Max = std::chrono::hours(std::numeric_limits<size_t>().max()));
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
