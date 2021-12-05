@@ -272,7 +272,7 @@ void Http::Server::THttpServerInstance::operator()() {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
     this->mHttpLibServerInstancePtr->Get("/health", [](const httplib::Request& req, httplib::Response& res) {
-        res.set_content("1", "text/plain");
+        res.set_content("0", "text/plain");
         res.status = 200;
     });
     this->mHttpLibServerInstancePtr->listen("0.0.0.0", Application::Settings.HTTPServerPort);
