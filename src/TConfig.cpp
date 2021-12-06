@@ -31,6 +31,7 @@ static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
 
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
+    Application::SetSubsystemStatus("Config", Application::Status::Starting);
     if (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName)) {
         beammp_info("No config file found! Generating one...");
         CreateConfigFile(mConfigFileName);
@@ -115,6 +116,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
         ofs.close();
     } else {
         beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
+        Application::SetSubsystemStatus("Config", Application::Status::Bad);
         mFailed = true;
     }
 }
@@ -151,6 +153,7 @@ void TConfig::ParseFromFile(std::string_view name) {
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
+        Application::SetSubsystemStatus("Config", Application::Status::Bad);
         return;
     }
     PrintDebug();
@@ -161,7 +164,13 @@ void TConfig::ParseFromFile(std::string_view name) {
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
         beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        Application::SetSubsystemStatus("Config", Application::Status::Bad);
         mFailed = true;
+        return;
+    }
+    Application::SetSubsystemStatus("Config", Application::Status::Good);
+    if (Application::Settings.Key.size() != 36) {
+        beammp_warn("AuthKey specified is the wrong length and likely isn't valid.");
     }
 }
 

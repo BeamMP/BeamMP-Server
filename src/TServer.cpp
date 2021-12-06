@@ -17,6 +17,7 @@ namespace json = rapidjson;
 
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
+    Application::SetSubsystemStatus("Server", Application::Status::Starting);
     if (Arguments.size() > 1) {
         Application::Settings.CustomIP = Arguments[0];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
@@ -28,6 +29,7 @@ TServer::TServer(const std::vector<std::string_view>& Arguments) {
             beammp_info("server started with custom IP");
         }
     }
+    Application::SetSubsystemStatus("Server", Application::Status::Good);
 }
 
 void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {

@@ -78,6 +78,7 @@ int main(int argc, char** argv) {
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
     Application::InitializeConsole();
+    Application::SetSubsystemStatus("Main", Application::Status::Starting);
 
     SetupSignalHandlers();
 
@@ -148,7 +149,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     beammp_trace("Running in debug mode on a debug build");
     Sentry.SetupUser();
     Sentry.PrintWelcome();
-    TResourceManager ResourceManager; 
+    TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
@@ -161,17 +162,35 @@ int BeamMPServerMain(MainArguments Arguments) {
         Http::Server::THttpServerInstance HttpServerInstance {};
     }
 
+    Application::SetSubsystemStatus("Main", Application::Status::Good);
     RegisterThread("Main(Waiting)");
 
-    auto Statuses = Application::GetSubsystemStatuses();
-    for (const auto& NameStatusPair : Statuses) {
-        if (NameStatusPair.second != Application::Status::Good) {
-            beammp_info("not good: " + NameStatusPair.first);
-        }
-    }
-
+    bool FullyStarted = false;
     while (!Shutdown) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (!FullyStarted) {
+            FullyStarted = true;
+            bool WithErrors = false;
+            std::string SystemsBadList {};
+            auto Statuses = Application::GetSubsystemStatuses();
+            for (const auto& NameStatusPair : Statuses) {
+                if (NameStatusPair.second == Application::Status::Starting) {
+                    FullyStarted = false;
+                } else if (NameStatusPair.second == Application::Status::Bad) {
+                    SystemsBadList += NameStatusPair.first + ", ";
+                    WithErrors = true;
+                }
+            }
+            // remove ", "
+            SystemsBadList = SystemsBadList.substr(0, SystemsBadList.size() - 2);
+            if (FullyStarted) {
+                if (!WithErrors) {
+                    beammp_info("ALL SYSTEMS STARTED SUCCESSFULLY, EVERYTHING IS OKAY");
+                } else {
+                    beammp_error("STARTUP NOT SUCCESSFUL, SYSTEMS " + SystemsBadList + " HAD ERRORS. THIS MAY OR MAY NOT CAUSE ISSUES.");
+                }
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
     beammp_info("Shutdown.");
     return 0;

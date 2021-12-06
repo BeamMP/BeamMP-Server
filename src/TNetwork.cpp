@@ -11,6 +11,8 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
     , mResourceManager(ResourceManager) {
+    Application::SetSubsystemStatus("TCPNetwork", Application::Status::Starting);
+    Application::SetSubsystemStatus("UDPNetwork", Application::Status::Starting);
     Application::RegisterShutdownHandler([&] {
         beammp_debug("Kicking all players due to shutdown");
         Server.ForEachClient([&](std::weak_ptr<TClient> client) -> bool {
@@ -56,10 +58,10 @@ void TNetwork::UDPServerMain() {
     if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
         beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
+        exit(-1); // TODO: Wtf.
         // return;
     }
-
+    Application::SetSubsystemStatus("UDPNetwork", Application::Status::Good);
     beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
     while (!mShutdown) {
@@ -123,7 +125,7 @@ void TNetwork::TCPServerMain() {
     if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
         beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1);
+        exit(-1); // TODO: Wtf.
     }
     if (Listener == -1) {
         beammp_error("Invalid listening socket");
@@ -134,6 +136,7 @@ void TNetwork::TCPServerMain() {
         // FIXME leak Listener
         return;
     }
+    Application::SetSubsystemStatus("TCPNetwork", Application::Status::Good);
     beammp_info(("Vehicle event network online"));
     do {
         try {
@@ -211,7 +214,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
     beammp_trace("This thread is ip " + std::string(str));
     Client->SetIdentifier("ip", str);
 
-    std::string Rc; //TODO: figure out why this is not default constructed
+    std::string Rc; // TODO: figure out why this is not default constructed
     beammp_info("Identifying new ClientConnection...");
 
     Rc = TCPRcv(*Client);

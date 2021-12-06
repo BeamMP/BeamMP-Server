@@ -55,6 +55,7 @@ void TSentry::SetupUser() {
     if (!mValid) {
         return;
     }
+    Application::SetSubsystemStatus("Sentry", Application::Status::Good);
     sentry_value_t user = sentry_value_new_object();
     if (Application::Settings.Key.size() == 36) {
         sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));

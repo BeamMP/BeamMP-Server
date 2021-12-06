@@ -247,6 +247,34 @@ void TConsole::Command_Status(const std::string&) {
         return true;
     });
 
+    size_t SystemsStarting = 0;
+    size_t SystemsGood = 0;
+    size_t SystemsBad = 0;
+    std::string SystemsBadList {};
+    std::string SystemsGoodList {};
+    std::string SystemsStartingList {};
+    auto Statuses = Application::GetSubsystemStatuses();
+    for (const auto& NameStatusPair : Statuses) {
+        switch (NameStatusPair.second) {
+        case Application::Status::Good:
+            SystemsGood++;
+            SystemsGoodList += NameStatusPair.first + ", ";
+            break;
+        case Application::Status::Bad:
+            SystemsBad++;
+            SystemsBadList += NameStatusPair.first + ", ";
+            break;
+        case Application::Status::Starting:
+            SystemsStarting++;
+            SystemsStartingList += NameStatusPair.first + ", ";
+            break;
+        }
+    }
+    // remove ", " at the end
+    SystemsBadList = SystemsBadList.substr(0, SystemsBadList.size() - 2);
+    SystemsGoodList = SystemsGoodList.substr(0, SystemsGoodList.size() - 2);
+    SystemsStartingList = SystemsStartingList.substr(0, SystemsStartingList.size() - 2);
+
     auto ElapsedTime = mLuaEngine->Server().UptimeTimer.GetElapsedTime();
 
     Status << "BeamMP-Server Status:\n"
@@ -262,6 +290,11 @@ void TConsole::Command_Status(const std::string&) {
            << "\t\tStates:                      " << mLuaEngine->GetLuaStateCount() << "\n"
            << "\t\tEvent timers:                " << mLuaEngine->GetTimedEventsCount() << "\n"
            << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
+           << "\tSubsystems:\n"
+           << "\t\tGood/Starting/Bad:           " << SystemsGood << "/" << SystemsStarting << "/" << SystemsBad << "\n"
+           << "\t\tGood:                        [ " << SystemsGoodList << " ]\n"
+           << "\t\tStarting:                    [ " << SystemsStartingList << " ]\n"
+           << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
            << "";
 
     Application::Console().WriteRaw(Status.str());

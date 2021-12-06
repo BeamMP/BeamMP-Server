@@ -16,6 +16,7 @@ TLuaEngine* LuaAPI::MP::Engine;
 
 TLuaEngine::TLuaEngine()
     : mPluginMonitor(fs::path(Application::Settings.Resource) / "Server", *this, mShutdown) {
+    Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
     LuaAPI::MP::Engine = this;
     if (!fs::exists(Application::Settings.Resource)) {
         fs::create_directory(Application::Settings.Resource);
@@ -36,6 +37,7 @@ TLuaEngine::TLuaEngine()
 
 void TLuaEngine::operator()() {
     RegisterThread("LuaEngine");
+    Application::SetSubsystemStatus("LuaEngine", Application::Status::Good);
     // lua engine main thread
     CollectAndInitPlugins();
     // now call all onInit's

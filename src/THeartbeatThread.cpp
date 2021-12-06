@@ -6,7 +6,6 @@
 #include <sstream>
 
 void THeartbeatThread::operator()() {
-    return;/*
     RegisterThread("Heartbeat");
     std::string Body;
     std::string T;
@@ -55,20 +54,28 @@ void THeartbeatThread::operator()() {
 
         if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
             beammp_trace("got " + T + " from backend");
+            Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
             SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
             T = Http::POST(Application::GetBackup1Hostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
             if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
                 SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
+                Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 T = Http::POST(Application::GetBackup2Hostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
                 if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
                     beammp_warn("Backend system refused server! Server will not show in the public server list.");
-
+                    Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
                     isAuth = false;
                     SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
+                } else {
+                    Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
                 }
+            } else {
+                Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
             }
+        } else {
+            Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
 
         if (!isAuth) {
@@ -81,9 +88,8 @@ void THeartbeatThread::operator()() {
             }
         }
 
-        //SocketIO::Get().SetAuthenticated(isAuth);
+        // SocketIO::Get().SetAuthenticated(isAuth);
     }
-    */
 }
 
 std::string THeartbeatThread::GenerateCall() {
@@ -108,6 +114,7 @@ std::string THeartbeatThread::GenerateCall() {
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
     : mResourceManager(ResourceManager)
     , mServer(Server) {
+    Application::SetSubsystemStatus("Heartbeat", Application::Status::Starting);
     Application::RegisterShutdownHandler([&] {
         if (mThread.joinable()) {
             mShutdown = true;

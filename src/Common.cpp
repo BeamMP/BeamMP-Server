@@ -73,7 +73,24 @@ bool Application::IsOutdated(const Version& Current, const Version& Newest) {
     }
 }
 
+void Application::SetSubsystemStatus(const std::string& Subsystem, Status status) {
+    switch (status) {
+    case Status::Good:
+        beammp_trace("Subsystem '" + Subsystem + "': Good");
+        break;
+    case Status::Bad:
+        beammp_trace("Subsystem '" + Subsystem + "': Bad");
+        break;
+    case Status::Starting:
+        beammp_trace("Subsystem '" + Subsystem + "': Starting");
+        break;
+    }
+    std::unique_lock Lock(mSystemStatusMapMutex);
+    mSystemStatusMap[Subsystem] = status;
+}
+
 void Application::CheckForUpdates() {
+    Application::SetSubsystemStatus("UpdateCheck", Application::Status::Starting);
     // checks current version against latest version
     std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
     auto Response = Http::GET(GetBackendHostname(), 443, "/v/s");
@@ -87,12 +104,14 @@ void Application::CheckForUpdates() {
         } else {
             beammp_info("Server up-to-date!");
         }
+        Application::SetSubsystemStatus("UpdateCheck", Application::Status::Good);
     } else {
         beammp_warn("Unable to fetch version from backend.");
         beammp_trace("got " + Response);
         auto Lock = Sentry.CreateExclusiveContext();
         Sentry.SetContext("get-response", { { "response", Response } });
         Sentry.LogError("failed to get server version", _file_basename, _line);
+        Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
     }
 }
 

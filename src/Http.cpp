@@ -264,6 +264,7 @@ void Http::Server::SetupEnvironment() {
 }
 
 Http::Server::THttpServerInstance::THttpServerInstance() {
+    Application::SetSubsystemStatus("HTTPServer", Application::Status::Starting);
     mThread = std::thread(&Http::Server::THttpServerInstance::operator(), this);
     mThread.detach();
 }
@@ -279,5 +280,6 @@ void Http::Server::THttpServerInstance::operator()() {
         res.set_content("0", "text/plain");
         res.status = 200;
     });
+    Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
     HttpLibServerInstance.listen("0.0.0.0", Application::Settings.HTTPServerPort);
 }

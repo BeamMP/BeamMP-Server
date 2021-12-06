@@ -97,15 +97,15 @@ public:
     using SystemStatusMap = std::unordered_map<std::string /* system name */, Status /* status */>;
 
     static const SystemStatusMap& GetSubsystemStatuses() {
+        std::unique_lock Lock(mSystemStatusMapMutex);
         return mSystemStatusMap;
     }
-    
-    static void SetSubsystemStatus(const std::string& Subsystem, Status status) {
-        mSystemStatusMap[Subsystem] = status;
-    }
+
+    static void SetSubsystemStatus(const std::string& Subsystem, Status status);
 
 private:
     static inline SystemStatusMap mSystemStatusMap {};
+    static inline std::mutex mSystemStatusMapMutex {};
     static inline std::string mPPS;
     static inline std::unique_ptr<TConsole> mConsole;
     static inline std::mutex mShutdownHandlersMutex {};
