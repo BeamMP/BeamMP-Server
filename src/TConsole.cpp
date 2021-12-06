@@ -113,8 +113,8 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
             Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
             mCommandline.set_prompt("lua> ");
         }
-        // mCachedRegularHistory = mCommandline.history();
-        // mCommandline.set_history(mCachedLuaHistory);
+        mCachedRegularHistory = mCommandline.history();
+        mCommandline.set_history(mCachedLuaHistory);
     }
 }
 
@@ -126,8 +126,8 @@ void TConsole::ChangeToRegularConsole() {
         } else {
             Application::Console().WriteRaw("Left Lua console.");
         }
-        // mCachedLuaHistory = mCommandline.history();
-        // mCommandline.set_history(mCachedRegularHistory);
+        mCachedLuaHistory = mCommandline.history();
+        mCommandline.set_history(mCachedRegularHistory);
         mCommandline.set_prompt("> ");
         mStateId = mDefaultStateId;
     }
