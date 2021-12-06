@@ -233,6 +233,7 @@ void Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk(const fs::path&
     X509_free(x509);
     return;
 }
+
 bool Http::Server::Tx509KeypairGenerator::EnsureTLSConfigExists() {
     if (fs::is_regular_file(Application::Settings.SSLKeyPath)
         && fs::is_regular_file(Application::Settings.SSLCertPath)) {
@@ -263,17 +264,20 @@ void Http::Server::SetupEnvironment() {
 }
 
 Http::Server::THttpServerInstance::THttpServerInstance() {
-    Start();
+    mThread = std::thread(&Http::Server::THttpServerInstance::operator(), this);
+    mThread.detach();
 }
+
 void Http::Server::THttpServerInstance::operator()() {
+    beammp_info("HTTPS Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
     // todo: make this IP agnostic so people can set their own IP
-    this->mHttpLibServerInstancePtr = std::make_shared<httplib::SSLServer>(Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str());
-    this->mHttpLibServerInstancePtr->Get("/", [](const httplib::Request&, httplib::Response& res) {
+    mHttpLibServerInstancePtr = std::make_shared<httplib::SSLServer>(Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str());
+    mHttpLibServerInstancePtr->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
-    this->mHttpLibServerInstancePtr->Get("/health", [](const httplib::Request& req, httplib::Response& res) {
+    mHttpLibServerInstancePtr->Get("/health", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("0", "text/plain");
         res.status = 200;
     });
-    this->mHttpLibServerInstancePtr->listen("0.0.0.0", Application::Settings.HTTPServerPort);
+    mHttpLibServerInstancePtr->listen("0.0.0.0", Application::Settings.HTTPServerPort);
 }

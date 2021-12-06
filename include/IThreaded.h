@@ -8,11 +8,11 @@ public:
     IThreaded()
         // invokes operator() on this object
         : mThread() { }
-        ~IThreaded() noexcept {
-            if (mThread.joinable()) {
-                mThread.join();
-            }
+    ~IThreaded() noexcept {
+        if (mThread.joinable()) {
+            mThread.join();
         }
+    }
 
     virtual void Start() final {
         mThread = std::thread([this] { (*this)(); });

@@ -26,7 +26,7 @@ const std::string ErrorString = "-1";
 namespace Server {
     void SetupEnvironment();
     // todo: Add non TLS Server Instance, this one is TLS only
-    class THttpServerInstance : IThreaded {
+    class THttpServerInstance {
     public:
         THttpServerInstance();
         static fs::path KeyFilePath;
@@ -42,6 +42,7 @@ namespace Server {
          * So we need to able to start the server (make it "listen()") in a single Thread.
          */
         std::shared_ptr<httplib::SSLServer> mHttpLibServerInstancePtr;
+        std::thread mThread;
     };
     // todo: all of these functions are likely unsafe,
     // todo: replace with something that's managed by a domain specific crypto library
