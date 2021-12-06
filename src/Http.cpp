@@ -273,7 +273,7 @@ void Http::Server::THttpServerInstance::operator()() {
     beammp_info("HTTP(S) Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
     std::unique_ptr<httplib::Server> HttpLibServerInstance;
     if (Application::Settings.HTTPServerUseSSL) {
-        HttpLibServerInstance = std::make_unique<httplib::SSLServer>(Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str());
+        HttpLibServerInstance = std::make_unique<httplib::SSLServer>(Http::Server::THttpServerInstance::CertFilePath.c_str(), Http::Server::THttpServerInstance::KeyFilePath.c_str());
     } else {
         HttpLibServerInstance = std::make_unique<httplib::Server>();
     }
