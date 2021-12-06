@@ -1,7 +1,4 @@
 #include "Common.h"
-#define TOML11_PRESERVE_COMMENTS_BY_DEFAULT
-
-#include <toml11/toml.hpp> // header-only version of TOML++
 
 #include "TConfig.h"
 #include <fstream>
@@ -23,6 +20,7 @@ static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 
 // HTTP
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
@@ -44,6 +42,12 @@ TConfig::TConfig(const std::string& ConfigFileName)
     }
 }
 
+template <typename CommentsT>
+void SetComment(CommentsT& Comments, const std::string& Comment) {
+    Comments.clear();
+    Comments.push_back(Comment);
+}
+
 /**
  * @brief Writes out the loaded application state into ServerConfig.toml
  *
@@ -56,9 +60,8 @@ TConfig::TConfig(const std::string& ConfigFileName)
 void TConfig::FlushToFile() {
     auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
     data["General"] = toml::table();
-    data["General"].comments().push_back(" General BeamMP Server settings");
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
-    data["General"][StrAuthKey.data()].comments().push_back(" AuthKey has to be filled out in order to run the server");
+    SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
@@ -69,14 +72,16 @@ void TConfig::FlushToFile() {
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
     data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
-    data["General"][StrSendErrors.data()].comments().push_back(" You can turn on/off the SendErrors message you get on startup here");
+    SetComment(data["General"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    data["General"][StrSendErrorsMessageEnabled.data()].comments().push_back(" If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    SetComment(data["General"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
     data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
     data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
     data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    data["HTTP"][StrHTTPServerUseSSL.data()] = Application::Settings.HTTPServerUseSSL;
+    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to keep enabled. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
-    data["HTTP"][StrHTTPServerEnabled.data()].comments().push_back(" Enables the internal HTTP server");
+    SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
     std::ofstream Stream(mConfigFileName);
     Stream << data << std::flush;
 }
@@ -121,35 +126,46 @@ void TConfig::CreateConfigFile(std::string_view name) {
     }
 }
 
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {
+    if (Table[Category.c_str()][Key.data()].is_string()) {
+        OutValue = Table[Category.c_str()][Key.data()].as_string();
+    }
+}
+
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, bool& OutValue) {
+    if (Table[Category.c_str()][Key.data()].is_boolean()) {
+        OutValue = Table[Category.c_str()][Key.data()].as_boolean();
+    }
+}
+
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue) {
+    if (Table[Category.c_str()][Key.data()].is_integer()) {
+        OutValue = Table[Category.c_str()][Key.data()].as_integer();
+    }
+}
+
 void TConfig::ParseFromFile(std::string_view name) {
-    bool UpdateConfigFile = false;
     try {
         toml::value data = toml::parse<toml::preserve_comments>(name.data());
-        Application::Settings.DebugModeEnabled = data["General"][StrDebug.data()].as_boolean();
-        Application::Settings.Private = data["General"][StrPrivate.data()].as_boolean();
-        Application::Settings.Port = data["General"][StrPort.data()].as_integer();
-        Application::Settings.MaxCars = data["General"][StrMaxCars.data()].as_integer();
-        Application::Settings.MaxPlayers = data["General"][StrMaxPlayers.data()].as_integer();
-        Application::Settings.MapName = data["General"][StrMap.data()].as_string();
-        Application::Settings.ServerName = data["General"][StrName.data()].as_string();
-        Application::Settings.ServerDesc = data["General"][StrDescription.data()].as_string();
-        Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
-        Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
-        if (!data["HTTP"][StrSSLKeyPath.data()].is_string()) {
-            UpdateConfigFile = true;
-        } else {
-            Application::Settings.SSLKeyPath = data["HTTP"][StrSSLKeyPath.data()].as_string();
-            Application::Settings.SSLCertPath = data["HTTP"][StrSSLCertPath.data()].as_string();
-            Application::Settings.HTTPServerPort = data["HTTP"][StrHTTPServerPort.data()].as_integer();
-            Application::Settings.HTTPServerEnabled = data["HTTP"][StrHTTPServerEnabled.data()].as_boolean();
-        }
-        if (!data["General"][StrSendErrors.data()].is_boolean()
-            || !data["General"][StrSendErrorsMessageEnabled.data()].is_boolean()) {
-            UpdateConfigFile = true;
-        } else {
-            Application::Settings.SendErrors = data["General"][StrSendErrors.data()].as_boolean();
-            Application::Settings.SendErrorsMessageEnabled = data["General"][StrSendErrorsMessageEnabled.data()].as_boolean();
-        }
+        // GENERAL
+        TryReadValue(data, "General", StrDebug, Application::Settings.DebugModeEnabled);
+        TryReadValue(data, "General", StrPrivate, Application::Settings.Private);
+        TryReadValue(data, "General", StrPort, Application::Settings.Port);
+        TryReadValue(data, "General", StrMaxCars, Application::Settings.MaxCars);
+        TryReadValue(data, "General", StrMaxPlayers, Application::Settings.MaxPlayers);
+        TryReadValue(data, "General", StrMap, Application::Settings.MapName);
+        TryReadValue(data, "General", StrName, Application::Settings.ServerName);
+        TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
+        TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
+        TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
+        // HTTP
+        TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
+        TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
+        TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
+        TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
+        TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
@@ -158,9 +174,8 @@ void TConfig::ParseFromFile(std::string_view name) {
     }
     PrintDebug();
 
-    if (UpdateConfigFile) {
-        FlushToFile();
-    }
+    // Update in any case
+    FlushToFile();
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
         beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
