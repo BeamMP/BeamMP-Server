@@ -35,38 +35,23 @@ class Application final {
 public:
     // types
     struct TSettings {
-        TSettings() noexcept
-            : ServerName("BeamMP Server")
-            , ServerDesc("BeamMP Default Description")
-            , Resource("Resources")
-            , MapName("/levels/gridmap_v2/info.json")
-            , SSLKeyPath("./.ssl/HttpServer/key.pem")
-            , SSLCertPath("./.ssl/HttpServer/cert.pem")
-            , HTTPServerPort(8080)
-            , MaxPlayers(10)
-            , Private(true)
-            , MaxCars(1)
-            , DebugModeEnabled(false)
-            , Port(30814)
-            , SendErrors(true)
-            , SendErrorsMessageEnabled(true) { }
-        std::string ServerName;
-        std::string ServerDesc;
-        std::string Resource;
-        std::string MapName;
-        std::string Key;
-        std::string SSLKeyPath;
-        std::string SSLCertPath;
-        int MaxPlayers;
-        bool Private;
-        int MaxCars;
-        bool DebugModeEnabled;
-        int Port;
-        std::string CustomIP;
-        bool SendErrors;
-        bool SendErrorsMessageEnabled;
+        std::string ServerName { "BeamMP Server" };
+        std::string ServerDesc { "BeamMP Default Description" };
+        std::string Resource { "Resources" };
+        std::string MapName { "/levels/gridmap_v2/info.json" };
+        std::string Key {};
+        std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
+        std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
+        int MaxPlayers { 10 };
+        bool Private { true };
+        int MaxCars { 1 };
+        bool DebugModeEnabled { false };
+        int Port { 30814 };
+        std::string CustomIP {};
+        bool SendErrors { true };
+        bool SendErrorsMessageEnabled { true };
+        int HTTPServerPort { 8080 };
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
-        int HTTPServerPort;
     };
 
     using TShutdownHandler = std::function<void()>;
@@ -173,7 +158,7 @@ void RegisterThread(const std::string& str);
         if (Application::Settings.DebugModeEnabled) {                                     \
             Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
         }                                                                                 \
-    }while(false)
+    } while (false)
 // for those times when you just need to ignore something :^)
 // explicity disables a [[nodiscard]] warning
 #define beammp_ignore(x) (void)x
