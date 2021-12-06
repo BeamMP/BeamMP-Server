@@ -77,6 +77,7 @@ int main(int argc, char** argv) {
 
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
+    Application::InitializeConsole();
 
     SetupSignalHandlers();
 
@@ -131,6 +132,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     TConfig Config(ConfigPath);
     TLuaEngine LuaEngine;
     LuaEngine.SetServer(&Server);
+    Application::Console().InitializeLuaConsole(LuaEngine);
 
     if (Config.Failed()) {
         beammp_info("Closing in 10 seconds");
@@ -146,13 +148,12 @@ int BeamMPServerMain(MainArguments Arguments) {
     beammp_trace("Running in debug mode on a debug build");
     Sentry.SetupUser();
     Sentry.PrintWelcome();
-    TResourceManager ResourceManager;
+    TResourceManager ResourceManager; 
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
     LuaEngine.SetNetwork(&Network);
     PPSMonitor.SetNetwork(Network);
-    Application::Console().InitializeLuaConsole(LuaEngine);
     Application::CheckForUpdates();
 
     if (Application::Settings.HTTPServerEnabled) {
@@ -160,10 +161,14 @@ int BeamMPServerMain(MainArguments Arguments) {
         Http::Server::THttpServerInstance HttpServerInstance {};
     }
 
-    beammp_debug("cert.pem is " + std::to_string(fs::file_size("cert.pem")) + " bytes");
-    beammp_debug("key.pem is " + std::to_string(fs::file_size("key.pem")) + " bytes");
-
     RegisterThread("Main(Waiting)");
+
+    auto Statuses = Application::GetSubsystemStatuses();
+    for (const auto& NameStatusPair : Statuses) {
+        if (NameStatusPair.second != Application::Status::Good) {
+            beammp_info("not good: " + NameStatusPair.first);
+        }
+    }
 
     while (!Shutdown) {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));

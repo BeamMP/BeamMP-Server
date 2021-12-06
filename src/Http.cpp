@@ -270,14 +270,14 @@ Http::Server::THttpServerInstance::THttpServerInstance() {
 
 void Http::Server::THttpServerInstance::operator()() {
     beammp_info("HTTPS Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
+    httplib::SSLServer HttpLibServerInstance { Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str() };
     // todo: make this IP agnostic so people can set their own IP
-    mHttpLibServerInstancePtr = std::make_shared<httplib::SSLServer>(Application::Settings.SSLCertPath.c_str(), Application::Settings.SSLKeyPath.c_str());
-    mHttpLibServerInstancePtr->Get("/", [](const httplib::Request&, httplib::Response& res) {
+    HttpLibServerInstance.Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
-    mHttpLibServerInstancePtr->Get("/health", [](const httplib::Request&, httplib::Response& res) {
+    HttpLibServerInstance.Get("/health", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("0", "text/plain");
         res.status = 200;
     });
-    mHttpLibServerInstancePtr->listen("0.0.0.0", Application::Settings.HTTPServerPort);
+    HttpLibServerInstance.listen("0.0.0.0", Application::Settings.HTTPServerPort);
 }

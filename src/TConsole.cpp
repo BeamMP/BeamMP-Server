@@ -38,7 +38,7 @@ std::string GetDate() {
         auto fraction = now - seconds;
         size_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(fraction).count();
         char fracstr[5];
-        std::sprintf(fracstr, "%0.3lu", ms);
+        std::sprintf(fracstr, "%03lu", ms);
         date += fracstr;
         date += "] ";
     } else {
@@ -99,6 +99,11 @@ void TConsole::BackupOldLog() {
 
 void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
     if (!mIsLuaConsole) {
+        if (!mLuaEngine) {
+            beammp_error("Lua engine not initialized yet, please wait and try again");
+            return;
+        }
+        mLuaEngine->EnsureStateExists(mDefaultStateId, "Console");
         mStateId = LuaStateId;
         mIsLuaConsole = true;
         if (mStateId != mDefaultStateId) {
@@ -106,8 +111,8 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
         } else {
             Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
         }
-        //mCachedRegularHistory = mCommandline.history();
-        //mCommandline.set_history(mCachedLuaHistory);
+        // mCachedRegularHistory = mCommandline.history();
+        // mCommandline.set_history(mCachedLuaHistory);
         mCommandline.set_prompt("lua> ");
     }
 }
@@ -120,8 +125,8 @@ void TConsole::ChangeToRegularConsole() {
         } else {
             Application::Console().WriteRaw("Left Lua console.");
         }
-        //mCachedLuaHistory = mCommandline.history();
-        //mCommandline.set_history(mCachedRegularHistory);
+        // mCachedLuaHistory = mCommandline.history();
+        // mCommandline.set_history(mCachedRegularHistory);
         mCommandline.set_prompt("> ");
         mStateId = mDefaultStateId;
     }
@@ -322,45 +327,45 @@ TConsole::TConsole() {
             auto cmd = c.get_command();
             cmd = TrimString(cmd);
             mCommandline.write(mCommandline.prompt() + cmd);
-            if (!mLuaEngine) {
-                beammp_info("Lua not started yet, please try again in a second");
-            } else {
-                if (mIsLuaConsole) {
-                    if (cmd == "exit()") {
-                        ChangeToRegularConsole();
-                    } else {
-                        auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
-                        while (!Future->Ready) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // TODO: Add a timeout
-                        }
-                        if (Future->Error) {
-                            beammp_lua_error(Future->ErrorMessage);
-                        }
-                    }
+            if (mIsLuaConsole) {
+                if (!mLuaEngine) {
+                    beammp_info("Lua not started yet, please try again in a second");
+                } else if (cmd == "exit()") {
+                    ChangeToRegularConsole();
                 } else {
-                    if (cmd == "exit") {
-                        beammp_info("gracefully shutting down");
-                        Application::GracefullyShutdown();
-                    } else if (StringStartsWith(cmd, "lua")) {
-                        Command_Lua(cmd);
-                    } else if (StringStartsWith(cmd, "help")) {
-                        RunAsCommand(cmd, true);
-                        Command_Help(cmd);
-                    } else if (StringStartsWith(cmd, "kick")) {
-                        RunAsCommand(cmd, true);
-                        Command_Kick(cmd);
-                    } else if (StringStartsWith(cmd, "say")) {
-                        RunAsCommand(cmd, true);
-                        Command_Say(cmd);
-                    } else if (StringStartsWith(cmd, "list")) {
-                        RunAsCommand(cmd, true);
-                        Command_List(cmd);
-                    } else if (StringStartsWith(cmd, "status")) {
-                        RunAsCommand(cmd, true);
-                        Command_Status(cmd);
-                    } else if (!cmd.empty()) {
-                        RunAsCommand(cmd);
+                    auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
+                    while (!Future->Ready) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // TODO: Add a timeout
                     }
+                    if (Future->Error) {
+                        beammp_lua_error(Future->ErrorMessage);
+                    }
+                }
+            } else {
+                if (!mLuaEngine) {
+                    beammp_error("Attempted to run a command before Lua engine started. Please wait and try again.");
+                } else if (cmd == "exit") {
+                    beammp_info("gracefully shutting down");
+                    Application::GracefullyShutdown();
+                } else if (StringStartsWith(cmd, "lua")) {
+                    Command_Lua(cmd);
+                } else if (StringStartsWith(cmd, "help")) {
+                    RunAsCommand(cmd, true);
+                    Command_Help(cmd);
+                } else if (StringStartsWith(cmd, "kick")) {
+                    RunAsCommand(cmd, true);
+                    Command_Kick(cmd);
+                } else if (StringStartsWith(cmd, "say")) {
+                    RunAsCommand(cmd, true);
+                    Command_Say(cmd);
+                } else if (StringStartsWith(cmd, "list")) {
+                    RunAsCommand(cmd, true);
+                    Command_List(cmd);
+                } else if (StringStartsWith(cmd, "status")) {
+                    RunAsCommand(cmd, true);
+                    Command_Status(cmd);
+                } else if (!cmd.empty()) {
+                    RunAsCommand(cmd);
                 }
             }
         } catch (const std::exception& e) {
@@ -380,5 +385,4 @@ void TConsole::WriteRaw(const std::string& str) {
 
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
     mLuaEngine = &Engine;
-    Engine.EnsureStateExists(mDefaultStateId, "Console");
 }

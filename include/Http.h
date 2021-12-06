@@ -3,11 +3,15 @@
 #include <Common.h>
 #include <IThreaded.h>
 #include <filesystem>
-#include <httplib.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 #include <string>
 #include <unordered_map>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#include <httplib.h>
+#pragma GCC diagnostic pop
 
 namespace fs = std::filesystem;
 
@@ -36,12 +40,6 @@ namespace Server {
         void operator()();
 
     private:
-        /**
-         * the shared pointer is necessary because httplib is a blocking library and due lacking thread-safety
-         * will "forget" about its environment, when configured across multiple threads.
-         * So we need to able to start the server (make it "listen()") in a single Thread.
-         */
-        std::shared_ptr<httplib::SSLServer> mHttpLibServerInstancePtr;
         std::thread mThread;
     };
     // todo: all of these functions are likely unsafe,

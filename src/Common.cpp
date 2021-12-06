@@ -13,7 +13,6 @@
 #include "Http.h"
 
 Application::TSettings Application::Settings = {};
-std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);

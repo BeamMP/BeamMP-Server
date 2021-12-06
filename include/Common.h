@@ -82,9 +82,32 @@ public:
     static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
     static bool IsOutdated(const Version& Current, const Version& Newest);
 
+    static void InitializeConsole() {
+        if (!mConsole) {
+            mConsole = std::make_unique<TConsole>();
+        }
+    }
+
+    enum class Status {
+        Starting,
+        Good,
+        Bad,
+    };
+
+    using SystemStatusMap = std::unordered_map<std::string /* system name */, Status /* status */>;
+
+    static const SystemStatusMap& GetSubsystemStatuses() {
+        return mSystemStatusMap;
+    }
+    
+    static void SetSubsystemStatus(const std::string& Subsystem, Status status) {
+        mSystemStatusMap[Subsystem] = status;
+    }
+
 private:
+    static inline SystemStatusMap mSystemStatusMap {};
     static inline std::string mPPS;
-    static std::unique_ptr<TConsole> mConsole;
+    static inline std::unique_ptr<TConsole> mConsole;
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 

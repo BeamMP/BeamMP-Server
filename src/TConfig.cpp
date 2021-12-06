@@ -42,6 +42,7 @@ TConfig::TConfig(const std::string& ConfigFileName)
         ParseFromFile(mConfigFileName);
     }
 }
+
 /**
  * @brief Writes out the loaded application state into ServerConfig.toml
  *
