@@ -2,10 +2,11 @@
 
 - CHANGED entire plugin Lua implementation (rewrite)
 - CHANGED moved *almost all* functions into MP.\*
-- CHANGED console to use a custom language (type `help`!)
+- CHANGED console to use a custom language (type `help`, `list`, or `status`!)
 - CHANGED all files of a Lua plugin to share a Lua state (no more state-per-file)
 - ADDED many new Lua API functions, which can be found at <https://wiki.beammp.com/en/Scripting/functions>
 - ADDED Commandline options. Run with `--help` to see all options.
+- ADDED HTTP(S) Server (OpenAPI spec coming soon!)
 - ADDED plugin directories to `package.path` and `package.cpath` before `onInit`
 - ADDED ability to add `PluginConfig.toml` to your plugin folder to change some settings
 - ADDED ability to share a lua state with other plugins via `StateId` setting in `PluginConfig.toml`
