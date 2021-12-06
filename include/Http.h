@@ -8,10 +8,14 @@
 #include <string>
 #include <unordered_map>
 
+#if defined(BEAMMP_LINUX)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 #include <httplib.h>
+#if defined(BEAMMP_LINUX)
 #pragma GCC diagnostic pop
+#endif
 
 namespace fs = std::filesystem;
 
