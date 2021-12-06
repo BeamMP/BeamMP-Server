@@ -9,6 +9,7 @@
 #include <istream>
 #include <sstream>
 
+// General
 static constexpr std::string_view StrDebug = "Debug";
 static constexpr std::string_view StrPrivate = "Private";
 static constexpr std::string_view StrPort = "Port";
@@ -21,18 +22,12 @@ static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
+static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+
+// HTTP
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
 static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
-
-void WriteSendErrors(const std::string& name) {
-    std::ofstream CfgFile { name, std::ios::out | std::ios::app };
-    CfgFile << "# You can turn on/off the SendErrors message you get on startup here" << std::endl
-            << StrSendErrorsMessageEnabled << " = true" << std::endl
-            << "# If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`."
-            << std::endl
-            << StrSendErrors << " = true" << std::endl;
-}
 
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
@@ -57,9 +52,11 @@ TConfig::TConfig(const std::string& ConfigFileName)
  * whether it is in TConfig.cpp or the configuration file.
  */
 void TConfig::FlushToFile() {
-    auto data = toml::parse(mConfigFileName);
+    auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
     data["General"] = toml::table();
+    data["General"].comments().push_back(" General BeamMP Server settings");
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
+    data["General"][StrAuthKey.data()].comments().push_back(" AuthKey has to be filled out in order to run the server");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
@@ -70,10 +67,14 @@ void TConfig::FlushToFile() {
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
     data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    data["General"][StrSendErrors.data()].comments().push_back(" You can turn on/off the SendErrors message you get on startup here");
     data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    data["General"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
-    data["General"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
-    data["General"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    data["General"][StrSendErrorsMessageEnabled.data()].comments().push_back(" If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
+    data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
+    data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
+    data["HTTP"][StrHTTPServerEnabled.data()].comments().push_back(" Enables the internal HTTP server");
     std::ofstream Stream(mConfigFileName);
     Stream << data << std::flush;
 }
@@ -94,35 +95,23 @@ void TConfig::CreateConfigFile(std::string_view name) {
         std::ofstream ofs(name.data());
     }
 
-    auto data = toml::parse<toml::preserve_comments>(name.data());
-    //{ StrSendErrors, Application::Settings.SendErrors },
+    FlushToFile();
 
-    data["General"] = toml::table();
-    data["General"][StrAuthKey.data()] = Application::Settings.Key;
-    data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
-    data["General"][StrPrivate.data()] = Application::Settings.Private;
-    data["General"][StrPort.data()] = Application::Settings.Port;
-    data["General"][StrName.data()] = Application::Settings.ServerName;
-    data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
-    data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
-    data["General"][StrMap.data()] = Application::Settings.MapName;
-    data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
-    data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
-    data["General"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
-    data["General"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
-    data["General"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
-
-    std::ofstream ofs { std::string(name) };
+    size_t FileSize = fs::file_size(name);
+    std::fstream ofs { std::string(name), std::ios::in | std::ios::out };
     if (ofs.good()) {
+        std::string Contents {};
+        Contents.resize(FileSize);
+        ofs.readsome(Contents.data(), FileSize);
+        ofs.seekp(0);
         ofs << "# This is the BeamMP-Server config file.\n"
                "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
                "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
-            << '\n';
-        ofs << data << '\n';
+            << '\n'
+            << Contents;
         beammp_error("There was no \"" + std::string(mConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
         mFailed = true;
         ofs.close();
-        WriteSendErrors(std::string(name));
     } else {
         beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
         mFailed = true;
@@ -130,6 +119,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
 }
 
 void TConfig::ParseFromFile(std::string_view name) {
+    bool UpdateConfigFile = false;
     try {
         toml::value data = toml::parse<toml::preserve_comments>(name.data());
         Application::Settings.DebugModeEnabled = data["General"][StrDebug.data()].as_boolean();
@@ -142,12 +132,17 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::Settings.ServerDesc = data["General"][StrDescription.data()].as_string();
         Application::Settings.Resource = data["General"][StrResourceFolder.data()].as_string();
         Application::Settings.Key = data["General"][StrAuthKey.data()].as_string();
-        Application::Settings.SSLKeyPath = data["General"][StrSSLKeyPath.data()].as_string();
-        Application::Settings.SSLCertPath = data["General"][StrSSLCertPath.data()].as_string();
-        Application::Settings.HTTPServerPort = data["General"][StrHTTPServerPort.data()].as_integer();
+        if (!data["HTTP"][StrSSLKeyPath.data()].is_string()) {
+            UpdateConfigFile = true;
+        } else {
+            Application::Settings.SSLKeyPath = data["HTTP"][StrSSLKeyPath.data()].as_string();
+            Application::Settings.SSLCertPath = data["HTTP"][StrSSLCertPath.data()].as_string();
+            Application::Settings.HTTPServerPort = data["HTTP"][StrHTTPServerPort.data()].as_integer();
+            Application::Settings.HTTPServerEnabled = data["HTTP"][StrHTTPServerEnabled.data()].as_boolean();
+        }
         if (!data["General"][StrSendErrors.data()].is_boolean()
             || !data["General"][StrSendErrorsMessageEnabled.data()].is_boolean()) {
-            WriteSendErrors(std::string(name));
+            UpdateConfigFile = true;
         } else {
             Application::Settings.SendErrors = data["General"][StrSendErrors.data()].as_boolean();
             Application::Settings.SendErrorsMessageEnabled = data["General"][StrSendErrorsMessageEnabled.data()].as_boolean();
@@ -158,6 +153,10 @@ void TConfig::ParseFromFile(std::string_view name) {
         return;
     }
     PrintDebug();
+
+    if (UpdateConfigFile) {
+        FlushToFile();
+    }
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
         beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
@@ -177,6 +176,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
     beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
+    beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }

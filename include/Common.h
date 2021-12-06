@@ -42,6 +42,7 @@ public:
         std::string Key {};
         std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
         std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
+        bool HTTPServerEnabled { true };
         int MaxPlayers { 10 };
         bool Private { true };
         int MaxCars { 1 };
@@ -70,7 +71,7 @@ public:
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
-    static inline TSettings Settings {};
+    static TSettings Settings;
 
     static std::string GetBackendUrlForAuth() { return "auth.beammp.com"; }
     static std::string GetBackendHostname() { return "backend.beammp.com"; }

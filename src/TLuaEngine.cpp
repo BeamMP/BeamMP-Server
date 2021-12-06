@@ -159,6 +159,7 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
         }
         if (Cancelled) {
             beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' failed to execute in time and was not waited for. It may still finish executing at a later time.");
+            LuaAPI::MP::Engine->ReportErrors({ Result });
         } else if (Result->Error) {
             if (Result->ErrorMessage != BeamMPFnNotFoundError) {
                 beammp_lua_error(Result->Function + ": " + Result->ErrorMessage);
