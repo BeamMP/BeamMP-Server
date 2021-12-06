@@ -199,7 +199,7 @@ X509* Http::Server::Tx509KeypairGenerator::GenerateCertificate(EVP_PKEY& PKey) {
 
 void Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk(const fs::path& KeyFilePath, const fs::path& CertFilePath) {
     // todo: generate directories for ssl keys
-    FILE* KeyFile = std::fopen(KeyFilePath.c_str(), "wb");
+    FILE* KeyFile = std::fopen(reinterpret_cast<const char*>(KeyFilePath.c_str()), "wb");
     if (!KeyFile) {
         beammp_error("Could not create file 'key.pem', check your permissions");
         throw std::runtime_error("Could not create file 'key.pem'");
@@ -215,7 +215,7 @@ void Http::Server::Tx509KeypairGenerator::GenerateAndWriteToDisk(const fs::path&
         throw std::runtime_error("Could not write to file 'key.pem'");
     }
 
-    FILE* CertFile = std::fopen(CertFilePath.c_str(), "wb"); // x509 file
+    FILE* CertFile = std::fopen(reinterpret_cast<const char*>(CertFilePath.c_str()), "wb"); // x509 file
     if (!CertFile) {
         beammp_error("Could not create file 'cert.pem', check your permissions");
         throw std::runtime_error("Could not create file 'cert.pem'");
