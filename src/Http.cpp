@@ -117,6 +117,15 @@ static std::map<size_t, const char*> Map = {
     { 530, "(CDN) 1XXX Internal Error" },
 };
 
+static const char Magic[] = {
+    0x20, 0x2f, 0x5c, 0x5f,
+    0x2f, 0x5c, 0x0a, 0x28,
+    0x20, 0x6f, 0x2e, 0x6f,
+    0x20, 0x29, 0x0a, 0x20,
+    0x3e, 0x20, 0x5e, 0x20,
+    0x3c, 0x0a, 0x00
+};
+
 std::string Http::Status::ToString(int Code) {
     if (Map.find(Code) != Map.end()) {
         return Map.at(Code);
@@ -284,6 +293,11 @@ void Http::Server::THttpServerInstance::operator()() {
     HttpLibServerInstance->Get("/health", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("0", "text/plain");
         res.status = 200;
+    });
+
+    // magic endpoint
+    HttpLibServerInstance->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
+        res.set_content(std::string(Magic), "text/plain");
     });
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
     HttpLibServerInstance->listen("0.0.0.0", Application::Settings.HTTPServerPort);

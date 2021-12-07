@@ -251,9 +251,13 @@ void TConsole::Command_Status(const std::string&) {
     size_t SystemsStarting = 0;
     size_t SystemsGood = 0;
     size_t SystemsBad = 0;
+    size_t SystemsShuttingDown = 0;
+    size_t SystemsShutdown = 0;
     std::string SystemsBadList {};
     std::string SystemsGoodList {};
     std::string SystemsStartingList {};
+    std::string SystemsShuttingDownList {};
+    std::string SystemsShutdownList {};
     auto Statuses = Application::GetSubsystemStatuses();
     for (const auto& NameStatusPair : Statuses) {
         switch (NameStatusPair.second) {
@@ -269,12 +273,22 @@ void TConsole::Command_Status(const std::string&) {
             SystemsStarting++;
             SystemsStartingList += NameStatusPair.first + ", ";
             break;
+        case Application::Status::ShuttingDown:
+            SystemsShuttingDown++;
+            SystemsShuttingDownList += NameStatusPair.first + ", ";
+            break;
+        case Application::Status::Shutdown:
+            SystemsShutdown++;
+            SystemsShutdownList += NameStatusPair.first + ", ";
+            break;
         }
     }
     // remove ", " at the end
     SystemsBadList = SystemsBadList.substr(0, SystemsBadList.size() - 2);
     SystemsGoodList = SystemsGoodList.substr(0, SystemsGoodList.size() - 2);
     SystemsStartingList = SystemsStartingList.substr(0, SystemsStartingList.size() - 2);
+    SystemsShuttingDownList = SystemsShuttingDownList.substr(0, SystemsShuttingDownList.size() - 2);
+    SystemsShutdownList = SystemsShutdownList.substr(0, SystemsShutdownList.size() - 2);
 
     auto ElapsedTime = mLuaEngine->Server().UptimeTimer.GetElapsedTime();
 
@@ -293,9 +307,12 @@ void TConsole::Command_Status(const std::string&) {
            << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
            << "\tSubsystems:\n"
            << "\t\tGood/Starting/Bad:           " << SystemsGood << "/" << SystemsStarting << "/" << SystemsBad << "\n"
+           << "\t\tShutting down/Shutdown:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
            << "\t\tGood:                        [ " << SystemsGoodList << " ]\n"
            << "\t\tStarting:                    [ " << SystemsStartingList << " ]\n"
            << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
+           << "\t\tShutting down:               [ " << SystemsShuttingDownList << " ]\n"
+           << "\t\tShutdown:                    [ " << SystemsShutdownList << " ]\n"
            << "";
 
     Application::Console().WriteRaw(Status.str());

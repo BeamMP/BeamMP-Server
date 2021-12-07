@@ -123,7 +123,10 @@ int BeamMPServerMain(MainArguments Arguments) {
     }
 
     bool Shutdown = false;
-    Application::RegisterShutdownHandler([&Shutdown] { Shutdown = true; });
+    Application::RegisterShutdownHandler([&Shutdown] {
+        Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
+        Shutdown = true;
+    });
     Application::RegisterShutdownHandler([] {
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
         TLuaEngine::WaitForAll(Futures);
@@ -192,6 +195,7 @@ int BeamMPServerMain(MainArguments Arguments) {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    Application::SetSubsystemStatus("Main", Application::Status::Shutdown);
     beammp_info("Shutdown.");
     return 0;
 }

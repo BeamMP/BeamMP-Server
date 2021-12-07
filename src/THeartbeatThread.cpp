@@ -116,10 +116,12 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     , mServer(Server) {
     Application::SetSubsystemStatus("Heartbeat", Application::Status::Starting);
     Application::RegisterShutdownHandler([&] {
+        Application::SetSubsystemStatus("Heartbeat", Application::Status::ShuttingDown);
         if (mThread.joinable()) {
             mShutdown = true;
             mThread.join();
         }
+        Application::SetSubsystemStatus("Heartbeat", Application::Status::Shutdown);
     });
     Start();
 }

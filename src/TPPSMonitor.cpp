@@ -7,12 +7,14 @@ TPPSMonitor::TPPSMonitor(TServer& Server)
     Application::SetSubsystemStatus("PPSMonitor", Application::Status::Starting);
     Application::SetPPS("-");
     Application::RegisterShutdownHandler([&] {
+        Application::SetSubsystemStatus("PPSMonitor", Application::Status::ShuttingDown);
         if (mThread.joinable()) {
             beammp_debug("shutting down PPSMonitor");
             mShutdown = true;
             mThread.join();
             beammp_debug("shut down PPSMonitor");
         }
+        Application::SetSubsystemStatus("PPSMonitor", Application::Status::Shutdown);
     });
     Start();
 }

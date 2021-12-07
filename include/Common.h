@@ -93,6 +93,8 @@ public:
         Starting,
         Good,
         Bad,
+        ShuttingDown,
+        Shutdown,
     };
 
     using SystemStatusMap = std::unordered_map<std::string /* system name */, Status /* status */>;

@@ -84,6 +84,12 @@ void Application::SetSubsystemStatus(const std::string& Subsystem, Status status
     case Status::Starting:
         beammp_trace("Subsystem '" + Subsystem + "': Starting");
         break;
+    case Status::ShuttingDown:
+        beammp_trace("Subsystem '" + Subsystem + "': Shutting down");
+        break;
+    case Status::Shutdown:
+        beammp_trace("Subsystem '" + Subsystem + "': Shutdown");
+        break;
     }
     std::unique_lock Lock(mSystemStatusMapMutex);
     mSystemStatusMap[Subsystem] = status;

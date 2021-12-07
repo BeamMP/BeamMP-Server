@@ -27,10 +27,12 @@ TLuaEngine::TLuaEngine()
     }
     mResourceServerPath = Path;
     Application::RegisterShutdownHandler([&] {
+        Application::SetSubsystemStatus("LuaEngine", Application::Status::ShuttingDown);
         mShutdown = true;
         if (mThread.joinable()) {
             mThread.join();
         }
+        Application::SetSubsystemStatus("LuaEngine", Application::Status::Shutdown);
     });
     Start();
 }

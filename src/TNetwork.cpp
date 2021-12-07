@@ -23,16 +23,20 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
         });
     });
     Application::RegisterShutdownHandler([&] {
+        Application::SetSubsystemStatus("UDPNetwork", Application::Status::ShuttingDown);
         if (mUDPThread.joinable()) {
             mShutdown = true;
             mUDPThread.detach();
         }
+        Application::SetSubsystemStatus("UDPNetwork", Application::Status::Shutdown);
     });
     Application::RegisterShutdownHandler([&] {
+        Application::SetSubsystemStatus("TCPNetwork", Application::Status::ShuttingDown);
         if (mTCPThread.joinable()) {
             mShutdown = true;
             mTCPThread.detach();
         }
+        Application::SetSubsystemStatus("TCPNetwork", Application::Status::Shutdown);
     });
     mTCPThread = std::thread(&TNetwork::TCPServerMain, this);
     mUDPThread = std::thread(&TNetwork::UDPServerMain, this);
