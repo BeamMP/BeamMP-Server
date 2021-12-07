@@ -1,14 +1,22 @@
 #include "Http.h"
 
+#include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "LuaAPI.h"
 
 #include <map>
 #include <random>
+#include <rapidjson/document.h>
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include <stdexcept>
 fs::path Http::Server::THttpServerInstance::KeyFilePath;
 fs::path Http::Server::THttpServerInstance::CertFilePath;
 // TODO: Add sentry error handling back
+
+namespace json = rapidjson;
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
     httplib::SSLClient client(host, port);
@@ -291,10 +299,62 @@ void Http::Server::THttpServerInstance::operator()() {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
     HttpLibServerInstance->Get("/health", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("0", "text/plain");
+        size_t SystemsGood = 0;
+        size_t SystemsBad = 0;
+        auto Statuses = Application::GetSubsystemStatuses();
+        for (const auto& NameStatusPair : Statuses) {
+            switch (NameStatusPair.second) {
+            case Application::Status::Starting:
+            case Application::Status::ShuttingDown:
+            case Application::Status::Shutdown:
+            case Application::Status::Good:
+                SystemsGood++;
+                break;
+            case Application::Status::Bad:
+                SystemsBad++;
+                break;
+            }
+        }
+        res.set_content(SystemsBad == 0 ? "0" : "1", "text/plain");
         res.status = 200;
     });
+    HttpLibServerInstance->Get("/status", [](const httplib::Request&, httplib::Response& res) {
+        try {
+            json::Document response;
+            response.SetObject();
+            rapidjson::Document::AllocatorType& Allocator = response.GetAllocator();
+            // add to response
+            auto& Server = LuaAPI::MP::Engine->Server();
+            size_t CarCount = 0;
+            size_t GuestCount = 0;
+            json::Value Array(rapidjson::kArrayType);
+            LuaAPI::MP::Engine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+                if (!Client.expired()) {
+                    auto Locked = Client.lock();
+                    CarCount += Locked->GetCarCount();
+                    GuestCount += Locked->IsGuest() ? 1 : 0;
+                    json::Value Player(json::kObjectType);
+                    Player.AddMember("name", json::StringRef(Locked->GetName().c_str()), Allocator);
+                    Player.AddMember("id", Locked->GetID(), Allocator);
+                    Array.PushBack(Player, Allocator);
+                }
+                return true;
+            });
+            response.AddMember("players", Array, Allocator);
+            response.AddMember("player_count", Server.ClientCount(), Allocator);
+            response.AddMember("guest_count", GuestCount, Allocator);
+            response.AddMember("car_count", CarCount, Allocator);
 
+            // compile & send response
+            json::StringBuffer sb;
+            json::Writer<json::StringBuffer> writer(sb);
+            response.Accept(writer);
+            res.set_content(sb.GetString(), "application/json");
+        } catch (const std::exception& e) {
+            beammp_error("Exception in /status endpoint: " + std::string(e.what()));
+            res.status = 500;
+        }
+    });
     // magic endpoint
     HttpLibServerInstance->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::string(Magic), "text/plain");
