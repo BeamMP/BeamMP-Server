@@ -1,5 +1,5 @@
-[submodule "deps/https:/github.com/chriskohlhoff/asio"]
-	path = deps/https:/github.com/chriskohlhoff/asio
+[submodule "deps/commandline"]
+	path = deps/commandline
 	url = https://github.com/lionkor/commandline
 [submodule "deps/asio"]
 	path = deps/asio
@@ -22,6 +22,3 @@
 [submodule "deps/cpp-httplib"]
 	path = deps/cpp-httplib
 	url = https://github.com/yhirose/cpp-httplib
-[submodule "deps/commandline"]
-	path = deps/commandline
-	url = git@github.com:/lionkor/commandline
