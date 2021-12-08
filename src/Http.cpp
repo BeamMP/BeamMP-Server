@@ -261,6 +261,9 @@ bool Http::Server::Tx509KeypairGenerator::EnsureTLSConfigExists() {
 }
 
 void Http::Server::SetupEnvironment() {
+    if (!Application::Settings.HTTPServerUseSSL) {
+        return;
+    }
     auto parent = fs::path(Application::Settings.SSLKeyPath).parent_path();
     if (!fs::exists(parent))
         fs::create_directories(parent);
@@ -290,7 +293,9 @@ void Http::Server::THttpServerInstance::operator()() {
     beammp_info("HTTP(S) Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
     std::unique_ptr<httplib::Server> HttpLibServerInstance;
     if (Application::Settings.HTTPServerUseSSL) {
-        HttpLibServerInstance = std::make_unique<httplib::SSLServer>(Http::Server::THttpServerInstance::CertFilePath.c_str(), Http::Server::THttpServerInstance::KeyFilePath.c_str());
+        HttpLibServerInstance = std::make_unique<httplib::SSLServer>(
+            reinterpret_cast<const char*>(Http::Server::THttpServerInstance::CertFilePath.c_str()),
+            reinterpret_cast<const char*>(Http::Server::THttpServerInstance::KeyFilePath.c_str()));
     } else {
         HttpLibServerInstance = std::make_unique<httplib::Server>();
     }
