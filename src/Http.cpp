@@ -318,6 +318,7 @@ void Http::Server::THttpServerInstance::operator()() {
         res.set_content(SystemsBad == 0 ? "0" : "1", "text/plain");
         res.status = 200;
     });
+    /*
     HttpLibServerInstance->Get("/status", [](const httplib::Request&, httplib::Response& res) {
         try {
             json::Document response;
@@ -355,6 +356,7 @@ void Http::Server::THttpServerInstance::operator()() {
             res.status = 500;
         }
     });
+    */
     // magic endpoint
     HttpLibServerInstance->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::string(Magic), "text/plain");
