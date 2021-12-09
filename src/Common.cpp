@@ -8,12 +8,11 @@
 #include <regex>
 #include <sstream>
 #include <thread>
-#include <zlib.h>
 
 #include "CustomAssert.h"
 #include "Http.h"
 
-std::unique_ptr<TConsole> Application::mConsole = std::make_unique<TConsole>();
+Application::TSettings Application::Settings = {};
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
@@ -29,27 +28,31 @@ void Application::GracefullyShutdown() {
         ++ShutdownAttempts;
         // hard shutdown at 2 additional tries
         if (ShutdownAttempts == 2) {
-            info("hard shutdown forced by multiple shutdown requests");
+            beammp_info("hard shutdown forced by multiple shutdown requests");
             std::exit(0);
         }
-        info("already shutting down!");
+        beammp_info("already shutting down!");
         return;
     } else {
         AlreadyShuttingDown = true;
     }
-    trace("waiting for lock release");
+    beammp_trace("waiting for lock release");
     std::unique_lock Lock(mShutdownHandlersMutex);
-    info("please wait while all subsystems are shutting down...");
+    beammp_info("please wait while all subsystems are shutting down...");
     for (size_t i = 0; i < mShutdownHandlers.size(); ++i) {
-        info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
+        beammp_info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
         mShutdownHandlers[i]();
     }
 }
 
-std::array<int, 3> Application::VersionStrToInts(const std::string& str) {
-    std::array<int, 3> Version;
+std::string Application::ServerVersionString() {
+    return mVersion.AsString();
+}
+
+std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
+    std::array<uint8_t, 3> Version;
     std::stringstream ss(str);
-    for (int& i : Version) {
+    for (uint8_t& i : Version) {
         std::string Part;
         std::getline(ss, Part, '.');
         std::from_chars(&*Part.begin(), &*Part.begin() + Part.size(), i);
@@ -57,85 +60,65 @@ std::array<int, 3> Application::VersionStrToInts(const std::string& str) {
     return Version;
 }
 
-bool Application::IsOutdated(const std::array<int, 3>& Current, const std::array<int, 3>& Newest) {
-    if (Newest[0] > Current[0]) {
+// FIXME: This should be used by operator< on Version
+bool Application::IsOutdated(const Version& Current, const Version& Newest) {
+    if (Newest.major > Current.major) {
         return true;
-    } else if (Newest[0] == Current[0] && Newest[1] > Current[1]) {
+    } else if (Newest.major == Current.major && Newest.minor > Current.minor) {
         return true;
-    } else if (Newest[0] == Current[0] && Newest[1] == Current[1] && Newest[2] > Current[2]) {
+    } else if (Newest.major == Current.major && Newest.minor == Current.minor && Newest.patch > Current.patch) {
         return true;
     } else {
         return false;
     }
 }
 
+void Application::SetSubsystemStatus(const std::string& Subsystem, Status status) {
+    switch (status) {
+    case Status::Good:
+        beammp_trace("Subsystem '" + Subsystem + "': Good");
+        break;
+    case Status::Bad:
+        beammp_trace("Subsystem '" + Subsystem + "': Bad");
+        break;
+    case Status::Starting:
+        beammp_trace("Subsystem '" + Subsystem + "': Starting");
+        break;
+    case Status::ShuttingDown:
+        beammp_trace("Subsystem '" + Subsystem + "': Shutting down");
+        break;
+    case Status::Shutdown:
+        beammp_trace("Subsystem '" + Subsystem + "': Shutdown");
+        break;
+    }
+    std::unique_lock Lock(mSystemStatusMapMutex);
+    mSystemStatusMap[Subsystem] = status;
+}
+
 void Application::CheckForUpdates() {
+    Application::SetSubsystemStatus("UpdateCheck", Application::Status::Starting);
     // checks current version against latest version
     std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
     auto Response = Http::GET(GetBackendHostname(), 443, "/v/s");
     bool Matches = std::regex_match(Response, VersionRegex);
     if (Matches) {
-        auto MyVersion = VersionStrToInts(ServerVersion());
-        auto RemoteVersion = VersionStrToInts(Response);
+        auto MyVersion = ServerVersion();
+        auto RemoteVersion = Version(VersionStrToInts(Response));
         if (IsOutdated(MyVersion, RemoteVersion)) {
-            std::string RealVersionString = std::to_string(RemoteVersion[0]) + ".";
-            RealVersionString += std::to_string(RemoteVersion[1]) + ".";
-            RealVersionString += std::to_string(RemoteVersion[2]);
-            warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+            std::string RealVersionString = RemoteVersion.AsString();
+            beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
         } else {
-            info("Server up-to-date!");
+            beammp_info("Server up-to-date!");
         }
+        Application::SetSubsystemStatus("UpdateCheck", Application::Status::Good);
     } else {
-        warn("Unable to fetch version from backend.");
-        trace("got " + Response);
+        beammp_warn("Unable to fetch version from backend.");
+        beammp_trace("got " + Response);
         auto Lock = Sentry.CreateExclusiveContext();
         Sentry.SetContext("get-response", { { "response", Response } });
         Sentry.LogError("failed to get server version", _file_basename, _line);
+        Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
     }
-}
-
-std::string Comp(std::string Data) {
-    std::array<char, Biggest> C {};
-    // obsolete
-    C.fill(0);
-    z_stream defstream;
-    defstream.zalloc = Z_NULL;
-    defstream.zfree = Z_NULL;
-    defstream.opaque = Z_NULL;
-    defstream.avail_in = (uInt)Data.length();
-    defstream.next_in = (Bytef*)&Data[0];
-    defstream.avail_out = Biggest;
-    defstream.next_out = reinterpret_cast<Bytef*>(C.data());
-    deflateInit(&defstream, Z_BEST_COMPRESSION);
-    deflate(&defstream, Z_SYNC_FLUSH);
-    deflate(&defstream, Z_FINISH);
-    deflateEnd(&defstream);
-    size_t TO = defstream.total_out;
-    std::string Ret(TO, 0);
-    std::copy_n(C.begin(), TO, Ret.begin());
-    return Ret;
-}
-
-std::string DeComp(std::string Compressed) {
-    std::array<char, Biggest> C {};
-    // not needed
-    C.fill(0);
-    z_stream infstream;
-    infstream.zalloc = Z_NULL;
-    infstream.zfree = Z_NULL;
-    infstream.opaque = Z_NULL;
-    infstream.avail_in = Biggest;
-    infstream.next_in = (Bytef*)(&Compressed[0]);
-    infstream.avail_out = Biggest;
-    infstream.next_out = (Bytef*)(C.data());
-    inflateInit(&infstream);
-    inflate(&infstream, Z_SYNC_FLUSH);
-    inflate(&infstream, Z_FINISH);
-    inflateEnd(&infstream);
-    size_t TO = infstream.total_out;
-    std::string Ret(TO, 0);
-    std::copy_n(C.begin(), TO, Ret.begin());
-    return Ret;
 }
 
 // thread name stuff
@@ -156,18 +139,73 @@ std::string ThreadName(bool DebugModeOverride) {
 }
 
 void RegisterThread(const std::string& str) {
+    std::string ThreadId;
+#ifdef BEAMMP_WINDOWS
+    ThreadId = std::to_string(GetCurrentThreadId());
+#elif defined(BEAMMP_APPLE)
+    ThreadId = std::to_string(getpid()); // todo: research if 'getpid()' is a valid, posix compliant alternative to 'gettid()'
+#elif defined(BEAMMP_LINUX)
+    ThreadId = std::to_string(gettid());
+#endif
+    if (Application::Settings.DebugModeEnabled) {
+        std::ofstream ThreadFile("Threads.log", std::ios::app);
+        ThreadFile << ("Thread \"" + str + "\" is TID " + ThreadId) << std::endl;
+    }
     auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
 }
 
+Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
+    : major(major)
+    , minor(minor)
+    , patch(patch) { }
+
+Version::Version(const std::array<uint8_t, 3>& v)
+    : Version(v[0], v[1], v[2]) {
+}
+
+std::string Version::AsString() {
+    std::stringstream ss {};
+    ss << int(major) << "." << int(minor) << "." << int(patch);
+    return ss.str();
+}
+
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     std::stringstream ss;
+    ss << ThreadName();
     ss << "[CHAT] ";
     if (id != -1) {
-        ss << "(" << id << ") <" << name << ">";
+        ss << "(" << id << ") <" << name << "> ";
     } else {
         ss << name << "";
     }
     ss << msg;
     Application::Console().Write(ss.str());
+}
+
+std::string GetPlatformAgnosticErrorString() {
+#ifdef BEAMMP_WINDOWS
+    // This will provide us with the error code and an error message, all in one.
+    int err;
+    char msgbuf[256];
+    msgbuf[0] = '\0';
+
+    err = GetLastError();
+
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr,
+        err,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        msgbuf,
+        sizeof(msgbuf),
+        nullptr);
+
+    if (*msgbuf) {
+        return std::to_string(GetLastError()) + " - " + std::string(msgbuf);
+    } else {
+        return std::to_string(GetLastError());
+    }
+#elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
+    return std::strerror(errno);
+#endif
 }

@@ -8,6 +8,24 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
+include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
+include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
+include_directories("${PROJECT_SOURCE_DIR}/deps")
+
+add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
+
+if(APPLE)
+    set(LUA_INCLUDE_DIR /usr/local/Cellar/lua@5.3/5.3.6/include/lua5.3)
+    set(LUA_LIBRARIES lua)
+    include_directories(/usr/local/opt/openssl@1.1/include)
+    link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
+    link_directories(/usr/local/opt/openssl@1.1/lib)
+endif()
+
 if (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
@@ -21,10 +39,11 @@ if (MSVC)
     set(SENTRY_BUILD_RUNTIMESTATIC ON)
 endif()
 set(SENTRY_BACKEND breakpad)
-add_subdirectory("include/sentry-native")
+add_subdirectory("deps/sentry-native")
 
 message(STATUS "Setting compiler flags")
 if (WIN32)
+
     #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
     set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
     include_directories(${VcpkgRoot}/include)
@@ -32,7 +51,7 @@ if (WIN32)
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -gz -fno-builtin")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
     if (SANITIZE)
         message(STATUS "sanitize is ON")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
@@ -53,17 +72,11 @@ endif()
 
 message(STATUS "Adding local source dependencies")
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-include_directories("asio/asio/include")
-include_directories("rapidjson/include")
-include_directories("websocketpp")
-add_subdirectory("socket.io-client-cpp")
-add_subdirectory("include/commandline")
+add_subdirectory(deps)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
-message(STATUS "Looking for Boost")
-find_package(Boost REQUIRED COMPONENTS system thread)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 add_executable(BeamMP-Server
         src/main.cpp
@@ -75,61 +88,73 @@ add_executable(BeamMP-Server
         include/VehicleData.h src/VehicleData.cpp
         include/TConfig.h src/TConfig.cpp
         include/TLuaEngine.h src/TLuaEngine.cpp
-        include/TLuaFile.h src/TLuaFile.cpp
+        include/TLuaPlugin.h src/TLuaPlugin.cpp
         include/TResourceManager.h src/TResourceManager.cpp
         include/THeartbeatThread.h src/THeartbeatThread.cpp
         include/Http.h src/Http.cpp
         include/TSentry.h src/TSentry.cpp
         include/TPPSMonitor.h src/TPPSMonitor.cpp
         include/TNetwork.h src/TNetwork.cpp
-        include/SignalHandling.h src/SignalHandling.cpp)
+        include/LuaAPI.h src/LuaAPI.cpp
+        include/TScopedTimer.h src/TScopedTimer.cpp
+        include/SignalHandling.h src/SignalHandling.cpp
+        include/ArgsParser.h src/ArgsParser.cpp
+        include/Environment.h)
 
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
+include_directories(BeamMP-Server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_include_directories(BeamMP-Server PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
-message(STATUS "Looking for Lua")
-find_package(Lua REQUIRED)
+if (APPLE)
+    message(STATUS "NOT looking for Lua on APPLE")
+else()
+    message(STATUS "Looking for Lua")
+    find_package(Lua REQUIRED VERSION 5.3)
+endif()
+
 target_include_directories(BeamMP-Server PUBLIC 
-    ${Boost_INCLUDE_DIRS} 
     ${LUA_INCLUDE_DIR} 
     ${CURL_INCLUDE_DIRS}
-    "socket.io-client-cpp/src" 
     "include/tomlplusplus" 
     "include/sentry-native/include"
     "include/curl/include")
 
 message(STATUS "Looking for SSL")
-find_package(OpenSSL REQUIRED)
 
+if (APPLE)
+    set(OPENSSL_LIBRARIES ssl crypto)
+else()
+    find_package(OpenSSL REQUIRED)
+endif()
+
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)
-    target_link_libraries(BeamMP-Server 
+    target_link_libraries(BeamMP-Server
         z 
-        pthread 
-        stdc++fs 
+        pthread
         ${LUA_LIBRARIES} 
         crypto
         ${OPENSSL_LIBRARIES} 
         commandline 
-        sioclient_tls 
-        sentry)
+        sentry
+        ssl)
 elseif (WIN32)
     include(FindLua)
     message(STATUS "Looking for libz")
     find_package(ZLIB REQUIRED)
     message(STATUS "Looking for RapidJSON")
     find_package(RapidJSON CONFIG REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server PRIVATE 
+    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
+    target_link_libraries(BeamMP-Server
         ws2_32 
         ZLIB::ZLIB 
         ${LUA_LIBRARIES} 
         ${OPENSSL_LIBRARIES} 
         commandline
-        sioclient_tls
         sentry)
 endif ()

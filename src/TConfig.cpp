@@ -1,4 +1,4 @@
-#include <toml.hpp> // header-only version of TOML++
+#include "Common.h"
 
 #include "TConfig.h"
 #include <fstream>
@@ -6,8 +6,7 @@
 #include <istream>
 #include <sstream>
 
-static const char* ConfigFileName = static_cast<const char*>("ServerConfig.toml");
-
+// General
 static constexpr std::string_view StrDebug = "Debug";
 static constexpr std::string_view StrPrivate = "Private";
 static constexpr std::string_view StrPort = "Port";
@@ -20,27 +19,71 @@ static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
+static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 
-TConfig::TConfig() {
-    if (!fs::exists(ConfigFileName) || !fs::is_regular_file(ConfigFileName)) {
-        info("No config file found! Generating one...");
-        CreateConfigFile(ConfigFileName);
+// HTTP
+static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
+static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
+static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
+
+TConfig::TConfig(const std::string& ConfigFileName)
+    : mConfigFileName(ConfigFileName) {
+    Application::SetSubsystemStatus("Config", Application::Status::Starting);
+    if (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName)) {
+        beammp_info("No config file found! Generating one...");
+        CreateConfigFile(mConfigFileName);
     }
     if (!mFailed) {
         if (fs::exists("Server.cfg")) {
-            warn("An old \"Server.cfg\" file still exists. Please note that this is no longer used. Instead, \"" + std::string(ConfigFileName) + "\" is used. You can safely delete the \"Server.cfg\".");
+            beammp_warn("An old \"Server.cfg\" file still exists. Please note that this is no longer used. Instead, \"" + std::string(mConfigFileName) + "\" is used. You can safely delete the \"Server.cfg\".");
         }
-        ParseFromFile(ConfigFileName);
+        ParseFromFile(mConfigFileName);
     }
 }
 
-void WriteSendErrors(const std::string& name) {
-    std::ofstream CfgFile { name, std::ios::out | std::ios::app };
-    CfgFile << "# You can turn on/off the SendErrors message you get on startup here" << std::endl
-            << StrSendErrorsMessageEnabled << " = true" << std::endl
-            << "# If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`."
-            << std::endl
-            << StrSendErrors << " = true" << std::endl;
+template <typename CommentsT>
+void SetComment(CommentsT& Comments, const std::string& Comment) {
+    Comments.clear();
+    Comments.push_back(Comment);
+}
+
+/**
+ * @brief Writes out the loaded application state into ServerConfig.toml
+ *
+ * This writes out the current state of application settings that are
+ * applied to the server instance (i.e. the current application settings loaded in the server).
+ * If the state of the application settings changes during runtime,
+ * call this function whenever something about the config changes
+ * whether it is in TConfig.cpp or the configuration file.
+ */
+void TConfig::FlushToFile() {
+    auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
+    data["General"] = toml::table();
+    data["General"][StrAuthKey.data()] = Application::Settings.Key;
+    SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
+    data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
+    data["General"][StrPrivate.data()] = Application::Settings.Private;
+    data["General"][StrPort.data()] = Application::Settings.Port;
+    data["General"][StrName.data()] = Application::Settings.ServerName;
+    data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
+    data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
+    data["General"][StrMap.data()] = Application::Settings.MapName;
+    data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
+    data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    SetComment(data["General"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
+    data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
+    SetComment(data["General"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
+    data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
+    data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    data["HTTP"][StrHTTPServerUseSSL.data()] = Application::Settings.HTTPServerUseSSL;
+    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to keep enabled. With SSL the server will serve https and requires valid key and cert files");
+    data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
+    SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
+    std::ofstream Stream(mConfigFileName);
+    Stream << data << std::flush;
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
@@ -52,138 +95,115 @@ void TConfig::CreateConfigFile(std::string_view name) {
             ParseOldFormat();
         }
     } catch (const std::exception& e) {
-        error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
+        beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
     }
 
-    toml::table tbl { {
+    { // create file context
+        std::ofstream ofs(name.data());
+    }
 
-        { "General",
-            toml::table { {
+    FlushToFile();
 
-                { StrDebug, Application::Settings.DebugModeEnabled },
-                { StrPrivate, Application::Settings.Private },
-                { StrPort, Application::Settings.Port },
-                { StrMaxCars, Application::Settings.MaxCars },
-                { StrMaxPlayers, Application::Settings.MaxPlayers },
-                { StrMap, Application::Settings.MapName },
-                { StrName, Application::Settings.ServerName },
-                { StrDescription, Application::Settings.ServerDesc },
-                { StrResourceFolder, Application::Settings.Resource },
-                { StrAuthKey, Application::Settings.Key },
-                //{ StrSendErrors, Application::Settings.SendErrors },
-
-            } } },
-
-    } };
-    std::ofstream ofs { std::string(name) };
+    size_t FileSize = fs::file_size(name);
+    std::fstream ofs { std::string(name), std::ios::in | std::ios::out };
     if (ofs.good()) {
+        std::string Contents {};
+        Contents.resize(FileSize);
+        ofs.readsome(Contents.data(), FileSize);
+        ofs.seekp(0);
         ofs << "# This is the BeamMP-Server config file.\n"
                "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
                "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
-            << '\n';
-        ofs << tbl << '\n';
-        error("There was no \"" + std::string(ConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
+            << '\n'
+            << Contents;
+        beammp_error("There was no \"" + std::string(mConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
         mFailed = true;
         ofs.close();
-        WriteSendErrors(std::string(name));
     } else {
-        error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
+        beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
+        Application::SetSubsystemStatus("Config", Application::Status::Bad);
         mFailed = true;
+    }
+}
+
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {
+    if (Table[Category.c_str()][Key.data()].is_string()) {
+        OutValue = Table[Category.c_str()][Key.data()].as_string();
+    }
+}
+
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, bool& OutValue) {
+    if (Table[Category.c_str()][Key.data()].is_boolean()) {
+        OutValue = Table[Category.c_str()][Key.data()].as_boolean();
+    }
+}
+
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue) {
+    if (Table[Category.c_str()][Key.data()].is_integer()) {
+        OutValue = Table[Category.c_str()][Key.data()].as_integer();
     }
 }
 
 void TConfig::ParseFromFile(std::string_view name) {
     try {
-        toml::table FullTable = toml::parse_file(name);
-        toml::table GeneralTable = *FullTable["General"].as_table();
-        if (auto val = GeneralTable[StrDebug].value<bool>(); val.has_value()) {
-            Application::Settings.DebugModeEnabled = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrDebug));
-        }
-        if (auto val = GeneralTable[StrPrivate].value<bool>(); val.has_value()) {
-            Application::Settings.Private = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrPrivate));
-        }
-        if (auto val = GeneralTable[StrPort].value<int>(); val.has_value()) {
-            Application::Settings.Port = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrPort));
-        }
-        if (auto val = GeneralTable[StrMaxCars].value<int>(); val.has_value()) {
-            Application::Settings.MaxCars = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrMaxCars));
-        }
-        if (auto val = GeneralTable[StrMaxPlayers].value<int>(); val.has_value()) {
-            Application::Settings.MaxPlayers = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrMaxPlayers));
-        }
-        if (auto val = GeneralTable[StrMap].value<std::string>(); val.has_value()) {
-            Application::Settings.MapName = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrMap));
-        }
-        if (auto val = GeneralTable[StrName].value<std::string>(); val.has_value()) {
-            Application::Settings.ServerName = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrName));
-        }
-        if (auto val = GeneralTable[StrDescription].value<std::string>(); val.has_value()) {
-            Application::Settings.ServerDesc = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrDescription));
-        }
-        if (auto val = GeneralTable[StrResourceFolder].value<std::string>(); val.has_value()) {
-            Application::Settings.Resource = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrResourceFolder));
-        }
-        if (auto val = GeneralTable[StrAuthKey].value<std::string>(); val.has_value()) {
-            Application::Settings.Key = val.value();
-        } else {
-            throw std::runtime_error(std::string(StrAuthKey));
-        }
-        // added later, so behaves differently
-        if (auto val = GeneralTable[StrSendErrors].value<bool>(); val.has_value()) {
-            Application::Settings.SendErrors = val.value();
-        } else {
-            // dont throw, instead write it into the file and use default
-            WriteSendErrors(std::string(name));
-        }
-        if (auto val = GeneralTable[StrSendErrorsMessageEnabled].value<bool>(); val.has_value()) {
-            Application::Settings.SendErrorsMessageEnabled = val.value();
-        } else {
-            // no idea what to do here, ignore...?
-            // this entire toml parser sucks and is replaced in the upcoming lua.
-        }
+        toml::value data = toml::parse<toml::preserve_comments>(name.data());
+        // GENERAL
+        TryReadValue(data, "General", StrDebug, Application::Settings.DebugModeEnabled);
+        TryReadValue(data, "General", StrPrivate, Application::Settings.Private);
+        TryReadValue(data, "General", StrPort, Application::Settings.Port);
+        TryReadValue(data, "General", StrMaxCars, Application::Settings.MaxCars);
+        TryReadValue(data, "General", StrMaxPlayers, Application::Settings.MaxPlayers);
+        TryReadValue(data, "General", StrMap, Application::Settings.MapName);
+        TryReadValue(data, "General", StrName, Application::Settings.ServerName);
+        TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
+        TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
+        TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
+        // HTTP
+        TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
+        TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
+        TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
+        TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
+        TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
     } catch (const std::exception& err) {
-        error("Error parsing config file value: " + std::string(err.what()));
+        beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
+        Application::SetSubsystemStatus("Config", Application::Status::Bad);
         return;
     }
     PrintDebug();
+
+    // Update in any case
+    FlushToFile();
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
-        error("No AuthKey specified in the \"" + std::string(ConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        Application::SetSubsystemStatus("Config", Application::Status::Bad);
         mFailed = true;
+        return;
+    }
+    Application::SetSubsystemStatus("Config", Application::Status::Good);
+    if (Application::Settings.Key.size() != 36) {
+        beammp_warn("AuthKey specified is the wrong length and likely isn't valid.");
     }
 }
 
 void TConfig::PrintDebug() {
-    debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
-    debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
-    debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
-    debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.MaxCars));
-    debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.MaxPlayers));
-    debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
-    debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
-    debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
-    debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
+    beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
+    beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
+    beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
+    beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.MaxCars));
+    beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.MaxPlayers));
+    beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
+    beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
+    beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
+    beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
+    beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
+    beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
     // special!
-    debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
+    beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }
 
 void TConfig::ParseOldFormat() {
@@ -233,7 +253,7 @@ void TConfig::ParseOldFormat() {
         } else if (Key == "AuthKey") {
             Application::Settings.Key = Value.substr(1, Value.size() - 3);
         } else {
-            warn("unknown key in old auth file (ignored): " + Key);
+            beammp_warn("unknown key in old auth file (ignored): " + Key);
         }
         Str >> std::ws;
     }

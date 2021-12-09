@@ -58,7 +58,7 @@ Currently only linux and windows are supported (generally). See [Releases](https
 
 Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
-Dependencies for windows can be installed with `vcpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, `boost-beast`, `boost-asio` and `openssl`.
+Dependencies for windows can be installed with `vcpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, and `openssl`.
 
 #### Linux / \*nix
 
@@ -79,18 +79,27 @@ These package names are in the debian / ubuntu style. Feel free to PR your own g
 - `rapidjson-dev`
 - `libopenssl-dev` or `libssl-dev`
 
-**If** you're building it from source, you'll need `libboost1.70-all-dev` or `libboost1.71-all-dev` or higher as well.
-If you can't find this version of boost (only 1.6x, for example), you can either update to a newer version of your distro, build boost yourself, or use an unstable rolling release (like Debian `sid` aka `unstable`).
+In the end you should end up with a command something like this:
+
+```sh
+sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev
+```
+
+In the end you should end up with a command something like this:
+
+```sh
+sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev
+```
 
 ### How to build
 
 On windows, use git-bash for these commands. On Linux, these should work in your shell.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with **`git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`**. Now change into the cloned directory by running `cd BeamMP-Server`.
+2. Clone the repository in a location of your choice with `git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`. 
 3. Ensure that all submodules are initialized by running `git submodule update --init --recursive`. Then change into the cloned directory by running `cd BeamMP-Server`.
 4. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-5. Run `cmake .` (with `.`)
+5. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`)
 6. Run `make`
 7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 

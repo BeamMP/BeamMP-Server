@@ -43,8 +43,6 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev
-            sudo add-apt-repository ppa:mhier/libboost-latest
-            sudo apt-get install -y libboost1.70-dev libboost1.70
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-linux
@@ -82,10 +80,10 @@ jobs:
             submodules: 'recursive'
       
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
-        uses: lukka/run-vcpkg@main
+        uses: lukka/run-vcpkg@v7
         id: runvcpkg
         with:
-            vcpkgArguments: 'lua zlib rapidjson boost-beast boost-asio openssl websocketpp curl'
+            vcpkgArguments: 'lua zlib rapidjson openssl websocketpp curl'
             vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
             vcpkgGitCommitId: '8dddc6c899ce6fdbeab38b525a31e7f23cb2d5bb'
             vcpkgTriplet: 'x64-windows-static'

@@ -2,6 +2,7 @@
 
 #include "IThreaded.h"
 #include "RWMutex.h"
+#include "TScopedTimer.h"
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -15,7 +16,7 @@ class TServer final {
 public:
     using TClientSet = std::unordered_set<std::shared_ptr<TClient>>;
 
-    TServer(int argc, char** argv);
+    TServer(const std::vector<std::string_view>& Arguments);
 
     void InsertClient(const std::shared_ptr<TClient>& Ptr);
     std::weak_ptr<TClient> InsertNewClient();
@@ -27,6 +28,9 @@ public:
     static void GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
     static void HandleEvent(TClient& c, const std::string& Data);
     RWMutex& GetClientMutex() const { return mClientsMutex; }
+
+    
+    const TScopedTimer UptimeTimer;
 private:
     TClientSet mClients;
     mutable RWMutex mClientsMutex;

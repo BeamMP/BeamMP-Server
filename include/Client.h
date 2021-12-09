@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <unordered_set>
@@ -11,6 +12,17 @@
 #include "VehicleData.h"
 
 class TServer;
+
+#ifdef BEAMMP_WINDOWS
+// for socklen_t
+#include <WS2tcpip.h>
+#endif // WINDOWS
+
+struct TConnection final {
+    SOCKET Socket;
+    struct sockaddr SockAddr;
+    socklen_t SockAddrLen;
+};
 
 class TClient final {
 public:
@@ -30,7 +42,7 @@ public:
     TVehicleDataLockPair GetAllCars();
     void SetName(const std::string& Name) { mName = Name; }
     void SetRoles(const std::string& Role) { mRole = Role; }
-    void AddIdentifier(const std::string& ID) { mIdentifiers.insert(ID); };
+    void SetIdentifier(const std::string& key, const std::string& value) { mIdentifiers[key] = value; }
     std::string GetCarData(int Ident);
     void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
@@ -38,7 +50,7 @@ public:
     void SetStatus(int Status) { mStatus = Status; }
     // locks
     void DeleteCar(int Ident);
-    [[nodiscard]] std::set<std::string> GetIdentifiers() const { return mIdentifiers; }
+    [[nodiscard]] const std::unordered_map<std::string, std::string>& GetIdentifiers() const { return mIdentifiers; }
     [[nodiscard]] sockaddr_in GetUDPAddr() const { return mUDPAddress; }
     [[nodiscard]] SOCKET GetDownSock() const { return mSocket[1]; }
     [[nodiscard]] SOCKET GetTCPSock() const { return mSocket[0]; }
@@ -78,7 +90,7 @@ private:
     bool mIsSyncing = false;
     mutable std::mutex mMissedPacketsMutex;
     std::queue<std::string> mPacketsSync;
-    std::set<std::string> mIdentifiers;
+    std::unordered_map<std::string, std::string> mIdentifiers;
     bool mIsGuest = false;
     std::mutex mVehicleDataMutex;
     TSetOfVehicleData mVehicleData;
@@ -92,3 +104,5 @@ private:
     int mID = -1;
     std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
 };
+
+std::optional<std::weak_ptr<TClient>> GetClient(class TServer& Server, int ID);

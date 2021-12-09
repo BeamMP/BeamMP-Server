@@ -12,9 +12,8 @@ TSentry::TSentry() {
         mValid = true;
         sentry_options_t* options = sentry_options_new();
         sentry_options_set_dsn(options, S_DSN);
-        sentry_options_set_debug(options, false); // needs to always be false
+        auto ReleaseString = "BeamMP-Server@" + Application::ServerVersionString();
         sentry_options_set_symbolize_stacktraces(options, true);
-        auto ReleaseString = "BeamMP-Server@" + Application::ServerVersion();
         sentry_options_set_release(options, ReleaseString.c_str());
         sentry_options_set_max_breadcrumbs(options, 10);
         sentry_init(options);
@@ -32,22 +31,22 @@ void TSentry::PrintWelcome() {
         if (!Application::Settings.SendErrors) {
             mValid = false;
             if (Application::Settings.SendErrorsMessageEnabled) {
-                info("Opted out of error reporting (SendErrors), Sentry disabled.");
+                beammp_info("Opted out of error reporting (SendErrors), Sentry disabled.");
             } else {
-                info("Sentry disabled");
+                beammp_info("Sentry disabled");
             }
         } else {
             if (Application::Settings.SendErrorsMessageEnabled) {
-                info("Sentry started! Reporting errors automatically. This sends data to the developers in case of errors and crashes. You can learn more, turn this message off or opt-out of this in the ServerConfig.toml.");
+                beammp_info("Sentry started! Reporting errors automatically. This sends data to the developers in case of errors and crashes. You can learn more, turn this message off or opt-out of this in the ServerConfig.toml.");
             } else {
-                info("Sentry started");
+                beammp_info("Sentry started");
             }
         }
     } else {
         if (Application::Settings.SendErrorsMessageEnabled) {
-            info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
+            beammp_info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
         } else {
-            info("Sentry disabled in unofficial build");
+            beammp_info("Sentry disabled in unofficial build");
         }
     }
 }
@@ -56,6 +55,7 @@ void TSentry::SetupUser() {
     if (!mValid) {
         return;
     }
+    Application::SetSubsystemStatus("Sentry", Application::Status::Good);
     sentry_value_t user = sentry_value_new_object();
     if (Application::Settings.Key.size() == 36) {
         sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));

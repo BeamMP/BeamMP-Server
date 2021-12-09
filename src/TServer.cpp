@@ -3,9 +3,11 @@
 #include "Common.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
-#include <TLuaFile.h>
+#include <TLuaPlugin.h>
 #include <any>
 #include <sstream>
+
+#include "LuaAPI.h"
 
 #undef GetObject // Fixes Windows
 
@@ -13,25 +15,27 @@
 
 namespace json = rapidjson;
 
-TServer::TServer(int argc, char** argv) {
-    info("BeamMP Server v" + Application::ServerVersion());
-    if (argc > 1) {
-        Application::Settings.CustomIP = argv[1];
+TServer::TServer(const std::vector<std::string_view>& Arguments) {
+    beammp_info("BeamMP Server v" + Application::ServerVersionString());
+    Application::SetSubsystemStatus("Server", Application::Status::Starting);
+    if (Arguments.size() > 1) {
+        Application::Settings.CustomIP = Arguments[0];
         size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
         auto p = Application::Settings.CustomIP.find_first_not_of(".0123456789");
         if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == "127") {
             Application::Settings.CustomIP.clear();
-            warn("IP Specified is invalid! Ignoring");
+            beammp_warn("IP Specified is invalid! Ignoring");
         } else {
-            info("server started with custom IP");
+            beammp_info("server started with custom IP");
         }
     }
+    Application::SetSubsystemStatus("Server", Application::Status::Good);
 }
 
 void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     if (!WeakClientPtr.expired()) {
         TClient& Client = *WeakClientPtr.lock();
-        debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
+        beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
         Client.ClearCars();
         WriteLock Lock(mClientsMutex);
         mClients.erase(WeakClientPtr.lock());
@@ -39,7 +43,7 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
 }
 
 std::weak_ptr<TClient> TServer::InsertNewClient() {
-    debug("inserting new client (" + std::to_string(ClientCount()) + ")");
+    beammp_debug("inserting new client (" + std::to_string(ClientCount()) + ")");
     WriteLock Lock(mClientsMutex);
     auto [Iter, Replaced] = mClients.insert(std::make_shared<TClient>(*this));
     return *Iter;
@@ -65,7 +69,7 @@ size_t TServer::ClientCount() const {
 
 void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
     if (Packet.find("Zp") != std::string::npos && Packet.size() > 500) {
-        //abort();
+        // abort();
     }
     if (Packet.substr(0, 4) == "ABG:") {
         Packet = DeComp(Packet.substr(4));
@@ -82,7 +86,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     std::any Res;
     char Code = Packet.at(0);
 
-    //V to Z
+    // V to Z
     if (Code <= 90 && Code >= 86) {
         PPSMonitor.IncrementInternalPPS();
         Network.SendToAll(LockedClient.get(), Packet, false, false);
@@ -90,7 +94,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     }
     switch (Code) {
     case 'H': // initial connection
-        trace(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
+        beammp_trace(std::string("got 'H' packet: '") + Packet + "' (" + std::to_string(Packet.size()) + ")");
         if (!Network.SyncClient(Client)) {
             // TODO handle
         }
@@ -107,30 +111,38 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         return;
     case 'O':
         if (Packet.length() > 1000) {
-            debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.length()));
+            beammp_debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.length()));
         }
         ParseVehicle(*LockedClient, Packet, Network);
         return;
     case 'J':
-        trace(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'J' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
-    case 'C':
-        trace(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+    case 'C': {
+        beammp_trace(std::string(("got 'C' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         if (Packet.length() < 4 || Packet.find(':', 3) == std::string::npos)
             break;
-        Res = TriggerLuaEvent("onChatMessage", false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 1) } }), true);
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 2));
+        TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), Packet.substr(Packet.find(':', 3) + 1)); // FIXME: this needs to be adjusted once lua is merged
-        if (std::any_cast<int>(Res))
+        if (std::any_of(Futures.begin(), Futures.end(),
+                [](const std::shared_ptr<TLuaResult>& Elem) {
+                    return !Elem->Error
+                        && Elem->Result.is<int>()
+                        && bool(Elem->Result.as<int>());
+                })) {
             break;
+        }
         Network.SendToAll(nullptr, Packet, true, true);
         return;
+    }
     case 'E':
-        trace(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'E' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         HandleEvent(*LockedClient, Packet);
         return;
     case 'N':
-        trace("got 'N' packet (" + std::to_string(Packet.size()) + ")");
+        beammp_trace("got 'N' packet (" + std::to_string(Packet.size()) + ")");
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
     default:
@@ -148,7 +160,7 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
             Name = t;
             break;
         case 2:
-            TriggerLuaEvent(Name, false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), t } }), false);
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), t));
             break;
         default:
             break;
@@ -162,7 +174,7 @@ bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
     rapidjson::Document Car;
     Car.Parse(CarJson.c_str(), CarJson.size());
     if (Car.HasParseError()) {
-        error("Failed to parse vehicle data -> " + CarJson);
+        beammp_error("Failed to parse vehicle data -> " + CarJson);
     } else if (Car["jbm"].IsString() && std::string(Car["jbm"].GetString()) == "unicycle") {
         return true;
     }
@@ -190,18 +202,23 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     int PID = -1;
     int VID = -1, Pos;
     std::string Data = Packet.substr(3), pid, vid;
-    switch (Code) { //Spawned Destroyed Switched/Moved NotFound Reset
+    switch (Code) { // Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
-        trace(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         if (Data.at(0) == '0') {
             int CarID = c.GetOpenCarID();
-            debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
+            beammp_debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
 
             std::string CarJson = Packet.substr(5);
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
-            auto Res = TriggerLuaEvent(("onVehicleSpawn"), false, nullptr, std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), CarID, Packet.substr(3) } }), true);
+            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", "", c.GetID(), CarID, Packet.substr(3));
+            TLuaEngine::WaitForAll(Futures);
+            bool ShouldntSpawn = std::any_of(Futures.begin(), Futures.end(),
+                [](const std::shared_ptr<TLuaResult>& Result) {
+                    return !Result->Error && Result->Result.is<int>() && Result->Result.as<int>() != 0;
+                });
 
-            if (ShouldSpawn(c, CarJson, CarID) && std::any_cast<int>(Res) == 0) {
+            if (ShouldSpawn(c, CarJson, CarID) && !ShouldntSpawn) {
                 c.AddNewCar(CarID, Packet);
                 Network.SendToAll(nullptr, Packet, true, true);
             } else {
@@ -212,12 +229,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 if (!Network.Respond(c, Destroy, true)) {
                     // TODO: handle
                 }
-                debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
+                beammp_debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
             }
         }
         return;
     case 'c':
-        trace(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         pid = Data.substr(0, Data.find('-'));
         vid = Data.substr(Data.find('-') + 1, Data.find(':', 1) - Data.find('-') - 1);
         if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
@@ -225,14 +242,17 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             VID = stoi(vid);
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            auto Res = TriggerLuaEvent(("onVehicleEdited"), false, nullptr,
-                std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Packet.substr(3) } }),
-                true);
+            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleEdited", "", c.GetID(), VID, Packet.substr(3));
+            TLuaEngine::WaitForAll(Futures);
+            bool ShouldntAllow = std::any_of(Futures.begin(), Futures.end(),
+                [](const std::shared_ptr<TLuaResult>& Result) {
+                    return !Result->Error && Result->Result.is<int>() && Result->Result.as<int>() != 0;
+                });
 
             auto FoundPos = Packet.find('{');
             FoundPos = FoundPos == std::string::npos ? 0 : FoundPos; // attempt at sanitizing this
             if ((c.GetUnicycleID() != VID || IsUnicycle(c, Packet.substr(FoundPos)))
-                && std::any_cast<int>(Res) == 0) {
+                && !ShouldntAllow) {
                 Network.SendToAll(&c, Packet, false, true);
                 Apply(c, VID, Packet);
             } else {
@@ -248,7 +268,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         }
         return;
     case 'd':
-        trace(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         pid = Data.substr(0, Data.find('-'));
         vid = Data.substr(Data.find('-') + 1);
         if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
@@ -260,14 +280,14 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 c.SetUnicycleID(-1);
             }
             Network.SendToAll(nullptr, Packet, true, true);
-            TriggerLuaEvent(("onVehicleDeleted"), false, nullptr,
-                std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID } }), false);
+            // TODO: should this trigger on all vehicle deletions?
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
             c.DeleteCar(VID);
-            debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
+            beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
         }
         return;
     case 'r':
-        trace(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         Pos = int(Data.find('-'));
         pid = Data.substr(0, Pos++);
         vid = Data.substr(Pos, Data.find(':') - Pos);
@@ -279,18 +299,19 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             Data = Data.substr(Data.find('{'));
-            TriggerLuaEvent("onVehicleReset", false, nullptr,
-                std::make_unique<TLuaArg>(TLuaArg { { c.GetID(), VID, Data } }),
-                false);
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", "", c.GetID(), VID, Data));
             Network.SendToAll(&c, Packet, false, true);
         }
         return;
     case 't':
-        trace(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_trace(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         Network.SendToAll(&c, Packet, false, true);
         return;
+    case 'm':
+        Network.SendToAll(&c, Packet, true, true);
+        return;
     default:
-        trace(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
+        beammp_trace(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
         return;
     }
 }
@@ -298,13 +319,13 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     auto FoundPos = pckt.find('{');
     if (FoundPos == std::string::npos) {
-        error("Malformed packet received, no '{' found");
+        beammp_error("Malformed packet received, no '{' found");
         return;
     }
     std::string Packet = pckt.substr(FoundPos);
     std::string VD = c.GetCarData(VID);
     if (VD.empty()) {
-        error("Tried to apply change to vehicle that does not exist");
+        beammp_error("Tried to apply change to vehicle that does not exist");
         auto Lock = Sentry.CreateExclusiveContext();
         Sentry.SetContext("vehicle-change",
             { { "packet", Packet },
@@ -321,19 +342,18 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
         Sentry.SetContext("vehicle-change-packet",
             { { "packet", VD } });
         Sentry.LogError("malformed packet", _file_basename, _line);
-        error("Malformed packet received, no '{' found");
         return;
     }
     VD = VD.substr(FoundPos);
     rapidjson::Document Veh, Pack;
     Veh.Parse(VD.c_str());
     if (Veh.HasParseError()) {
-        error("Could not get vehicle config!");
+        beammp_error("Could not get vehicle config!");
         return;
     }
     Pack.Parse(Packet.c_str());
     if (Pack.HasParseError() || Pack.IsNull()) {
-        error("Could not get active vehicle config!");
+        beammp_error("Could not get active vehicle config!");
         return;
     }
 
@@ -351,7 +371,7 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
 }
 
 void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
-    debug("inserting client (" + std::to_string(ClientCount()) + ")");
-    WriteLock Lock(mClientsMutex); //TODO why is there 30+ threads locked here
+    beammp_debug("inserting client (" + std::to_string(ClientCount()) + ")");
+    WriteLock Lock(mClientsMutex); // TODO why is there 30+ threads locked here
     (void)mClients.insert(NewClient);
 }
