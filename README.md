@@ -100,7 +100,7 @@ For other distributions (e.g. Arch) you want to find packages for:
 - ssl / openssl
 - websocketpp
 - curl (with ssl support)
-- + the build time dependencies from above
+- \+ the build time dependencies from above
 
 ### How to build
 
