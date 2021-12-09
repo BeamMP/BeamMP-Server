@@ -3,7 +3,11 @@
 #include "Client.h"
 #include "Http.h"
 //#include "SocketIO.h"
+#include <rapidjson/document.h>
+#include <rapidjson/rapidjson.h>
 #include <sstream>
+
+namespace json = rapidjson;
 
 void THeartbeatThread::operator()() {
     RegisterThread("Heartbeat");
@@ -85,10 +89,13 @@ void THeartbeatThread::operator()() {
             } else if (T == "200") {
                 beammp_info(("Resumed authenticated session!"));
                 isAuth = true;
+            } else {
+                if (Message.empty()) {
+                    Message = "Backend didn't provide a reason";
+                }
+                error("Backend REFUSED the auth key. " + Message);
             }
         }
-
-        // SocketIO::Get().SetAuthenticated(isAuth);
     }
 }
 
