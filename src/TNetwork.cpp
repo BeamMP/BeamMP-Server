@@ -186,6 +186,10 @@ void TNetwork::Identify(const TConnection& client) {
         Authentication(client);
     } else if (Code == 'D') {
         HandleDownload(client.Socket);
+    } else if (Code == 'P') {
+        send(client.Socket, "P", 1, 0);
+        CloseSocketProper(client.Socket);
+        return;
     } else {
         CloseSocketProper(client.Socket);
     }
