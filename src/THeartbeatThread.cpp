@@ -89,11 +89,6 @@ void THeartbeatThread::operator()() {
             } else if (T == "200") {
                 beammp_info(("Resumed authenticated session!"));
                 isAuth = true;
-            } else {
-                if (Message.empty()) {
-                    Message = "Backend didn't provide a reason";
-                }
-                error("Backend REFUSED the auth key. " + Message);
             }
         }
     }
