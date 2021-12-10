@@ -1,0 +1,120 @@
+openapi: '3.0.0'
+info:
+  version: '0.2-Alpha'
+  title: BeamMP Server
+  description: This document serves as both specification and documentation of the inbuilt HTTP Server that comes with each BeamMP installation.
+
+
+paths:
+  /health:
+    get:
+      summary: Serves as an indicator for the server health. Only ever has two states (healthy / unhealthy)
+      security: [] # No auth required
+      responses:
+        '200':
+          description: Server is operating within normal parameters.
+        '500':
+          description: Server is has encountered major problems.
+  /stats:
+    get:
+      summary: Returns general metrics about the server instance.
+      security: [] # No auth required
+      responses:
+        '200':
+          description: OK
+
+  /info:
+    get:
+      summary: ???
+      security: [] # No auth required
+      responses:
+        '200':
+          description: OK
+
+  /player:
+    get:
+      summary: Returns a list of players matching the specified query parameters.
+      security: [] # No auth required
+      responses:
+        '200':
+          description: OK
+  /plugin/{plugin_name}:
+    get:
+      summary: Wild Card Path for endpoints set by lua plugins
+      description: This endpoint can be used by lua plugins to register their own endpoint for communication over HTTP.
+      security: [] # No auth required
+      parameters:
+        - in: path
+          name: plugin_name
+          schema:
+            type: string
+          required: true
+          description: Name of the Plugin that should handle the request.
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Internal Server Error. The plugin was unable to fullfill the request or something else went wrong.
+        '501':
+          description: A plugin with the given `plugin_name` is not registered for this type of HTTP Operation.
+        '503':
+          description: Service unavailable
+  /kitty:
+    get:
+      summary: Kitty.
+      security: [] # No auth required
+      responses:
+        '200':
+          description: OK
+components:
+  #securitySchemes:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error type as a human readable identifier.
+        message:
+          type: string
+          description: Human readable error message.
+        id:
+          type: string
+          format: uuid-v4
+          description: An optional ID (may be used for identifying the error via logs or other means).
+        url:
+          type: string
+          format: url
+          description: An optional URL to a resource that explains the error and offers possible solutions.
+      required:
+        - code
+        - message
+
+      example:
+        code: LuaEngineOverloadError
+        message: The Lua-Engine is currently handling alot of events, try again later.
+        id: 0970afab-5e94-41c4-8904-c9bfaeae8369
+    Plugin_Error:
+      allOf:
+        - $ref: '#/components/schemas/Error'
+        - type: object
+          description: Error response with additional error information from plugins
+          properties:
+            plugin_error:
+              type: object
+              properties:
+                plugin_error_code:
+                  type: string
+                  description: Plugin error type in human readable format.
+                plugin_error_message:
+                  type: string
+                  description: Plugin error message in human readable format.
+                id:
+                  type: string
+                  description: An optional ID (may be used by the plugin internally or for logging)
+                plugin_data:
+                  type: object
+                  description: Wildcard field for additional plugin data (in json).
+              required:
+                - plugin_error_code
+                - plugin_error_message
