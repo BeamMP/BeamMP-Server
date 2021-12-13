@@ -138,8 +138,7 @@ public:
         for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
                 if (Event.first != IgnoreId) {
-                    std::vector<TLuaArgTypes> ArgumentsCopy = Arguments;
-                    Results.push_back(EnqueueFunctionCall(Event.first, Function, ArgumentsCopy));
+                    Results.push_back(EnqueueFunctionCall(Event.first, Function, Arguments));
                 }
             }
         }
