@@ -133,10 +133,12 @@ public:
         }
 
         std::vector<std::shared_ptr<TLuaResult>> Results;
+        std::vector<TLuaArgTypes> Arguments { TLuaArgTypes { std::forward<ArgsT>(Args) }... };
+
         for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
                 if (Event.first != IgnoreId) {
-                    Results.push_back(EnqueueFunctionCall(Event.first, Function, { TLuaArgTypes { std::forward<ArgsT>(Args) }... }));
+                    Results.push_back(EnqueueFunctionCall(Event.first, Function, Arguments));
                 }
             }
         }

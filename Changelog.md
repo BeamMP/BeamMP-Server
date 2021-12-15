@@ -1,7 +1,7 @@
 # v2.4.0
 
 - CHANGED entire plugin Lua implementation (rewrite)
-- CHANGED moved *almost all* functions into MP.\*
+- CHANGED moved *almost all* Lua functions into MP.\*
 - CHANGED console to use a custom language (type `help`, `list`, or `status`!)
 - CHANGED all files of a Lua plugin to share a Lua state (no more state-per-file)
 - ADDED many new Lua API functions, which can be found at <https://wiki.beammp.com/en/Scripting/functions>
@@ -14,7 +14,7 @@
 - ADDED dumping tables with `print()` (try it with `print(MP)`)
 - ADDED `MP.GetOSName()`, `MP.CreateTimer()`, `MP.GetLuaMemoryUsage()` and many more (see <https://wiki.beammp.com/en/Scripting/functions>)
 - ADDED `MP.Settings` table to make usage of `MP.Set()` easier
-- ADDED `FS.*` table with common filesystem operations
+- ADDED `FS.*` table with common filesystem operations (do `print(FS)` to see them!)
 - FIXED i/o thread spin when stdout is /dev/null on linux
 - FIXED removed extra whitespace infront of onChatMessage message
 
