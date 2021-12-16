@@ -1,4 +1,4 @@
-# v2.4.0
+# v3.0.0
 
 - CHANGED entire plugin Lua implementation (rewrite)
 - CHANGED moved *almost all* Lua functions into MP.\*

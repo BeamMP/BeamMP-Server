@@ -6,6 +6,8 @@
 This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** for the game [BeamNG.drive](https://www.beamng.com/).
 The server is the point throug which all clients communicate. You can write lua mods for the server, detailed instructions on the [BeamMP Wiki](https://wiki.beammp.com).
 
+**For Linux, you __need__ the runtime dependencies, listed below under "prerequisites".**
+
 ## Support + Contact
 
 Feel free to ask any questions via the following channels:
@@ -48,7 +50,7 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 ## Build Instructions
 
-**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v2.0`!__**
+**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v2.3.3`!__**
 
 Currently only linux and windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
 
@@ -58,38 +60,47 @@ Currently only linux and windows are supported (generally). See [Releases](https
 
 Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
-Dependencies for windows can be installed with `vcpkg`, in which case the current dependencies are the `x64-windows-static` versions of `lua`, `zlib`, `rapidjson`, and `openssl`.
+Dependencies for **windows** can be installed with `vcpkg`.
+These are:
+```
+lua
+zlib
+rapidjson
+openssl
+websocketpp
+curl
+```
 
-#### Linux / \*nix
+#### Linux
 
 These package names are in the debian / ubuntu style. Feel free to PR your own guide for a different distro.
 
-- `git`
-- `make`
-- `cmake`
-- `g++`
-- `libcurl4-openssl-dev` or similar (search for `libcurl` and look for one with `-dev`)
-  
-  Must support ISO C++17. If your distro's `g++` doesn't support C++17, chances are that it has a `g++-8` or `g++-10` package that does. If this is the case. you just need to run CMake with `-DCMAKE_CXX_COMPILER=g++-10` (replace `g++-10` with your compiler's name).
-- `liblua5.3-dev` 
-  
-  Any 5.x version should work, but 5.3 is what we officially use. Any other version might break in the future.
-  You can also use any version of `libluajit`, but the same applies regarding the version.
-- `libz-dev`
-- `rapidjson-dev`
-- `libopenssl-dev` or `libssl-dev`
-
-In the end you should end up with a command something like this:
-
-```sh
-sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev
+Runtime dependencies for **linux** are (debian/ubuntu):
+```
+libz-dev
+rapidjson-dev
+liblua5.3
+libssl-dev
+libwebsocketpp-dev
+libcurl4-openssl-dev
 ```
 
-In the end you should end up with a command something like this:
-
-```sh
-sudo apt install git make cmake g++-10 liblua5.3 libz-dev rapidjson-dev libopenssl-dev
+Build-time dependencies for **linux** are:
 ```
+git
+make
+cmake
+g++
+```
+
+For other distributions (e.g. Arch) you want to find packages for:
+- libz
+- rapidjson
+- lua5.3
+- ssl / openssl
+- websocketpp
+- curl (with ssl support)
+- \+ the build time dependencies from above
 
 ### How to build
 
@@ -98,7 +109,7 @@ On windows, use git-bash for these commands. On Linux, these should work in your
 1. Make sure you have all [prerequisites](#prerequisites) installed
 2. Clone the repository in a location of your choice with `git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`. 
 3. Ensure that all submodules are initialized by running `git submodule update --init --recursive`. Then change into the cloned directory by running `cd BeamMP-Server`.
-4. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v1.20` for version 1.20. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
+4. Checkout the branch of the release you want to compile (`master` is often unstable), for example `git checkout tags/v2.3.3` for version 2.3.3. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
 5. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`)
 6. Run `make`
 7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (windows or linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/Server_Mod) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
