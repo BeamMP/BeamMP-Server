@@ -8,6 +8,8 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+set(HTTPLIB_REQUIRE_OPENSSL ON)
+
 include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")

@@ -54,34 +54,26 @@ void THeartbeatThread::operator()() {
 
         auto Target = "/heartbeat";
         unsigned int ResponseCode = 0;
-        T = Http::POST(Application::GetBackendHostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
 
-        if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-            beammp_trace("got " + T + " from backend");
-            Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
-            SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST(Application::GetBackup1Hostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
+        bool Ok = true;
+        json::Document Doc;
+        for (const auto& Hostname : Application::GetBackendUrlsInOrder()) {
+            T = Http::POST(Hostname, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
             if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
+                beammp_trace("heartbeat to " + Hostname + " returned: " + T);
                 Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                T = Http::POST(Application::GetBackup2Hostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
-                if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                    beammp_warn("Backend system refused server! Server will not show in the public server list.");
-                    Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
-                    isAuth = false;
-                    SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
-                } else {
-                    Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
-                }
+                isAuth = false;
+                SentryReportError(Hostname + Target, ResponseCode);
+                Ok = false;
             } else {
                 Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+                Ok = true;
+                break;
             }
-        } else {
-            Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
-
+        if (!Ok) {
+            beammp_warn("Backend system refused server! Server will not show in the public server list.");
+        }
         if (!isAuth) {
             if (T == "2000") {
                 beammp_info(("Authenticated!"));
