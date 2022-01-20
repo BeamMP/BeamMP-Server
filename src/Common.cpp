@@ -99,7 +99,7 @@ void Application::CheckForUpdates() {
     Application::SetSubsystemStatus("UpdateCheck", Application::Status::Starting);
     // checks current version against latest version
     std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
-    auto Response = Http::GET(GetBackendHostname(), 443, "/v/s");
+    auto Response = Http::GET(GetBackendUrlsInOrder().at(0), 443, "/v/s");
     bool Matches = std::regex_match(Response, VersionRegex);
     if (Matches) {
         auto MyVersion = ServerVersion();

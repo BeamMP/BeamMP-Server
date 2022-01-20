@@ -25,7 +25,7 @@ constexpr size_t RSA_DEFAULT_KEYLENGTH { 2048 };
 
 namespace Http {
 std::string GET(const std::string& host, int port, const std::string& target, unsigned int* status = nullptr);
-std::string POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status = nullptr);
+std::string POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status = nullptr, const httplib::Headers& headers = {});
 namespace Status {
     std::string ToString(int code);
 }
