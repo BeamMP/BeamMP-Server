@@ -119,7 +119,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 0, 0 };
+    static inline Version mVersion { 3, 0, 1 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);
