@@ -99,25 +99,31 @@ void Application::CheckForUpdates() {
     Application::SetSubsystemStatus("UpdateCheck", Application::Status::Starting);
     // checks current version against latest version
     std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
-    auto Response = Http::GET(GetBackendUrlsInOrder().at(0), 443, "/v/s");
-    bool Matches = std::regex_match(Response, VersionRegex);
-    if (Matches) {
-        auto MyVersion = ServerVersion();
-        auto RemoteVersion = Version(VersionStrToInts(Response));
-        if (IsOutdated(MyVersion, RemoteVersion)) {
-            std::string RealVersionString = RemoteVersion.AsString();
-            beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+    for (const auto& url : GetBackendUrlsInOrder()) {
+        auto Response = Http::GET(GetBackendUrlsInOrder().at(0), 443, "/v/s");
+        bool Matches = std::regex_match(Response, VersionRegex);
+        if (Matches) {
+            auto MyVersion = ServerVersion();
+            auto RemoteVersion = Version(VersionStrToInts(Response));
+            if (IsOutdated(MyVersion, RemoteVersion)) {
+                std::string RealVersionString = RemoteVersion.AsString();
+                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+            } else {
+                beammp_info("Server up-to-date!");
+            }
+            Application::SetSubsystemStatus("UpdateCheck", Application::Status::Good);
+            break;
         } else {
-            beammp_info("Server up-to-date!");
+            beammp_debug("Failed to fetch version from: " + url);
+            beammp_trace("got " + Response);
+            auto Lock = Sentry.CreateExclusiveContext();
+            Sentry.SetContext("get-response", { { "response", Response } });
+            Sentry.LogError("failed to get server version", _file_basename, _line);
+            Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
         }
-        Application::SetSubsystemStatus("UpdateCheck", Application::Status::Good);
-    } else {
-        beammp_warn("Unable to fetch version from backend.");
-        beammp_trace("got " + Response);
-        auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetContext("get-response", { { "response", Response } });
-        Sentry.LogError("failed to get server version", _file_basename, _line);
-        Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
+    }
+    if (Application::GetSubsystemStatuses().at("UpdateCheck") == Application::Status::Bad) {
+        beammp_warn("Unable to fetch version info from backend.");
     }
 }
 
