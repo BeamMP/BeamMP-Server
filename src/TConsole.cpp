@@ -107,10 +107,10 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
         mStateId = LuaStateId;
         mIsLuaConsole = true;
         if (mStateId != mDefaultStateId) {
-            Application::Console().WriteRaw("Entered Lua console for state '" + mStateId + "'. To exit, type `exit()`");
+            Application::Console().WriteRaw("Attached to Lua state '" + mStateId + "'. For help, type `:help`. To detach, type `:detach`");
             mCommandline.set_prompt("lua @" + LuaStateId + "> ");
         } else {
-            Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
+            Application::Console().WriteRaw("Attached to Lua. For help, type `:help`. To detach, type `:detach`");
             mCommandline.set_prompt("lua> ");
         }
         mCachedRegularHistory = mCommandline.history();
@@ -122,9 +122,9 @@ void TConsole::ChangeToRegularConsole() {
     if (mIsLuaConsole) {
         mIsLuaConsole = false;
         if (mStateId != mDefaultStateId) {
-            Application::Console().WriteRaw("Left Lua console for state '" + mStateId + "'.");
+            Application::Console().WriteRaw("Detached from Lua state '" + mStateId + "'.");
         } else {
-            Application::Console().WriteRaw("Left Lua console.");
+            Application::Console().WriteRaw("Detached from Lua.");
         }
         mCachedLuaHistory = mCommandline.history();
         mCommandline.set_history(mCachedRegularHistory);
@@ -364,6 +364,58 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
     }
 }
 
+void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
+    if (cmd == "detach") {
+        ChangeToRegularConsole();
+    } else if (cmd == "queued") {
+        auto QueuedFunctions = LuaAPI::MP::Engine->Debug_GetStateFunctionQueueForState(mStateId);
+        Application::Console().WriteRaw("Pending functions in State '" + mStateId + "'");
+        std::unordered_map<std::string, size_t> FunctionsCount;
+        std::vector<std::string> FunctionsInOrder;
+        while (!QueuedFunctions.empty()) {
+            auto Tuple = QueuedFunctions.front();
+            QueuedFunctions.pop();
+            FunctionsInOrder.push_back(std::get<0>(Tuple));
+            FunctionsCount[std::get<0>(Tuple)] += 1;
+        }
+        std::set<std::string> Uniques;
+        for (const auto& Function : FunctionsInOrder) {
+            if (Uniques.count(Function) == 0) {
+                Uniques.insert(Function);
+                if (FunctionsCount.at(Function) > 1) {
+                    Application::Console().WriteRaw("    " + Function + " (" + std::to_string(FunctionsCount.at(Function)) + "x)");
+                } else {
+                    Application::Console().WriteRaw("    " + Function);
+                }
+            }
+        }
+        Application::Console().WriteRaw("Executed functions waiting to be checked in State '" + mStateId + "'");
+        for (const auto& Function : LuaAPI::MP::Engine->Debug_GetResultsToCheckForState(mStateId)) {
+            Application::Console().WriteRaw("    '" + Function.Function + "' (Ready? " + (Function.Ready ? "Yes" : "No") + ", Error? " + (Function.Error ? "Yes: '" + Function.ErrorMessage + "'" : "No") + ")");
+        }
+    } else if (cmd == "events") {
+        auto Events = LuaAPI::MP::Engine->Debug_GetEventsForState(mStateId);
+        Application::Console().WriteRaw("Registered Events + Handlers for State '" + mStateId + "'");
+        for (const auto& EventHandlerPair : Events) {
+            Application::Console().WriteRaw("    Event '" + EventHandlerPair.first + "'");
+            for (const auto& Handler : EventHandlerPair.second) {
+                Application::Console().WriteRaw("        " + Handler);
+            }
+        }
+    } else if (cmd == "help") {
+        Application::Console().WriteRaw(R"(BeamMP Lua Debugger
+    All commands must be prefixed with a `:`. Non-prefixed commands are interpreted as Lua.
+
+Commands
+    :detach       detaches (exits) from this Lua console
+    :help         displays this help
+    :events       shows a list of currently registered events
+    :queued       shows a list of all pending and queued functions)");
+    } else {
+        beammp_error("internal command '" + cmd + "' is not known");
+    }
+}
+
 TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
@@ -381,8 +433,8 @@ TConsole::TConsole() {
             if (mIsLuaConsole) {
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
-                } else if (cmd == "exit()") {
-                    ChangeToRegularConsole();
+                } else if (!cmd.empty() && cmd.at(0) == ':') {
+                    HandleLuaInternalCommand(cmd.substr(1));
                 } else {
                     auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
                     while (!Future->Ready) {

@@ -21,6 +21,7 @@ private:
     void RunAsCommand(const std::string& cmd, bool IgnoreNotACommand = false);
     void ChangeToLuaConsole(const std::string& LuaStateId);
     void ChangeToRegularConsole();
+    void HandleLuaInternalCommand(const std::string& cmd);
 
     void Command_Lua(const std::string& cmd);
     void Command_Help(const std::string& cmd);

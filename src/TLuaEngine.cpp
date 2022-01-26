@@ -149,6 +149,50 @@ TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
     return "";
 }
 
+std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> TLuaEngine::Debug_GetEventsForState(TLuaStateId StateId) {
+    std::unordered_map<std::string, std::vector<std::string>> Result;
+    std::unique_lock Lock(mLuaEventsMutex);
+    for (const auto& EventNameToEventMap : mLuaEvents) {
+        for (const auto& IdSetOfHandlersPair : EventNameToEventMap.second) {
+            if (IdSetOfHandlersPair.first == StateId) {
+                for (const auto& Handler : IdSetOfHandlersPair.second) {
+                    Result[EventNameToEventMap.first].push_back(Handler);
+                }
+            }
+        }
+    }
+    return Result;
+}
+
+std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::Debug_GetStateExecuteQueueForState(TLuaStateId StateId) {
+    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Result;
+    std::unique_lock Lock(mLuaStatesMutex);
+    Result = mLuaStates.at(StateId)->Debug_GetStateExecuteQueue();
+    return Result;
+}
+
+std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> TLuaEngine::Debug_GetStateFunctionQueueForState(TLuaStateId StateId) {
+    std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> Result;
+    std::unique_lock Lock(mLuaStatesMutex);
+    Result = mLuaStates.at(StateId)->Debug_GetStateFunctionQueue();
+    return Result;
+}
+
+std::vector<TLuaResult> TLuaEngine::Debug_GetResultsToCheckForState(TLuaStateId StateId) {
+    std::unique_lock Lock(mResultsToCheckMutex);
+    auto ResultsToCheckCopy = mResultsToCheck;
+    Lock.unlock();
+    std::vector<TLuaResult> Result;
+    while (!ResultsToCheckCopy.empty()) {
+        auto ResultToCheck = std::move(ResultsToCheckCopy.front());
+        ResultsToCheckCopy.pop();
+        if (ResultToCheck->StateId == StateId) {
+            Result.push_back(*ResultToCheck);
+        }
+    }
+    return Result;
+}
+
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
     for (const auto& Result : Results) {
         bool Cancelled = false;
@@ -669,6 +713,16 @@ void TLuaEngine::StateThreadData::operator()() {
             }
         }
     }
+}
+
+std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::StateThreadData::Debug_GetStateExecuteQueue() {
+    std::unique_lock Lock(mStateExecuteQueueMutex);
+    return mStateExecuteQueue;
+}
+
+std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> TLuaEngine::StateThreadData::Debug_GetStateFunctionQueue() {
+    std::unique_lock Lock(mStateFunctionQueueMutex);
+    return mStateFunctionQueue;
 }
 
 void TLuaEngine::CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS) {

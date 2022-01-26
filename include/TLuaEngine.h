@@ -32,8 +32,8 @@ static constexpr size_t TLuaArgTypes_Bool = 3;
 class TLuaPlugin;
 
 struct TLuaResult {
-    std::atomic_bool Ready;
-    std::atomic_bool Error;
+    bool Ready;
+    bool Error;
     std::string ErrorMessage;
     sol::object Result { sol::lua_nil };
     TLuaStateId StateId;
@@ -89,6 +89,7 @@ public:
         std::unique_lock Lock(mResultsToCheckMutex);
         return mResultsToCheck.size();
     }
+    
     size_t GetLuaStateCount() {
         std::unique_lock Lock(mLuaStatesMutex);
         return mLuaStates.size();
@@ -152,6 +153,12 @@ public:
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
+    // Debugging functions (slow)
+    std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
+    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
+    std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
+    std::vector<TLuaResult> Debug_GetResultsToCheckForState(TLuaStateId StateId);
+
 private:
     void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
@@ -169,6 +176,10 @@ private:
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
         sol::state_view State() { return sol::state_view(mState); }
+
+        // Debug functions, slow
+        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
+        std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> Debug_GetStateFunctionQueue();
 
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
