@@ -16,7 +16,8 @@ include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
 include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
 include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
-include_directories("${PROJECT_SOURCE_DIR}/deps/json/single_include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/json/single_include") # nlohmann
+include_directories("${PROJECT_SOURCE_DIR}/deps/json-schema-validator/src")
 include_directories("${PROJECT_SOURCE_DIR}/deps")
 
 add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
@@ -137,7 +138,7 @@ else()
     find_package(OpenSSL REQUIRED)
 endif()
 
-target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES} nlohmann_json_schema_validator)
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)
