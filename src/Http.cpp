@@ -304,9 +304,9 @@ void Http::Server::THttpServerInstance::operator()() {
         HttpLibServerInstance = std::make_unique<httplib::Server>();
     }
     // todo: make this IP agnostic so people can set their own IP
-    HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
+    /*HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
-    });
+    });*/
     HttpLibServerInstance->Get("/health", [](const httplib::Request&, httplib::Response& res) {
         size_t SystemsGood = 0;
         size_t SystemsBad = 0;
@@ -327,6 +327,7 @@ void Http::Server::THttpServerInstance::operator()() {
         res.set_content(SystemsBad == 0 ? "0" : "1", "text/plain");
         res.status = 200;
     });
+
     /*
     HttpLibServerInstance->Get("/status", [](const httplib::Request&, httplib::Response& res) {
         try {
@@ -370,6 +371,8 @@ void Http::Server::THttpServerInstance::operator()() {
     HttpLibServerInstance->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::string(Magic), "text/plain");
     });
+    HttpLibServerInstance->set_mount_point("/", "./www");
+
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
     HttpLibServerInstance->listen("0.0.0.0", Application::Settings.HTTPServerPort);
 }
