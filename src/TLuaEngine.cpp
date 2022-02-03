@@ -54,25 +54,17 @@ void TLuaEngine::operator()() {
     auto ResultCheckThread = std::thread([&] {
         RegisterThread("ResultCheckThread");
         while (!mShutdown) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             std::unique_lock Lock(mResultsToCheckMutex);
             if (!mResultsToCheck.empty()) {
                 auto Res = mResultsToCheck.front();
                 mResultsToCheck.pop();
                 Lock.unlock();
 
-                size_t Waited = 0;
-                while (!Res->Ready) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    Waited++;
-                    if (Waited > 250) {
-                        // FIXME: This should *eventually* timeout.
-                        // beammp_lua_error(Res->Function + " in " + Res->StateId + " took >1s to respond, not printing possible errors");
-                        Lock.lock();
-                        mResultsToCheck.push(Res);
-                        Lock.unlock();
-                        break;
-                    }
+                if (!Res->Ready) {
+                    Lock.lock();
+                    mResultsToCheck.push(Res);
+                    Lock.unlock();
                 }
                 if (Res->Error) {
                     if (Res->ErrorMessage != BeamMPFnNotFoundError) {
@@ -80,13 +72,14 @@ void TLuaEngine::operator()() {
                     }
                 }
             }
+            std::this_thread::yield();
         }
     });
     // event loop
     auto Before = std::chrono::high_resolution_clock::now();
     while (!mShutdown) {
         if (mLuaStates.size() == 0) {
-            std::this_thread::sleep_for(std::chrono::seconds(500));
+            std::this_thread::sleep_for(std::chrono::seconds(100));
         }
         { // Timed Events Scope
             std::unique_lock Lock(mTimedEventsMutex);
@@ -759,6 +752,7 @@ void TLuaEngine::StateThreadData::AddPath(const fs::path& Path) {
 
 void TLuaResult::WaitUntilReady() {
     while (!Ready) {
+        std::this_thread::yield();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
@@ -816,12 +810,7 @@ void TPluginMonitor::operator()() {
                     auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
                     auto Res = mEngine.EnqueueScript(StateID, Chunk);
                     // TODO: call onInit
-                    while (!Res->Ready) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    }
-                    if (Res->Error) {
-                        beammp_lua_error(Res->ErrorMessage);
-                    }
+                    mEngine.AddResultToCheck(Res);
                 } else {
                     // TODO: trigger onFileChanged event
                     beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");

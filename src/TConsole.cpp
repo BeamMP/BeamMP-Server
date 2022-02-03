@@ -438,7 +438,7 @@ TConsole::TConsole() {
                 } else {
                     auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
                     while (!Future->Ready) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(1)); // TODO: Add a timeout
+                        std::this_thread::yield(); // TODO: Add a timeout
                     }
                     if (Future->Error) {
                         beammp_lua_error(Future->ErrorMessage);
