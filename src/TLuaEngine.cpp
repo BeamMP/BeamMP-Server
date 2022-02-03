@@ -142,6 +142,11 @@ TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
     return "";
 }
 
+void TLuaEngine::AddResultToCheck(const std::shared_ptr<TLuaResult>& Result) {
+    std::unique_lock Lock(mResultsToCheckMutex);
+    mResultsToCheck.push(Result);
+}
+
 std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> TLuaEngine::Debug_GetEventsForState(TLuaStateId StateId) {
     std::unordered_map<std::string, std::vector<std::string>> Result;
     std::unique_lock Lock(mLuaEventsMutex);
