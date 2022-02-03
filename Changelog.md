@@ -2,7 +2,7 @@
 
 - ADDED Backup URLs to UpdateCheck (will fail less often now)
 - FIXED a bug where, when run with --working-directory, the Server.log would still be in the original directory
-- FIXED a bug which could cause the plugin reload thread to spin at 100% if the reloaded plugin's onInit didn't terminate
+- FIXED a bug which could cause the plugin reload thread to spin at 100% if the reloaded plugin's didn't terminate
 
 # v3.0.0
 
