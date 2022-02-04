@@ -77,11 +77,6 @@ int main(int argc, char** argv) {
 
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
-    Application::InitializeConsole();
-    Application::SetSubsystemStatus("Main", Application::Status::Starting);
-
-    SetupSignalHandlers();
-
     ArgsParser Parser;
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
@@ -121,6 +116,11 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
+    
+    Application::InitializeConsole();
+    Application::SetSubsystemStatus("Main", Application::Status::Starting);
+
+    SetupSignalHandlers();
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {

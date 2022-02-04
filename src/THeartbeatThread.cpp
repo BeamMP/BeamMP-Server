@@ -54,41 +54,71 @@ void THeartbeatThread::operator()() {
 
         auto Target = "/heartbeat";
         unsigned int ResponseCode = 0;
-        T = Http::POST(Application::GetBackendHostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
 
-        if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-            beammp_trace("got " + T + " from backend");
-            Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
-            SentryReportError(Application::GetBackendHostname() + Target, ResponseCode);
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            T = Http::POST(Application::GetBackup1Hostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
-            if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                SentryReportError(Application::GetBackup1Hostname() + Target, ResponseCode);
-                Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                T = Http::POST(Application::GetBackup2Hostname(), 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode);
-                if ((T.substr(0, 2) != "20" && ResponseCode != 200) || ResponseCode != 200) {
-                    beammp_warn("Backend system refused server! Server will not show in the public server list.");
-                    Application::SetSubsystemStatus("Heartbeat", Application::Status::Bad);
-                    isAuth = false;
-                    SentryReportError(Application::GetBackup2Hostname() + Target, ResponseCode);
-                } else {
-                    Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
-                }
+        json::Document Doc;
+        bool Ok = false;
+        for (const auto& Url : Application::GetBackendUrlsInOrder()) {
+            T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
+            beammp_trace(T);
+            Doc.Parse(T.data(), T.size());
+            if (Doc.HasParseError() || !Doc.IsObject()) {
+                beammp_error("Backend response failed to parse as valid json");
+                beammp_debug("Response was: `" + T + "`");
+                Sentry.SetContext("JSON Response", { { "reponse", T } });
+                SentryReportError(Url + Target, ResponseCode);
+            } else if (ResponseCode != 200) {
+                SentryReportError(Url + Target, ResponseCode);
             } else {
-                Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+                // all ok
+                Ok = true;
+                break;
             }
-        } else {
-            Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        std::string Status {};
+        std::string Code {};
+        std::string Message {};
+        const auto StatusKey = "status";
+        const auto CodeKey = "code";
+        const auto MessageKey = "msg";
+
+        if (Ok) {
+            if (Doc.HasMember(StatusKey) && Doc[StatusKey].IsString()) {
+                Status = Doc[StatusKey].GetString();
+            } else {
+                Sentry.SetContext("JSON Response", { { StatusKey, "invalid string / missing" } });
+                Ok = false;
+            }
+            if (Doc.HasMember(CodeKey) && Doc[CodeKey].IsString()) {
+                Code = Doc[CodeKey].GetString();
+            } else {
+                Sentry.SetContext("JSON Response", { { CodeKey, "invalid string / missing" } });
+                Ok = false;
+            }
+            if (Doc.HasMember(MessageKey) && Doc[MessageKey].IsString()) {
+                Message = Doc[MessageKey].GetString();
+            } else {
+                Sentry.SetContext("JSON Response", { { MessageKey, "invalid string / missing" } });
+                Ok = false;
+            }
+            if (!Ok) {
+                beammp_error("Missing/invalid json members in backend response");
+                Sentry.LogError("Missing/invalid json members in backend response", __FILE__, std::to_string(__LINE__));
+            }
         }
 
-        if (!isAuth) {
-            if (T == "2000") {
+        if (Ok && !isAuth) {
+            if (Status == "2000") {
                 beammp_info(("Authenticated!"));
                 isAuth = true;
-            } else if (T == "200") {
+            } else if (Status == "200") {
                 beammp_info(("Resumed authenticated session!"));
                 isAuth = true;
+            } else {
+                if (Message.empty()) {
+                    Message = "Backend didn't provide a reason";
+                }
+                beammp_error("Backend REFUSED the auth key. " + Message);
             }
         }
     }

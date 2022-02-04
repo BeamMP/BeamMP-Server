@@ -149,6 +149,7 @@ public:
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
     sol::state_view GetStateForPlugin(const fs::path& PluginPath);
     TLuaStateId GetStateIDForPlugin(const fs::path& PluginPath);
+    void AddResultToCheck(const std::shared_ptr<TLuaResult>& Result);
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 

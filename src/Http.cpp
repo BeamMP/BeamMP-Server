@@ -4,6 +4,7 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "LuaAPI.h"
+#include "httplib.h"
 
 #include <map>
 #include <random>
@@ -33,17 +34,20 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
     }
 }
 
-std::string Http::POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status) {
+std::string Http::POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status, const httplib::Headers& headers) {
     httplib::SSLClient client(host, port);
+    client.set_read_timeout(std::chrono::seconds(10));
+    beammp_assert(client.is_valid());
     client.enable_server_certificate_verification(false);
     client.set_address_family(AF_INET);
-    auto res = client.Post(target.c_str(), body.c_str(), body.size(), ContentType.c_str());
+    auto res = client.Post(target.c_str(), headers, body.c_str(), body.size(), ContentType.c_str());
     if (res) {
         if (status) {
             *status = res->status;
         }
         return res->body;
     } else {
+        beammp_debug("POST failed: " + httplib::to_string(res.error()));
         return Http::ErrorString;
     }
 }

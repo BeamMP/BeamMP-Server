@@ -74,10 +74,15 @@ public:
 
     static TSettings Settings;
 
+    static std::vector<std::string> GetBackendUrlsInOrder() {
+        return {
+            "backend.beammp.com",
+            "backup1.beammp.com",
+            "backup2.beammp.com"
+        };
+    }
+
     static std::string GetBackendUrlForAuth() { return "auth.beammp.com"; }
-    static std::string GetBackendHostname() { return "backend.beammp.com"; }
-    static std::string GetBackup1Hostname() { return "backup1.beammp.com"; }
-    static std::string GetBackup2Hostname() { return "backup2.beammp.com"; }
     static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
     static void CheckForUpdates();
     static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
@@ -114,7 +119,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 0, 0 };
+    static inline Version mVersion { 3, 0, 1 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);
