@@ -199,6 +199,9 @@ void TConsole::Command_Say(const std::string& cmd) {
     if (cmd.size() > 3) {
         auto Message = cmd.substr(4);
         LuaAPI::MP::SendChatMessage(-1, Message);
+        if (!Application::Settings.LogChat) {
+            Application::Console().WriteRaw("Chat message sent!");
+        }
     }
 }
 

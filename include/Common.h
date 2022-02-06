@@ -49,6 +49,7 @@ public:
         bool DebugModeEnabled { false };
         int Port { 30814 };
         std::string CustomIP {};
+        bool LogChat { true };
         bool SendErrors { true };
         bool SendErrorsMessageEnabled { true };
         int HTTPServerPort { 8080 };

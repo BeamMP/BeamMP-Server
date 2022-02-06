@@ -17,6 +17,7 @@ static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+static constexpr std::string_view StrLogChat = "LogChat";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
@@ -62,6 +63,8 @@ void TConfig::FlushToFile() {
     data["General"] = toml::table();
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
+    data["General"][StrLogChat.data()] = Application::Settings.LogChat;
+    SetComment(data["General"][StrLogChat.data()].comments(), " Whether to log chat messages in the console / log");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
@@ -158,6 +161,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
         TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
         TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
         // HTTP
@@ -198,6 +202,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
     beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
