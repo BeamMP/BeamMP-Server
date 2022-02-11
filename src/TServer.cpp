@@ -7,13 +7,15 @@
 #include <any>
 #include <sstream>
 
+#include <nlohmann/json.hpp>
+
 #include "LuaAPI.h"
 
 #undef GetObject // Fixes Windows
 
 #include "Json.h"
 
-namespace json = rapidjson;
+namespace json = nlohmann::json;
 
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
