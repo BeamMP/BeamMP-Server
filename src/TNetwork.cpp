@@ -187,7 +187,11 @@ void TNetwork::Identify(const TConnection& client) {
     } else if (Code == 'D') {
         HandleDownload(client.Socket);
     } else if (Code == 'P') {
+#if defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
+        send(client.Socket, "P", 1, MSG_NOSIGNAL);
+#else
         send(client.Socket, "P", 1, 0);
+#endif
         CloseSocketProper(client.Socket);
         return;
     } else {
@@ -778,7 +782,11 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
 bool TNetwork::TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size) {
     intmax_t Sent = 0;
     do {
+#if defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
+        intmax_t Temp = send(socket, &Data[Sent], int(Size - Sent), MSG_NOSIGNAL);
+#else
         intmax_t Temp = send(socket, &Data[Sent], int(Size - Sent), 0);
+#endif
         if (Temp < 1) {
             beammp_info("Socket Closed! " + std::to_string(socket));
             CloseSocketProper(socket);
