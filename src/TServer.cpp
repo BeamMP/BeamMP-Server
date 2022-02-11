@@ -7,13 +7,13 @@
 #include <any>
 #include <sstream>
 
+#include <nlohmann/json.hpp>
+
 #include "LuaAPI.h"
 
 #undef GetObject // Fixes Windows
 
 #include "Json.h"
-
-namespace json = rapidjson;
 
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
@@ -171,15 +171,18 @@ void TServer::HandleEvent(TClient& c, const std::string& Data) {
     }
 }
 bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
-    rapidjson::Document Car;
-    Car.Parse(CarJson.c_str(), CarJson.size());
-    if (Car.HasParseError()) {
-        beammp_error("Failed to parse vehicle data -> " + CarJson);
-    } else if (Car["jbm"].IsString() && std::string(Car["jbm"].GetString()) == "unicycle") {
-        return true;
+    try {
+        auto Car = nlohmann::json::parse(CarJson);
+        const std::string jbm = "jbm";
+        if (Car.contains(jbm) && Car["jbm"].is_string() && Car["jbm"] == "unicycle") {
+            return true;
+        }
+    } catch (const std::exception& e) {
+        beammp_error("Failed to parse vehicle data as json for client " + std::to_string(c.GetID()) + ": '" + CarJson + "'");
     }
     return false;
 }
+
 bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
 
     if (c.GetUnicycleID() > -1 && (c.GetCarCount() - 1) < Application::Settings.MaxCars) {

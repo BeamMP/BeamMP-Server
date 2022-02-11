@@ -3,6 +3,8 @@
 - ADDED Backup URLs to UpdateCheck (will fail less often now)
 - FIXED a bug where, when run with --working-directory, the Server.log would still be in the original directory
 - FIXED a bug which could cause the plugin reload thread to spin at 100% if the reloaded plugin's didn't terminate
+- FIXED an issue which would cause servers to crash on mod download via SIGPIPE on POSIX
+- FIXED an issue which would cause servers to crash when checking if a vehicle is a unicycle
 
 # v3.0.0
 
