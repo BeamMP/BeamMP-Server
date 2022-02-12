@@ -121,6 +121,9 @@ void THeartbeatThread::operator()() {
                 beammp_error("Backend REFUSED the auth key. " + Message);
             }
         }
+        if (isAuth) {
+            Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+        }
     }
 }
 
