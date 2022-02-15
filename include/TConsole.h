@@ -26,13 +26,16 @@ private:
     void ChangeToRegularConsole();
     void HandleLuaInternalCommand(const std::string& cmd);
 
-    void Command_Lua(const std::string& cmd);
-    void Command_Help(const std::string& cmd);
-    void Command_Kick(const std::string& cmd);
-    void Command_Say(const std::string& cmd);
-    void Command_List(const std::string& cmd);
-    void Command_Status(const std::string& cmd);
-    void Command_Settings(const std::string& cmd);
+    void Command_Lua(const std::string& cmd, const std::vector<std::string>& args);
+    void Command_Help(const std::string& cmd, const std::vector<std::string>& args);
+    void Command_Kick(const std::string& cmd, const std::vector<std::string>& args);
+    void Command_List(const std::string& cmd, const std::vector<std::string>& args);
+    void Command_Status(const std::string& cmd, const std::vector<std::string>& args);
+    void Command_Settings(const std::string& cmd, const std::vector<std::string>& args);
+
+    void Command_Say(const std::string& FullCommand);
+    bool ExpectArgsCount(const std::vector<std::string>& args, size_t n);
+    bool ExpectArgsCount(const std::vector<std::string>& args, size_t min, size_t max);
 
     static std::tuple<std::string, std::vector<std::string>> ParseCommand(const std::string& cmd);
 
