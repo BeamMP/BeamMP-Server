@@ -4,6 +4,9 @@
 #include "commandline.h"
 #include <atomic>
 #include <fstream>
+#include <string>
+#include <tuple>
+#include <vector>
 
 class TLuaEngine;
 
@@ -29,6 +32,9 @@ private:
     void Command_Say(const std::string& cmd);
     void Command_List(const std::string& cmd);
     void Command_Status(const std::string& cmd);
+    void Command_Settings(const std::string& cmd);
+
+    static std::tuple<std::string, std::vector<std::string>> ParseCommand(const std::string& cmd);
 
     Commandline mCommandline;
     std::vector<std::string> mCachedLuaHistory;

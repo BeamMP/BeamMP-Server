@@ -156,6 +156,7 @@ void TConsole::Command_Help(const std::string&) {
         list                    lists all players and info about them
         say <message>           sends the message to all players in chat
         lua [state id]          switches to lua, optionally into a specific state id's lua
+        settings [command]      sets or gets settings for the server, run `settings help` for more info
         status                  how the server is doing and what it's up to)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
@@ -193,6 +194,59 @@ void TConsole::Command_Kick(const std::string& cmd) {
             Application::Console().WriteRaw("Kicked player '" + Name + "' for reason: '" + Reason + "'.");
         }
     }
+}
+
+std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const std::string& CommandWithArgs) {
+    // Algorithm designed and implemented by Lion Kortlepel (c) 2022
+    // It correctly splits arguments, including respecting single and double quotes, as well as backticks
+    auto End_i = CommandWithArgs.find_first_of(' ');
+    std::string Command = CommandWithArgs.substr(0, End_i);
+    std::string ArgsStr = CommandWithArgs.substr(End_i);
+    std::vector<std::string> Args;
+    char* PrevPtr = ArgsStr.data();
+    char* Ptr = ArgsStr.data();
+    const char* End = ArgsStr.data() + ArgsStr.size();
+    while (Ptr != End) {
+        std::string Arg = "";
+        // advance while space
+        while (Ptr != End && std::isspace(*Ptr))
+            ++Ptr;
+        PrevPtr = Ptr;
+        // advance while NOT space, also handle quotes
+        while (Ptr != End && !std::isspace(*Ptr)) {
+            // TODO: backslash escaping quotes
+            for (char Quote : { '"', '\'', '`' }) {
+                if (*Ptr == Quote) {
+                    // seek if there's a closing quote
+                    // if there is, go there and continue, otherwise ignore
+                    char* Seeker = Ptr + 1;
+                    while (Seeker != End && *Seeker != Quote)
+                        ++Seeker;
+                    if (Seeker != End) {
+                        // found closing quote
+                        Ptr = Seeker;
+                    }
+                    break; // exit for loop
+                }
+            }
+            ++Ptr;
+        }
+        Arg = std::string(PrevPtr, Ptr - PrevPtr);
+        // remove quotes if enclosed in quotes
+        for (char Quote : { '"', '\'', '`' }) {
+            if (!Arg.empty() && Arg.at(0) == Quote && Arg.at(Arg.size() - 1) == Quote) {
+                Arg = Arg.substr(1, Arg.size() - 2);
+                break;
+            }
+        }
+        if (!Arg.empty()) {
+            Args.push_back(Arg);
+        }
+    }
+    return { Command, Args };
+}
+
+void TConsole::Command_Settings(const std::string& cmd) {
 }
 
 void TConsole::Command_Say(const std::string& cmd) {
