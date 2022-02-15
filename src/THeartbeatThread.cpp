@@ -116,9 +116,9 @@ void THeartbeatThread::operator()() {
                 isAuth = true;
             } else {
                 if (Message.empty()) {
-                    Message = "Backend didn't provide a reason";
+                    Message = "Backend didn't provide a reason.";
                 }
-                beammp_error("Backend REFUSED the auth key. " + Message);
+                beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
         }
         if (isAuth) {
