@@ -109,10 +109,10 @@ void THeartbeatThread::operator()() {
 
         if (Ok && !isAuth) {
             if (Status == "2000") {
-                beammp_info(("Authenticated!"));
+                beammp_info(("Authenticated! " + Message));
                 isAuth = true;
             } else if (Status == "200") {
-                beammp_info(("Resumed authenticated session!"));
+                beammp_info(("Resumed authenticated session! " + Message));
                 isAuth = true;
             } else {
                 if (Message.empty()) {
