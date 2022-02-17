@@ -44,13 +44,6 @@ jobs:
           name: BeamMP-Server.exe
           path: ${{github.workspace}}/build-windows/Release/BeamMP-Server.exe
 
-      - name: Configure CMake for debug
-        shell: bash
-        working-directory: ${{github.workspace}}/build-windows
-        env:
-          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-        run: cmake $GITHUB_WORKSPACE -DSENTRY_BACKEND=breakpad -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE='${{ runner.workspace }}/b/vcpkg/scripts/buildsystems/vcpkg.cmake' -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url" -DCMAKE_CXX_FLAGS="/bigobj"
-
       - name: Build debug
         working-directory: ${{github.workspace}}/build-windows
         shell: bash

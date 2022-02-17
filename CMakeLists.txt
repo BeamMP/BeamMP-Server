@@ -44,6 +44,10 @@ endif()
 set(SENTRY_BACKEND breakpad)
 add_subdirectory("deps/sentry-native")
 
+if (MSVC)
+  add_definitions(/bigobj)
+endif ()
+
 message(STATUS "Setting compiler flags")
 if (WIN32)
 
