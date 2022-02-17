@@ -44,4 +44,15 @@ jobs:
           name: BeamMP-Server.exe
           path: ${{github.workspace}}/build-windows/Release/BeamMP-Server.exe
 
+      - name: Build debug
+        working-directory: ${{github.workspace}}/build-windows
+        shell: bash
+        run: |
+          cmake --build . --config Debug
+      
+      - name: Archive debug artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-debug.exe
+          path: ${{github.workspace}}/build-windows/Debug/BeamMP-Server.exe
 
