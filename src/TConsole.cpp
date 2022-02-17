@@ -133,8 +133,11 @@ void TConsole::ChangeToRegularConsole() {
     }
 }
 
-bool TConsole::ExpectArgsCount(const std::vector<std::string>& args, size_t n) {
-    if (args.size() != n) {
+bool TConsole::EnsureArgsCount(const std::vector<std::string>& args, size_t n) {
+    if (n == 0 && args.size() != 0) {
+        Application::Console().WriteRaw("This command expects no arguments.");
+        return false;
+    } else if (args.size() != n) {
         Application::Console().WriteRaw("Expected " + std::to_string(n) + " argument(s), instead got " + std::to_string(args.size()));
         return false;
     } else {
@@ -142,9 +145,9 @@ bool TConsole::ExpectArgsCount(const std::vector<std::string>& args, size_t n) {
     }
 }
 
-bool TConsole::ExpectArgsCount(const std::vector<std::string>& args, size_t min, size_t max) {
+bool TConsole::EnsureArgsCount(const std::vector<std::string>& args, size_t min, size_t max) {
     if (min == max) {
-        return ExpectArgsCount(args, min);
+        return EnsureArgsCount(args, min);
     } else {
         if (args.size() > max) {
             Application::Console().WriteRaw("Too many arguments. At most " + std::to_string(max) + " arguments expected, got " + std::to_string(args.size()) + " instead.");
@@ -158,7 +161,8 @@ bool TConsole::ExpectArgsCount(const std::vector<std::string>& args, size_t min,
 }
 
 void TConsole::Command_Lua(const std::string& cmd, const std::vector<std::string>& args) {
-    if (!ExpectArgsCount(args, 0, 1)) {
+    if (!EnsureArgsCount(args, 0, 1)) {
+        return;
     }
     if (args.size() == 1) {
         auto NewStateId = args.at(0);
@@ -174,6 +178,9 @@ void TConsole::Command_Lua(const std::string& cmd, const std::vector<std::string
 }
 
 void TConsole::Command_Help(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
     static constexpr const char* sHelpString = R"(
     Commands:
         help                    displays this help
@@ -187,38 +194,46 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
+std::string TConsole::ConcatArgs(const std::vector<std::string>& args, char space) {
+    std::string Result;
+    for (const auto& arg : args) {
+        Result += arg + space;
+    }
+    Result = Result.substr(0, Result.size() - 1); // strip trailing space
+    return Result;
+}
+
 void TConsole::Command_Kick(const std::string& cmd, const std::vector<std::string>& args) {
-    if (cmd.size() > 4) {
-        auto Name = cmd.substr(5);
-        std::string Reason = "Kicked by server console";
-        auto SpacePos = Name.find(' ');
-        if (SpacePos != Name.npos) {
-            Reason = Name.substr(SpacePos + 1);
-            Name = cmd.substr(5, cmd.size() - Reason.size() - 5 - 1);
-        }
-        beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
-        bool Kicked = false;
-        auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
-            std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = tolower(c); });
-            std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = tolower(c); });
-            return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
-        };
-        mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
-            if (!Client.expired()) {
-                auto locked = Client.lock();
-                if (NameCompare(locked->GetName(), Name)) {
-                    mLuaEngine->Network().ClientKick(*locked, Reason);
-                    Kicked = true;
-                    return false;
-                }
+    if (!EnsureArgsCount(args, 1, size_t(-1))) {
+        return;
+    }
+    auto Name = args.at(0);
+    std::string Reason = "Kicked by server console";
+    if (args.size() > 1) {
+        Reason = ConcatArgs({ args.begin() + 1, args.end() });
+    }
+    beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
+    bool Kicked = false;
+    auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
+        std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = tolower(c); });
+        std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = tolower(c); });
+        return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
+    };
+    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto locked = Client.lock();
+            if (NameCompare(locked->GetName(), Name)) {
+                mLuaEngine->Network().ClientKick(*locked, Reason);
+                Kicked = true;
+                return false;
             }
-            return true;
-        });
-        if (!Kicked) {
-            Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
-        } else {
-            Application::Console().WriteRaw("Kicked player '" + Name + "' for reason: '" + Reason + "'.");
         }
+        return true;
+    });
+    if (!Kicked) {
+        Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
+    } else {
+        Application::Console().WriteRaw("Kicked player '" + Name + "' for reason: '" + Reason + "'.");
     }
 }
 
@@ -276,6 +291,9 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
 }
 
 void TConsole::Command_Settings(const std::string& cmd, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
 }
 
 void TConsole::Command_Say(const std::string& FullCmd) {
@@ -289,6 +307,9 @@ void TConsole::Command_Say(const std::string& FullCmd) {
 }
 
 void TConsole::Command_List(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
     if (mLuaEngine->Server().ClientCount() == 0) {
         Application::Console().WriteRaw("No players online.");
     } else {
@@ -309,6 +330,9 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
 }
 
 void TConsole::Command_Status(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
     std::stringstream Status;
 
     size_t CarCount = 0;
@@ -533,25 +557,16 @@ TConsole::TConsole() {
                 } else if (cmd == "exit") {
                     beammp_info("gracefully shutting down");
                     Application::GracefullyShutdown();
-                } else if (cmd == "lua") {
-                    Command_Lua(cmd, args);
-                } else if (cmd == "help") {
-                    RunAsCommand(TrimmedCmd, true);
-                    Command_Help(cmd, args);
-                } else if (cmd == "kick") {
-                    RunAsCommand(TrimmedCmd, true);
-                    Command_Kick(cmd, args);
                 } else if (cmd == "say") {
                     RunAsCommand(TrimmedCmd, true);
                     Command_Say(TrimmedCmd);
-                } else if (cmd == "list") {
-                    RunAsCommand(TrimmedCmd, true);
-                    Command_List(cmd, args);
-                } else if (cmd == "status") {
-                    RunAsCommand(TrimmedCmd, true);
-                    Command_Status(cmd, args);
-                } else if (!cmd.empty()) {
-                    RunAsCommand(TrimmedCmd);
+                } else {
+                    if (mCommandMap.find(cmd) != mCommandMap.end()) {
+                        mCommandMap.at(cmd)(cmd, args);
+                        RunAsCommand(TrimmedCmd, true);
+                    } else {
+                        RunAsCommand(TrimmedCmd);
+                    }
                 }
             }
         } catch (const std::exception& e) {
