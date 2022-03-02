@@ -3,6 +3,8 @@
 #include "Common.h"
 #include "TLuaEngine.h"
 
+#include <nlohmann/json.hpp>
+
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
@@ -350,4 +352,78 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     }
     auto Result = Path.lexically_normal().string();
     return Result;
+}
+
+static void JsonSerializeRecursive(nlohmann::json& json, sol::object left, sol::object right) {
+    std::string key;
+    bool is_array = false;
+    switch (left.get_type()) {
+    case sol::type::lua_nil:
+    case sol::type::none:
+    case sol::type::poly:
+    case sol::type::boolean:
+    case sol::type::lightuserdata:
+    case sol::type::userdata:
+    case sol::type::thread:
+    case sol::type::function:
+    case sol::type::table:
+        beammp_lua_error("JsonSerialize: left side of table field is unexpected type");
+        return;
+    case sol::type::string:
+        key = left.as<std::string>();
+        break;
+    case sol::type::number:
+        is_array = true;
+        // TODO: deal with this
+        break;
+    }
+    nlohmann::json value;
+    switch (right.get_type()) {
+    case sol::type::lua_nil:
+    case sol::type::none:
+        return;
+    case sol::type::poly:
+        beammp_lua_warn("unsure what to do with poly type in JsonSerialize, ignoring");
+        break;
+    case sol::type::boolean:
+        value = right.as<bool>();
+        break;
+    case sol::type::lightuserdata:
+        beammp_lua_warn("unsure what to do with lightuserdata in JsonSerialize, ignoring");
+        break;
+    case sol::type::userdata:
+        beammp_lua_warn("unsure what to do with userdata in JsonSerialize, ignoring");
+        break;
+    case sol::type::thread:
+        beammp_lua_warn("unsure what to do with thread in JsonSerialize, ignoring");
+        break;
+    case sol::type::string:
+        value = right.as<std::string>();
+        break;
+    case sol::type::number:
+        value = right.as<intmax_t>();
+        break;
+    case sol::type::function:
+        beammp_lua_warn("unsure what to do with function in JsonSerialize, ignoring");
+        break;
+    case sol::type::table:
+        for (const auto& pair : right.as<sol::table>()) {
+            JsonSerializeRecursive(value, pair.first, pair.second);
+        }
+        break;
+    }
+    if (is_array) {
+        json.push_back(value);
+    } else {
+        json[key] = value;
+    }
+}
+
+std::string LuaAPI::MP::JsonSerialize(sol::table object) {
+    nlohmann::json json;
+    // table
+    for (const auto& entry : object) {
+        JsonSerializeRecursive(json, entry.first, entry.second);
+    }
+    return json.dump();
 }

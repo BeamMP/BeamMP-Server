@@ -556,10 +556,13 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         mEngine->CancelEventTimers(EventName, mStateId);
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
+    MPTable.set_function("JsonSerialize", &LuaAPI::MP::JsonSerialize);
+    
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
         return Lua_HttpCreateConnection(host, port);
     });
+    
 
     MPTable.create_named("Settings",
         "Debug", 0,
