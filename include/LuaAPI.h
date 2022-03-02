@@ -23,7 +23,9 @@ namespace MP {
     void Sleep(size_t Ms);
     void PrintRaw(sol::variadic_args);
     std::string JsonEncode(const sol::table& object);
+    std::string JsonDiff(const std::string& a, const std::string& b);
 }
+
 namespace FS {
     std::pair<bool, std::string> CreateDirectory(const std::string& Path);
     std::pair<bool, std::string> Remove(const std::string& Path);

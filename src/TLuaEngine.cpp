@@ -421,6 +421,32 @@ int TLuaEngine::StateThreadData::Lua_GetPlayerIDByName(const std::string& Name) 
     return Id;
 }
 
+sol::table TLuaEngine::StateThreadData::Lua_FS_ListFiles(const std::string& Path) {
+    if (!std::filesystem::exists(Path)) {
+        return sol::lua_nil;
+    }
+    auto table = mStateView.create_table();
+    for (const auto& entry : std::filesystem::directory_iterator(Path)) {
+        if (entry.is_regular_file() || entry.is_symlink()) {
+            table[table.size() + 1] = entry.path().lexically_relative(Path).string();
+        }
+    }
+    return table;
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_FS_ListDirectories(const std::string& Path) {
+    if (!std::filesystem::exists(Path)) {
+        return sol::lua_nil;
+    }
+    auto table = mStateView.create_table();
+    for (const auto& entry : std::filesystem::directory_iterator(Path)) {
+        if (entry.is_directory()) {
+            table[table.size() + 1] = entry.path().lexically_relative(Path).string();
+        }
+    }
+    return table;
+}
+
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
     if (MaybeClient && !MaybeClient.value().expired()) {
@@ -532,7 +558,7 @@ sol::table TLuaEngine::StateThreadData::Lua_JsonDecode(const std::string& str) {
     sol::state_view StateView(mState);
     auto table = StateView.create_table();
     if (!nlohmann::json::accept(str)) {
-        beammp_lua_error("string given to JsonDecode is not valid json.");
+        beammp_lua_error("string given to JsonDecode is not valid json: `" + str + "`");
         return sol::lua_nil;
     }
     nlohmann::json json = nlohmann::json::parse(str);
@@ -638,6 +664,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     MPTable.set_function("JsonDecode", [this](const std::string& str) {
         return Lua_JsonDecode(str);
     });
+    MPTable.set_function("JsonDiff", &LuaAPI::MP::JsonDiff);
 
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
@@ -665,6 +692,12 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     FSTable.set_function("IsDirectory", &LuaAPI::FS::IsDirectory);
     FSTable.set_function("IsFile", &LuaAPI::FS::IsFile);
     FSTable.set_function("ConcatPaths", &LuaAPI::FS::ConcatPaths);
+    FSTable.set_function("ListFiles", [this](const std::string& Path) {
+        return Lua_FS_ListFiles(Path);
+    });
+    FSTable.set_function("ListDirectories", [this](const std::string& Path) {
+        return Lua_FS_ListDirectories(Path);
+    });
     Start();
 }
 

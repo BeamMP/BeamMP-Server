@@ -431,3 +431,17 @@ std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
     }
     return json.dump();
 }
+
+std::string LuaAPI::MP::JsonDiff(const std::string& a, const std::string& b) {
+    if (!nlohmann::json::accept(a)) {
+        beammp_lua_error("JsonDiff first argument is not valid json: `" + a + "`");
+        return "";
+    }
+    if (!nlohmann::json::accept(b)) {
+        beammp_lua_error("JsonDiff second argument is not valid json: `" + b + "`");
+        return "";
+    }
+    auto a_json = nlohmann::json::parse(a);
+    auto b_json = nlohmann::json::parse(b);
+    return nlohmann::json::diff(a_json, b_json).dump();
+}

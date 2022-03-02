@@ -192,6 +192,8 @@ private:
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
+        sol::table Lua_FS_ListFiles(const std::string& Path);
+        sol::table Lua_FS_ListDirectories(const std::string& Path);
 
         std::string mName;
         std::atomic_bool& mShutdown;
