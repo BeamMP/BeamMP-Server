@@ -531,7 +531,10 @@ static void JsonDeserializeRecursive(sol::state_view& StateView, sol::table& tab
 sol::table TLuaEngine::StateThreadData::Lua_JsonDeserialize(const std::string& str) {
     sol::state_view StateView(mState);
     auto table = StateView.create_table();
-    // TODO: try / catch
+    if (!nlohmann::json::accept(str)) {
+        beammp_lua_error("string given to JsonDeserialize is not valid json.");
+        return sol::lua_nil;
+    }
     nlohmann::json json = nlohmann::json::parse(str);
     if (json.is_object()) {
         for (const auto& entry : json.items()) {
@@ -543,7 +546,7 @@ sol::table TLuaEngine::StateThreadData::Lua_JsonDeserialize(const std::string& s
         }
     } else {
         beammp_lua_error("JsonDeserialize expected array or object json, instead got " + std::string(json.type_name()));
-        return sol::nil;
+        return sol::lua_nil;
     }
     return table;
 }
