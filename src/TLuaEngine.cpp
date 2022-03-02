@@ -8,6 +8,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <httplib.h>
+#include <nlohmann/json.hpp>
 #include <random>
 #include <thread>
 #include <tuple>
@@ -473,6 +474,80 @@ sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::stri
     return table;
 }
 
+template <typename T>
+static void AddToTable(sol::table& table, const std::string& left, const T& value) {
+    if (left.empty()) {
+        table[table.size() + 1] = value;
+    } else {
+        table[left] = value;
+    }
+}
+
+static void JsonDeserializeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
+    switch (right.type()) {
+    case nlohmann::detail::value_t::null:
+        return;
+    case nlohmann::detail::value_t::object: {
+        auto value = table.create();
+        value.clear();
+        for (const auto& entry : right.items()) {
+            JsonDeserializeRecursive(StateView, value, entry.key(), entry.value());
+        }
+        AddToTable(table, left, value);
+        break;
+    }
+    case nlohmann::detail::value_t::array: {
+        auto value = table.create();
+        value.clear();
+        for (const auto& entry : right.items()) {
+            JsonDeserializeRecursive(StateView, value, "", entry.value());
+        }
+        AddToTable(table, left, value);
+        break;
+    }
+    case nlohmann::detail::value_t::string:
+        AddToTable(table, left, right.get<std::string>());
+        break;
+    case nlohmann::detail::value_t::boolean:
+        AddToTable(table, left, right.get<bool>());
+        break;
+    case nlohmann::detail::value_t::number_integer:
+        AddToTable(table, left, right.get<int64_t>());
+        break;
+    case nlohmann::detail::value_t::number_unsigned:
+        AddToTable(table, left, right.get<uint64_t>());
+        break;
+    case nlohmann::detail::value_t::number_float:
+        AddToTable(table, left, right.get<double>());
+        break;
+    case nlohmann::detail::value_t::binary:
+        beammp_lua_error("JsonDeserialize can't handle binary blob in json, ignoring");
+        return;
+    case nlohmann::detail::value_t::discarded:
+        return;
+    }
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_JsonDeserialize(const std::string& str) {
+    sol::state_view StateView(mState);
+    auto table = StateView.create_table();
+    // TODO: try / catch
+    nlohmann::json json = nlohmann::json::parse(str);
+    if (json.is_object()) {
+        for (const auto& entry : json.items()) {
+            JsonDeserializeRecursive(StateView, table, entry.key(), entry.value());
+        }
+    } else if (json.is_array()) {
+        for (const auto& entry : json) {
+            JsonDeserializeRecursive(StateView, table, "", entry);
+        }
+    } else {
+        beammp_lua_error("JsonDeserialize expected array or object json, instead got " + std::string(json.type_name()));
+        return sol::nil;
+    }
+    return table;
+}
+
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
@@ -557,12 +632,14 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
     MPTable.set_function("JsonSerialize", &LuaAPI::MP::JsonSerialize);
-    
+    MPTable.set_function("JsonDeserialize", [this](const std::string& str) {
+        return Lua_JsonDeserialize(str);
+    });
+
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
         return Lua_HttpCreateConnection(host, port);
     });
-    
 
     MPTable.create_named("Settings",
         "Debug", 0,

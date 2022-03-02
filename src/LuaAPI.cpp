@@ -354,7 +354,11 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     return Result;
 }
 
-static void JsonSerializeRecursive(nlohmann::json& json, sol::object left, sol::object right) {
+static void JsonSerializeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, size_t depth = 0) {
+    if (depth > 100) {
+        beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
+        return;
+    }
     std::string key;
     bool is_array = false;
     switch (left.get_type()) {
@@ -384,31 +388,31 @@ static void JsonSerializeRecursive(nlohmann::json& json, sol::object left, sol::
         return;
     case sol::type::poly:
         beammp_lua_warn("unsure what to do with poly type in JsonSerialize, ignoring");
-        break;
+        return;
     case sol::type::boolean:
         value = right.as<bool>();
         break;
     case sol::type::lightuserdata:
         beammp_lua_warn("unsure what to do with lightuserdata in JsonSerialize, ignoring");
-        break;
+        return;
     case sol::type::userdata:
         beammp_lua_warn("unsure what to do with userdata in JsonSerialize, ignoring");
-        break;
+        return;
     case sol::type::thread:
         beammp_lua_warn("unsure what to do with thread in JsonSerialize, ignoring");
-        break;
+        return;
     case sol::type::string:
         value = right.as<std::string>();
         break;
     case sol::type::number:
-        value = right.as<intmax_t>();
+        value = right.as<double>();
         break;
     case sol::type::function:
         beammp_lua_warn("unsure what to do with function in JsonSerialize, ignoring");
-        break;
+        return;
     case sol::type::table:
         for (const auto& pair : right.as<sol::table>()) {
-            JsonSerializeRecursive(value, pair.first, pair.second);
+            JsonSerializeRecursive(value, pair.first, pair.second, depth + 1);
         }
         break;
     }
@@ -419,7 +423,7 @@ static void JsonSerializeRecursive(nlohmann::json& json, sol::object left, sol::
     }
 }
 
-std::string LuaAPI::MP::JsonSerialize(sol::table object) {
+std::string LuaAPI::MP::JsonSerialize(const sol::table& object) {
     nlohmann::json json;
     // table
     for (const auto& entry : object) {
