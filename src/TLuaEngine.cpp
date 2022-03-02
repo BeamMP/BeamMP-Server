@@ -483,7 +483,7 @@ static void AddToTable(sol::table& table, const std::string& left, const T& valu
     }
 }
 
-static void JsonDeserializeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
+static void JsonDecodeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
     switch (right.type()) {
     case nlohmann::detail::value_t::null:
         return;
@@ -491,7 +491,7 @@ static void JsonDeserializeRecursive(sol::state_view& StateView, sol::table& tab
         auto value = table.create();
         value.clear();
         for (const auto& entry : right.items()) {
-            JsonDeserializeRecursive(StateView, value, entry.key(), entry.value());
+            JsonDecodeRecursive(StateView, value, entry.key(), entry.value());
         }
         AddToTable(table, left, value);
         break;
@@ -500,7 +500,7 @@ static void JsonDeserializeRecursive(sol::state_view& StateView, sol::table& tab
         auto value = table.create();
         value.clear();
         for (const auto& entry : right.items()) {
-            JsonDeserializeRecursive(StateView, value, "", entry.value());
+            JsonDecodeRecursive(StateView, value, "", entry.value());
         }
         AddToTable(table, left, value);
         break;
@@ -521,31 +521,31 @@ static void JsonDeserializeRecursive(sol::state_view& StateView, sol::table& tab
         AddToTable(table, left, right.get<double>());
         break;
     case nlohmann::detail::value_t::binary:
-        beammp_lua_error("JsonDeserialize can't handle binary blob in json, ignoring");
+        beammp_lua_error("JsonDecode can't handle binary blob in json, ignoring");
         return;
     case nlohmann::detail::value_t::discarded:
         return;
     }
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_JsonDeserialize(const std::string& str) {
+sol::table TLuaEngine::StateThreadData::Lua_JsonDecode(const std::string& str) {
     sol::state_view StateView(mState);
     auto table = StateView.create_table();
     if (!nlohmann::json::accept(str)) {
-        beammp_lua_error("string given to JsonDeserialize is not valid json.");
+        beammp_lua_error("string given to JsonDecode is not valid json.");
         return sol::lua_nil;
     }
     nlohmann::json json = nlohmann::json::parse(str);
     if (json.is_object()) {
         for (const auto& entry : json.items()) {
-            JsonDeserializeRecursive(StateView, table, entry.key(), entry.value());
+            JsonDecodeRecursive(StateView, table, entry.key(), entry.value());
         }
     } else if (json.is_array()) {
         for (const auto& entry : json) {
-            JsonDeserializeRecursive(StateView, table, "", entry);
+            JsonDecodeRecursive(StateView, table, "", entry);
         }
     } else {
-        beammp_lua_error("JsonDeserialize expected array or object json, instead got " + std::string(json.type_name()));
+        beammp_lua_error("JsonDecode expected array or object json, instead got " + std::string(json.type_name()));
         return sol::lua_nil;
     }
     return table;
@@ -634,9 +634,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         mEngine->CancelEventTimers(EventName, mStateId);
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
-    MPTable.set_function("JsonSerialize", &LuaAPI::MP::JsonSerialize);
-    MPTable.set_function("JsonDeserialize", [this](const std::string& str) {
-        return Lua_JsonDeserialize(str);
+    MPTable.set_function("JsonEncode", &LuaAPI::MP::JsonEncode);
+    MPTable.set_function("JsonDecode", [this](const std::string& str) {
+        return Lua_JsonDecode(str);
     });
 
     auto HttpTable = StateView.create_named_table("Http");

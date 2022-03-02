@@ -354,7 +354,7 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     return Result;
 }
 
-static void JsonSerializeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, size_t depth = 0) {
+static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, size_t depth = 0) {
     if (depth > 100) {
         beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
         return;
@@ -371,7 +371,7 @@ static void JsonSerializeRecursive(nlohmann::json& json, const sol::object& left
     case sol::type::thread:
     case sol::type::function:
     case sol::type::table:
-        beammp_lua_error("JsonSerialize: left side of table field is unexpected type");
+        beammp_lua_error("JsonEncode: left side of table field is unexpected type");
         return;
     case sol::type::string:
         key = left.as<std::string>();
@@ -387,19 +387,19 @@ static void JsonSerializeRecursive(nlohmann::json& json, const sol::object& left
     case sol::type::none:
         return;
     case sol::type::poly:
-        beammp_lua_warn("unsure what to do with poly type in JsonSerialize, ignoring");
+        beammp_lua_warn("unsure what to do with poly type in JsonEncode, ignoring");
         return;
     case sol::type::boolean:
         value = right.as<bool>();
         break;
     case sol::type::lightuserdata:
-        beammp_lua_warn("unsure what to do with lightuserdata in JsonSerialize, ignoring");
+        beammp_lua_warn("unsure what to do with lightuserdata in JsonEncode, ignoring");
         return;
     case sol::type::userdata:
-        beammp_lua_warn("unsure what to do with userdata in JsonSerialize, ignoring");
+        beammp_lua_warn("unsure what to do with userdata in JsonEncode, ignoring");
         return;
     case sol::type::thread:
-        beammp_lua_warn("unsure what to do with thread in JsonSerialize, ignoring");
+        beammp_lua_warn("unsure what to do with thread in JsonEncode, ignoring");
         return;
     case sol::type::string:
         value = right.as<std::string>();
@@ -408,11 +408,11 @@ static void JsonSerializeRecursive(nlohmann::json& json, const sol::object& left
         value = right.as<double>();
         break;
     case sol::type::function:
-        beammp_lua_warn("unsure what to do with function in JsonSerialize, ignoring");
+        beammp_lua_warn("unsure what to do with function in JsonEncode, ignoring");
         return;
     case sol::type::table:
         for (const auto& pair : right.as<sol::table>()) {
-            JsonSerializeRecursive(value, pair.first, pair.second, depth + 1);
+            JsonEncodeRecursive(value, pair.first, pair.second, depth + 1);
         }
         break;
     }
@@ -423,11 +423,11 @@ static void JsonSerializeRecursive(nlohmann::json& json, const sol::object& left
     }
 }
 
-std::string LuaAPI::MP::JsonSerialize(const sol::table& object) {
+std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
     nlohmann::json json;
     // table
     for (const auto& entry : object) {
-        JsonSerializeRecursive(json, entry.first, entry.second);
+        JsonEncodeRecursive(json, entry.first, entry.second);
     }
     return json.dump();
 }

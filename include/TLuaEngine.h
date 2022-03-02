@@ -190,7 +190,7 @@ private:
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
-        sol::table Lua_JsonDeserialize(const std::string& str);
+        sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
 
         std::string mName;

@@ -22,7 +22,7 @@ namespace MP {
     bool IsPlayerConnected(int ID);
     void Sleep(size_t Ms);
     void PrintRaw(sol::variadic_args);
-    std::string JsonSerialize(const sol::table& object);
+    std::string JsonEncode(const sol::table& object);
 }
 namespace FS {
     std::pair<bool, std::string> CreateDirectory(const std::string& Path);
