@@ -1,7 +1,11 @@
+# v3.1.0
+
+- ADDED lua debug facilities (type `:help` when attached to lua via `lua`)
+- ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
+
 # v3.0.1
 
 - ADDED Backup URLs to UpdateCheck (will fail less often now)
-- ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
 - FIXED a bug where, when run with --working-directory, the Server.log would still be in the original directory
 - FIXED a bug which could cause the plugin reload thread to spin at 100% if the reloaded plugin's didn't terminate
 - FIXED an issue which would cause servers to crash on mod download via SIGPIPE on POSIX
