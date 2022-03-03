@@ -24,6 +24,11 @@ namespace MP {
     void PrintRaw(sol::variadic_args);
     std::string JsonEncode(const sol::table& object);
     std::string JsonDiff(const std::string& a, const std::string& b);
+    std::string JsonDiffApply(const std::string& data, const std::string& patch);
+    std::string JsonPrettify(const std::string& json);
+    std::string JsonMinify(const std::string& json);
+    std::string JsonFlatten(const std::string& json);
+    std::string JsonUnflatten(const std::string& json);
 }
 
 namespace FS {

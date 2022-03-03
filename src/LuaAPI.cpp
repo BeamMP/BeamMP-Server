@@ -445,3 +445,50 @@ std::string LuaAPI::MP::JsonDiff(const std::string& a, const std::string& b) {
     auto b_json = nlohmann::json::parse(b);
     return nlohmann::json::diff(a_json, b_json).dump();
 }
+
+std::string LuaAPI::MP::JsonDiffApply(const std::string& data, const std::string& patch) {
+    if (!nlohmann::json::accept(data)) {
+        beammp_lua_error("JsonDiffApply first argument is not valid json: `" + data + "`");
+        return "";
+    }
+    if (!nlohmann::json::accept(patch)) {
+        beammp_lua_error("JsonDiffApply second argument is not valid json: `" + patch + "`");
+        return "";
+    }
+    auto a_json = nlohmann::json::parse(data);
+    auto b_json = nlohmann::json::parse(patch);
+    a_json.patch(b_json);
+    return a_json.dump();
+}
+
+std::string LuaAPI::MP::JsonPrettify(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonPrettify argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).dump(4);
+}
+
+std::string LuaAPI::MP::JsonMinify(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonMinify argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).dump(-1);
+}
+
+std::string LuaAPI::MP::JsonFlatten(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonFlatten argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).flatten().dump(-1);
+}
+
+std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonUnflatten argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).unflatten().dump(-1);
+}

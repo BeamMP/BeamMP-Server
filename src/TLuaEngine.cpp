@@ -665,6 +665,10 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_JsonDecode(str);
     });
     MPTable.set_function("JsonDiff", &LuaAPI::MP::JsonDiff);
+    MPTable.set_function("JsonFlatten", &LuaAPI::MP::JsonFlatten);
+    MPTable.set_function("JsonUnflatten", &LuaAPI::MP::JsonUnflatten);
+    MPTable.set_function("JsonPrettify", &LuaAPI::MP::JsonPrettify);
+    MPTable.set_function("JsonMinify", &LuaAPI::MP::JsonMinify);
 
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
