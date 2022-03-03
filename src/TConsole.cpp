@@ -543,7 +543,7 @@ TConsole::TConsole() {
                 } else if (!cmd.empty() && cmd.at(0) == ':') {
                     HandleLuaInternalCommand(cmd.substr(1));
                 } else {
-                    auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
+                    auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(TrimmedCmd), "", "" });
                     while (!Future->Ready) {
                         std::this_thread::yield(); // TODO: Add a timeout
                     }
