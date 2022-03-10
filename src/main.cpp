@@ -77,6 +77,7 @@ int main(int argc, char** argv) {
 
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
+    Application::InitializeConsole();
     ArgsParser Parser;
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
@@ -116,9 +117,12 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
-    
-    Application::InitializeConsole();
+
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
+    bool Success = Application::Console().Internal().enable_write_to_file("Server.log");
+    if (!Success) {
+        beammp_error("unable to open file for writing: \"Server.log\"");
+    }
 
     SetupSignalHandlers();
 

@@ -369,10 +369,6 @@ TConsole::TConsole() {
     mCommandline.set_history_limit(20);
     mCommandline.set_prompt("> ");
     BackupOldLog();
-    bool success = mCommandline.enable_write_to_file("Server.log");
-    if (!success) {
-        beammp_error("unable to open file for writing: \"Server.log\"");
-    }
     mCommandline.on_command = [this](Commandline& c) {
         try {
             auto cmd = c.get_command();
