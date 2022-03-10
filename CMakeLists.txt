@@ -45,7 +45,7 @@ set(SENTRY_BACKEND breakpad)
 add_subdirectory("deps/sentry-native")
 
 if (MSVC)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /bigobj")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif ()
 
 message(STATUS "Setting compiler flags")
