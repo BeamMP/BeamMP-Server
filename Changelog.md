@@ -2,6 +2,7 @@
 
 - ADDED Backup URLs to UpdateCheck (will fail less often now)
 - ADDED console cursor left and right movement (with arrow keys) and working HOME and END key (via github.com/lionkor/commandline)
+- FIXED infinite snowmen / infinite unicycle spawning bug
 - FIXED a bug where, when run with --working-directory, the Server.log would still be in the original directory
 - FIXED a bug which could cause the plugin reload thread to spin at 100% if the reloaded plugin's didn't terminate
 - FIXED an issue which would cause servers to crash on mod download via SIGPIPE on POSIX
