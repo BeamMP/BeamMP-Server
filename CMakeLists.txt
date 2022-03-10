@@ -41,11 +41,23 @@ set(SENTRY_BUILD_SHARED_LIBS OFF)
 if (MSVC)
     set(SENTRY_BUILD_RUNTIMESTATIC ON)
 endif()
-set(SENTRY_BACKEND breakpad)
+message(STATUS "Checking for Sentry URL")
+# this is set by the build system.
+# IMPORTANT: if you're building from source, just leave this empty
+if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
+    message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
+    This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
+    set(BEAMMP_SECRET_SENTRY_URL "")
+    set(SENTRY_BACKEND none)
+else()
+    string(LENGTH ${BEAMMP_SECRET_SENTRY_URL} URL_LEN)
+    message(STATUS "Sentry URL is length ${URL_LEN}")
+    set(SENTRY_BACKEND breakpad)
+endif()
 add_subdirectory("deps/sentry-native")
 
 if (MSVC)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /bigobj")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif ()
 
 message(STATUS "Setting compiler flags")
@@ -65,17 +77,6 @@ elseif (UNIX)
     endif (SANITIZE)
 endif ()
 
-message(STATUS "Checking for Sentry URL")
-# this is set by the build system.
-# IMPORTANT: if you're building from source, just leave this empty
-if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
-    message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
-    This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
-    set(BEAMMP_SECRET_SENTRY_URL "")
-else()
-    string(LENGTH ${BEAMMP_SECRET_SENTRY_URL} URL_LEN)
-    message(STATUS "Sentry URL is length ${URL_LEN}")
-endif()
 
 message(STATUS "Adding local source dependencies")
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
