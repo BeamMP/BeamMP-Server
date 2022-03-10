@@ -174,7 +174,7 @@ bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
     try {
         auto Car = nlohmann::json::parse(CarJson);
         const std::string jbm = "jbm";
-        if (Car.contains(jbm) && Car["jbm"].is_string() && Car["jbm"] == "unicycle") {
+        if (Car.contains(jbm) && Car[jbm].is_string() && Car[jbm] == "unicycle") {
             return true;
         }
     } catch (const std::exception& e) {
@@ -184,17 +184,12 @@ bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
 }
 
 bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
-
-    if (c.GetUnicycleID() > -1 && (c.GetCarCount() - 1) < Application::Settings.MaxCars) {
-        return true;
-    }
-
-    if (IsUnicycle(c, CarJson)) {
+    if (IsUnicycle(c, CarJson) && c.GetUnicycleID() < 0) {
         c.SetUnicycleID(ID);
         return true;
+    } else {
+        return c.GetCarCount() < Application::Settings.MaxCars;
     }
-
-    return Application::Settings.MaxCars > c.GetCarCount();
 }
 
 void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network) {
