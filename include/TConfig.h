@@ -3,6 +3,7 @@
 #include "Common.h"
 
 #include <atomic>
+#include <filesystem>
 
 #define TOML11_PRESERVE_COMMENTS_BY_DEFAULT
 #include <toml11/toml.hpp> // header-only version of TOML++

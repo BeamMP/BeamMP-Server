@@ -12,6 +12,7 @@ extern TSentry Sentry;
 #include <mutex>
 #include <sstream>
 #include <zlib.h>
+#include <filesystem>
 
 #include "Compat.h"
 

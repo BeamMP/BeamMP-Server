@@ -417,12 +417,12 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
            << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
            << "\tSubsystems:\n"
            << "\t\tGood/Starting/Bad:           " << SystemsGood << "/" << SystemsStarting << "/" << SystemsBad << "\n"
-           << "\t\tShutting down/Shutdown:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
+           << "\t\tShutting down/Shut down:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
            << "\t\tGood:                        [ " << SystemsGoodList << " ]\n"
            << "\t\tStarting:                    [ " << SystemsStartingList << " ]\n"
            << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
            << "\t\tShutting down:               [ " << SystemsShuttingDownList << " ]\n"
-           << "\t\tShutdown:                    [ " << SystemsShutdownList << " ]\n"
+           << "\t\tShut down:                    [ " << SystemsShutdownList << " ]\n"
            << "";
 
     Application::Console().WriteRaw(Status.str());
@@ -572,6 +572,47 @@ TConsole::TConsole() {
         } catch (const std::exception& e) {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
+    };
+    mCommandline.on_autocomplete = [this](Commandline& c, std::string stub) {
+        std::vector<std::string> suggestions;
+        try {
+            auto cmd = TrimString(stub);
+            //beammp_error("yes 1");
+            //beammp_error(stub);
+            if (mIsLuaConsole) { // if lua
+                if (!mLuaEngine) {
+                    beammp_info("Lua not started yet, please try again in a second");
+                } else {
+                    std::string prefix {};
+                    for (size_t i = stub.length(); i > 0; i--) {
+                        if (!std::isalnum(stub[i - 1]) && stub[i - 1] != '_') {
+                            prefix = stub.substr(0, i);
+                            stub = stub.substr(i);
+                            break;
+                        }
+                    }
+                    auto keys = mLuaEngine->GetStateGlobalKeysForState(mStateId);
+                    for (const auto& key : keys) {
+                        std::string::size_type n = key.find(stub);
+                        if (n == 0) {
+                            suggestions.push_back(prefix + key);
+                            //beammp_warn(cmd_name);
+                        }
+                    }
+                }
+            } else { // if not lua
+                for (const auto& [cmd_name, cmd_fn] : mCommandMap) {
+                    std::string::size_type n = cmd_name.find(stub);
+                    if (n == 0) {
+                        suggestions.push_back(cmd_name);
+                        //beammp_warn(cmd_name);
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
+        }
+        return suggestions;
     };
 }
 

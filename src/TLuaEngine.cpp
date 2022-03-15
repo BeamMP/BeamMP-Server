@@ -192,6 +192,21 @@ std::vector<TLuaResult> TLuaEngine::Debug_GetResultsToCheckForState(TLuaStateId 
     return Result;
 }
 
+std::vector<std::string> TLuaEngine::GetStateGlobalKeysForState(TLuaStateId StateId) {
+    std::unique_lock Lock(mLuaStatesMutex);
+    auto Result = mLuaStates.at(StateId)->GetStateGlobalKeys();
+    return Result;
+}
+
+std::vector<std::string> TLuaEngine::StateThreadData::GetStateGlobalKeys() {
+    auto globals = mStateView.globals();
+    std::vector<std::string> Result;
+    for (const auto& [key, value] : globals) {
+        Result.push_back(key.as<std::string>());
+    }
+    return Result;
+}
+
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
     for (const auto& Result : Results) {
         bool Cancelled = false;

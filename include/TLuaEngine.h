@@ -154,6 +154,8 @@ public:
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
+    std::vector<std::string> GetStateGlobalKeysForState(TLuaStateId StateId);
+
     // Debugging functions (slow)
     std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
     std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
@@ -177,6 +179,8 @@ private:
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
         sol::state_view State() { return sol::state_view(mState); }
+
+        std::vector<std::string> GetStateGlobalKeys();
 
         // Debug functions, slow
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
