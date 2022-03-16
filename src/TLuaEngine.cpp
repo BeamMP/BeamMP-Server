@@ -207,6 +207,66 @@ std::vector<std::string> TLuaEngine::StateThreadData::GetStateGlobalKeys() {
     return Result;
 }
 
+std::vector<std::string> TLuaEngine::GetStateTableKeysForState(TLuaStateId StateId, std::vector<std::string> keys) {
+    std::unique_lock Lock(mLuaStatesMutex);
+    auto Result = mLuaStates.at(StateId)->GetStateTableKeys(keys);
+    return Result;
+}
+
+std::vector<std::string> TLuaEngine::StateThreadData::GetStateTableKeys(const std::vector<std::string>& keys) {
+    auto globals = mStateView.globals();
+
+    sol::table current = globals;
+    std::vector<std::string> Result {};
+
+    for (const auto& [key, value] : current) {
+        std::string s = key.as<std::string>();
+        if (value.get_type() == sol::type::function) {
+            s += "(";
+        }
+        Result.push_back(s);
+    }
+
+    if (!keys.empty()) {
+        Result.clear();
+    }
+
+    for (size_t i = 0; i < keys.size(); ++i) {
+        auto obj = current.get<sol::object>(keys.at(i));
+        if (obj.get_type() == sol::type::nil) {
+            // error
+            break;
+        } else if (i == keys.size() - 1) {
+            if (obj.get_type() == sol::type::table) {
+                for (const auto& [key, value] : obj.as<sol::table>()) {
+                    std::string s = key.as<std::string>();
+                    if (value.get_type() == sol::type::function) {
+                        s += "(";
+                    }
+                    Result.push_back(s);
+                }
+            } else {
+                Result = { obj.as<std::string>() };
+            }
+            break;
+        }
+        if (obj.get_type() == sol::type::table) {
+            current = obj;
+        } else {
+            // error
+            break;
+        }
+    }
+
+    return Result;
+}
+
+/*
+
+    _G.a.b.c.d.
+
+*/
+
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
     for (const auto& Result : Results) {
         bool Cancelled = false;

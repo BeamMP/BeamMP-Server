@@ -25,6 +25,16 @@ static inline std::string TrimString(std::string S) {
     return S;
 }
 
+static inline void SplitString(std::string const& str, const char delim, std::vector<std::string>& out) {
+    size_t start;
+    size_t end = 0;
+
+    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
+        end = str.find(delim, start);
+        out.push_back(str.substr(start, end - start));
+    }
+}
+
 std::string GetDate() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     time_t tt = std::chrono::system_clock::to_time_t(now);
@@ -573,45 +583,70 @@ TConsole::TConsole() {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
     };
-    mCommandline.on_autocomplete = [this](Commandline& c, std::string stub) {
+    mCommandline.on_autocomplete = [this](Commandline&, std::string stub, int cursorPos) {
         std::vector<std::string> suggestions;
         try {
-            auto cmd = TrimString(stub);
-            //beammp_error("yes 1");
-            //beammp_error(stub);
             if (mIsLuaConsole) { // if lua
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
                 } else {
-                    std::string prefix {};
-                    for (size_t i = stub.length(); i > 0; i--) {
-                        if (!std::isalnum(stub[i - 1]) && stub[i - 1] != '_') {
+                    std::string prefix {}; // stores non-table part of input
+                    for (size_t i = stub.length(); i > 0; i--) { //separate table from input
+                        if (!std::isalnum(stub[i - 1]) && stub[i - 1] != '_' && stub[i - 1] != '.') {
                             prefix = stub.substr(0, i);
                             stub = stub.substr(i);
                             break;
                         }
                     }
-                    auto keys = mLuaEngine->GetStateGlobalKeysForState(mStateId);
-                    for (const auto& key : keys) {
-                        std::string::size_type n = key.find(stub);
+
+                    // turn string into vector of keys
+                    std::vector<std::string> tablekeys;
+
+                    SplitString(stub, '.', tablekeys);
+
+                    // remove last key if incomplete
+                    if (stub.rfind('.') != stub.size() - 1 && !tablekeys.empty()) {
+                        tablekeys.pop_back();
+                    }
+
+                    auto keys = mLuaEngine->GetStateTableKeysForState(mStateId, tablekeys);
+
+                    for (const auto& key : keys) { // go through each bottom-level key
+                        auto last_dot = stub.rfind('.');
+                        std::string last_atom;
+                        if (last_dot != std::string::npos) {
+                            last_atom = stub.substr(last_dot + 1);
+                        }
+                        std::string before_last_atom = stub.substr(0, last_dot + 1); // get last confirmed key
+                        auto last = stub.substr(stub.rfind('.') + 1);
+                        std::string::size_type n = key.find(last);
                         if (n == 0) {
-                            suggestions.push_back(prefix + key);
-                            //beammp_warn(cmd_name);
+                            suggestions.push_back(prefix + before_last_atom + key);
                         }
                     }
                 }
             } else { // if not lua
-                for (const auto& [cmd_name, cmd_fn] : mCommandMap) {
-                    std::string::size_type n = cmd_name.find(stub);
-                    if (n == 0) {
-                        suggestions.push_back(cmd_name);
-                        //beammp_warn(cmd_name);
+                if (stub.find("lua") == 0) { // starts with "lua" means we should suggest state names
+                    std::string after_prefix = TrimString(stub.substr(3));
+                    auto stateNames = mLuaEngine->GetLuaStateNames();
+
+                    for (const auto& name : stateNames) {
+                        if (name.find(after_prefix) == 0) {
+                            suggestions.push_back("lua " + name);
+                        }
+                    }
+                } else {
+                    for (const auto& [cmd_name, cmd_fn] : mCommandMap) {
+                        if (cmd_name.find(stub) == 0) {
+                            suggestions.push_back(cmd_name);
+                        }
                     }
                 }
             }
         } catch (const std::exception& e) {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
+        std::sort(suggestions.begin(), suggestions.end());
         return suggestions;
     };
 }

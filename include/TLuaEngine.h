@@ -89,10 +89,17 @@ public:
         std::unique_lock Lock(mResultsToCheckMutex);
         return mResultsToCheck.size();
     }
-    
+
     size_t GetLuaStateCount() {
         std::unique_lock Lock(mLuaStatesMutex);
         return mLuaStates.size();
+    }
+    std::vector<std::string> GetLuaStateNames() {
+        std::vector<std::string> names{};
+        for(auto const& [stateId, _ ] : mLuaStates) {
+            names.push_back(stateId);
+        }
+        return names;
     }
     size_t GetTimedEventsCount() {
         std::unique_lock Lock(mTimedEventsMutex);
@@ -155,6 +162,7 @@ public:
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
     std::vector<std::string> GetStateGlobalKeysForState(TLuaStateId StateId);
+    std::vector<std::string> GetStateTableKeysForState(TLuaStateId StateId, std::vector<std::string> keys);
 
     // Debugging functions (slow)
     std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
@@ -181,6 +189,7 @@ private:
         sol::state_view State() { return sol::state_view(mState); }
 
         std::vector<std::string> GetStateGlobalKeys();
+        std::vector<std::string> GetStateTableKeys(const std::vector<std::string>& keys);
 
         // Debug functions, slow
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
