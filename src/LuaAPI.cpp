@@ -359,13 +359,12 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     return Result;
 }
 
-static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, size_t depth = 0) {
+static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, bool is_array, size_t depth = 0) {
     if (depth > 100) {
         beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
         return;
     }
     std::string key;
-    bool is_array = false;
     switch (left.get_type()) {
     case sol::type::lua_nil:
     case sol::type::none:
@@ -382,8 +381,7 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
         key = left.as<std::string>();
         break;
     case sol::type::number:
-        is_array = true;
-        // TODO: deal with this
+        key = std::to_string(left.as<double>());
         break;
     }
     nlohmann::json value;
@@ -415,11 +413,18 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
     case sol::type::function:
         beammp_lua_warn("unsure what to do with function in JsonEncode, ignoring");
         return;
-    case sol::type::table:
+    case sol::type::table: {
+        bool local_is_array = true;
         for (const auto& pair : right.as<sol::table>()) {
-            JsonEncodeRecursive(value, pair.first, pair.second, depth + 1);
+            if (pair.first.get_type() != sol::type::number) {
+                local_is_array = false;
+            }
+        }
+        for (const auto& pair : right.as<sol::table>()) {
+            JsonEncodeRecursive(value, pair.first, pair.second, local_is_array, depth + 1);
         }
         break;
+    }
     }
     if (is_array) {
         json.push_back(value);
@@ -431,8 +436,14 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
 std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
     nlohmann::json json;
     // table
+    bool is_array = true;
+    for (const auto& pair : object.as<sol::table>()) {
+        if (pair.first.get_type() != sol::type::number) {
+            is_array = false;
+        }
+    }
     for (const auto& entry : object) {
-        JsonEncodeRecursive(json, entry.first, entry.second);
+        JsonEncodeRecursive(json, entry.first, entry.second, is_array);
     }
     return json.dump();
 }
