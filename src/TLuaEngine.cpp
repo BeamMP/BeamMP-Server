@@ -385,7 +385,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
                 Result.add(FnRet);
             } else {
                 sol::error Err = FnRet;
-                beammp_lua_error(Err.what());
+                beammp_lua_error(std::string("TriggerLocalEvent: ") + Err.what());
             }
         }
     }
@@ -637,6 +637,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_TriggerLocalEvent(EventName, EventArgs);
     });
     MPTable.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
+    MPTable.set_function("TriggerClientEventJson", &LuaAPI::MP::TriggerClientEventJson);
     MPTable.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
     MPTable.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
     MPTable.set_function("GetPlayerIDByName", [&](const std::string& Name) -> int {

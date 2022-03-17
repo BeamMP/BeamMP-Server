@@ -548,7 +548,7 @@ TConsole::TConsole() {
                         std::this_thread::yield(); // TODO: Add a timeout
                     }
                     if (Future->Error) {
-                        beammp_lua_error(Future->ErrorMessage);
+                        beammp_lua_error("error in " + mStateId + ": " + Future->ErrorMessage);
                     }
                 }
             } else {

@@ -12,7 +12,8 @@ namespace MP {
 
     std::string GetOSName();
     std::tuple<int, int, int> GetServerVersion();
-    bool TriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data);
+    bool TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& Data);
+    bool TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data);
     inline size_t GetPlayerCount() { return Engine->Server().ClientCount(); }
     void DropPlayer(int ID, std::optional<std::string> MaybeReason);
     void SendChatMessage(int ID, const std::string& Message);

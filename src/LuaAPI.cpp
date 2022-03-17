@@ -102,23 +102,28 @@ void LuaAPI::Print(sol::variadic_args Args) {
     luaprint(ToPrint);
 }
 
-bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
+static inline bool InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
     std::string Packet = "E:" + EventName + ":" + Data;
     if (PlayerID == -1)
-        Engine->Network().SendToAll(nullptr, Packet, true, true);
+        LuaAPI::MP::Engine->Network().SendToAll(nullptr, Packet, true, true);
     else {
-        auto MaybeClient = GetClient(Engine->Server(), PlayerID);
+        auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
         if (!MaybeClient || MaybeClient.value().expired()) {
             beammp_lua_error("TriggerClientEvent invalid Player ID");
             return false;
         }
         auto c = MaybeClient.value().lock();
-        if (!Engine->Network().Respond(*c, Packet, true)) {
+        if (!LuaAPI::MP::Engine->Network().Respond(*c, Packet, true)) {
             beammp_lua_error("Respond failed");
             return false;
         }
     }
     return true;
+}
+
+bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& DataObj) {
+    std::string Data = DataObj.as<std::string>();
+    return InternalTriggerClientEvent(PlayerID, EventName, Data);
 }
 
 void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
@@ -491,4 +496,8 @@ std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
         return "";
     }
     return nlohmann::json::parse(json).unflatten().dump(-1);
+}
+
+bool LuaAPI::MP::TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data) {
+    return InternalTriggerClientEvent(PlayerID, EventName, JsonEncode(Data));
 }
