@@ -62,8 +62,10 @@ void THeartbeatThread::operator()() {
             beammp_trace(T);
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
-                beammp_error("Backend response failed to parse as valid json");
-                beammp_debug("Response was: `" + T + "`");
+                if (!Application::Settings.Private) {
+                    beammp_error("Backend response failed to parse as valid json");
+                    beammp_debug("Response was: `" + T + "`");
+                }
                 Sentry.SetContext("JSON Response", { { "reponse", T } });
                 SentryReportError(Url + Target, ResponseCode);
             } else if (ResponseCode != 200) {
@@ -107,7 +109,7 @@ void THeartbeatThread::operator()() {
             }
         }
 
-        if (Ok && !isAuth) {
+        if (Ok && !isAuth && !Application::Settings.Private) {
             if (Status == "2000") {
                 beammp_info(("Authenticated! " + Message));
                 isAuth = true;
@@ -121,7 +123,7 @@ void THeartbeatThread::operator()() {
                 beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
         }
-        if (isAuth) {
+        if (isAuth || Application::Settings.Private) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
     }
