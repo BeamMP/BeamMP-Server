@@ -676,15 +676,26 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         mEngine->CancelEventTimers(EventName, mStateId);
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
-    MPTable.set_function("JsonEncode", &LuaAPI::MP::JsonEncode);
-    MPTable.set_function("JsonDecode", [this](const std::string& str) {
+
+    auto UtilTable = StateView.create_named_table("Util");
+    UtilTable.set_function("JsonEncode", &LuaAPI::MP::JsonEncode);
+    UtilTable.set_function("JsonDecode", [this](const std::string& str) {
         return Lua_JsonDecode(str);
     });
-    MPTable.set_function("JsonDiff", &LuaAPI::MP::JsonDiff);
-    MPTable.set_function("JsonFlatten", &LuaAPI::MP::JsonFlatten);
-    MPTable.set_function("JsonUnflatten", &LuaAPI::MP::JsonUnflatten);
-    MPTable.set_function("JsonPrettify", &LuaAPI::MP::JsonPrettify);
-    MPTable.set_function("JsonMinify", &LuaAPI::MP::JsonMinify);
+    UtilTable.set_function("JsonDiff", &LuaAPI::MP::JsonDiff);
+    UtilTable.set_function("JsonFlatten", &LuaAPI::MP::JsonFlatten);
+    UtilTable.set_function("JsonUnflatten", &LuaAPI::MP::JsonUnflatten);
+    UtilTable.set_function("JsonPrettify", &LuaAPI::MP::JsonPrettify);
+    UtilTable.set_function("JsonMinify", &LuaAPI::MP::JsonMinify);
+    UtilTable.set_function("Random", [this] {
+        return mUniformRealDistribution01(mMersenneTwister);
+    });
+    UtilTable.set_function("RandomRange", [this](double min, double max) -> double {
+        return std::uniform_real_distribution(min, max)(mMersenneTwister);
+    });
+    UtilTable.set_function("RandomIntRange", [this](int64_t min, int64_t max) -> int64_t {
+        return std::uniform_int_distribution(min, max)(mMersenneTwister);
+    });
 
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
@@ -934,38 +945,47 @@ void TPluginMonitor::operator()() {
     beammp_info("PluginMonitor started");
     while (!mShutdown) {
         std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::vector<std::string> ToRemove;
         for (const auto& Pair : mFileTimes) {
-            auto CurrentTime = fs::last_write_time(Pair.first);
-            if (CurrentTime != Pair.second) {
-                mFileTimes[Pair.first] = CurrentTime;
-                // grandparent of the path should be Resources/Server
-                if (fs::equivalent(fs::path(Pair.first).parent_path().parent_path(), mPath)) {
-                    beammp_info("File \"" + Pair.first + "\" changed, reloading");
-                    // is in root folder, so reload
-                    std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
-                    auto Size = std::filesystem::file_size(Pair.first);
-                    auto Contents = std::make_shared<std::string>();
-                    Contents->resize(Size);
-                    FileStream.read(Contents->data(), Contents->size());
-                    TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
-                    auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
-                    auto Res = mEngine.EnqueueScript(StateID, Chunk);
-                    // TODO: call onInit
-                    mEngine.AddResultToCheck(Res);
-                } else {
-                    // TODO: trigger onFileChanged event
-                    beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");
-                    /*
-                    // is in subfolder, dont reload, just trigger an event
-                    auto Results = mEngine.TriggerEvent("onFileChanged", "", Pair.first);
-                    mEngine.WaitForAll(Results);
-                    for (const auto& Result : Results)  {
-                        if (Result->Error) {
-                            beammp_lua_error(Result->ErrorMessage);
-                        }
-                    }*/
+            try {
+                auto CurrentTime = fs::last_write_time(Pair.first);
+                if (CurrentTime != Pair.second) {
+                    mFileTimes[Pair.first] = CurrentTime;
+                    // grandparent of the path should be Resources/Server
+                    if (fs::equivalent(fs::path(Pair.first).parent_path().parent_path(), mPath)) {
+                        beammp_info("File \"" + Pair.first + "\" changed, reloading");
+                        // is in root folder, so reload
+                        std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
+                        auto Size = std::filesystem::file_size(Pair.first);
+                        auto Contents = std::make_shared<std::string>();
+                        Contents->resize(Size);
+                        FileStream.read(Contents->data(), Contents->size());
+                        TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
+                        auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
+                        auto Res = mEngine.EnqueueScript(StateID, Chunk);
+                        // TODO: call onInit
+                        mEngine.AddResultToCheck(Res);
+                    } else {
+                        // TODO: trigger onFileChanged event
+                        beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");
+                        /*
+                        // is in subfolder, dont reload, just trigger an event
+                        auto Results = mEngine.TriggerEvent("onFileChanged", "", Pair.first);
+                        mEngine.WaitForAll(Results);
+                        for (const auto& Result : Results)  {
+                            if (Result->Error) {
+                                beammp_lua_error(Result->ErrorMessage);
+                            }
+                        }*/
+                    }
                 }
+            } catch (const std::exception& e) {
+                ToRemove.push_back(Pair.first);
             }
+        }
+        for (const auto& File : ToRemove) {
+            mFileTimes.erase(File);
+            beammp_warn("file '" + File + "' couldn't be accessed, so it was removed from plugin hot reload monitor (probably got deleted)");
         }
     }
 }

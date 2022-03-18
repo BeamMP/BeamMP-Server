@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <set>
 #include <toml11/toml.hpp>
 #include <unordered_map>
@@ -89,7 +90,7 @@ public:
         std::unique_lock Lock(mResultsToCheckMutex);
         return mResultsToCheck.size();
     }
-    
+
     size_t GetLuaStateCount() {
         std::unique_lock Lock(mLuaStatesMutex);
         return mLuaStates.size();
@@ -213,6 +214,8 @@ private:
         sol::state_view mStateView { mState };
         std::queue<fs::path> mPaths;
         std::recursive_mutex mPathsMutex;
+        std::mt19937 mMersenneTwister;
+        std::uniform_real_distribution<double> mUniformRealDistribution01;
     };
 
     struct TimedEvent {
