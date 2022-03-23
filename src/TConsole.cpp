@@ -573,7 +573,7 @@ TConsole::TConsole() {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
     };
-    mCommandline.on_autocomplete = [this](Commandline& c, std::string stub) {
+    mCommandline.on_autocomplete = [this](Commandline& c, std::string stub, int) {
         std::vector<std::string> suggestions;
         try {
             auto cmd = TrimString(stub);
