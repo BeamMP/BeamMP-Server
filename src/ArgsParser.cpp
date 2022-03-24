@@ -12,7 +12,7 @@ void ArgsParser::Parse(const std::vector<std::string_view>& ArgList) {
                 ConsumeLongFlag(std::string(Arg));
             }
         } else {
-            beammp_error("Error parsing commandline arguments: Supplied argument '" + std::string(Arg) + "' is not a valid argument and was ignored.");
+            beammp_errorf("Error parsing commandline arguments: Supplied argument '{}' is not a valid argument and was ignored.", Arg);
         }
     }
 }
@@ -21,7 +21,7 @@ bool ArgsParser::Verify() {
     bool Ok = true;
     for (const auto& RegisteredArg : mRegisteredArguments) {
         if (RegisteredArg.Flags & Flags::REQUIRED && !FoundArgument(RegisteredArg.Names)) {
-            beammp_error("Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' is required but wasn't found.");
+            beammp_errorf("Error in commandline arguments: Argument '{}' is required but wasn't found.", RegisteredArg.Names.at(0));
             Ok = false;
             continue;
         } else if (FoundArgument(RegisteredArg.Names)) {

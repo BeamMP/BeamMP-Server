@@ -49,7 +49,7 @@ private:
         { "list", [this](const auto& a, const auto& b) { Command_List(a, b); } },
         { "status", [this](const auto& a, const auto& b) { Command_Status(a, b); } },
         { "settings", [this](const auto& a, const auto& b) { Command_Settings(a, b); } },
-        { "say", [this](const auto& a, const auto& b) { Command_Say(""); } }, // shouldn't actually be called
+        { "say", [this](const auto&, const auto&) { Command_Say(""); } }, // shouldn't actually be called
     };
 
     Commandline mCommandline;

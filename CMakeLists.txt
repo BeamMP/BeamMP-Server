@@ -138,7 +138,7 @@ else()
     find_package(OpenSSL REQUIRED)
 endif()
 
-target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES} fmt::fmt)
 message(STATUS "CURL IS ${CURL_LIBRARIES}")
 
 if (UNIX)

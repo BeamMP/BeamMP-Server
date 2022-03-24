@@ -209,10 +209,12 @@ void RegisterThread(const std::string& str);
 #define beammp_trace(x)
 #endif // defined(DEBUG)
 
-#define beammp_errorf(_format, _args) beammp_error(fmt::format(_format, _args))
-#define beammp_infof(_format, _args) beammp_info(fmt::format(_format, _args))
-#define beammp_warnf(_format, _args) beammp_warn(fmt::format(_format, _args))
-#define beammp_tracef(_format, _args) beammp_trace(fmt::format(_format, _args))
+#define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
+#define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
+#define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
+#define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
+#define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
+#define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);
 

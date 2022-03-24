@@ -160,7 +160,7 @@ bool TConsole::EnsureArgsCount(const std::vector<std::string>& args, size_t min,
     return true;
 }
 
-void TConsole::Command_Lua(const std::string& cmd, const std::vector<std::string>& args) {
+void TConsole::Command_Lua(const std::string&, const std::vector<std::string>& args) {
     if (!EnsureArgsCount(args, 0, 1)) {
         return;
     }
@@ -203,7 +203,7 @@ std::string TConsole::ConcatArgs(const std::vector<std::string>& args, char spac
     return Result;
 }
 
-void TConsole::Command_Kick(const std::string& cmd, const std::vector<std::string>& args) {
+void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
     if (!EnsureArgsCount(args, 1, size_t(-1))) {
         return;
     }
@@ -290,7 +290,7 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
     return { Command, Args };
 }
 
-void TConsole::Command_Settings(const std::string& cmd, const std::vector<std::string>& args) {
+void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
     if (!EnsureArgsCount(args, 0)) {
         return;
     }
@@ -573,12 +573,12 @@ TConsole::TConsole() {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
     };
-    mCommandline.on_autocomplete = [this](Commandline& c, std::string stub, int) {
+    mCommandline.on_autocomplete = [this](Commandline&, std::string stub, int) {
         std::vector<std::string> suggestions;
         try {
             auto cmd = TrimString(stub);
-            //beammp_error("yes 1");
-            //beammp_error(stub);
+            // beammp_error("yes 1");
+            // beammp_error(stub);
             if (mIsLuaConsole) { // if lua
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
@@ -596,7 +596,7 @@ TConsole::TConsole() {
                         std::string::size_type n = key.find(stub);
                         if (n == 0) {
                             suggestions.push_back(prefix + key);
-                            //beammp_warn(cmd_name);
+                            // beammp_warn(cmd_name);
                         }
                     }
                 }
@@ -605,7 +605,7 @@ TConsole::TConsole() {
                     std::string::size_type n = cmd_name.find(stub);
                     if (n == 0) {
                         suggestions.push_back(cmd_name);
-                        //beammp_warn(cmd_name);
+                        // beammp_warn(cmd_name);
                     }
                 }
             }

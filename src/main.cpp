@@ -113,7 +113,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             try {
                 fs::current_path(fs::path(MaybeWorkingDirectory.value()));
             } catch (const std::exception& e) {
-                beammp_error("Could not set working directory to '" + MaybeWorkingDirectory.value() + "': " + e.what());
+                beammp_errorf("Could not set working directory to '{}': {}", MaybeWorkingDirectory.value(), e.what());
             }
         }
     }

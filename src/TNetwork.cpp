@@ -116,7 +116,7 @@ void TNetwork::TCPServerMain() {
     SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (Listener == BEAMMP_INVALID_SOCKET) {
         beammp_error("Failed to create socket: " + GetPlatformAgnosticErrorString()
-        + ". This is a fatal error, as a socket is needed for the server to operate. Shutting down.");
+            + ". This is a fatal error, as a socket is needed for the server to operate. Shutting down.");
         Application::GracefullyShutdown();
     }
 #if defined(BEAMMP_WINDOWS)
