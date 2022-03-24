@@ -749,7 +749,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 
 void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
-    uint32_t Split = 0x7735940; // 125MB
+    uint32_t Split = 125 * MB;
     char* Data;
     if (Size > Split)
         Data = new char[Split];

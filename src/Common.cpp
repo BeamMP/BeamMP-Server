@@ -171,9 +171,7 @@ Version::Version(const std::array<uint8_t, 3>& v)
 }
 
 std::string Version::AsString() {
-    std::stringstream ss {};
-    ss << int(major) << "." << int(minor) << "." << int(patch);
-    return ss.str();
+    return fmt::format("{:d}.{:d}.{:d}", major, minor, patch);
 }
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
