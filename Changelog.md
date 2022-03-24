@@ -4,6 +4,7 @@
 - ADDED lua debug facilities (type `:help` when attached to lua via `lua`)
 - ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
 - ADDED FS.ListFiles and FS.ListDirectories
+- FIXED issue with client->server events which contain ':'
 
 # v3.0.1
 
