@@ -154,7 +154,7 @@ void RegisterThread(const std::string& str) {
     ThreadId = std::to_string(gettid());
 #endif
     if (Application::Settings.DebugModeEnabled) {
-        std::ofstream ThreadFile("Threads.log", std::ios::app);
+        std::ofstream ThreadFile(".Threads.log", std::ios::app);
         ThreadFile << ("Thread \"" + str + "\" is TID " + ThreadId) << std::endl;
     }
     auto Lock = std::unique_lock(ThreadNameMapMutex);
