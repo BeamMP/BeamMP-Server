@@ -61,7 +61,6 @@ std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
     return Version;
 }
 
-// FIXME: This should be used by operator< on Version
 bool Application::IsOutdated(const Version& Current, const Version& Newest) {
     if (Newest.major > Current.major) {
         return true;

@@ -472,7 +472,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     beammp_info("Client kicked: " + R);
     if (!TCPSend(c, "K" + R)) {
-        // TODO handle
+        beammp_warn("tried to kick player '" + c.GetName() + "' (id " + std::to_string(c.GetID()) + "), but was already disconnected");
     }
     c.SetStatus(-2);
 

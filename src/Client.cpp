@@ -5,8 +5,6 @@
 #include <memory>
 #include <optional>
 
-// FIXME: add debug prints
-
 void TClient::DeleteCar(int Ident) {
     std::unique_lock lock(mVehicleDataMutex);
     auto iter = std::find_if(mVehicleData.begin(), mVehicleData.end(), [&](auto& elem) {

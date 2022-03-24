@@ -327,7 +327,6 @@ std::set<std::string> TLuaEngine::GetEventHandlersForState(const std::string& Ev
 
 sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
     auto Return = mEngine->TriggerEvent(EventName, mStateId, EventArgs);
-    // TODO Synchronous call to the event handlers
     auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
