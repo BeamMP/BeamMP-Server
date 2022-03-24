@@ -43,6 +43,7 @@ void Application::GracefullyShutdown() {
         beammp_info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
         mShutdownHandlers[i]();
     }
+    // std::exit(-1);
 }
 
 std::string Application::ServerVersionString() {
@@ -105,7 +106,7 @@ void Application::CheckForUpdates() {
         if (Matches) {
             auto MyVersion = ServerVersion();
             auto RemoteVersion = Version(VersionStrToInts(Response));
-            if (!IsOutdated(MyVersion, RemoteVersion)) {
+            if (IsOutdated(MyVersion, RemoteVersion)) {
                 std::string RealVersionString = RemoteVersion.AsString();
                 beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
             } else {

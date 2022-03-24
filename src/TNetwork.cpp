@@ -108,40 +108,48 @@ void TNetwork::TCPServerMain() {
 #if defined(BEAMMP_WINDOWS)
     WSADATA wsaData;
     if (WSAStartup(514, &wsaData)) {
-        beammp_error("Can't start Winsock!");
-        return;
+        beammp_error("Can't start Winsock! Shutting down");
+        Application::GracefullyShutdown();
     }
 #endif // WINDOWS
     TConnection client {};
     SOCKET Listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    int optval = 1;
+    if (Listener == BEAMMP_INVALID_SOCKET) {
+        beammp_error("Failed to create socket: " + GetPlatformAgnosticErrorString()
+        + ". This is a fatal error, as a socket is needed for the server to operate. Shutting down.");
+        Application::GracefullyShutdown();
+    }
 #if defined(BEAMMP_WINDOWS)
-    const char* optval_ptr = reinterpret_cast<const char*>(&optval);
+    const char optval = 0;
+    int ret = ::setsockopt(Listener, SOL_SOCKET, SO_DONTLINGER, &optval, sizeof(optval));
 #elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
-    void* optval_ptr = reinterpret_cast<void*>(&optval);
+    int optval = true;
+    int ret = ::setsockopt(Listener, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<void*>(&optval), sizeof(optval));
 #endif
-    setsockopt(Listener, SOL_SOCKET, SO_REUSEADDR, optval_ptr, sizeof(optval));
-    // TODO: check optval or return value idk
+    // not a fatal error
+    if (ret < 0) {
+        beammp_error("Failed to set up listening socket to not linger / reuse address. "
+                     "This may cause the socket to refuse to bind(). Error: "
+            + GetPlatformAgnosticErrorString());
+    }
     sockaddr_in addr {};
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Application::Settings.Port));
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) != 0) {
-        beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1); // TODO: Wtf.
+    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) < 0) {
+        beammp_error("bind() failed, the server cannot operate and will shut down now. "
+                     "Error: "
+            + GetPlatformAgnosticErrorString());
+        Application::GracefullyShutdown();
     }
-    if (Listener == -1) {
-        beammp_error("Invalid listening socket");
-        return;
-    }
-    if (listen(Listener, SOMAXCONN)) {
-        beammp_error("listen() failed: " + GetPlatformAgnosticErrorString());
-        // FIXME leak Listener
-        return;
+    if (listen(Listener, SOMAXCONN) < 0) {
+        beammp_error("listen() failed, which is needed for the server to operate. "
+                     "Shutting down. Error: "
+            + GetPlatformAgnosticErrorString());
+        Application::GracefullyShutdown();
     }
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Good);
-    beammp_info(("Vehicle event network online"));
+    beammp_info("Vehicle event network online");
     do {
         try {
             if (mShutdown) {
@@ -157,9 +165,9 @@ void TNetwork::TCPServerMain() {
             std::thread ID(&TNetwork::Identify, this, client);
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
-            beammp_error(("fatal: ") + std::string(e.what()));
+            beammp_error("fatal: " + std::string(e.what()));
         }
-    } while (client.Socket);
+    } while (client.Socket != BEAMMP_INVALID_SOCKET);
 
     beammp_debug("all ok, arrived at " + std::string(__func__) + ":" + std::to_string(__LINE__));
 
