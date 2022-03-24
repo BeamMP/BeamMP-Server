@@ -7,12 +7,13 @@ extern TSentry Sentry;
 #include <atomic>
 #include <cstring>
 #include <deque>
+#include <filesystem>
+#include <fmt/format.h>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <sstream>
 #include <zlib.h>
-#include <filesystem>
 
 #include "Compat.h"
 
@@ -207,6 +208,11 @@ void RegisterThread(const std::string& str);
 #else
 #define beammp_trace(x)
 #endif // defined(DEBUG)
+
+#define beammp_errorf(_format, _args) beammp_error(fmt::format(_format, _args))
+#define beammp_infof(_format, _args) beammp_info(fmt::format(_format, _args))
+#define beammp_warnf(_format, _args) beammp_warn(fmt::format(_format, _args))
+#define beammp_tracef(_format, _args) beammp_trace(fmt::format(_format, _args))
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);
 
