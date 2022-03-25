@@ -62,8 +62,8 @@ void THeartbeatThread::operator()() {
             beammp_trace(T);
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
-                beammp_error("Backend response failed to parse as valid json");
-                beammp_debug("Response was: `" + T + "`");
+                beammp_debug("Failed to contact backend at " + Url + " (this is not an error).");
+                beammp_trace("Response was: " + T);
                 Sentry.SetContext("JSON Response", { { "reponse", T } });
                 SentryReportError(Url + Target, ResponseCode);
             } else if (ResponseCode != 200) {
@@ -104,6 +104,10 @@ void THeartbeatThread::operator()() {
             if (!Ok) {
                 beammp_error("Missing/invalid json members in backend response");
                 Sentry.LogError("Missing/invalid json members in backend response", __FILE__, std::to_string(__LINE__));
+            }
+        } else {
+            if (!Application::Settings.Private) {
+                beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
             }
         }
 
