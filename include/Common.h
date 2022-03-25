@@ -54,6 +54,7 @@ public:
         bool SendErrorsMessageEnabled { true };
         int HTTPServerPort { 8080 };
         bool HTTPServerUseSSL { true };
+        bool HideUpdateMessages { false };
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
 

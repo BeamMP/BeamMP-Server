@@ -107,7 +107,7 @@ void Application::CheckForUpdates() {
             auto RemoteVersion = Version(VersionStrToInts(Response));
             if (IsOutdated(MyVersion, RemoteVersion)) {
                 std::string RealVersionString = RemoteVersion.AsString();
-                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION IS OUT! Please update to the new version (v" + RealVersionString + ") of the BeamMP-Server! Download it here: https://beammp.com/! For a guide on how to update, visit: https://wiki.beammp.com/en/home/server-maintenance#updating-the-server" + std::string(ANSI_RESET));
             } else {
                 beammp_info("Server up-to-date!");
             }

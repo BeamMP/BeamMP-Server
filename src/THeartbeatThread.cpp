@@ -19,7 +19,9 @@ void THeartbeatThread::operator()() {
 
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
+    size_t UpdateReminderCounter = 0;
     while (!mShutdown) {
+        ++UpdateReminderCounter;
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
@@ -127,6 +129,9 @@ void THeartbeatThread::operator()() {
         }
         if (isAuth) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+        }
+        if (!Application::Settings.HideUpdateMessages && UpdateReminderCounter % 5) {
+            Application::CheckForUpdates();
         }
     }
 }
