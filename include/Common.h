@@ -44,7 +44,7 @@ public:
         std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
         std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
         bool HTTPServerEnabled { false };
-        int MaxPlayers { 10 };
+        int MaxPlayers { 8 };
         bool Private { true };
         int MaxCars { 1 };
         bool DebugModeEnabled { false };
