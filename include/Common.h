@@ -148,6 +148,10 @@ void RegisterThread(const std::string& str);
 #define _function_name std::string(__func__)
 #endif
 
+#ifndef NDEBUG
+#define DEBUG
+#endif
+
 #if defined(DEBUG)
 
 // if this is defined, we will show the full function signature infront of

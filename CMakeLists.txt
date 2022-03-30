@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.0)
+# 3.4 is required for imported targets.
+cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
@@ -8,7 +9,22 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+find_package(Git REQUIRED)
+# Update submodules as needed
+option(GIT_SUBMODULE "Check submodules during build" ON)
+if(GIT_SUBMODULE)
+    message(STATUS "Submodule update")
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+        message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    endif()
+endif()
+
+
 set(HTTPLIB_REQUIRE_OPENSSL ON)
+set(SENTRY_BUILD_SHARED_LIBS OFF)
 
 include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
@@ -21,26 +37,40 @@ include_directories("${PROJECT_SOURCE_DIR}/deps")
 
 add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
 
+# ------------------------ APPLE ---------------------------------
 if(APPLE)
     set(LUA_INCLUDE_DIR /usr/local/Cellar/lua@5.3/5.3.6/include/lua5.3)
     set(LUA_LIBRARIES lua)
     include_directories(/usr/local/opt/openssl@1.1/include)
     link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
     link_directories(/usr/local/opt/openssl@1.1/lib)
-endif()
-
-if (WIN32)
+# ------------------------ WINDOWS ---------------------------------
+elseif (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
     STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
-endif()
+    if (MSVC)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+        set(SENTRY_BUILD_RUNTIMESTATIC ON)
+    endif ()
+    set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
+    include_directories(${VcpkgRoot}/include)
+    link_directories(${VcpkgRoot}/lib)
+# ------------------------ LINUX ---------------------------------
+elseif (UNIX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++ -static-libgcc")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
+    if (SANITIZE)
+        message(STATUS "sanitize is ON")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
+    endif (SANITIZE)
+endif ()
 
 include_directories("include/sentry-native/include")
-set(SENTRY_BUILD_SHARED_LIBS OFF)
-if (MSVC)
-    set(SENTRY_BUILD_RUNTIMESTATIC ON)
-endif()
+
+# ------------------------ SENTRY ---------------------------------
 message(STATUS "Checking for Sentry URL")
 # this is set by the build system.
 # IMPORTANT: if you're building from source, just leave this empty
@@ -50,41 +80,15 @@ if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
     set(BEAMMP_SECRET_SENTRY_URL "")
     set(SENTRY_BACKEND none)
 else()
-    string(LENGTH ${BEAMMP_SECRET_SENTRY_URL} URL_LEN)
-    message(STATUS "Sentry URL is length ${URL_LEN}")
     set(SENTRY_BACKEND breakpad)
 endif()
 add_subdirectory("deps/sentry-native")
 
-if (MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-endif ()
-
-message(STATUS "Setting compiler flags")
-if (WIN32)
-
-    #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
-    set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
-    include_directories(${VcpkgRoot}/include)
-    link_directories(${VcpkgRoot}/lib)
-elseif (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
-    if (SANITIZE)
-        message(STATUS "sanitize is ON")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
-    endif (SANITIZE)
-endif ()
-
-
-message(STATUS "Adding local source dependencies")
-# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-add_subdirectory(deps)
-
+# ------------------------ C++ SETUP ---------------------------------
 set(CMAKE_CXX_STANDARD 17)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+# ------------------------ DEPENDENCIES ------------------------------
+add_subdirectory(deps)
 
 add_executable(BeamMP-Server
         src/main.cpp
@@ -116,12 +120,10 @@ target_include_directories(BeamMP-Server PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include" 
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
-if (APPLE)
-    message(STATUS "NOT looking for Lua on APPLE")
-else()
-    message(STATUS "Looking for Lua")
-    find_package(Lua REQUIRED VERSION 5.3)
-endif()
+include(FindLua)
+include(FindOpenSSL)
+include(FindThreads)
+include(FindZLIB)
 
 target_include_directories(BeamMP-Server PUBLIC 
     ${LUA_INCLUDE_DIR} 
@@ -130,39 +132,17 @@ target_include_directories(BeamMP-Server PUBLIC
     "include/sentry-native/include"
     "include/curl/include")
 
-message(STATUS "Looking for SSL")
+target_link_libraries(BeamMP-Server 
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    sol2::sol2
+    fmt::fmt
+    Threads::Threads
+    ZLIB::ZLIB
+    ${LUA_LIBRARIES}
+    commandline
+    sentry)
 
-if (APPLE)
-    set(OPENSSL_LIBRARIES ssl crypto)
-else()
-    find_package(OpenSSL REQUIRED)
-endif()
-
-target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES} fmt::fmt)
-message(STATUS "CURL IS ${CURL_LIBRARIES}")
-
-if (UNIX)
-    target_link_libraries(BeamMP-Server
-        z 
-        pthread
-        ${LUA_LIBRARIES} 
-        crypto
-        ${OPENSSL_LIBRARIES} 
-        commandline 
-        sentry
-        ssl)
-elseif (WIN32)
-    include(FindLua)
-    message(STATUS "Looking for libz")
-    find_package(ZLIB REQUIRED)
-    message(STATUS "Looking for RapidJSON")
-    find_package(RapidJSON CONFIG REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server
-        ws2_32 
-        ZLIB::ZLIB 
-        ${LUA_LIBRARIES} 
-        ${OPENSSL_LIBRARIES} 
-        commandline
-        sentry)
+if (WIN32)
+    target_link_libraries(BeamMP-Server wsock32 ws2_32)
 endif ()
