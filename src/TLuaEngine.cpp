@@ -218,6 +218,7 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
     for (const auto& Result : Results) {
         bool Cancelled = false;
         size_t ms = 0;
+        std::set<std::string> WarnedResults;
         while (!Result->Ready && !Cancelled) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             ms += 10;
@@ -225,7 +226,11 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
                 beammp_trace("'" + Result->Function + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms).");
                 Cancelled = true;
             } else if (ms > 1000 * 60) {
-                beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
+                auto ResultId = Result->StateId + "_" + Result->Function;
+                if (WarnedResults.count(ResultId) == 0) {
+                    WarnedResults.insert(ResultId);
+                    beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
+                }
             }
         }
         if (Cancelled) {
