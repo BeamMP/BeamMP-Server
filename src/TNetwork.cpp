@@ -514,6 +514,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
         }
     }
 }
+
 void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
     // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
     if (c.expired() || c.lock()->GetTCPSock() == -1) {
