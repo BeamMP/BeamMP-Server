@@ -112,7 +112,8 @@ bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, 
         }
         auto c = MaybeClient.value().lock();
         if (!Engine->Network().Respond(*c, Packet, true)) {
-            beammp_lua_error("Respond failed");
+            beammp_lua_error("Respond failed, dropping client " + std::to_string(PlayerID));
+            Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
             return false;
         }
     }
