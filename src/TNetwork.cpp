@@ -154,6 +154,19 @@ void TNetwork::TCPServerMain() {
                 beammp_warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
+            // set timeout
+            size_t SendTimeoutMS = 30 * 1000;
+#if defined(BEAMMP_WINDOWS)
+            ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+#else // POSIX
+            struct timeval optval;
+            optval.tv_sec = (int)(SendTimeoutMS / 1000);
+            optval.tv_usec = (SendTimeoutMS % 1000) * 1000;
+            ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<void*>(&optval), sizeof(optval));
+#endif
+            if (ret < 0) {
+                throw std::runtime_error("setsockopt recv timeout: " + GetPlatformAgnosticErrorString());
+            }
             std::thread ID(&TNetwork::Identify, this, client);
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
