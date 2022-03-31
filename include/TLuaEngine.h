@@ -5,6 +5,7 @@
 #include <any>
 #include <condition_variable>
 #include <filesystem>
+#include <list>
 #include <initializer_list>
 #include <lua.hpp>
 #include <memory>
@@ -218,8 +219,9 @@ private:
     std::recursive_mutex mLuaEventsMutex;
     std::vector<TimedEvent> mTimedEvents;
     std::recursive_mutex mTimedEventsMutex;
-    std::queue<std::shared_ptr<TLuaResult>> mResultsToCheck;
-    std::recursive_mutex mResultsToCheckMutex;
+    std::list<std::shared_ptr<TLuaResult>> mResultsToCheck;
+    std::mutex mResultsToCheckMutex;
+    std::condition_variable mResultsToCheckCond;
 };
 
 // std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

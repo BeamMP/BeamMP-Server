@@ -133,7 +133,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     });
     Application::RegisterShutdownHandler([] {
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
-        TLuaEngine::WaitForAll(Futures);
+        TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
     });
 
     TServer Server(Arguments.List);

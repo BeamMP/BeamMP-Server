@@ -44,7 +44,7 @@ void TLuaEngine::operator()() {
     CollectAndInitPlugins();
     // now call all onInit's
     auto Futures = TriggerEvent("onInit", "");
-    WaitForAll(Futures);
+    WaitForAll(Futures, std::chrono::seconds(5));
     for (const auto& Future : Futures) {
         if (Future->Error && Future->ErrorMessage != BeamMPFnNotFoundError) {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
@@ -54,25 +54,21 @@ void TLuaEngine::operator()() {
     auto ResultCheckThread = std::thread([&] {
         RegisterThread("ResultCheckThread");
         while (!mShutdown) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             std::unique_lock Lock(mResultsToCheckMutex);
+            mResultsToCheckCond.wait_for(Lock, std::chrono::milliseconds(20));
             if (!mResultsToCheck.empty()) {
-                auto Res = mResultsToCheck.front();
-                mResultsToCheck.pop();
-                Lock.unlock();
-
-                if (!Res->Ready) {
-                    Lock.lock();
-                    mResultsToCheck.push(Res);
-                    Lock.unlock();
-                }
-                if (Res->Error) {
-                    if (Res->ErrorMessage != BeamMPFnNotFoundError) {
-                        beammp_lua_error(Res->Function + ": " + Res->ErrorMessage);
+                mResultsToCheck.remove_if([](const std::shared_ptr<TLuaResult>& Ptr) -> bool {
+                    if (Ptr->Ready) {
+                        return true;
+                    } else if (Ptr->Error) {
+                        if (Ptr->ErrorMessage != BeamMPFnNotFoundError) {
+                            beammp_lua_error(Ptr->Function + ": " + Ptr->ErrorMessage);
+                        }
+                        return true;
                     }
-                }
+                    return false;
+                });
             }
-            std::this_thread::yield();
         }
     });
     // event loop
@@ -91,7 +87,8 @@ void TLuaEngine::operator()() {
                     std::unique_lock Lock2(mResultsToCheckMutex);
                     for (auto& Handler : Handlers) {
                         auto Res = mLuaStates[Timer.StateId]->EnqueueFunctionCall(Handler, {});
-                        mResultsToCheck.push(Res);
+                        mResultsToCheck.push_back(Res);
+                        mResultsToCheckCond.notify_one();
                     }
                 }
             }
@@ -144,7 +141,8 @@ TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
 
 void TLuaEngine::AddResultToCheck(const std::shared_ptr<TLuaResult>& Result) {
     std::unique_lock Lock(mResultsToCheckMutex);
-    mResultsToCheck.push(Result);
+    mResultsToCheck.push_back(Result);
+    mResultsToCheckCond.notify_one();
 }
 
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
@@ -155,8 +153,11 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             ms += 10;
             if (Max.has_value() && std::chrono::milliseconds(ms) > Max.value()) {
-                beammp_trace("'" + Result->Function + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms)");
+                beammp_trace("'" + Result->Function + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms).");
                 Cancelled = true;
+            }
+            else if (ms > 1000 * 60) {
+                beammp_lua_warn("'" + Result->Function +"' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
             }
         }
         if (Cancelled) {
@@ -174,7 +175,8 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
 void TLuaEngine::ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results) {
     std::unique_lock Lock2(mResultsToCheckMutex);
     for (const auto& Result : Results) {
-        mResultsToCheck.push(Result);
+        mResultsToCheck.push_back(Result);
+        mResultsToCheckCond.notify_one();
     }
 }
 
