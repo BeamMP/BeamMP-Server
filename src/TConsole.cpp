@@ -475,7 +475,7 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
 }
 
 void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
-    if (cmd == "detach") {
+    if (cmd == "exit") {
         ChangeToRegularConsole();
     } else if (cmd == "queued") {
         auto QueuedFunctions = LuaAPI::MP::Engine->Debug_GetStateFunctionQueueForState(mStateId);
@@ -517,7 +517,7 @@ void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
     All commands must be prefixed with a `:`. Non-prefixed commands are interpreted as Lua.
 
 Commands
-    :detach       detaches (exits) from this Lua console
+    :exit         detaches (exits) from this Lua console
     :help         displays this help
     :events       shows a list of currently registered events
     :queued       shows a list of all pending and queued functions)");
