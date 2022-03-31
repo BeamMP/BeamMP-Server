@@ -18,12 +18,15 @@ static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrLogChat = "LogChat";
+
+// Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
-static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
-static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
+static constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
 
 // HTTP
+static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
 static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
@@ -60,7 +63,6 @@ void SetComment(CommentsT& Comments, const std::string& Comment) {
  */
 void TConfig::FlushToFile() {
     auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
-    data["General"] = toml::table();
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrLogChat.data()] = Application::Settings.LogChat;
@@ -74,10 +76,14 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
-    data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
-    SetComment(data["General"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
-    data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    SetComment(data["General"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    // Misc
+    data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
+    SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
+    data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    SetComment(data["Misc"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
+    data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
+    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    // HTTP
     data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
     data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
     data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
@@ -85,7 +91,7 @@ void TConfig::FlushToFile() {
     SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to keep enabled. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
-    std::ofstream Stream(mConfigFileName);
+    std::ofstream Stream(mConfigFileName, std::ios::trunc | std::ios::out);
     Stream << data << std::flush;
 }
 
@@ -162,8 +168,10 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
         TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
-        TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
-        TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
+        // Misc
+        TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
         // HTTP
         TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
         TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);

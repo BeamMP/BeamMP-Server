@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <initializer_list>
+#include <list>
 #include <lua.hpp>
 #include <memory>
 #include <mutex>
@@ -73,6 +74,18 @@ private:
 
 class TLuaEngine : IThreaded {
 public:
+    enum CallStrategy : int {
+        BestEffort,
+        Precise,
+    };
+
+    struct QueuedFunction {
+        std::string FunctionName;
+        std::shared_ptr<TLuaResult> Result;
+        std::vector<TLuaArgTypes> Args;
+        std::string EventName; // optional, may be empty
+    };
+
     TLuaEngine();
     ~TLuaEngine() noexcept {
         beammp_debug("Lua Engine terminated");
@@ -147,7 +160,7 @@ public:
         return Results; //
     }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
-    void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS);
+    void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy);
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
     sol::state_view GetStateForPlugin(const fs::path& PluginPath);
     TLuaStateId GetStateIDForPlugin(const fs::path& PluginPath);
@@ -176,6 +189,7 @@ private:
         ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
@@ -207,7 +221,7 @@ private:
         std::thread mThread;
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
-        std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> mStateFunctionQueue;
+        std::vector<QueuedFunction> mStateFunctionQueue;
         std::mutex mStateFunctionQueueMutex;
         std::condition_variable mStateFunctionQueueCond;
         TLuaEngine* mEngine;
@@ -223,6 +237,7 @@ private:
         std::chrono::high_resolution_clock::time_point LastCompletion {};
         std::string EventName;
         TLuaStateId StateId;
+        CallStrategy Strategy;
         bool Expired();
         void Reset();
     };
@@ -239,8 +254,9 @@ private:
     std::recursive_mutex mLuaEventsMutex;
     std::vector<TimedEvent> mTimedEvents;
     std::recursive_mutex mTimedEventsMutex;
-    std::queue<std::shared_ptr<TLuaResult>> mResultsToCheck;
-    std::recursive_mutex mResultsToCheckMutex;
+    std::list<std::shared_ptr<TLuaResult>> mResultsToCheck;
+    std::mutex mResultsToCheckMutex;
+    std::condition_variable mResultsToCheckCond;
 };
 
 // std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

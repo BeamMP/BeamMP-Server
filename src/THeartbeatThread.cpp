@@ -19,7 +19,9 @@ void THeartbeatThread::operator()() {
 
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
+    size_t UpdateReminderCounter = 0;
     while (!mShutdown) {
+        ++UpdateReminderCounter;
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
@@ -64,7 +66,7 @@ void THeartbeatThread::operator()() {
             if (Doc.HasParseError() || !Doc.IsObject()) {
                 if (!Application::Settings.Private) {
                     beammp_error("Backend response failed to parse as valid json");
-                    beammp_debug("Response was: `" + T + "`");
+                    beammp_trace("Response was: `" + T + "`");
                 }
                 Sentry.SetContext("JSON Response", { { "reponse", T } });
                 SentryReportError(Url + Target, ResponseCode);
@@ -107,6 +109,10 @@ void THeartbeatThread::operator()() {
                 beammp_error("Missing/invalid json members in backend response");
                 Sentry.LogError("Missing/invalid json members in backend response", __FILE__, std::to_string(__LINE__));
             }
+        } else {
+            if (!Application::Settings.Private) {
+                beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
+            }
         }
 
         if (Ok && !isAuth && !Application::Settings.Private) {
@@ -125,6 +131,9 @@ void THeartbeatThread::operator()() {
         }
         if (isAuth || Application::Settings.Private) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+        }
+        if (!Application::Settings.HideUpdateMessages && UpdateReminderCounter % 5) {
+            Application::CheckForUpdates();
         }
     }
 }
