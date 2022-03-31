@@ -1,3 +1,11 @@
+# v3.0.2
+
+- ADDED Periodic update message if a new server is released
+- CHANGED Default MaxPlayers to 8
+- FIXED `MP.CreateEventTimer` filling up the queue (see https://wiki.beammp.com/en/Scripting/new-lua-scripting#mpcreateeventtimerevent_name-string-interval_ms-number-strategy-number-since-v302)
+- FIXED `MP.TriggerClientEvent` not kicking the client if it failed
+- FIXED Lua result queue handling not checking all results
+
 # v3.0.1
 
 - ADDED Backup URLs to UpdateCheck (will fail less often now)
