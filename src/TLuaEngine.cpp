@@ -177,8 +177,8 @@ std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::Debug_
     return Result;
 }
 
-std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> TLuaEngine::Debug_GetStateFunctionQueueForState(TLuaStateId StateId) {
-    std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> Result;
+std::vector<TLuaEngine::QueuedFunction> TLuaEngine::Debug_GetStateFunctionQueueForState(TLuaStateId StateId) {
+    std::vector<TLuaEngine::QueuedFunction> Result;
     std::unique_lock Lock(mLuaStatesMutex);
     Result = mLuaStates.at(StateId)->Debug_GetStateFunctionQueue();
     return Result;
@@ -191,7 +191,7 @@ std::vector<TLuaResult> TLuaEngine::Debug_GetResultsToCheckForState(TLuaStateId 
     std::vector<TLuaResult> Result;
     while (!ResultsToCheckCopy.empty()) {
         auto ResultToCheck = std::move(ResultsToCheckCopy.front());
-        ResultsToCheckCopy.pop();
+        ResultsToCheckCopy.pop_front();
         if (ResultToCheck->StateId == StateId) {
             Result.push_back(*ResultToCheck);
         }
@@ -917,7 +917,7 @@ std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::StateT
     return mStateExecuteQueue;
 }
 
-std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> TLuaEngine::StateThreadData::Debug_GetStateFunctionQueue() {
+std::vector<TLuaEngine::QueuedFunction> TLuaEngine::StateThreadData::Debug_GetStateFunctionQueue() {
     std::unique_lock Lock(mStateFunctionQueueMutex);
     return mStateFunctionQueue;
 }

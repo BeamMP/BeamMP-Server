@@ -484,9 +484,9 @@ void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
         std::vector<std::string> FunctionsInOrder;
         while (!QueuedFunctions.empty()) {
             auto Tuple = QueuedFunctions.front();
-            QueuedFunctions.pop();
-            FunctionsInOrder.push_back(std::get<0>(Tuple));
-            FunctionsCount[std::get<0>(Tuple)] += 1;
+            QueuedFunctions.erase(QueuedFunctions.begin());
+            FunctionsInOrder.push_back(Tuple.FunctionName);
+            FunctionsCount[Tuple.FunctionName] += 1;
         }
         std::set<std::string> Uniques;
         for (const auto& Function : FunctionsInOrder) {

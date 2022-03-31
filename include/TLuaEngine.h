@@ -173,7 +173,7 @@ public:
     // Debugging functions (slow)
     std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
     std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
-    std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
+    std::vector<QueuedFunction> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
     std::vector<TLuaResult> Debug_GetResultsToCheckForState(TLuaStateId StateId);
 
 private:
@@ -199,7 +199,7 @@ private:
 
         // Debug functions, slow
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
-        std::queue<std::tuple<std::string, std::shared_ptr<TLuaResult>, std::vector<TLuaArgTypes>>> Debug_GetStateFunctionQueue();
+        std::vector<TLuaEngine::QueuedFunction> Debug_GetStateFunctionQueue();
 
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
