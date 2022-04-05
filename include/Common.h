@@ -7,12 +7,12 @@ extern TSentry Sentry;
 #include <atomic>
 #include <cstring>
 #include <deque>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <sstream>
 #include <zlib.h>
-#include <filesystem>
 
 #include "Compat.h"
 
@@ -121,7 +121,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 0, 1 };
+    static inline Version mVersion { 3, 0, 2 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);

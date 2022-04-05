@@ -154,10 +154,10 @@ void TNetwork::TCPServerMain() {
                 beammp_warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
-            // set timeout
-            size_t SendTimeoutMS = 30 * 1000;
+            // set timeout (DWORD, aka uint32_t)
+            uint32_t SendTimeoutMS = 30 * 1000;
 #if defined(BEAMMP_WINDOWS)
-            int ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+            int ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&SendTimeoutMS), sizeof(SendTimeoutMS));
 #else // POSIX
             struct timeval optval;
             optval.tv_sec = (int)(SendTimeoutMS / 1000);
