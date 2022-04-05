@@ -119,10 +119,8 @@ int BeamMPServerMain(MainArguments Arguments) {
     }
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
-    bool Success = Application::Console().Internal().enable_write_to_file("Server.log");
-    if (!Success) {
-        beammp_error("unable to open file for writing: \"Server.log\"");
-    }
+    
+    Application::Console().StartLoggingToFile();
 
     SetupSignalHandlers();
 

@@ -97,6 +97,32 @@ void TConsole::BackupOldLog() {
     }
 }
 
+enum EscState {
+    None,
+    Escape,
+    FeSeqStart,
+    FeSeqMid,
+    SeqEnd
+};
+
+void TConsole::StartLoggingToFile() {
+    mLogFileStream.open("Server.log");
+    Application::Console().Internal().on_write = [this](const std::string& ToWrite) {
+        // sanitize the string by removing all ANSI control codes (like color, etc)
+        std::string Sanitized;
+        Sanitized.reserve(ToWrite.size());
+        EscState state;
+        for (size_t i = 0; i < ToWrite.size(); ++i) {
+            if (i + 1 < ToWrite.size()
+                && ToWrite[i] == 0x1b) { // starts ANSI escape sequence
+                if (ToWrite[i + 1] >= 0x40 || ToWrite[i + 1] <= 0x5F) {
+                }
+            }
+            mLogFileStream.write(ToWrite.c_str(), ToWrite.size());
+        };
+    };
+}
+
 void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
     if (!mIsLuaConsole) {
         if (!mLuaEngine) {
