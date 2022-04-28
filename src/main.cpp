@@ -119,7 +119,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     }
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
-    
+
     Application::Console().StartLoggingToFile();
 
     SetupSignalHandlers();
@@ -170,6 +170,10 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::SetSubsystemStatus("Main", Application::Status::Good);
     RegisterThread("Main(Waiting)");
 
+    std::set<std::string> IgnoreSubsystems {
+        "UpdateCheck" // Ignore as not to confuse users (non-vital system)
+    };
+
     bool FullyStarted = false;
     while (!Shutdown) {
         if (!FullyStarted) {
@@ -178,6 +182,9 @@ int BeamMPServerMain(MainArguments Arguments) {
             std::string SystemsBadList {};
             auto Statuses = Application::GetSubsystemStatuses();
             for (const auto& NameStatusPair : Statuses) {
+                if (IgnoreSubsystems.count(NameStatusPair.first) > 0) {
+                    continue; // ignore
+                }
                 if (NameStatusPair.second == Application::Status::Starting) {
                     FullyStarted = false;
                 } else if (NameStatusPair.second == Application::Status::Bad) {
