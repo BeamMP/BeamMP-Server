@@ -108,17 +108,11 @@ enum EscState {
 void TConsole::StartLoggingToFile() {
     mLogFileStream.open("Server.log");
     Application::Console().Internal().on_write = [this](const std::string& ToWrite) {
-        // sanitize the string by removing all ANSI control codes (like color, etc)
-        std::string Sanitized;
-        Sanitized.reserve(ToWrite.size());
-        for (size_t i = 0; i < ToWrite.size(); ++i) {
-            if (i + 1 < ToWrite.size()
-                && ToWrite[i] == 0x1b) { // starts ANSI escape sequence
-                if (ToWrite[i + 1] >= 0x40 || ToWrite[i + 1] <= 0x5F) {
-                }
-            }
-            mLogFileStream.write(ToWrite.c_str(), ToWrite.size());
-        };
+        // TODO: Sanitize by removing all ansi escape codes (vt100)
+        std::unique_lock Lock(mLogFileStreamMtx);
+        mLogFileStream.write(ToWrite.c_str(), ToWrite.size());
+        mLogFileStream.write("\n", 1);
+        mLogFileStream.flush();
     };
 }
 

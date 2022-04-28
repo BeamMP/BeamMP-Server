@@ -39,4 +39,5 @@ private:
     std::string mStateId;
     const std::string mDefaultStateId = "BEAMMP_SERVER_CONSOLE";
     std::ofstream mLogFileStream;
+    std::mutex mLogFileStreamMtx;
 };
