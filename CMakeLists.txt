@@ -60,6 +60,10 @@ if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif ()
 
+message(STATUS "Adding local source dependencies")
+# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
+add_subdirectory(deps)
+
 message(STATUS "Setting compiler flags")
 if (WIN32)
 
@@ -68,7 +72,7 @@ if (WIN32)
     include_directories(${VcpkgRoot}/include)
     link_directories(${VcpkgRoot}/lib)
 elseif (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++ -Werror=unused")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
     if (SANITIZE)
@@ -78,9 +82,6 @@ elseif (UNIX)
 endif ()
 
 
-message(STATUS "Adding local source dependencies")
-# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-add_subdirectory(deps)
 
 set(CMAKE_CXX_STANDARD 17)
 
