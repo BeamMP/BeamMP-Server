@@ -53,7 +53,8 @@ public:
         bool SendErrors { true };
         bool SendErrorsMessageEnabled { true };
         int HTTPServerPort { 8080 };
-        bool HTTPServerUseSSL { true };
+        std::string HTTPServerIP { "127.0.0.1" };
+        bool HTTPServerUseSSL { false };
         bool HideUpdateMessages { false };
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
