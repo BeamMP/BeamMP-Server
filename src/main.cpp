@@ -126,6 +126,7 @@ int BeamMPServerMain(MainArguments Arguments) {
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {
+        beammp_info("If this takes too long, you can press Ctrl+C repeatedly to force a shutdown.");
         Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
         Shutdown = true;
     });
