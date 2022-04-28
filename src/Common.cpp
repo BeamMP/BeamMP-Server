@@ -123,7 +123,7 @@ void Application::CheckForUpdates() {
         }
     }
     if (Application::GetSubsystemStatuses().at("UpdateCheck") == Application::Status::Bad) {
-        beammp_warn("Unable to fetch version info from backend.");
+        beammp_trace("Unable to fetch version info from backend.");
     }
 }
 
