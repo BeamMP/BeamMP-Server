@@ -111,7 +111,6 @@ void TConsole::StartLoggingToFile() {
         // sanitize the string by removing all ANSI control codes (like color, etc)
         std::string Sanitized;
         Sanitized.reserve(ToWrite.size());
-        EscState state;
         for (size_t i = 0; i < ToWrite.size(); ++i) {
             if (i + 1 < ToWrite.size()
                 && ToWrite[i] == 0x1b) { // starts ANSI escape sequence
