@@ -119,15 +119,14 @@ int BeamMPServerMain(MainArguments Arguments) {
     }
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
-    bool Success = Application::Console().Internal().enable_write_to_file("Server.log");
-    if (!Success) {
-        beammp_error("unable to open file for writing: \"Server.log\"");
-    }
+
+    Application::Console().StartLoggingToFile();
 
     SetupSignalHandlers();
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {
+        beammp_info("If this takes too long, you can press Ctrl+C repeatedly to force a shutdown.");
         Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
         Shutdown = true;
     });
@@ -172,6 +171,10 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::SetSubsystemStatus("Main", Application::Status::Good);
     RegisterThread("Main(Waiting)");
 
+    std::set<std::string> IgnoreSubsystems {
+        "UpdateCheck" // Ignore as not to confuse users (non-vital system)
+    };
+
     bool FullyStarted = false;
     while (!Shutdown) {
         if (!FullyStarted) {
@@ -180,6 +183,9 @@ int BeamMPServerMain(MainArguments Arguments) {
             std::string SystemsBadList {};
             auto Statuses = Application::GetSubsystemStatuses();
             for (const auto& NameStatusPair : Statuses) {
+                if (IgnoreSubsystems.count(NameStatusPair.first) > 0) {
+                    continue; // ignore
+                }
                 if (NameStatusPair.second == Application::Status::Starting) {
                     FullyStarted = false;
                 } else if (NameStatusPair.second == Application::Status::Bad) {

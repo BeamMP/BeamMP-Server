@@ -92,7 +92,7 @@ private:
     std::queue<std::string> mPacketsSync;
     std::unordered_map<std::string, std::string> mIdentifiers;
     bool mIsGuest = false;
-    std::mutex mVehicleDataMutex;
+    mutable std::mutex mVehicleDataMutex;
     TSetOfVehicleData mVehicleData;
     std::string mName = "Unknown Client";
     SOCKET mSocket[2] { SOCKET(0), SOCKET(0) };

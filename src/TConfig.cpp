@@ -30,6 +30,7 @@ static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
 static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
+static constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
 
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
@@ -87,8 +88,10 @@ void TConfig::FlushToFile() {
     data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
     data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
     data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    SetComment(data["HTTP"][StrHTTPServerIP.data()].comments(), " Which IP to listen on. Pick 0.0.0.0 for a public-facing server with no specific IP, and 127.0.0.1 or 'localhost' for a local server.");
+    data["HTTP"][StrHTTPServerIP.data()] = Application::Settings.HTTPServerIP;
     data["HTTP"][StrHTTPServerUseSSL.data()] = Application::Settings.HTTPServerUseSSL;
-    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to keep enabled. With SSL the server will serve https and requires valid key and cert files");
+    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to have enabled for servers which face the internet. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
     std::ofstream Stream(mConfigFileName, std::ios::trunc | std::ios::out);
@@ -176,6 +179,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
         TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
         TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
+        TryReadValue(data, "HTTP", StrHTTPServerIP, Application::Settings.HTTPServerIP);
         TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
         TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
     } catch (const std::exception& err) {
@@ -215,6 +219,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
     beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
     beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
+    beammp_debug(std::string(StrHTTPServerIP) + ": \"" + Application::Settings.HTTPServerIP + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }

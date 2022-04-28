@@ -165,7 +165,7 @@ void TNetwork::TCPServerMain() {
             // set timeout
             size_t SendTimeoutMS = 30 * 1000;
 #if defined(BEAMMP_WINDOWS)
-            ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+            int ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&SendTimeoutMS), sizeof(SendTimeoutMS));
 #else // POSIX
             struct timeval optval;
             optval.tv_sec = (int)(SendTimeoutMS / 1000);

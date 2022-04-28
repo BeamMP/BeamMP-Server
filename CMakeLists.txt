@@ -88,7 +88,11 @@ add_subdirectory("deps/sentry-native")
 set(CMAKE_CXX_STANDARD 17)
 
 # ------------------------ DEPENDENCIES ------------------------------
+message(STATUS "Adding local source dependencies")
+# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 add_subdirectory(deps)
+
+# ------------------------ BEAMMP SERVER -----------------------------
 
 add_executable(BeamMP-Server
         src/main.cpp
