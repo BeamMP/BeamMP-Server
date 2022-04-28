@@ -20,7 +20,7 @@ jobs:
         with:
             vcpkgArguments: 'lua zlib rapidjson openssl websocketpp curl'
             vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-            vcpkgGitCommitId: 'master'
+            vcpkgGitCommitId: 'a106de33bbee694e3be6243718aa2a549a692832'
             vcpkgTriplet: 'x64-windows-static'
 
       - name: Create Build Environment
