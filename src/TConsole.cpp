@@ -97,14 +97,6 @@ void TConsole::BackupOldLog() {
     }
 }
 
-enum EscState {
-    None,
-    Escape,
-    FeSeqStart,
-    FeSeqMid,
-    SeqEnd
-};
-
 void TConsole::StartLoggingToFile() {
     mLogFileStream.open("Server.log");
     Application::Console().Internal().on_write = [this](const std::string& ToWrite) {
