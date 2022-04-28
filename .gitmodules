@@ -1,27 +1,3 @@
 [submodule "deps/commandline"]
 	path = deps/commandline
 	url = https://github.com/lionkor/commandline
-[submodule "deps/asio"]
-	path = deps/asio
-	url = https://github.com/chriskohlhoff/asio
-[submodule "deps/rapidjson"]
-	path = deps/rapidjson
-	url = https://github.com/Tencent/rapidjson
-[submodule "deps/toml11"]
-	path = deps/toml11
-	url = https://github.com/ToruNiina/toml11
-[submodule "deps/sentry-native"]
-	path = deps/sentry-native
-	url = https://github.com/getsentry/sentry-native
-[submodule "deps/sol2"]
-	path = deps/sol2
-	url = https://github.com/ThePhD/sol2
-[submodule "deps/libzip"]
-	path = deps/libzip
-	url = https://github.com/nih-at/libzip
-[submodule "deps/cpp-httplib"]
-	path = deps/cpp-httplib
-	url = https://github.com/yhirose/cpp-httplib
-[submodule "deps/json"]
-	path = deps/json
-	url = https://github.com/nlohmann/json
