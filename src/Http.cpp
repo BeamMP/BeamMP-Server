@@ -157,6 +157,20 @@ void Http::Server::THttpServerInstance::operator()() try {
     HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
+    HttpLibServerInstance->Get(API_V1 "/config", [](const httplib::Request&, httplib::Response& res) {
+        res.status = 200;
+        res.set_content(json {
+                            { "name", Application::Settings.ServerName },
+                            { "description", Application::Settings.ServerDesc },
+                            { "max_players", Application::Settings.MaxPlayers },
+                            { "max_cars", Application::Settings.MaxCars },
+                            { "map", Application::Settings.MapName },
+                            { "private", Application::Settings.Private },
+                        }
+                            .dump(),
+            "application/json");
+    });
+
     HttpLibServerInstance->Get(API_V1 "/ready", [](const httplib::Request&, httplib::Response& res) {
         auto Statuses = Application::GetSubsystemStatuses();
         bool Started = true;

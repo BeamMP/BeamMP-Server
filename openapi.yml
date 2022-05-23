@@ -13,6 +13,37 @@ servers:
       port:
         default: "8000"
 paths:
+  /config:
+    get:
+      summary: describes server configuration
+      description: |
+        An overview over the configuration currently
+        used by this server.
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "my awesome beammp server"
+                  description:
+                    type: string
+                    example: "join!"
+                  max_players:
+                    type: integer
+                    example: 7
+                  max_cars:
+                    type: integer
+                    example: 2
+                  map:
+                    type: string
+                    example: "/levels/gridmap_v2/info.json"
+                  private:
+                    type: boolean
   /ready:
     get:
       summary: whether the server has started fully
