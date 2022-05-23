@@ -1,12 +1,36 @@
 openapi: "3.0.2"
 info:
-  title: API Title
+  title: BeamMP-Server
   version: "1.0"
+  description: |
+    The BeamMP-Server optionally runs an HTTP server
+    which can be used to query information about the server's 
+    status, health, players, etc.
 servers:
-  - url: https://localhost:8000/v1
+  - url: http://localhost:{port}/v1
+    description: local BeamMP-Server
+    variables:
+      port:
+        default: "8000"
 paths:
+  /ready:
+    get:
+      summary: whether the server has started fully
+      description: |
+        True once all subsystems have started up.
+        This doesn't tell you whether they're healthy, 
+        check /health for that information.
+      responses:
+        "200":
+          description: OK
+          content:
+            "text/plain":
+              schema:
+                type: boolean
+
   /health:
     get:
+      summary: health of the server's systems
       responses:
         "200":
           description: OK

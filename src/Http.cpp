@@ -157,6 +157,25 @@ void Http::Server::THttpServerInstance::operator()() try {
     HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
+    HttpLibServerInstance->Get(API_V1 "/ready", [](const httplib::Request&, httplib::Response& res) {
+        auto Statuses = Application::GetSubsystemStatuses();
+        bool Started = true;
+        for (const auto& NameStatusPair : Statuses) {
+            switch (NameStatusPair.second) {
+            case Application::Status::Starting:
+            case Application::Status::ShuttingDown:
+            case Application::Status::Shutdown:
+                Started = false;
+                break;
+            case Application::Status::Good:
+            case Application::Status::Bad:
+                break;
+            }
+        }
+        res.status = 200;
+        res.set_content(Started ? "true" : "false", "text/plain");
+    });
+
     HttpLibServerInstance->Get(API_V1 "/health", [](const httplib::Request&, httplib::Response& res) {
         size_t SystemsGood = 0;
         size_t SystemsBad = 0;
