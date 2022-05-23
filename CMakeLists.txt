@@ -32,6 +32,7 @@ include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
 include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
 include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
 include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
+include_directories("${PROJECT_SOURCE_DIR}/deps/toml11")
 include_directories("${PROJECT_SOURCE_DIR}/deps/json/single_include")
 include_directories("${PROJECT_SOURCE_DIR}/deps")
 
