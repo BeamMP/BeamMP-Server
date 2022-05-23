@@ -189,8 +189,15 @@ void Http::Server::THttpServerInstance::operator()() try {
     HttpLibServerInstance->set_logger([](const httplib::Request& Req, const httplib::Response& Res) {
         beammp_debug("Http Server: " + Req.method + " " + Req.target + " -> " + std::to_string(Res.status));
     });
-    HttpLibServerInstance->set_exception_handler([](const httplib::Request& Req, const httplib::Response& Res) {
-        beammp_error()
+    HttpLibServerInstance->set_error_handler([](const httplib::Request&, httplib::Response& Res) {
+        if (Res.status >= 400 && Res.body.empty()) {
+            Res.set_content("Error: " + std::to_string(Res.status) + " " + Map.at(Res.status), "text/plain");
+        }
+    });
+    HttpLibServerInstance->set_exception_handler([](const httplib::Request& Req, httplib::Response& Res, std::exception& e) {
+        Res.status = 500;
+        Res.set_content("Internal Server Error", "text/plain");
+        beammp_errorf("Exception in http server serving '{}': {}", Req.target, e.what());
     });
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
     auto ret = HttpLibServerInstance->listen(Application::Settings.HTTPServerIP.c_str(), Application::Settings.HTTPServerPort);
