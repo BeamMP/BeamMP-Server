@@ -1,18 +1,55 @@
 openapi: "3.0.2"
 info:
   title: BeamMP-Server
-  version: "1.0"
+  version: "api-v1"
   description: |
     The BeamMP-Server optionally runs an HTTP server
     which can be used to query information about the server's 
     status, health, players, etc.
 servers:
-  - url: http://localhost:{port}/v1
-    description: local BeamMP-Server
+  - url: http://localhost:{port}/api/v1
+    description: BeamMP-Server API v1
     variables:
       port:
         default: "8000"
+
 paths:
+  /player/{name}/vehicles:
+    parameters:
+      - name: "name"
+        in: path
+        required: true
+        schema:
+          type: string
+          example: "LionKor"
+    get:
+      summary: vehicles this player has spawend
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    jbm:
+                      type: string
+                      example: "bolide"
+  /version:
+    get:
+      summary: server version
+      description: |
+        Server version in 'major.minor.patch' semver format
+      responses:
+        "200":
+          description: OK
+          content:
+            "text/plain":
+              schema:
+                type: string
+                example: "3.1.0"
   /players:
     get:
       summary: list of players on this server
@@ -73,7 +110,6 @@ paths:
             "text/plain":
               schema:
                 type: boolean
-
   /health:
     get:
       summary: health of the server's systems
