@@ -17,12 +17,17 @@ static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+
+// Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
-static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+static constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
 
 // HTTP
+static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
+static constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
 
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
@@ -56,7 +61,6 @@ void SetComment(CommentsT& Comments, const std::string& Comment) {
  */
 void TConfig::FlushToFile() {
     auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
-    data["General"] = toml::table();
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
@@ -68,14 +72,20 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
-    data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
-    SetComment(data["General"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
-    data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    SetComment(data["General"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    // Misc
+    data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
+    SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
+    data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    SetComment(data["Misc"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
+    data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
+    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    // HTTP
     data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    SetComment(data["HTTP"][StrHTTPServerIP.data()].comments(), " Which IP to listen on. Pick 0.0.0.0 for a public-facing server with no specific IP, and 127.0.0.1 or 'localhost' for a local server.");
+    data["HTTP"][StrHTTPServerIP.data()] = Application::Settings.HTTPServerIP;
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
-    std::ofstream Stream(mConfigFileName);
+    std::ofstream Stream(mConfigFileName, std::ios::trunc | std::ios::out);
     Stream << data << std::flush;
 }
 
@@ -151,10 +161,13 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
-        TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
-        TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
+        // Misc
+        TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
         // HTTP
         TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
+        TryReadValue(data, "HTTP", StrHTTPServerIP, Application::Settings.HTTPServerIP);
         TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
@@ -190,6 +203,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
+    beammp_debug(std::string(StrHTTPServerIP) + ": \"" + Application::Settings.HTTPServerIP + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }

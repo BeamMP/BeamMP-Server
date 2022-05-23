@@ -72,7 +72,7 @@ void TSentry::Log(SentryLevel level, const std::string& logger, const std::strin
     SetContext("threads", { { "thread-name", ThreadName(true) } });
     auto Msg = sentry_value_new_message_event(sentry_level_t(level), logger.c_str(), text.c_str());
     sentry_capture_event(Msg);
-    sentry_remove_transaction();
+    sentry_set_transaction(nullptr);
 }
 
 void TSentry::LogError(const std::string& text, const std::string& file, const std::string& line) {

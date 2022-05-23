@@ -42,7 +42,7 @@ public:
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};
         bool HTTPServerEnabled { false };
-        int MaxPlayers { 10 };
+        int MaxPlayers { 8 };
         bool Private { true };
         int MaxCars { 1 };
         bool DebugModeEnabled { false };
@@ -51,7 +51,9 @@ public:
         bool SendErrors { true };
         bool SendErrorsMessageEnabled { true };
         int HTTPServerPort { 8080 };
-        bool HTTPServerUseSSL { true };
+        std::string HTTPServerIP { "127.0.0.1" };
+        bool HTTPServerUseSSL { false };
+        bool HideUpdateMessages { false };
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
 
@@ -118,7 +120,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 0, 1 };
+    static inline Version mVersion { 3, 0, 2 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);

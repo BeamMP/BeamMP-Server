@@ -97,6 +97,17 @@ void TConsole::BackupOldLog() {
     }
 }
 
+void TConsole::StartLoggingToFile() {
+    mLogFileStream.open("Server.log");
+    Application::Console().Internal().on_write = [this](const std::string& ToWrite) {
+        // TODO: Sanitize by removing all ansi escape codes (vt100)
+        std::unique_lock Lock(mLogFileStreamMtx);
+        mLogFileStream.write(ToWrite.c_str(), ToWrite.size());
+        mLogFileStream.write("\n", 1);
+        mLogFileStream.flush();
+    };
+}
+
 void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
     if (!mIsLuaConsole) {
         if (!mLuaEngine) {

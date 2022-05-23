@@ -148,7 +148,7 @@ Http::Server::THttpServerInstance::THttpServerInstance() {
     mThread.detach();
 }
 
-void Http::Server::THttpServerInstance::operator()() {
+void Http::Server::THttpServerInstance::operator()() try {
     beammp_info("HTTP Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
     std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
     // todo: make this IP agnostic so people can set their own IP
@@ -184,6 +184,14 @@ void Http::Server::THttpServerInstance::operator()() {
     HttpLibServerInstance->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::string(Magic), "text/plain");
     });
+    HttpLibServerInstance->set_logger([](const httplib::Request& Req, const httplib::Response& Res) {
+        beammp_debug("Http Server: " + Req.method + " " + Req.target + " -> " + std::to_string(Res.status));
+    });
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
-    HttpLibServerInstance->listen("0.0.0.0", Application::Settings.HTTPServerPort);
+    auto ret = HttpLibServerInstance->listen(Application::Settings.HTTPServerIP.c_str(), Application::Settings.HTTPServerPort);
+    if (!ret) {
+        beammp_error("Failed to start http server (failed to listen). Please ensure the http server is configured properly in the ServerConfig.toml, or turn it off if you don't need it.");
+    }
+} catch (const std::exception& e) {
+    beammp_error("Failed to start http server. Please ensure the http server is configured properly in the ServerConfig.toml, or turn it off if you don't need it. Error: " + std::string(e.what()));
 }

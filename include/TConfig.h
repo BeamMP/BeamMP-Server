@@ -5,7 +5,7 @@
 #include <atomic>
 
 #define TOML11_PRESERVE_COMMENTS_BY_DEFAULT
-#include <toml11/toml.hpp> // header-only version of TOML++
+#include <toml.hpp> // header-only version of TOML++
 
 namespace fs = std::filesystem;
 
