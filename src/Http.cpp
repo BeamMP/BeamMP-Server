@@ -148,6 +148,8 @@ Http::Server::THttpServerInstance::THttpServerInstance() {
     mThread.detach();
 }
 
+#define API_V1 "/v1"
+
 void Http::Server::THttpServerInstance::operator()() try {
     beammp_info("HTTP Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
     std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
@@ -155,7 +157,7 @@ void Http::Server::THttpServerInstance::operator()() try {
     HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
-    HttpLibServerInstance->Get("/health", [](const httplib::Request&, httplib::Response& res) {
+    HttpLibServerInstance->Get(API_V1 "/health", [](const httplib::Request&, httplib::Response& res) {
         size_t SystemsGood = 0;
         size_t SystemsBad = 0;
         auto Statuses = Application::GetSubsystemStatuses();
@@ -186,6 +188,9 @@ void Http::Server::THttpServerInstance::operator()() try {
     });
     HttpLibServerInstance->set_logger([](const httplib::Request& Req, const httplib::Response& Res) {
         beammp_debug("Http Server: " + Req.method + " " + Req.target + " -> " + std::to_string(Res.status));
+    });
+    HttpLibServerInstance->set_exception_handler([](const httplib::Request& Req, const httplib::Response& Res) {
+        beammp_error()
     });
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
     auto ret = HttpLibServerInstance->listen(Application::Settings.HTTPServerIP.c_str(), Application::Settings.HTTPServerPort);
