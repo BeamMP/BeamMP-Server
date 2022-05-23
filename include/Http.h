@@ -17,6 +17,10 @@
 
 namespace fs = std::filesystem;
 
+class TServer;
+class TNetwork;
+class TResourceManager;
+
 namespace Http {
 std::string GET(const std::string& host, int port, const std::string& target, unsigned int* status = nullptr);
 std::string POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status = nullptr, const httplib::Headers& headers = {});
@@ -28,7 +32,8 @@ const std::string ErrorString = "-1";
 namespace Server {
     class THttpServerInstance {
     public:
-        THttpServerInstance();
+        THttpServerInstance(TServer&, TNetwork&, TResourceManager&);
+        ~THttpServerInstance();
         static fs::path KeyFilePath;
         static fs::path CertFilePath;
 
@@ -37,6 +42,9 @@ namespace Server {
 
     private:
         std::thread mThread;
+        TServer& mServer;
+        TNetwork& mNetwork;
+        TResourceManager& mResourceManager;
     };
 }
 }

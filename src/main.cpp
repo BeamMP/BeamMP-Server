@@ -163,8 +163,12 @@ int BeamMPServerMain(MainArguments Arguments) {
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
 
+    std::unique_ptr<Http::Server::THttpServerInstance> HttpServer;
     if (Application::Settings.HTTPServerEnabled) {
-        Http::Server::THttpServerInstance HttpServerInstance {};
+        HttpServer = std::make_unique<Http::Server::THttpServerInstance>(
+            Server,
+            Network,
+            ResourceManager);
     }
 
     Application::SetSubsystemStatus("Main", Application::Status::Good);

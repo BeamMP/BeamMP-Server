@@ -4,6 +4,9 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "LuaAPI.h"
+#include "TNetwork.h"
+#include "TResourceManager.h"
+#include "TServer.h"
 #include "httplib.h"
 
 #include <map>
@@ -142,13 +145,19 @@ std::string Http::Status::ToString(int Code) {
     }
 }
 
-Http::Server::THttpServerInstance::THttpServerInstance() {
+#define API_V1 "/api/v1"
+
+Http::Server::THttpServerInstance::THttpServerInstance(TServer& Server, TNetwork& Network, TResourceManager& ResMan)
+    : mServer(Server)
+    , mNetwork(Network)
+    , mResourceManager(ResMan) {
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Starting);
     mThread = std::thread(&Http::Server::THttpServerInstance::operator(), this);
-    mThread.detach();
 }
 
-#define API_V1 "/v1"
+Http::Server::THttpServerInstance::~THttpServerInstance() {
+    mThread.detach();
+}
 
 void Http::Server::THttpServerInstance::operator()() try {
     beammp_infof("HTTP Server starting on [{}]:{}", Application::Settings.HTTPServerIP, Application::Settings.HTTPServerPort);
@@ -159,20 +168,23 @@ void Http::Server::THttpServerInstance::operator()() try {
         beammp_warnf("HTTP Server is running on a possibly public IP ({}), but the server is private. The server's HTTP API supports viewing config, players, and other information, even though the server is private. (this is not an error)", Application::Settings.HTTPServerIP);
     }
     std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
-    // todo: make this IP agnostic so people can set their own IP
-    HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
-    });
 
-    HttpLibServerInstance->Get(API_V1 "/players", [](const httplib::Request&, httplib::Response& res) {
+    HttpLibServerInstance->Get(API_V1 "/players", [this](const httplib::Request&, httplib::Response& res) {
         res.status = 200;
         json Players = json::array();
-        LuaAPI::MP::Engine->Server().ForEachClient([&](std::weak_ptr<TClient> ClientPtr) {
-            Players.push_back(ClientPtr.lock()->GetName());
+        mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) {
+            if (!ClientPtr.expired()) {
+                Players.push_back(ClientPtr.lock()->GetName());
+            }
             return true;
         });
         res.set_content(Players.dump(),
             "application/json");
+    });
+
+    HttpLibServerInstance->Get(API_V1 "/version", [](const httplib::Request&, httplib::Response& res) {
+        res.status = 200;
+        res.set_content(Application::ServerVersionString(), "text/plain");
     });
 
     HttpLibServerInstance->Get(API_V1 "/config", [](const httplib::Request&, httplib::Response& res) {
