@@ -13,6 +13,21 @@ servers:
       port:
         default: "8000"
 paths:
+  /players:
+    get:
+      summary: list of players on this server
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: array
+                example:
+                  - "LionKor"
+                  - "Titch"
+                items:
+                  type: string
   /config:
     get:
       summary: describes server configuration

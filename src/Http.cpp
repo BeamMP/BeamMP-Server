@@ -151,12 +151,30 @@ Http::Server::THttpServerInstance::THttpServerInstance() {
 #define API_V1 "/v1"
 
 void Http::Server::THttpServerInstance::operator()() try {
-    beammp_info("HTTP Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
+    beammp_infof("HTTP Server starting on [{}]:{}", Application::Settings.HTTPServerIP, Application::Settings.HTTPServerPort);
+    if (Application::Settings.Private
+        && Application::Settings.HTTPServerIP != "::"
+        && Application::Settings.HTTPServerIP != "localhost"
+        && Application::Settings.HTTPServerIP != "127.0.0.1") {
+        beammp_warnf("HTTP Server is running on a possibly public IP ({}), but the server is private. The server's HTTP API supports viewing config, players, and other information, even though the server is private. (this is not an error)", Application::Settings.HTTPServerIP);
+    }
     std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
     // todo: make this IP agnostic so people can set their own IP
     HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
     });
+
+    HttpLibServerInstance->Get(API_V1 "/players", [](const httplib::Request&, httplib::Response& res) {
+        res.status = 200;
+        json Players = json::array();
+        LuaAPI::MP::Engine->Server().ForEachClient([&](std::weak_ptr<TClient> ClientPtr) {
+            Players.push_back(ClientPtr.lock()->GetName());
+            return true;
+        });
+        res.set_content(Players.dump(),
+            "application/json");
+    });
+
     HttpLibServerInstance->Get(API_V1 "/config", [](const httplib::Request&, httplib::Response& res) {
         res.status = 200;
         res.set_content(json {
