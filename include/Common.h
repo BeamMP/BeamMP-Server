@@ -8,6 +8,7 @@ extern TSentry Sentry;
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <fmt/format.h>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -48,6 +49,7 @@ public:
         bool DebugModeEnabled { false };
         int Port { 30814 };
         std::string CustomIP {};
+        bool LogChat { true };
         bool SendErrors { true };
         bool SendErrorsMessageEnabled { true };
         int HTTPServerPort { 8080 };
@@ -120,7 +122,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 0, 2 };
+    static inline Version mVersion { 3, 1, 0 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);
@@ -144,6 +146,10 @@ void RegisterThread(const std::string& str);
 #define _function_name std::string(__PRETTY_FUNCTION__)
 #else
 #define _function_name std::string(__func__)
+#endif
+
+#ifndef NDEBUG
+#define DEBUG
 #endif
 
 #if defined(DEBUG)
@@ -206,6 +212,13 @@ void RegisterThread(const std::string& str);
 #else
 #define beammp_trace(x)
 #endif // defined(DEBUG)
+
+#define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
+#define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
+#define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
+#define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
+#define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
+#define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);
 

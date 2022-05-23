@@ -3,6 +3,8 @@
 #include "Common.h"
 #include "TLuaEngine.h"
 
+#include <nlohmann/json.hpp>
+
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
 
@@ -100,24 +102,29 @@ void LuaAPI::Print(sol::variadic_args Args) {
     luaprint(ToPrint);
 }
 
-bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
+static inline bool InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
     std::string Packet = "E:" + EventName + ":" + Data;
     if (PlayerID == -1)
-        Engine->Network().SendToAll(nullptr, Packet, true, true);
+        LuaAPI::MP::Engine->Network().SendToAll(nullptr, Packet, true, true);
     else {
-        auto MaybeClient = GetClient(Engine->Server(), PlayerID);
+        auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
         if (!MaybeClient || MaybeClient.value().expired()) {
             beammp_lua_error("TriggerClientEvent invalid Player ID");
             return false;
         }
         auto c = MaybeClient.value().lock();
-        if (!Engine->Network().Respond(*c, Packet, true)) {
+        if (!LuaAPI::MP::Engine->Network().Respond(*c, Packet, true)) {
             beammp_lua_error("Respond failed, dropping client " + std::to_string(PlayerID));
-            Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
+            LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
             return false;
         }
     }
     return true;
+}
+
+bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& DataObj) {
+    std::string Data = DataObj.as<std::string>();
+    return InternalTriggerClientEvent(PlayerID, EventName, Data);
 }
 
 void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
@@ -351,4 +358,158 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     }
     auto Result = Path.lexically_normal().string();
     return Result;
+}
+
+static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, bool is_array, size_t depth = 0) {
+    if (depth > 100) {
+        beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
+        return;
+    }
+    std::string key;
+    switch (left.get_type()) {
+    case sol::type::lua_nil:
+    case sol::type::none:
+    case sol::type::poly:
+    case sol::type::boolean:
+    case sol::type::lightuserdata:
+    case sol::type::userdata:
+    case sol::type::thread:
+    case sol::type::function:
+    case sol::type::table:
+        beammp_lua_error("JsonEncode: left side of table field is unexpected type");
+        return;
+    case sol::type::string:
+        key = left.as<std::string>();
+        break;
+    case sol::type::number:
+        key = std::to_string(left.as<double>());
+        break;
+    }
+    nlohmann::json value;
+    switch (right.get_type()) {
+    case sol::type::lua_nil:
+    case sol::type::none:
+        return;
+    case sol::type::poly:
+        beammp_lua_warn("unsure what to do with poly type in JsonEncode, ignoring");
+        return;
+    case sol::type::boolean:
+        value = right.as<bool>();
+        break;
+    case sol::type::lightuserdata:
+        beammp_lua_warn("unsure what to do with lightuserdata in JsonEncode, ignoring");
+        return;
+    case sol::type::userdata:
+        beammp_lua_warn("unsure what to do with userdata in JsonEncode, ignoring");
+        return;
+    case sol::type::thread:
+        beammp_lua_warn("unsure what to do with thread in JsonEncode, ignoring");
+        return;
+    case sol::type::string:
+        value = right.as<std::string>();
+        break;
+    case sol::type::number:
+        value = right.as<double>();
+        break;
+    case sol::type::function:
+        beammp_lua_warn("unsure what to do with function in JsonEncode, ignoring");
+        return;
+    case sol::type::table: {
+        bool local_is_array = true;
+        for (const auto& pair : right.as<sol::table>()) {
+            if (pair.first.get_type() != sol::type::number) {
+                local_is_array = false;
+            }
+        }
+        for (const auto& pair : right.as<sol::table>()) {
+            JsonEncodeRecursive(value, pair.first, pair.second, local_is_array, depth + 1);
+        }
+        break;
+    }
+    }
+    if (is_array) {
+        json.push_back(value);
+    } else {
+        json[key] = value;
+    }
+}
+
+std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
+    nlohmann::json json;
+    // table
+    bool is_array = true;
+    for (const auto& pair : object.as<sol::table>()) {
+        if (pair.first.get_type() != sol::type::number) {
+            is_array = false;
+        }
+    }
+    for (const auto& entry : object) {
+        JsonEncodeRecursive(json, entry.first, entry.second, is_array);
+    }
+    return json.dump();
+}
+
+std::string LuaAPI::MP::JsonDiff(const std::string& a, const std::string& b) {
+    if (!nlohmann::json::accept(a)) {
+        beammp_lua_error("JsonDiff first argument is not valid json: `" + a + "`");
+        return "";
+    }
+    if (!nlohmann::json::accept(b)) {
+        beammp_lua_error("JsonDiff second argument is not valid json: `" + b + "`");
+        return "";
+    }
+    auto a_json = nlohmann::json::parse(a);
+    auto b_json = nlohmann::json::parse(b);
+    return nlohmann::json::diff(a_json, b_json).dump();
+}
+
+std::string LuaAPI::MP::JsonDiffApply(const std::string& data, const std::string& patch) {
+    if (!nlohmann::json::accept(data)) {
+        beammp_lua_error("JsonDiffApply first argument is not valid json: `" + data + "`");
+        return "";
+    }
+    if (!nlohmann::json::accept(patch)) {
+        beammp_lua_error("JsonDiffApply second argument is not valid json: `" + patch + "`");
+        return "";
+    }
+    auto a_json = nlohmann::json::parse(data);
+    auto b_json = nlohmann::json::parse(patch);
+    a_json.patch(b_json);
+    return a_json.dump();
+}
+
+std::string LuaAPI::MP::JsonPrettify(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonPrettify argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).dump(4);
+}
+
+std::string LuaAPI::MP::JsonMinify(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonMinify argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).dump(-1);
+}
+
+std::string LuaAPI::MP::JsonFlatten(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonFlatten argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).flatten().dump(-1);
+}
+
+std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonUnflatten argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).unflatten().dump(-1);
+}
+
+bool LuaAPI::MP::TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data) {
+    return InternalTriggerClientEvent(PlayerID, EventName, JsonEncode(Data));
 }

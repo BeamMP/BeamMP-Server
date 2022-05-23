@@ -1,3 +1,11 @@
+# v3.1.0
+
+- ADDED Tab autocomplete in console, smart tab autocomplete (understands lua tables and types) in the lua console
+- ADDED lua debug facilities (type `:help` when attached to lua via `lua`)
+- ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
+- ADDED FS.ListFiles and FS.ListDirectories
+- FIXED issue with client->server events which contain ':'
+
 # v3.0.2
 
 - ADDED Periodic update message if a new server is released

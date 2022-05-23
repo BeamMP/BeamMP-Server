@@ -125,7 +125,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
             break;
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Packet.substr(Packet.find(':', 3) + 2));
         TLuaEngine::WaitForAll(Futures);
-        LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), Packet.substr(Packet.find(':', 3) + 1)); // FIXME: this needs to be adjusted once lua is merged
+        LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), Packet.substr(Packet.find(':', 3) + 1));
         if (std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Elem) {
                     return !Elem->Error
@@ -150,26 +150,18 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     }
 }
 
-void TServer::HandleEvent(TClient& c, const std::string& Data) {
-    std::stringstream ss(Data);
-    std::string t, Name;
-    int a = 0;
-    while (std::getline(ss, t, ':')) {
-        switch (a) {
-        case 1:
-            Name = t;
-            break;
-        case 2:
-            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), t));
-            break;
-        default:
-            break;
-        }
-        if (a == 2)
-            break;
-        a++;
+void TServer::HandleEvent(TClient& c, const std::string& RawData) {
+    // E:Name:Data
+    // Data is allowed to have ':'
+    auto NameDataSep = RawData.find(':', 2);
+    if (NameDataSep == std::string::npos) {
+        beammp_warn("received event in invalid format (missing ':'), got: '" + RawData + "'");
     }
+    std::string Name = RawData.substr(2, NameDataSep - 2);
+    std::string Data = RawData.substr(NameDataSep + 1);
+    LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), Data));
 }
+
 bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
     try {
         auto Car = nlohmann::json::parse(CarJson);

@@ -11,6 +11,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <set>
 #include <toml.hpp>
 #include <unordered_map>
@@ -33,8 +34,8 @@ static constexpr size_t TLuaArgTypes_Bool = 3;
 class TLuaPlugin;
 
 struct TLuaResult {
-    std::atomic_bool Ready;
-    std::atomic_bool Error;
+    bool Ready;
+    bool Error;
     std::string ErrorMessage;
     sol::object Result { sol::lua_nil };
     TLuaStateId StateId;
@@ -102,6 +103,7 @@ public:
         std::unique_lock Lock(mResultsToCheckMutex);
         return mResultsToCheck.size();
     }
+
     size_t GetLuaStateCount() {
         std::unique_lock Lock(mLuaStatesMutex);
         return mLuaStates.size();
@@ -166,6 +168,14 @@ public:
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
+    std::vector<std::string> GetStateGlobalKeysForState(TLuaStateId StateId);
+
+    // Debugging functions (slow)
+    std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
+    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
+    std::vector<QueuedFunction> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
+    std::vector<TLuaResult> Debug_GetResultsToCheckForState(TLuaStateId StateId);
+
 private:
     void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
@@ -185,6 +195,12 @@ private:
         void operator()() override;
         sol::state_view State() { return sol::state_view(mState); }
 
+        std::vector<std::string> GetStateGlobalKeys();
+
+        // Debug functions, slow
+        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
+        std::vector<TLuaEngine::QueuedFunction> Debug_GetStateFunctionQueue();
+
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs);
@@ -193,7 +209,10 @@ private:
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
+        sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
+        sol::table Lua_FS_ListFiles(const std::string& Path);
+        sol::table Lua_FS_ListDirectories(const std::string& Path);
 
         std::string mName;
         std::atomic_bool& mShutdown;
@@ -209,6 +228,8 @@ private:
         sol::state_view mStateView { mState };
         std::queue<fs::path> mPaths;
         std::recursive_mutex mPathsMutex;
+        std::mt19937 mMersenneTwister;
+        std::uniform_real_distribution<double> mUniformRealDistribution01;
     };
 
     struct TimedEvent {

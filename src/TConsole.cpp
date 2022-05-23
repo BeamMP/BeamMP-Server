@@ -118,10 +118,10 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
         mStateId = LuaStateId;
         mIsLuaConsole = true;
         if (mStateId != mDefaultStateId) {
-            Application::Console().WriteRaw("Entered Lua console for state '" + mStateId + "'. To exit, type `exit()`");
+            Application::Console().WriteRaw("Attached to Lua state '" + mStateId + "'. For help, type `:help`. To detach, type `:detach`");
             mCommandline.set_prompt("lua @" + LuaStateId + "> ");
         } else {
-            Application::Console().WriteRaw("Entered Lua console. To exit, type `exit()`");
+            Application::Console().WriteRaw("Attached to Lua. For help, type `:help`. To detach, type `:detach`");
             mCommandline.set_prompt("lua> ");
         }
         mCachedRegularHistory = mCommandline.history();
@@ -133,9 +133,9 @@ void TConsole::ChangeToRegularConsole() {
     if (mIsLuaConsole) {
         mIsLuaConsole = false;
         if (mStateId != mDefaultStateId) {
-            Application::Console().WriteRaw("Left Lua console for state '" + mStateId + "'.");
+            Application::Console().WriteRaw("Detached from Lua state '" + mStateId + "'.");
         } else {
-            Application::Console().WriteRaw("Left Lua console.");
+            Application::Console().WriteRaw("Detached from Lua.");
         }
         mCachedLuaHistory = mCommandline.history();
         mCommandline.set_history(mCachedRegularHistory);
@@ -144,21 +144,54 @@ void TConsole::ChangeToRegularConsole() {
     }
 }
 
-void TConsole::Command_Lua(const std::string& cmd) {
-    if (cmd.size() > 3) {
-        auto NewStateId = cmd.substr(4);
+bool TConsole::EnsureArgsCount(const std::vector<std::string>& args, size_t n) {
+    if (n == 0 && args.size() != 0) {
+        Application::Console().WriteRaw("This command expects no arguments.");
+        return false;
+    } else if (args.size() != n) {
+        Application::Console().WriteRaw("Expected " + std::to_string(n) + " argument(s), instead got " + std::to_string(args.size()));
+        return false;
+    } else {
+        return true;
+    }
+}
+
+bool TConsole::EnsureArgsCount(const std::vector<std::string>& args, size_t min, size_t max) {
+    if (min == max) {
+        return EnsureArgsCount(args, min);
+    } else {
+        if (args.size() > max) {
+            Application::Console().WriteRaw("Too many arguments. At most " + std::to_string(max) + " arguments expected, got " + std::to_string(args.size()) + " instead.");
+            return false;
+        } else if (args.size() < min) {
+            Application::Console().WriteRaw("Too few arguments. At least " + std::to_string(max) + " arguments expected, got " + std::to_string(args.size()) + " instead.");
+            return false;
+        }
+    }
+    return true;
+}
+
+void TConsole::Command_Lua(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0, 1)) {
+        return;
+    }
+    if (args.size() == 1) {
+        auto NewStateId = args.at(0);
         beammp_assert(!NewStateId.empty());
         if (mLuaEngine->HasState(NewStateId)) {
             ChangeToLuaConsole(NewStateId);
         } else {
             Application::Console().WriteRaw("Lua state '" + NewStateId + "' is not a known state. Didn't switch to Lua.");
         }
-    } else {
+    } else if (args.size() == 0) {
         ChangeToLuaConsole(mDefaultStateId);
     }
 }
 
-void TConsole::Command_Help(const std::string&) {
+void TConsole::Command_Help(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
     static constexpr const char* sHelpString = R"(
     Commands:
         help                    displays this help
@@ -167,53 +200,127 @@ void TConsole::Command_Help(const std::string&) {
         list                    lists all players and info about them
         say <message>           sends the message to all players in chat
         lua [state id]          switches to lua, optionally into a specific state id's lua
+        settings [command]      sets or gets settings for the server, run `settings help` for more info
         status                  how the server is doing and what it's up to)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
-void TConsole::Command_Kick(const std::string& cmd) {
-    if (cmd.size() > 4) {
-        auto Name = cmd.substr(5);
-        std::string Reason = "Kicked by server console";
-        auto SpacePos = Name.find(' ');
-        if (SpacePos != Name.npos) {
-            Reason = Name.substr(SpacePos + 1);
-            Name = cmd.substr(5, cmd.size() - Reason.size() - 5 - 1);
+std::string TConsole::ConcatArgs(const std::vector<std::string>& args, char space) {
+    std::string Result;
+    for (const auto& arg : args) {
+        Result += arg + space;
+    }
+    Result = Result.substr(0, Result.size() - 1); // strip trailing space
+    return Result;
+}
+
+void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 1, size_t(-1))) {
+        return;
+    }
+    auto Name = args.at(0);
+    std::string Reason = "Kicked by server console";
+    if (args.size() > 1) {
+        Reason = ConcatArgs({ args.begin() + 1, args.end() });
+    }
+    beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
+    bool Kicked = false;
+    auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
+        std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = tolower(c); });
+        std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = tolower(c); });
+        return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
+    };
+    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto locked = Client.lock();
+            if (NameCompare(locked->GetName(), Name)) {
+                mLuaEngine->Network().ClientKick(*locked, Reason);
+                Kicked = true;
+                return false;
+            }
         }
-        beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
-        bool Kicked = false;
-        auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
-            std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = tolower(c); });
-            std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = tolower(c); });
-            return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
-        };
-        mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
-            if (!Client.expired()) {
-                auto locked = Client.lock();
-                if (NameCompare(locked->GetName(), Name)) {
-                    mLuaEngine->Network().ClientKick(*locked, Reason);
-                    Kicked = true;
-                    return false;
+        return true;
+    });
+    if (!Kicked) {
+        Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
+    } else {
+        Application::Console().WriteRaw("Kicked player '" + Name + "' for reason: '" + Reason + "'.");
+    }
+}
+
+std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const std::string& CommandWithArgs) {
+    // Algorithm designed and implemented by Lion Kortlepel (c) 2022
+    // It correctly splits arguments, including respecting single and double quotes, as well as backticks
+    auto End_i = CommandWithArgs.find_first_of(' ');
+    std::string Command = CommandWithArgs.substr(0, End_i);
+    std::string ArgsStr {};
+    if (End_i != std::string::npos) {
+        ArgsStr = CommandWithArgs.substr(End_i);
+    }
+    std::vector<std::string> Args;
+    char* PrevPtr = ArgsStr.data();
+    char* Ptr = ArgsStr.data();
+    const char* End = ArgsStr.data() + ArgsStr.size();
+    while (Ptr != End) {
+        std::string Arg = "";
+        // advance while space
+        while (Ptr != End && std::isspace(*Ptr))
+            ++Ptr;
+        PrevPtr = Ptr;
+        // advance while NOT space, also handle quotes
+        while (Ptr != End && !std::isspace(*Ptr)) {
+            // TODO: backslash escaping quotes
+            for (char Quote : { '"', '\'', '`' }) {
+                if (*Ptr == Quote) {
+                    // seek if there's a closing quote
+                    // if there is, go there and continue, otherwise ignore
+                    char* Seeker = Ptr + 1;
+                    while (Seeker != End && *Seeker != Quote)
+                        ++Seeker;
+                    if (Seeker != End) {
+                        // found closing quote
+                        Ptr = Seeker;
+                    }
+                    break; // exit for loop
                 }
             }
-            return true;
-        });
-        if (!Kicked) {
-            Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
-        } else {
-            Application::Console().WriteRaw("Kicked player '" + Name + "' for reason: '" + Reason + "'.");
+            ++Ptr;
+        }
+        Arg = std::string(PrevPtr, Ptr - PrevPtr);
+        // remove quotes if enclosed in quotes
+        for (char Quote : { '"', '\'', '`' }) {
+            if (!Arg.empty() && Arg.at(0) == Quote && Arg.at(Arg.size() - 1) == Quote) {
+                Arg = Arg.substr(1, Arg.size() - 2);
+                break;
+            }
+        }
+        if (!Arg.empty()) {
+            Args.push_back(Arg);
+        }
+    }
+    return { Command, Args };
+}
+
+void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
+}
+
+void TConsole::Command_Say(const std::string& FullCmd) {
+    if (FullCmd.size() > 3) {
+        auto Message = FullCmd.substr(4);
+        LuaAPI::MP::SendChatMessage(-1, Message);
+        if (!Application::Settings.LogChat) {
+            Application::Console().WriteRaw("Chat message sent!");
         }
     }
 }
 
-void TConsole::Command_Say(const std::string& cmd) {
-    if (cmd.size() > 3) {
-        auto Message = cmd.substr(4);
-        LuaAPI::MP::SendChatMessage(-1, Message);
+void TConsole::Command_List(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
     }
-}
-
-void TConsole::Command_List(const std::string&) {
     if (mLuaEngine->Server().ClientCount() == 0) {
         Application::Console().WriteRaw("No players online.");
     } else {
@@ -233,7 +340,10 @@ void TConsole::Command_List(const std::string&) {
     }
 }
 
-void TConsole::Command_Status(const std::string&) {
+void TConsole::Command_Status(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
     std::stringstream Status;
 
     size_t CarCount = 0;
@@ -318,12 +428,12 @@ void TConsole::Command_Status(const std::string&) {
            << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
            << "\tSubsystems:\n"
            << "\t\tGood/Starting/Bad:           " << SystemsGood << "/" << SystemsStarting << "/" << SystemsBad << "\n"
-           << "\t\tShutting down/Shutdown:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
+           << "\t\tShutting down/Shut down:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
            << "\t\tGood:                        [ " << SystemsGoodList << " ]\n"
            << "\t\tStarting:                    [ " << SystemsStartingList << " ]\n"
            << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
            << "\t\tShutting down:               [ " << SystemsShuttingDownList << " ]\n"
-           << "\t\tShutdown:                    [ " << SystemsShutdownList << " ]\n"
+           << "\t\tShut down:                    [ " << SystemsShutdownList << " ]\n"
            << "";
 
     Application::Console().WriteRaw(Status.str());
@@ -375,6 +485,58 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
     }
 }
 
+void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
+    if (cmd == "exit") {
+        ChangeToRegularConsole();
+    } else if (cmd == "queued") {
+        auto QueuedFunctions = LuaAPI::MP::Engine->Debug_GetStateFunctionQueueForState(mStateId);
+        Application::Console().WriteRaw("Pending functions in State '" + mStateId + "'");
+        std::unordered_map<std::string, size_t> FunctionsCount;
+        std::vector<std::string> FunctionsInOrder;
+        while (!QueuedFunctions.empty()) {
+            auto Tuple = QueuedFunctions.front();
+            QueuedFunctions.erase(QueuedFunctions.begin());
+            FunctionsInOrder.push_back(Tuple.FunctionName);
+            FunctionsCount[Tuple.FunctionName] += 1;
+        }
+        std::set<std::string> Uniques;
+        for (const auto& Function : FunctionsInOrder) {
+            if (Uniques.count(Function) == 0) {
+                Uniques.insert(Function);
+                if (FunctionsCount.at(Function) > 1) {
+                    Application::Console().WriteRaw("    " + Function + " (" + std::to_string(FunctionsCount.at(Function)) + "x)");
+                } else {
+                    Application::Console().WriteRaw("    " + Function);
+                }
+            }
+        }
+        Application::Console().WriteRaw("Executed functions waiting to be checked in State '" + mStateId + "'");
+        for (const auto& Function : LuaAPI::MP::Engine->Debug_GetResultsToCheckForState(mStateId)) {
+            Application::Console().WriteRaw("    '" + Function.Function + "' (Ready? " + (Function.Ready ? "Yes" : "No") + ", Error? " + (Function.Error ? "Yes: '" + Function.ErrorMessage + "'" : "No") + ")");
+        }
+    } else if (cmd == "events") {
+        auto Events = LuaAPI::MP::Engine->Debug_GetEventsForState(mStateId);
+        Application::Console().WriteRaw("Registered Events + Handlers for State '" + mStateId + "'");
+        for (const auto& EventHandlerPair : Events) {
+            Application::Console().WriteRaw("    Event '" + EventHandlerPair.first + "'");
+            for (const auto& Handler : EventHandlerPair.second) {
+                Application::Console().WriteRaw("        " + Handler);
+            }
+        }
+    } else if (cmd == "help") {
+        Application::Console().WriteRaw(R"(BeamMP Lua Debugger
+    All commands must be prefixed with a `:`. Non-prefixed commands are interpreted as Lua.
+
+Commands
+    :exit         detaches (exits) from this Lua console
+    :help         displays this help
+    :events       shows a list of currently registered events
+    :queued       shows a list of all pending and queued functions)");
+    } else {
+        beammp_error("internal command '" + cmd + "' is not known");
+    }
+}
+
 TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
@@ -382,21 +544,22 @@ TConsole::TConsole() {
     BackupOldLog();
     mCommandline.on_command = [this](Commandline& c) {
         try {
-            auto cmd = c.get_command();
-            cmd = TrimString(cmd);
-            mCommandline.write(mCommandline.prompt() + cmd);
+            auto TrimmedCmd = c.get_command();
+            TrimmedCmd = TrimString(TrimmedCmd);
+            auto [cmd, args] = ParseCommand(TrimmedCmd);
+            mCommandline.write(mCommandline.prompt() + TrimmedCmd);
             if (mIsLuaConsole) {
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
-                } else if (cmd == "exit()") {
-                    ChangeToRegularConsole();
+                } else if (!cmd.empty() && cmd.at(0) == ':') {
+                    HandleLuaInternalCommand(cmd.substr(1));
                 } else {
-                    auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(cmd), "", "" });
+                    auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(TrimmedCmd), "", "" });
                     while (!Future->Ready) {
                         std::this_thread::yield(); // TODO: Add a timeout
                     }
                     if (Future->Error) {
-                        beammp_lua_error(Future->ErrorMessage);
+                        beammp_lua_error("error in " + mStateId + ": " + Future->ErrorMessage);
                     }
                 }
             } else {
@@ -405,30 +568,62 @@ TConsole::TConsole() {
                 } else if (cmd == "exit") {
                     beammp_info("gracefully shutting down");
                     Application::GracefullyShutdown();
-                } else if (StringStartsWith(cmd, "lua")) {
-                    Command_Lua(cmd);
-                } else if (StringStartsWith(cmd, "help")) {
-                    RunAsCommand(cmd, true);
-                    Command_Help(cmd);
-                } else if (StringStartsWith(cmd, "kick")) {
-                    RunAsCommand(cmd, true);
-                    Command_Kick(cmd);
-                } else if (StringStartsWith(cmd, "say")) {
-                    RunAsCommand(cmd, true);
-                    Command_Say(cmd);
-                } else if (StringStartsWith(cmd, "list")) {
-                    RunAsCommand(cmd, true);
-                    Command_List(cmd);
-                } else if (StringStartsWith(cmd, "status")) {
-                    RunAsCommand(cmd, true);
-                    Command_Status(cmd);
-                } else if (!cmd.empty()) {
-                    RunAsCommand(cmd);
+                } else if (cmd == "say") {
+                    RunAsCommand(TrimmedCmd, true);
+                    Command_Say(TrimmedCmd);
+                } else {
+                    if (mCommandMap.find(cmd) != mCommandMap.end()) {
+                        mCommandMap.at(cmd)(cmd, args);
+                        RunAsCommand(TrimmedCmd, true);
+                    } else {
+                        RunAsCommand(TrimmedCmd);
+                    }
                 }
             }
         } catch (const std::exception& e) {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
+    };
+    mCommandline.on_autocomplete = [this](Commandline&, std::string stub, int) {
+        std::vector<std::string> suggestions;
+        try {
+            auto cmd = TrimString(stub);
+            // beammp_error("yes 1");
+            // beammp_error(stub);
+            if (mIsLuaConsole) { // if lua
+                if (!mLuaEngine) {
+                    beammp_info("Lua not started yet, please try again in a second");
+                } else {
+                    std::string prefix {};
+                    for (size_t i = stub.length(); i > 0; i--) {
+                        if (!std::isalnum(stub[i - 1]) && stub[i - 1] != '_') {
+                            prefix = stub.substr(0, i);
+                            stub = stub.substr(i);
+                            break;
+                        }
+                    }
+                    auto keys = mLuaEngine->GetStateGlobalKeysForState(mStateId);
+                    for (const auto& key : keys) {
+                        std::string::size_type n = key.find(stub);
+                        if (n == 0) {
+                            suggestions.push_back(prefix + key);
+                            // beammp_warn(cmd_name);
+                        }
+                    }
+                }
+            } else { // if not lua
+                for (const auto& [cmd_name, cmd_fn] : mCommandMap) {
+                    std::string::size_type n = cmd_name.find(stub);
+                    if (n == 0) {
+                        suggestions.push_back(cmd_name);
+                        // beammp_warn(cmd_name);
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
+        }
+        return suggestions;
     };
 }
 

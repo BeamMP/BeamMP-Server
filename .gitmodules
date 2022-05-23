@@ -1,3 +1,6 @@
 [submodule "deps/commandline"]
 	path = deps/commandline
 	url = https://github.com/lionkor/commandline
+[submodule "deps/fmt"]
+	path = deps/fmt
+	url = https://github.com/fmtlib/fmt

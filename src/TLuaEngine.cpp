@@ -8,6 +8,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <httplib.h>
+#include <nlohmann/json.hpp>
 #include <random>
 #include <thread>
 #include <tuple>
@@ -154,10 +155,70 @@ void TLuaEngine::AddResultToCheck(const std::shared_ptr<TLuaResult>& Result) {
     mResultsToCheckCond.notify_one();
 }
 
+std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> TLuaEngine::Debug_GetEventsForState(TLuaStateId StateId) {
+    std::unordered_map<std::string, std::vector<std::string>> Result;
+    std::unique_lock Lock(mLuaEventsMutex);
+    for (const auto& EventNameToEventMap : mLuaEvents) {
+        for (const auto& IdSetOfHandlersPair : EventNameToEventMap.second) {
+            if (IdSetOfHandlersPair.first == StateId) {
+                for (const auto& Handler : IdSetOfHandlersPair.second) {
+                    Result[EventNameToEventMap.first].push_back(Handler);
+                }
+            }
+        }
+    }
+    return Result;
+}
+
+std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::Debug_GetStateExecuteQueueForState(TLuaStateId StateId) {
+    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Result;
+    std::unique_lock Lock(mLuaStatesMutex);
+    Result = mLuaStates.at(StateId)->Debug_GetStateExecuteQueue();
+    return Result;
+}
+
+std::vector<TLuaEngine::QueuedFunction> TLuaEngine::Debug_GetStateFunctionQueueForState(TLuaStateId StateId) {
+    std::vector<TLuaEngine::QueuedFunction> Result;
+    std::unique_lock Lock(mLuaStatesMutex);
+    Result = mLuaStates.at(StateId)->Debug_GetStateFunctionQueue();
+    return Result;
+}
+
+std::vector<TLuaResult> TLuaEngine::Debug_GetResultsToCheckForState(TLuaStateId StateId) {
+    std::unique_lock Lock(mResultsToCheckMutex);
+    auto ResultsToCheckCopy = mResultsToCheck;
+    Lock.unlock();
+    std::vector<TLuaResult> Result;
+    while (!ResultsToCheckCopy.empty()) {
+        auto ResultToCheck = std::move(ResultsToCheckCopy.front());
+        ResultsToCheckCopy.pop_front();
+        if (ResultToCheck->StateId == StateId) {
+            Result.push_back(*ResultToCheck);
+        }
+    }
+    return Result;
+}
+
+std::vector<std::string> TLuaEngine::GetStateGlobalKeysForState(TLuaStateId StateId) {
+    std::unique_lock Lock(mLuaStatesMutex);
+    auto Result = mLuaStates.at(StateId)->GetStateGlobalKeys();
+    return Result;
+}
+
+std::vector<std::string> TLuaEngine::StateThreadData::GetStateGlobalKeys() {
+    auto globals = mStateView.globals();
+    std::vector<std::string> Result;
+    for (const auto& [key, value] : globals) {
+        Result.push_back(key.as<std::string>());
+    }
+    return Result;
+}
+
 void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
     for (const auto& Result : Results) {
         bool Cancelled = false;
         size_t ms = 0;
+        std::set<std::string> WarnedResults;
         while (!Result->Ready && !Cancelled) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             ms += 10;
@@ -165,7 +226,11 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
                 beammp_trace("'" + Result->Function + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms).");
                 Cancelled = true;
             } else if (ms > 1000 * 60) {
-                beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
+                auto ResultId = Result->StateId + "_" + Result->Function;
+                if (WarnedResults.count(ResultId) == 0) {
+                    WarnedResults.insert(ResultId);
+                    beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
+                }
             }
         }
         if (Cancelled) {
@@ -277,7 +342,6 @@ std::set<std::string> TLuaEngine::GetEventHandlersForState(const std::string& Ev
 
 sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
     auto Return = mEngine->TriggerEvent(EventName, mStateId, EventArgs);
-    // TODO Synchronous call to the event handlers
     auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
@@ -335,7 +399,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
                 Result.add(FnRet);
             } else {
                 sol::error Err = FnRet;
-                beammp_lua_error(Err.what());
+                beammp_lua_error(std::string("TriggerLocalEvent: ") + Err.what());
             }
         }
     }
@@ -384,6 +448,32 @@ int TLuaEngine::StateThreadData::Lua_GetPlayerIDByName(const std::string& Name) 
         return true;
     });
     return Id;
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_FS_ListFiles(const std::string& Path) {
+    if (!std::filesystem::exists(Path)) {
+        return sol::lua_nil;
+    }
+    auto table = mStateView.create_table();
+    for (const auto& entry : std::filesystem::directory_iterator(Path)) {
+        if (entry.is_regular_file() || entry.is_symlink()) {
+            table[table.size() + 1] = entry.path().lexically_relative(Path).string();
+        }
+    }
+    return table;
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_FS_ListDirectories(const std::string& Path) {
+    if (!std::filesystem::exists(Path)) {
+        return sol::lua_nil;
+    }
+    auto table = mStateView.create_table();
+    for (const auto& entry : std::filesystem::directory_iterator(Path)) {
+        if (entry.is_directory()) {
+            table[table.size() + 1] = entry.path().lexically_relative(Path).string();
+        }
+    }
+    return table;
 }
 
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
@@ -439,6 +529,83 @@ sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::stri
     return table;
 }
 
+template <typename T>
+static void AddToTable(sol::table& table, const std::string& left, const T& value) {
+    if (left.empty()) {
+        table[table.size() + 1] = value;
+    } else {
+        table[left] = value;
+    }
+}
+
+static void JsonDecodeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
+    switch (right.type()) {
+    case nlohmann::detail::value_t::null:
+        return;
+    case nlohmann::detail::value_t::object: {
+        auto value = table.create();
+        value.clear();
+        for (const auto& entry : right.items()) {
+            JsonDecodeRecursive(StateView, value, entry.key(), entry.value());
+        }
+        AddToTable(table, left, value);
+        break;
+    }
+    case nlohmann::detail::value_t::array: {
+        auto value = table.create();
+        value.clear();
+        for (const auto& entry : right.items()) {
+            JsonDecodeRecursive(StateView, value, "", entry.value());
+        }
+        AddToTable(table, left, value);
+        break;
+    }
+    case nlohmann::detail::value_t::string:
+        AddToTable(table, left, right.get<std::string>());
+        break;
+    case nlohmann::detail::value_t::boolean:
+        AddToTable(table, left, right.get<bool>());
+        break;
+    case nlohmann::detail::value_t::number_integer:
+        AddToTable(table, left, right.get<int64_t>());
+        break;
+    case nlohmann::detail::value_t::number_unsigned:
+        AddToTable(table, left, right.get<uint64_t>());
+        break;
+    case nlohmann::detail::value_t::number_float:
+        AddToTable(table, left, right.get<double>());
+        break;
+    case nlohmann::detail::value_t::binary:
+        beammp_lua_error("JsonDecode can't handle binary blob in json, ignoring");
+        return;
+    case nlohmann::detail::value_t::discarded:
+        return;
+    }
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_JsonDecode(const std::string& str) {
+    sol::state_view StateView(mState);
+    auto table = StateView.create_table();
+    if (!nlohmann::json::accept(str)) {
+        beammp_lua_error("string given to JsonDecode is not valid json: `" + str + "`");
+        return sol::lua_nil;
+    }
+    nlohmann::json json = nlohmann::json::parse(str);
+    if (json.is_object()) {
+        for (const auto& entry : json.items()) {
+            JsonDecodeRecursive(StateView, table, entry.key(), entry.value());
+        }
+    } else if (json.is_array()) {
+        for (const auto& entry : json) {
+            JsonDecodeRecursive(StateView, table, "", entry);
+        }
+    } else {
+        beammp_lua_error("JsonDecode expected array or object json, instead got " + std::string(json.type_name()));
+        return sol::lua_nil;
+    }
+    return table;
+}
+
 TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
     , mShutdown(Shutdown)
@@ -484,6 +651,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         return Lua_TriggerLocalEvent(EventName, EventArgs);
     });
     MPTable.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
+    MPTable.set_function("TriggerClientEventJson", &LuaAPI::MP::TriggerClientEventJson);
     MPTable.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
     MPTable.set_function("IsPlayerConnected", &LuaAPI::MP::IsPlayerConnected);
     MPTable.set_function("GetPlayerIDByName", [&](const std::string& Name) -> int {
@@ -538,6 +706,27 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
         mEngine->CancelEventTimers(EventName, mStateId);
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
+
+    auto UtilTable = StateView.create_named_table("Util");
+    UtilTable.set_function("JsonEncode", &LuaAPI::MP::JsonEncode);
+    UtilTable.set_function("JsonDecode", [this](const std::string& str) {
+        return Lua_JsonDecode(str);
+    });
+    UtilTable.set_function("JsonDiff", &LuaAPI::MP::JsonDiff);
+    UtilTable.set_function("JsonFlatten", &LuaAPI::MP::JsonFlatten);
+    UtilTable.set_function("JsonUnflatten", &LuaAPI::MP::JsonUnflatten);
+    UtilTable.set_function("JsonPrettify", &LuaAPI::MP::JsonPrettify);
+    UtilTable.set_function("JsonMinify", &LuaAPI::MP::JsonMinify);
+    UtilTable.set_function("Random", [this] {
+        return mUniformRealDistribution01(mMersenneTwister);
+    });
+    UtilTable.set_function("RandomRange", [this](double min, double max) -> double {
+        return std::uniform_real_distribution(min, max)(mMersenneTwister);
+    });
+    UtilTable.set_function("RandomIntRange", [this](int64_t min, int64_t max) -> int64_t {
+        return std::uniform_int_distribution(min, max)(mMersenneTwister);
+    });
+
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
         return Lua_HttpCreateConnection(host, port);
@@ -568,6 +757,12 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomi
     FSTable.set_function("IsDirectory", &LuaAPI::FS::IsDirectory);
     FSTable.set_function("IsFile", &LuaAPI::FS::IsFile);
     FSTable.set_function("ConcatPaths", &LuaAPI::FS::ConcatPaths);
+    FSTable.set_function("ListFiles", [this](const std::string& Path) {
+        return Lua_FS_ListFiles(Path);
+    });
+    FSTable.set_function("ListDirectories", [this](const std::string& Path) {
+        return Lua_FS_ListDirectories(Path);
+    });
     Start();
 }
 
@@ -722,6 +917,16 @@ void TLuaEngine::StateThreadData::operator()() {
     }
 }
 
+std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::StateThreadData::Debug_GetStateExecuteQueue() {
+    std::unique_lock Lock(mStateExecuteQueueMutex);
+    return mStateExecuteQueue;
+}
+
+std::vector<TLuaEngine::QueuedFunction> TLuaEngine::StateThreadData::Debug_GetStateFunctionQueue() {
+    std::unique_lock Lock(mStateFunctionQueueMutex);
+    return mStateFunctionQueue;
+}
+
 void TLuaEngine::CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy) {
     std::unique_lock Lock(mTimedEventsMutex);
     TimedEvent Event {
@@ -798,38 +1003,47 @@ void TPluginMonitor::operator()() {
     beammp_info("PluginMonitor started");
     while (!mShutdown) {
         std::this_thread::sleep_for(std::chrono::seconds(3));
+        std::vector<std::string> ToRemove;
         for (const auto& Pair : mFileTimes) {
-            auto CurrentTime = fs::last_write_time(Pair.first);
-            if (CurrentTime != Pair.second) {
-                mFileTimes[Pair.first] = CurrentTime;
-                // grandparent of the path should be Resources/Server
-                if (fs::equivalent(fs::path(Pair.first).parent_path().parent_path(), mPath)) {
-                    beammp_info("File \"" + Pair.first + "\" changed, reloading");
-                    // is in root folder, so reload
-                    std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
-                    auto Size = std::filesystem::file_size(Pair.first);
-                    auto Contents = std::make_shared<std::string>();
-                    Contents->resize(Size);
-                    FileStream.read(Contents->data(), Contents->size());
-                    TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
-                    auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
-                    auto Res = mEngine.EnqueueScript(StateID, Chunk);
-                    // TODO: call onInit
-                    mEngine.AddResultToCheck(Res);
-                } else {
-                    // TODO: trigger onFileChanged event
-                    beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");
-                    /*
-                    // is in subfolder, dont reload, just trigger an event
-                    auto Results = mEngine.TriggerEvent("onFileChanged", "", Pair.first);
-                    mEngine.WaitForAll(Results);
-                    for (const auto& Result : Results)  {
-                        if (Result->Error) {
-                            beammp_lua_error(Result->ErrorMessage);
-                        }
-                    }*/
+            try {
+                auto CurrentTime = fs::last_write_time(Pair.first);
+                if (CurrentTime != Pair.second) {
+                    mFileTimes[Pair.first] = CurrentTime;
+                    // grandparent of the path should be Resources/Server
+                    if (fs::equivalent(fs::path(Pair.first).parent_path().parent_path(), mPath)) {
+                        beammp_info("File \"" + Pair.first + "\" changed, reloading");
+                        // is in root folder, so reload
+                        std::ifstream FileStream(Pair.first, std::ios::in | std::ios::binary);
+                        auto Size = std::filesystem::file_size(Pair.first);
+                        auto Contents = std::make_shared<std::string>();
+                        Contents->resize(Size);
+                        FileStream.read(Contents->data(), Contents->size());
+                        TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
+                        auto StateID = mEngine.GetStateIDForPlugin(fs::path(Pair.first).parent_path());
+                        auto Res = mEngine.EnqueueScript(StateID, Chunk);
+                        // TODO: call onInit
+                        mEngine.AddResultToCheck(Res);
+                    } else {
+                        // TODO: trigger onFileChanged event
+                        beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");
+                        /*
+                        // is in subfolder, dont reload, just trigger an event
+                        auto Results = mEngine.TriggerEvent("onFileChanged", "", Pair.first);
+                        mEngine.WaitForAll(Results);
+                        for (const auto& Result : Results)  {
+                            if (Result->Error) {
+                                beammp_lua_error(Result->ErrorMessage);
+                            }
+                        }*/
+                    }
                 }
+            } catch (const std::exception& e) {
+                ToRemove.push_back(Pair.first);
             }
+        }
+        for (const auto& File : ToRemove) {
+            mFileTimes.erase(File);
+            beammp_warn("file '" + File + "' couldn't be accessed, so it was removed from plugin hot reload monitor (probably got deleted)");
         }
     }
 }

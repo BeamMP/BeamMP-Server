@@ -43,6 +43,7 @@ void Application::GracefullyShutdown() {
         beammp_info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
         mShutdownHandlers[i]();
     }
+    // std::exit(-1);
 }
 
 std::string Application::ServerVersionString() {
@@ -60,7 +61,6 @@ std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
     return Version;
 }
 
-// FIXME: This should be used by operator< on Version
 bool Application::IsOutdated(const Version& Current, const Version& Newest) {
     if (Newest.major > Current.major) {
         return true;
@@ -162,7 +162,7 @@ void RegisterThread(const std::string& str) {
     ThreadId = std::to_string(gettid());
 #endif
     if (Application::Settings.DebugModeEnabled) {
-        std::ofstream ThreadFile("Threads.log", std::ios::app);
+        std::ofstream ThreadFile(".Threads.log", std::ios::app);
         ThreadFile << ("Thread \"" + str + "\" is TID " + ThreadId) << std::endl;
     }
     auto Lock = std::unique_lock(ThreadNameMapMutex);
@@ -179,22 +179,22 @@ Version::Version(const std::array<uint8_t, 3>& v)
 }
 
 std::string Version::AsString() {
-    std::stringstream ss {};
-    ss << int(major) << "." << int(minor) << "." << int(patch);
-    return ss.str();
+    return fmt::format("{:d}.{:d}.{:d}", major, minor, patch);
 }
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
-    std::stringstream ss;
-    ss << ThreadName();
-    ss << "[CHAT] ";
-    if (id != -1) {
-        ss << "(" << id << ") <" << name << "> ";
-    } else {
-        ss << name << "";
+    if (Application::Settings.LogChat) {
+        std::stringstream ss;
+        ss << ThreadName();
+        ss << "[CHAT] ";
+        if (id != -1) {
+            ss << "(" << id << ") <" << name << "> ";
+        } else {
+            ss << name << "";
+        }
+        ss << msg;
+        Application::Console().Write(ss.str());
     }
-    ss << msg;
-    Application::Console().Write(ss.str());
 }
 
 std::string GetPlatformAgnosticErrorString() {
