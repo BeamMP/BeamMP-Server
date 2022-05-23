@@ -165,7 +165,6 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::CheckForUpdates();
 
     if (Application::Settings.HTTPServerEnabled) {
-        Http::Server::SetupEnvironment();
         Http::Server::THttpServerInstance HttpServerInstance {};
     }
 

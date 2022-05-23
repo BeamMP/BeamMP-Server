@@ -20,11 +20,8 @@ static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
-static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 
 // HTTP
-static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
-static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
 
 TConfig::TConfig(const std::string& ConfigFileName)
@@ -75,11 +72,7 @@ void TConfig::FlushToFile() {
     SetComment(data["General"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
     SetComment(data["General"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
-    data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
-    data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
     data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
-    data["HTTP"][StrHTTPServerUseSSL.data()] = Application::Settings.HTTPServerUseSSL;
-    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to keep enabled. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
     std::ofstream Stream(mConfigFileName);
@@ -161,11 +154,8 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
         TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
         // HTTP
-        TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
-        TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
         TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
         TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
-        TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
@@ -199,8 +189,6 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
-    beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
-    beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
     beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");

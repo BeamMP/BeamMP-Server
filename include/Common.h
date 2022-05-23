@@ -7,6 +7,7 @@ extern TSentry Sentry;
 #include <atomic>
 #include <cstring>
 #include <deque>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -40,8 +41,6 @@ public:
         std::string Resource { "Resources" };
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};
-        std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
-        std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
         bool HTTPServerEnabled { false };
         int MaxPlayers { 10 };
         bool Private { true };

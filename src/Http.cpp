@@ -149,15 +149,8 @@ Http::Server::THttpServerInstance::THttpServerInstance() {
 }
 
 void Http::Server::THttpServerInstance::operator()() {
-    beammp_info("HTTP(S) Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
-    std::unique_ptr<httplib::Server> HttpLibServerInstance;
-    if (Application::Settings.HTTPServerUseSSL) {
-        HttpLibServerInstance = std::make_unique<httplib::SSLServer>(
-            reinterpret_cast<const char*>(Http::Server::THttpServerInstance::CertFilePath.c_str()),
-            reinterpret_cast<const char*>(Http::Server::THttpServerInstance::KeyFilePath.c_str()));
-    } else {
-        HttpLibServerInstance = std::make_unique<httplib::Server>();
-    }
+    beammp_info("HTTP Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
+    std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
     // todo: make this IP agnostic so people can set their own IP
     HttpLibServerInstance->Get("/", [](const httplib::Request&, httplib::Response& res) {
         res.set_content("<!DOCTYPE html><article><h1>Hello World!</h1><section><p>BeamMP Server can now serve HTTP requests!</p></section></article></html>", "text/html");
