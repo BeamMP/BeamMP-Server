@@ -160,6 +160,8 @@ void Http::Server::THttpServerInstance::operator()() try {
     HttpLibServerInstance->Get(API_V1 "/health", [](const httplib::Request&, httplib::Response& res) {
         size_t SystemsGood = 0;
         size_t SystemsBad = 0;
+        json Good = json::array();
+        json Bad = json::array();
         auto Statuses = Application::GetSubsystemStatuses();
         for (const auto& NameStatusPair : Statuses) {
             switch (NameStatusPair.second) {
@@ -167,16 +169,20 @@ void Http::Server::THttpServerInstance::operator()() try {
             case Application::Status::ShuttingDown:
             case Application::Status::Shutdown:
             case Application::Status::Good:
+                Good.push_back(NameStatusPair.first);
                 SystemsGood++;
                 break;
             case Application::Status::Bad:
+                Bad.push_back(NameStatusPair.first);
                 SystemsBad++;
                 break;
             }
         }
         res.set_content(
             json {
-                { "ok", SystemsBad == 0 },
+                { "healthy", SystemsBad == 0 },
+                { "good", Good },
+                { "bad", Bad },
             }
                 .dump(),
             "application/json");

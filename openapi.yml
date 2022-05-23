@@ -1,0 +1,29 @@
+openapi: "3.0.2"
+info:
+  title: API Title
+  version: "1.0"
+servers:
+  - url: https://localhost:8000/v1
+paths:
+  /health:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  healthy:
+                    type: boolean
+                  good:
+                    type: array
+                    items:
+                      type: string
+                      example: "Heartbeat"
+                  bad:
+                    type: array
+                    items:
+                      type: string
+                      example: "ResourceManager"
