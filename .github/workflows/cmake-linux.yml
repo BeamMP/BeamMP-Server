@@ -35,7 +35,7 @@ jobs:
     - name: Build
       working-directory: ${{github.workspace}}/build-linux
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE
+      run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server --parallel
 
     - name: Archive artifacts
       uses: actions/upload-artifact@v2

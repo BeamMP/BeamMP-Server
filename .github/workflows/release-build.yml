@@ -57,7 +57,7 @@ jobs:
       - name: Build
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE
+        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server --parallel
 
       - name: Upload Release Asset
         id: upload-release-asset 
@@ -101,7 +101,7 @@ jobs:
       - name: Build
         working-directory: ${{github.workspace}}/build-windows
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE
+        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server --parallel
 
       - name: Upload Release Asset
         id: upload-release-asset 

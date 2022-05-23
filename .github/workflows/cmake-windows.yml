@@ -48,7 +48,7 @@ jobs:
         working-directory: ${{github.workspace}}/build-windows
         shell: bash
         run: |
-          cmake --build . --config Debug
+          cmake --build . --config Debug -t BeamMP-Server --parallel
       
       - name: Archive debug artifacts
         uses: actions/upload-artifact@v2
