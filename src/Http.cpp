@@ -167,9 +167,9 @@ void Http::Server::THttpServerInstance::operator()() try {
         && Application::Settings.HTTPServerIP != "127.0.0.1") {
         beammp_warnf("HTTP Server is running on a possibly public IP ({}), but the server is private. The server's HTTP API supports viewing config, players, and other information, even though the server is private. (this is not an error)", Application::Settings.HTTPServerIP);
     }
-    std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
+    std::unique_ptr<httplib::Server> Server = std::make_unique<httplib::Server>();
 
-    HttpLibServerInstance->Get(API_V1 R"(/player/(.+)/vehicles)", [this](const httplib::Request& Req, httplib::Response& Res) {
+    Server->Get(API_V1 R"(/player/(.+)/vehicles)", [this](const httplib::Request& Req, httplib::Response& Res) {
         if (Req.matches.empty()) {
             Res.status = 404;
         } else {
@@ -198,7 +198,7 @@ void Http::Server::THttpServerInstance::operator()() try {
         }
     });
 
-    HttpLibServerInstance->Get(API_V1 "/players", [this](const httplib::Request&, httplib::Response& res) {
+    Server->Get(API_V1 "/players", [this](const httplib::Request&, httplib::Response& res) {
         res.status = 200;
         json Players = json::array();
         mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) {
@@ -211,12 +211,12 @@ void Http::Server::THttpServerInstance::operator()() try {
             "application/json");
     });
 
-    HttpLibServerInstance->Get(API_V1 "/version", [](const httplib::Request&, httplib::Response& res) {
+    Server->Get(API_V1 "/version", [](const httplib::Request&, httplib::Response& res) {
         res.status = 200;
         res.set_content(Application::ServerVersionString(), "text/plain");
     });
 
-    HttpLibServerInstance->Get(API_V1 "/config", [](const httplib::Request&, httplib::Response& res) {
+    Server->Get(API_V1 "/config", [](const httplib::Request&, httplib::Response& res) {
         res.status = 200;
         res.set_content(json {
                             { "name", Application::Settings.ServerName },
@@ -230,7 +230,7 @@ void Http::Server::THttpServerInstance::operator()() try {
             "application/json");
     });
 
-    HttpLibServerInstance->Get(API_V1 "/ready", [](const httplib::Request&, httplib::Response& res) {
+    Server->Get(API_V1 "/ready", [](const httplib::Request&, httplib::Response& res) {
         auto Statuses = Application::GetSubsystemStatuses();
         bool Started = true;
         for (const auto& NameStatusPair : Statuses) {
@@ -249,7 +249,7 @@ void Http::Server::THttpServerInstance::operator()() try {
         res.set_content(Started ? "true" : "false", "text/plain");
     });
 
-    HttpLibServerInstance->Get(API_V1 "/health", [](const httplib::Request&, httplib::Response& res) {
+    Server->Get(API_V1 "/health", [](const httplib::Request&, httplib::Response& res) {
         size_t SystemsGood = 0;
         size_t SystemsBad = 0;
         json Good = json::array();
@@ -281,24 +281,24 @@ void Http::Server::THttpServerInstance::operator()() try {
         res.status = 200;
     });
     // magic endpoint
-    HttpLibServerInstance->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
+    Server->Get({ 0x2f, 0x6b, 0x69, 0x74, 0x74, 0x79 }, [](const httplib::Request&, httplib::Response& res) {
         res.set_content(std::string(Magic), "text/plain");
     });
-    HttpLibServerInstance->set_logger([](const httplib::Request& Req, const httplib::Response& Res) {
+    Server->set_logger([](const httplib::Request& Req, const httplib::Response& Res) {
         beammp_debug("Http Server: " + Req.method + " " + Req.target + " -> " + std::to_string(Res.status));
     });
-    HttpLibServerInstance->set_error_handler([](const httplib::Request&, httplib::Response& Res) {
+    Server->set_error_handler([](const httplib::Request&, httplib::Response& Res) {
         if (Res.status >= 400 && Res.body.empty()) {
             Res.set_content("Error: " + std::to_string(Res.status) + " " + Map.at(Res.status), "text/plain");
         }
     });
-    HttpLibServerInstance->set_exception_handler([](const httplib::Request& Req, httplib::Response& Res, std::exception& e) {
+    Server->set_exception_handler([](const httplib::Request& Req, httplib::Response& Res, std::exception& e) {
         Res.status = 500;
         Res.set_content("Internal Server Error", "text/plain");
         beammp_errorf("Exception in http server serving '{}': {}", Req.target, e.what());
     });
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
-    auto ret = HttpLibServerInstance->listen(Application::Settings.HTTPServerIP.c_str(), Application::Settings.HTTPServerPort);
+    auto ret = Server->listen(Application::Settings.HTTPServerIP.c_str(), Application::Settings.HTTPServerPort);
     if (!ret) {
         beammp_error("Failed to start http server (failed to listen). Please ensure the http server is configured properly in the ServerConfig.toml, or turn it off if you don't need it.");
     }
