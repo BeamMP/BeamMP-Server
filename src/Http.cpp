@@ -169,6 +169,35 @@ void Http::Server::THttpServerInstance::operator()() try {
     }
     std::unique_ptr<httplib::Server> HttpLibServerInstance = std::make_unique<httplib::Server>();
 
+    HttpLibServerInstance->Get(API_V1 R"(/player/(.+)/vehicles)", [this](const httplib::Request& Req, httplib::Response& Res) {
+        if (Req.matches.empty()) {
+            Res.status = 404;
+        } else {
+            const std::string PlayerName = Req.matches[1];
+            bool Found = false;
+            json Result = json::array();
+            mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) {
+                if (!ClientPtr.expired()) {
+                    const auto Client = ClientPtr.lock();
+                    if (Client->GetName() == PlayerName) {
+                        const auto [Cars, Lock] = Client->GetAllCars();
+                        for (const auto& Car : *Cars) {
+                            Result.emplace_back().at("jbm") = Car.Json().at("jbm");
+                        }
+                        Found = true;
+                    }
+                }
+                return true;
+            });
+            if (!Found) {
+                Res.status = 404;
+            } else {
+                Res.status = 200;
+                Res.set_content(Result.dump(), "application/json");
+            }
+        }
+    });
+
     HttpLibServerInstance->Get(API_V1 "/players", [this](const httplib::Request&, httplib::Response& res) {
         res.status = 200;
         json Players = json::array();

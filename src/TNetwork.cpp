@@ -194,7 +194,6 @@ void TNetwork::TCPServerMain() {
 #undef GetObject // Fixes Windows
 
 #include "Json.h"
-namespace json = rapidjson;
 
 void TNetwork::Identify(const TConnection& client) {
     RegisterThreadAuto();
@@ -281,7 +280,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
         Rc = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, RequestString, "application/json", &ResponseCode);
     }
 
-    json::Document AuthResponse;
+    rapidjson::Document AuthResponse;
     AuthResponse.Parse(Rc.c_str());
     if (Rc == Http::ErrorString || AuthResponse.HasParseError()) {
         ClientKick(*Client, "Invalid key! Please restart your game.");

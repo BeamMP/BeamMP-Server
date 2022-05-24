@@ -7,7 +7,6 @@
 #include <rapidjson/rapidjson.h>
 #include <sstream>
 
-namespace json = rapidjson;
 
 void THeartbeatThread::operator()() {
     RegisterThread("Heartbeat");
@@ -57,7 +56,7 @@ void THeartbeatThread::operator()() {
         auto Target = "/heartbeat";
         unsigned int ResponseCode = 0;
 
-        json::Document Doc;
+        rapidjson::Document Doc;
         bool Ok = false;
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });

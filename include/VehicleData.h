@@ -1,10 +1,13 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <string>
+
+using json = nlohmann::json;
 
 class TVehicleData final {
 public:
-    TVehicleData(int ID, std::string Data);
+    TVehicleData(int ID, const std::string& Data);
     ~TVehicleData();
     // We cannot delete this, since vector needs to be able to copy when it resizes.
     // Deleting this causes some wacky template errors which are hard to decipher,
@@ -19,9 +22,12 @@ public:
 
     bool operator==(const TVehicleData& v) const { return mID == v.mID; }
 
+    const json& Json() const;
+
 private:
     int mID { -1 };
     std::string mData;
+    json mJson;
 };
 
 // TODO: unused now, remove?
