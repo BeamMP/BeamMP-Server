@@ -99,36 +99,36 @@ TEST_CASE("Application::IsOutdated (version check)") {
     }
     // we need to use over 1-2 digits to test against lexical comparisons
     SUBCASE("Patch outdated") {
-        for (size_t Patch = 0; Patch < 10; ++Patch) {
-            for (size_t Minor = 0; Minor < 10; ++Minor) {
-                for (size_t Major = 0; Major < 10; ++Major) {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
                     CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major, Minor, Patch + 1 }));
                 }
             }
         }
     }
     SUBCASE("Minor outdated") {
-        for (size_t Patch = 0; Patch < 10; ++Patch) {
-            for (size_t Minor = 0; Minor < 10; ++Minor) {
-                for (size_t Major = 0; Major < 10; ++Major) {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
                     CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major, Minor + 1, Patch }));
                 }
             }
         }
     }
     SUBCASE("Major outdated") {
-        for (size_t Patch = 0; Patch < 10; ++Patch) {
-            for (size_t Minor = 0; Minor < 10; ++Minor) {
-                for (size_t Major = 0; Major < 10; ++Major) {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
                     CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major + 1, Minor, Patch }));
                 }
             }
         }
     }
     SUBCASE("All outdated") {
-        for (size_t Patch = 0; Patch < 10; ++Patch) {
-            for (size_t Minor = 0; Minor < 10; ++Minor) {
-                for (size_t Major = 0; Major < 10; ++Major) {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
                     CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major + 1, Minor + 1, Patch + 1 }));
                 }
             }
