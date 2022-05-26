@@ -67,4 +67,6 @@ jobs:
       - name: Test
         working-directory: ${{github.workspace}}
         shell: bash
-        run: ./BeamMP-Server-tests
+        run: |
+            chmod +x ./BeamMP-Server-tests
+            ./BeamMP-Server-tests
