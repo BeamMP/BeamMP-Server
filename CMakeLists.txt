@@ -125,7 +125,6 @@ set(BeamMP_Sources
 set(BeamMP_Includes
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/commandline"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
     ${LUA_INCLUDE_DIR}
     ${CURL_INCLUDE_DIRS}
     "include/tomlplusplus"
@@ -155,7 +154,6 @@ if (WIN32)
 endif ()
 
 # ------------------------ BEAMMP SERVER -----------------------------
-# ------------------------ BEAMMP SERVER TESTS -----------------------
 
 add_executable(BeamMP-Server
         src/main.cpp
@@ -188,7 +186,6 @@ if(BUILD_TESTS)
 
     target_compile_definitions(BeamMP-Server-tests PRIVATE
         ${BeamMP_Definitions}
-        DOCTEST_CONFIG_DISABLE
     )
 
     target_include_directories(BeamMP-Server-tests PUBLIC

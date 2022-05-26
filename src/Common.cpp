@@ -12,6 +12,9 @@
 #include "CustomAssert.h"
 #include "Http.h"
 
+// global, yes, this is ugly, no, it cant be done another way
+TSentry Sentry {};
+
 Application::TSettings Application::Settings = {};
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {

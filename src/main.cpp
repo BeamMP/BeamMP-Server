@@ -44,10 +44,6 @@ EXAMPLES:
         'MyWestCoastServerConfig.toml'.
 )";
 
-// this is provided by the build system, leave empty for source builds
-// global, yes, this is ugly, no, it cant be done another way
-TSentry Sentry {};
-
 struct MainArguments {
     int argc {};
     char** argv {};
