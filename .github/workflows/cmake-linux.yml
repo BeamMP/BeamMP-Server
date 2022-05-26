@@ -7,7 +7,7 @@ env:
 
 jobs:
   linux-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
       - uses: actions/checkout@v2
@@ -32,28 +32,39 @@ jobs:
           beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
         run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
-      - name: Build
+      - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE
+        run: cmake --build . --config $BUILD_TYPE BeamMP-Server
 
-      - name: Archive artifacts
+      - name: Build Tests
+        working-directory: ${{github.workspace}}/build-linux
+        shell: bash
+        run: cmake --build . --config $BUILD_TYPE BeamMP-Server-tests
+
+      - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-linux
           path: ${{github.workspace}}/build-linux/BeamMP-Server
 
+      - name: Archive test artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-linux-tests
+          path: ${{github.workspace}}/build-linux/BeamMP-Server-tests
+
   run-tests:
     needs: linux-build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
-      - name: Build
-        working-directory: ${{github.workspace}}/build-linux
-        shell: bash
-        run: cmake --build . --config $BUILD_TYPE BeamMP-Server-tests
+      - uses: actions/download-artifact@master
+        with:
+          name: BeamMP-Server-linux-tests
+          path: ${{github.workspace}}/BeamMP-Server-tests
 
       - name: Test
-        working-directory: ${{github.workspace}}/build-linux
+        working-directory: ${{github.workspace}}
         shell: bash
         run: ./BeamMP-Server-tests
