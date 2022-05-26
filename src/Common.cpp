@@ -64,6 +64,23 @@ std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
     return Version;
 }
 
+TEST_CASE("Application::VersionStrToInts") {
+    auto v = Application::VersionStrToInts("1.2.3");
+    CHECK(v[0] == 1);
+    CHECK(v[1] == 2);
+    CHECK(v[2] == 3);
+
+    v = Application::VersionStrToInts("10.20.30");
+    CHECK(v[0] == 10);
+    CHECK(v[1] == 20);
+    CHECK(v[2] == 30);
+
+    v = Application::VersionStrToInts("100.200.255");
+    CHECK(v[0] == 100);
+    CHECK(v[1] == 200);
+    CHECK(v[2] == 255);
+}
+
 bool Application::IsOutdated(const Version& Current, const Version& Newest) {
     if (Newest.major > Current.major) {
         return true;
@@ -73,6 +90,49 @@ bool Application::IsOutdated(const Version& Current, const Version& Newest) {
         return true;
     } else {
         return false;
+    }
+}
+
+TEST_CASE("Application::IsOutdated (version check)") {
+    SUBCASE("Same version") {
+        CHECK(!Application::IsOutdated({ 1, 2, 3 }, { 1, 2, 3 }));
+    }
+    // we need to use over 1-2 digits to test against lexical comparisons
+    SUBCASE("Patch outdated") {
+        for (size_t Patch = 0; Patch < 10; ++Patch) {
+            for (size_t Minor = 0; Minor < 10; ++Minor) {
+                for (size_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major, Minor, Patch + 1 }));
+                }
+            }
+        }
+    }
+    SUBCASE("Minor outdated") {
+        for (size_t Patch = 0; Patch < 10; ++Patch) {
+            for (size_t Minor = 0; Minor < 10; ++Minor) {
+                for (size_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major, Minor + 1, Patch }));
+                }
+            }
+        }
+    }
+    SUBCASE("Major outdated") {
+        for (size_t Patch = 0; Patch < 10; ++Patch) {
+            for (size_t Minor = 0; Minor < 10; ++Minor) {
+                for (size_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major + 1, Minor, Patch }));
+                }
+            }
+        }
+    }
+    SUBCASE("All outdated") {
+        for (size_t Patch = 0; Patch < 10; ++Patch) {
+            for (size_t Minor = 0; Minor < 10; ++Minor) {
+                for (size_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ Major, Minor, Patch }, { Major + 1, Minor + 1, Patch + 1 }));
+                }
+            }
+        }
     }
 }
 
@@ -96,6 +156,15 @@ void Application::SetSubsystemStatus(const std::string& Subsystem, Status status
     }
     std::unique_lock Lock(mSystemStatusMapMutex);
     mSystemStatusMap[Subsystem] = status;
+}
+
+TEST_CASE("Application::SetSubsystemStatus") {
+    Application::SetSubsystemStatus("Test", Application::Status::Good);
+    auto Map = Application::GetSubsystemStatuses();
+    CHECK(Map.at("Test") == Application::Status::Good);
+    Application::SetSubsystemStatus("Test", Application::Status::Bad);
+    Map = Application::GetSubsystemStatuses();
+    CHECK(Map.at("Test") == Application::Status::Bad);
 }
 
 void Application::CheckForUpdates() {
@@ -155,6 +224,25 @@ std::string ThreadName(bool DebugModeOverride) {
     return "";
 }
 
+TEST_CASE("ThreadName") {
+    RegisterThread("MyThread");
+    auto OrigDebug = Application::Settings.DebugModeEnabled;
+
+    // ThreadName adds a space at the end, legacy but we need it still
+    SUBCASE("Debug mode enabled") {
+        Application::Settings.DebugModeEnabled = true;
+        CHECK(ThreadName(true) == "MyThread ");
+        CHECK(ThreadName(false) == "MyThread ");
+    }
+    SUBCASE("Debug mode disabled") {
+        Application::Settings.DebugModeEnabled = false;
+        CHECK(ThreadName(true) == "MyThread ");
+        CHECK(ThreadName(false) == "");
+    }
+    // cleanup
+    Application::Settings.DebugModeEnabled = OrigDebug;
+}
+
 void RegisterThread(const std::string& str) {
     std::string ThreadId;
 #ifdef BEAMMP_WINDOWS
@@ -172,6 +260,11 @@ void RegisterThread(const std::string& str) {
     threadNameMap[std::this_thread::get_id()] = str;
 }
 
+TEST_CASE("RegisterThread") {
+    RegisterThread("MyThread");
+    CHECK(threadNameMap.at(std::this_thread::get_id()) == "MyThread");
+}
+
 Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
     : major(major)
     , minor(minor)
@@ -185,6 +278,12 @@ std::string Version::AsString() {
     return fmt::format("{:d}.{:d}.{:d}", major, minor, patch);
 }
 
+TEST_CASE("Version::AsString") {
+    CHECK(Version { 0, 0, 0 }.AsString() == "0.0.0");
+    CHECK(Version { 1, 2, 3 }.AsString() == "1.2.3");
+    CHECK(Version { 255, 255, 255 }.AsString() == "255.255.255");
+}
+
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
     if (Application::Settings.LogChat) {
         std::stringstream ss;
@@ -196,7 +295,9 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg) {
             ss << name << "";
         }
         ss << msg;
+#ifdef DOCTEST_CONFIG_DISABLE
         Application::Console().Write(ss.str());
+#endif
     }
 }
 

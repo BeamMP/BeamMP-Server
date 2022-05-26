@@ -15,6 +15,8 @@ extern TSentry Sentry;
 #include <sstream>
 #include <zlib.h>
 
+#include <doctest/doctest.h>
+
 #include "Compat.h"
 
 #include "TConsole.h"
@@ -139,88 +141,115 @@ void RegisterThread(const std::string& str);
 #define _line std::to_string(__LINE__)
 #define _in_lambda (std::string(__func__) == "operator()")
 
-// we would like the full function signature 'void a::foo() const'
-// on windows this is __FUNCSIG__, on GCC it's __PRETTY_FUNCTION__,
-// feel free to add more
-#if defined(WIN32)
-#define _function_name std::string(__FUNCSIG__)
-#elif defined(__unix) || defined(__unix__)
-#define _function_name std::string(__PRETTY_FUNCTION__)
-#else
-#define _function_name std::string(__func__)
-#endif
-
-#ifndef NDEBUG
-#define DEBUG
-#endif
-
-#if defined(DEBUG)
-
-// if this is defined, we will show the full function signature infront of
-// each info/debug/warn... call instead of the 'filename:line' format.
-#if defined(BMP_FULL_FUNCTION_NAMES)
-#define _this_location (ThreadName() + _function_name + " ")
-#else
-#define _this_location (ThreadName() + _file_basename + ":" + _line + " ")
-#endif
-#define SU_RAW SSU_UNRAW
-
-#else // !defined(DEBUG)
-
-#define SU_RAW RAWIFY(SSU_UNRAW)
-#define _this_location (ThreadName())
-
-#endif // defined(DEBUG)
-
-#define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
-#define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-#define beammp_error(x)                                                               \
-    do {                                                                              \
-        Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
-        Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
-    } while (false)
-#define beammp_lua_error(x)                                                               \
-    do {                                                                                  \
-        Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x)); \
-    } while (false)
-#define beammp_lua_warn(x)                                                               \
-    do {                                                                                 \
-        Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
-    } while (false)
-#define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
-#define beammp_debug(x)                                                                   \
-    do {                                                                                  \
-        if (Application::Settings.DebugModeEnabled) {                                     \
-            Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
-        }                                                                                 \
-    } while (false)
-#define beammp_event(x)                                                                   \
-    do {                                                                                  \
-        if (Application::Settings.DebugModeEnabled) {                                     \
-            Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
-        }                                                                                 \
-    } while (false)
 // for those times when you just need to ignore something :^)
 // explicity disables a [[nodiscard]] warning
 #define beammp_ignore(x) (void)x
-// trace() is a debug-build debug()
-#if defined(DEBUG)
-#define beammp_trace(x)                                                                   \
-    do {                                                                                  \
-        if (Application::Settings.DebugModeEnabled) {                                     \
-            Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
-        }                                                                                 \
-    } while (false)
-#else
-#define beammp_trace(x)
-#endif // defined(DEBUG)
 
-#define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
-#define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
-#define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
-#define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
-#define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
-#define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
+// clang-format off
+#ifdef DOCTEST_CONFIG_DISABLE
+
+    // we would like the full function signature 'void a::foo() const'
+    // on windows this is __FUNCSIG__, on GCC it's __PRETTY_FUNCTION__,
+    // feel free to add more
+    #if defined(WIN32)
+        #define _function_name std::string(__FUNCSIG__)
+    #elif defined(__unix) || defined(__unix__)
+        #define _function_name std::string(__PRETTY_FUNCTION__)
+    #else
+        #define _function_name std::string(__func__)
+    #endif
+    
+    #ifndef NDEBUG
+        #define DEBUG
+    #endif
+    
+    #if defined(DEBUG)
+        
+        // if this is defined, we will show the full function signature infront of
+        // each info/debug/warn... call instead of the 'filename:line' format.
+        #if defined(BMP_FULL_FUNCTION_NAMES)
+            #define _this_location (ThreadName() + _function_name + " ")
+        #else
+            #define _this_location (ThreadName() + _file_basename + ":" + _line + " ")
+        #endif
+
+    #endif // defined(DEBUG)
+    
+    #define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
+    #define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
+    #define beammp_error(x)                                                               \
+        do {                                                                              \
+            Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
+            Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
+        } while (false)
+    #define beammp_lua_error(x)                                                               \
+        do {                                                                                  \
+            Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x)); \
+        } while (false)
+    #define beammp_lua_warn(x)                                                               \
+        do {                                                                                 \
+            Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
+        } while (false)
+    #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
+    #define beammp_debug(x)                                                                   \
+        do {                                                                                  \
+            if (Application::Settings.DebugModeEnabled) {                                     \
+                Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
+            }                                                                                 \
+        } while (false)
+    #define beammp_event(x)                                                                   \
+        do {                                                                                  \
+            if (Application::Settings.DebugModeEnabled) {                                     \
+                Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
+            }                                                                                 \
+        } while (false)
+    // trace() is a debug-build debug()
+    #if defined(DEBUG)
+        #define beammp_trace(x)                                                                   \
+            do {                                                                                  \
+                if (Application::Settings.DebugModeEnabled) {                                     \
+                    Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
+                }                                                                                 \
+            } while (false)
+    #else
+        #define beammp_trace(x)
+    #endif // defined(DEBUG)
+    
+    #define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
+    #define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
+    #define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
+    #define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
+    #define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
+    #define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
+
+#else // DOCTEST_CONFIG_DISABLE
+
+    #define beammp_error(x) /* x */
+    #define beammp_lua_error(x) /* x */
+    #define beammp_warn(x) /* x */
+    #define beammp_lua_warn(x) /* x */
+    #define beammp_info(x) /* x */
+    #define beammp_event(x) /* x */
+    #define beammp_debug(x) /* x */
+    #define beammp_trace(x) /* x */
+    #define luaprint(x) /* x */
+    #define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
+    #define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
+    #define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
+    #define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
+    #define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
+    #define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
+
+#endif // DOCTEST_CONFIG_DISABLE
+
+#if defined(DEBUG)
+    #define SU_RAW SSU_UNRAW
+#else
+    #define SU_RAW RAWIFY(SSU_UNRAW)
+    #define _this_location (ThreadName())
+#endif
+
+// clang-format on
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg);
 
