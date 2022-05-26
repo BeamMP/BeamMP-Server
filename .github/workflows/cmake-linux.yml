@@ -35,12 +35,12 @@ jobs:
       - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE BeamMP-Server
+        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server
 
       - name: Build Tests
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE BeamMP-Server-tests
+        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server-tests
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
