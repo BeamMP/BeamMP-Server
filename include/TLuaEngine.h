@@ -48,6 +48,7 @@ struct TLuaPluginConfig {
     static inline const std::string FileName = "PluginConfig.toml";
     TLuaStateId StateId;
     // TODO: Add execute list
+    // TODO: Build a better toml serializer, or some way to do this in an easier way
 };
 
 struct TLuaChunk {
