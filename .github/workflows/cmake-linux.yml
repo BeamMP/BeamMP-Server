@@ -36,12 +36,7 @@ jobs:
       working-directory: ${{github.workspace}}/build-linux
       shell: bash
       run: cmake --build . --config $BUILD_TYPE
-
-    - name: Run Tests
-      working-directory: ${{github.workspace}}/build-linux
-      shell: bash
-      run: ./BeamMP-Server-test
-
+    
     - name: Archive artifacts
       uses: actions/upload-artifact@v2
       with:
