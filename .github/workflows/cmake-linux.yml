@@ -35,12 +35,12 @@ jobs:
       - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server
+        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server --parallel
 
       - name: Build Tests
         working-directory: ${{github.workspace}}/build-linux
         shell: bash
-        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server-tests
+        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server-tests --parallel
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
@@ -63,6 +63,12 @@ jobs:
         with:
           name: BeamMP-Server-linux-tests
           path: ${{github.workspace}}
+    
+      - name: Install Runtime Dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libz rapidjson liblua5.3 libssl libwebsocketpp libcurl4-openssl
 
       - name: Test
         working-directory: ${{github.workspace}}
