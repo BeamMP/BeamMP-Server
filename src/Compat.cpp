@@ -24,18 +24,20 @@ void resetTermios(void) {
 }
 
 TEST_CASE("init and reset termios") {
-    struct termios original;
-    tcgetattr(0, &original);
-    SUBCASE("no echo") {
-        initTermios(false);
+    if (isatty(STDIN_FILENO)) {
+        struct termios original;
+        tcgetattr(0, &original);
+        SUBCASE("no echo") {
+            initTermios(false);
+        }
+        SUBCASE("yes echo") {
+            initTermios(true);
+        }
+        resetTermios();
+        struct termios current;
+        tcgetattr(0, &current);
+        CHECK(std::memcmp(&original, &current, sizeof(struct termios)) == 0);
     }
-    SUBCASE("yes echo") {
-        initTermios(true);
-    }
-    resetTermios();
-    struct termios current;
-    tcgetattr(0, &current);
-    CHECK(std::memcmp(&original, &current, sizeof(struct termios)) == 0);
 }
 
 char getch_(int echo) {
