@@ -10,35 +10,50 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-      with:
-          submodules: 'recursive'
+      - uses: actions/checkout@v2
+        with:
+          submodules: "recursive"
 
-    - name: Install Dependencies
-      env:
-        beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-      run: |
+      - name: Install Dependencies
+        env:
+          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
+        run: |
           echo ${#beammp_sentry_url}
           sudo apt-get update
-          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev
+          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev cmake
 
-    - name: Create Build Environment
-      run: cmake -E make_directory ${{github.workspace}}/build-linux
+      - name: Create Build Environment
+        run: cmake -E make_directory ${{github.workspace}}/build-linux
 
-    - name: Configure CMake
-      shell: bash
-      working-directory: ${{github.workspace}}/build-linux
-      env:
-        beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
+      - name: Configure CMake
+        shell: bash
+        working-directory: ${{github.workspace}}/build-linux
+        env:
+          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
+        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
 
-    - name: Build
-      working-directory: ${{github.workspace}}/build-linux
-      shell: bash
-      run: cmake --build . --config $BUILD_TYPE
-    
-    - name: Archive artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: BeamMP-Server-linux
-        path: ${{github.workspace}}/build-linux/BeamMP-Server
+      - name: Build
+        working-directory: ${{github.workspace}}/build-linux
+        shell: bash
+        run: cmake --build . --config $BUILD_TYPE
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-linux
+          path: ${{github.workspace}}/build-linux/BeamMP-Server
+
+  run-tests:
+    needs: linux-build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build
+        working-directory: ${{github.workspace}}/build-linux
+        shell: bash
+        run: cmake --build . --config $BUILD_TYPE BeamMP-Server-tests
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build-linux
+        shell: bash
+        run: ./BeamMP-Server-tests
