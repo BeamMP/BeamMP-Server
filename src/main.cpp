@@ -11,6 +11,7 @@
 #include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
+#include "TPluginMonitor.h"
 #include "TResourceManager.h"
 #include "TScopedTimer.h"
 #include "TServer.h"
@@ -158,6 +159,8 @@ int BeamMPServerMain(MainArguments Arguments) {
     LuaEngine->SetNetwork(&Network);
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
+
+    TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
 
     if (Application::Settings.HTTPServerEnabled) {
         Http::Server::THttpServerInstance HttpServerInstance {};

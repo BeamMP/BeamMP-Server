@@ -60,20 +60,7 @@ struct TLuaChunk {
     std::string PluginPath;
 };
 
-class TPluginMonitor : IThreaded {
-public:
-    TPluginMonitor(const fs::path& Path, TLuaEngine& Engine, std::atomic_bool& Shutdown);
-
-    void operator()();
-
-private:
-    TLuaEngine& mEngine;
-    fs::path mPath;
-    std::atomic_bool& mShutdown;
-    std::unordered_map<std::string, fs::file_time_type> mFileTimes;
-};
-
-class TLuaEngine : IThreaded, public std::enable_shared_from_this<TLuaEngine> {
+class TLuaEngine : public std::enable_shared_from_this<TLuaEngine>, IThreaded {
 public:
     enum CallStrategy : int {
         BestEffort,
@@ -245,7 +232,6 @@ private:
 
     TNetwork* mNetwork;
     TServer* mServer;
-    TPluginMonitor mPluginMonitor;
     std::atomic_bool mShutdown { false };
     fs::path mResourceServerPath;
     std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;

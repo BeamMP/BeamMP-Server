@@ -16,6 +16,8 @@ extern TSentry Sentry;
 #include <zlib.h>
 
 #include <doctest/doctest.h>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #include "Compat.h"
 
