@@ -32,6 +32,31 @@ static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
 static constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
 
+TEST_CASE("TConfig::TConfig") {
+    const std::string CfgFile = "beammp_server_testconfig.toml";
+    fs::remove(CfgFile);
+
+    TConfig Cfg(CfgFile);
+
+    CHECK(fs::file_size(CfgFile) != 0);
+
+    std::string buf;
+    {
+        buf.resize(fs::file_size(CfgFile));
+        auto fp = std::fopen(CfgFile.c_str(), "r");
+        std::fread(buf.data(), 1, buf.size(), fp);
+        std::fclose(fp);
+    }
+    INFO("file contents are:", buf);
+
+    const auto table = toml::parse(CfgFile);
+    CHECK(table.at("General").is_table());
+    CHECK(table.at("Misc").is_table());
+    CHECK(table.at("HTTP").is_table());
+
+    fs::remove(CfgFile);
+}
+
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
     Application::SetSubsystemStatus("Config", Application::Status::Starting);

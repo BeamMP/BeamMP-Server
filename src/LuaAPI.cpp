@@ -434,22 +434,50 @@ std::string LuaAPI::FS::GetFilename(const std::string& Path) {
     return fs::path(Path).filename().string();
 }
 
+TEST_CASE("LuaAPI::FS::GetFilename") {
+    CHECK(LuaAPI::FS::GetFilename("test.txt") == "test.txt");
+    CHECK(LuaAPI::FS::GetFilename("/test.txt") == "test.txt");
+    CHECK(LuaAPI::FS::GetFilename("place/test.txt") == "test.txt");
+    CHECK(LuaAPI::FS::GetFilename("/some/../place/test.txt") == "test.txt");
+}
+
 std::string LuaAPI::FS::GetExtension(const std::string& Path) {
     return fs::path(Path).extension().string();
+}
+
+TEST_CASE("LuaAPI::FS::GetExtension") {
+    CHECK(LuaAPI::FS::GetExtension("test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("/test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("place/test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test") == "");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.a.b.c") == ".c");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.") == ".");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.a.b.") == ".");
 }
 
 std::string LuaAPI::FS::GetParentFolder(const std::string& Path) {
     return fs::path(Path).parent_path().string();
 }
 
+TEST_CASE("LuaAPI::FS::GetParentFolder") {
+    CHECK(LuaAPI::FS::GetParentFolder("test.txt") == "");
+    CHECK(LuaAPI::FS::GetParentFolder("/test.txt") == "/");
+    CHECK(LuaAPI::FS::GetParentFolder("place/test.txt") == "place");
+    CHECK(LuaAPI::FS::GetParentFolder("/some/../place/test.txt") == "/some/../place");
+}
+
+// TODO: add tests
 bool LuaAPI::FS::IsDirectory(const std::string& Path) {
     return fs::is_directory(Path);
 }
 
+// TODO: add tests
 bool LuaAPI::FS::IsFile(const std::string& Path) {
     return fs::is_regular_file(Path);
 }
 
+// TODO: add tests
 std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     fs::path Path;
     for (size_t i = 0; i < Args.size(); ++i) {
