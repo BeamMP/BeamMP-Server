@@ -6,7 +6,7 @@
 int main(int argc, char** argv) {
     doctest::Context context;
 
-    Application::InitializeConsole();
+    // Application::InitializeConsole();
 
     context.applyCommandLine(argc, argv);
 

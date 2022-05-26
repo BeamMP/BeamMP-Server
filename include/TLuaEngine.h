@@ -73,7 +73,7 @@ private:
     std::unordered_map<std::string, fs::file_time_type> mFileTimes;
 };
 
-class TLuaEngine : IThreaded {
+class TLuaEngine : IThreaded, public std::enable_shared_from_this<TLuaEngine> {
 public:
     enum CallStrategy : int {
         BestEffort,

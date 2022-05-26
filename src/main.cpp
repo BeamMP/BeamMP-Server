@@ -133,9 +133,9 @@ int BeamMPServerMain(MainArguments Arguments) {
 
     TServer Server(Arguments.List);
     TConfig Config(ConfigPath);
-    TLuaEngine LuaEngine;
-    LuaEngine.SetServer(&Server);
-    Application::Console().InitializeLuaConsole(LuaEngine);
+    auto LuaEngine = std::make_shared<TLuaEngine>();
+    LuaEngine->SetServer(&Server);
+    Application::Console().InitializeLuaConsole(*LuaEngine);
 
     if (Config.Failed()) {
         beammp_info("Closing in 10 seconds");
@@ -155,7 +155,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
-    LuaEngine.SetNetwork(&Network);
+    LuaEngine->SetNetwork(&Network);
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
 

@@ -14,6 +14,17 @@ static inline bool StringStartsWith(const std::string& What, const std::string& 
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
 }
 
+TEST_CASE("StringStartsWith") {
+    CHECK(StringStartsWith("Hello, World", "Hello"));
+    CHECK(StringStartsWith("Hello, World", "H"));
+    CHECK(StringStartsWith("Hello, World", ""));
+    CHECK(!StringStartsWith("Hello, World", "ello"));
+    CHECK(!StringStartsWith("Hello, World", "World"));
+    CHECK(StringStartsWith("", ""));
+    CHECK(!StringStartsWith("", "hello"));
+}
+
+// Trims leading and trailing spaces, newlines, tabs, etc.
 static inline std::string TrimString(std::string S) {
     S.erase(S.begin(), std::find_if(S.begin(), S.end(), [](unsigned char ch) {
         return !std::isspace(ch);
@@ -23,6 +34,21 @@ static inline std::string TrimString(std::string S) {
     }).base(),
         S.end());
     return S;
+}
+
+TEST_CASE("TrimString") {
+    CHECK(TrimString("hel lo") == "hel lo");
+    CHECK(TrimString(" hel lo") == "hel lo");
+    CHECK(TrimString(" hel lo ") == "hel lo");
+    CHECK(TrimString("hel lo     ") == "hel lo");
+    CHECK(TrimString("     hel lo") == "hel lo");
+    CHECK(TrimString("hel lo     ") == "hel lo");
+    CHECK(TrimString("    hel lo     ") == "hel lo");
+    CHECK(TrimString("\t\thel\nlo\n\n") == "hel\nlo");
+    CHECK(TrimString("\n\thel\tlo\n\t") == "hel\tlo");
+    CHECK(TrimString("  ") == "");
+    CHECK(TrimString(" \t\n\r ") == "");
+    CHECK(TrimString("") == "");
 }
 
 std::string GetDate() {

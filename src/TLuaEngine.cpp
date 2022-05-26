@@ -38,6 +38,12 @@ TLuaEngine::TLuaEngine()
     Start();
 }
 
+TEST_CASE("TLuaEngine ctor & dtor") {
+    Application::Settings.Resource = "beammp_server_test_resources";
+    TLuaEngine engine;
+    Application::GracefullyShutdown();
+}
+
 void TLuaEngine::operator()() {
     RegisterThread("LuaEngine");
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Good);
@@ -269,6 +275,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID,
 }
 
 void TLuaEngine::CollectAndInitPlugins() {
+    fs::create_directories(mResourceServerPath);
     for (const auto& Dir : fs::directory_iterator(mResourceServerPath)) {
         auto Path = Dir.path();
         Path = fs::relative(Path);
