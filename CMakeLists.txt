@@ -92,51 +92,53 @@ message(STATUS "Adding local source dependencies")
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 add_subdirectory(deps)
 
-# ------------------------ BEAMMP SERVER -----------------------------
-
-add_executable(BeamMP-Server
-        src/main.cpp
-        include/TConsole.h src/TConsole.cpp
-        include/TServer.h src/TServer.cpp
-        include/Compat.h src/Compat.cpp
-        include/Common.h src/Common.cpp
-        include/Client.h src/Client.cpp
-        include/VehicleData.h src/VehicleData.cpp
-        include/TConfig.h src/TConfig.cpp
-        include/TLuaEngine.h src/TLuaEngine.cpp
-        include/TLuaPlugin.h src/TLuaPlugin.cpp
-        include/TResourceManager.h src/TResourceManager.cpp
-        include/THeartbeatThread.h src/THeartbeatThread.cpp
-        include/Http.h src/Http.cpp
-        include/TSentry.h src/TSentry.cpp
-        include/TPPSMonitor.h src/TPPSMonitor.cpp
-        include/TNetwork.h src/TNetwork.cpp
-        include/LuaAPI.h src/LuaAPI.cpp
-        include/TScopedTimer.h src/TScopedTimer.cpp
-        include/SignalHandling.h src/SignalHandling.cpp
-        include/ArgsParser.h src/ArgsParser.cpp
-        include/Environment.h)
-
-target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
-include_directories(BeamMP-Server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-
-target_include_directories(BeamMP-Server PUBLIC 
-    "${CMAKE_CURRENT_SOURCE_DIR}/include" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
+# ------------------------ VARIABLES ---------------------------------
 
 include(FindLua)
 include(FindOpenSSL)
 include(FindThreads)
 include(FindZLIB)
 
-target_include_directories(BeamMP-Server PUBLIC 
-    ${LUA_INCLUDE_DIR} 
-    ${CURL_INCLUDE_DIRS}
-    "include/tomlplusplus" 
-    "include/sentry-native/include"
-    "include/curl/include")
+set(BeamMP_Sources
+    include/TConsole.h src/TConsole.cpp
+    include/TServer.h src/TServer.cpp
+    include/Compat.h src/Compat.cpp
+    include/Common.h src/Common.cpp
+    include/Client.h src/Client.cpp
+    include/VehicleData.h src/VehicleData.cpp
+    include/TConfig.h src/TConfig.cpp
+    include/TLuaEngine.h src/TLuaEngine.cpp
+    include/TLuaPlugin.h src/TLuaPlugin.cpp
+    include/TResourceManager.h src/TResourceManager.cpp
+    include/THeartbeatThread.h src/THeartbeatThread.cpp
+    include/Http.h src/Http.cpp
+    include/TSentry.h src/TSentry.cpp
+    include/TPPSMonitor.h src/TPPSMonitor.cpp
+    include/TNetwork.h src/TNetwork.cpp
+    include/LuaAPI.h src/LuaAPI.cpp
+    include/TScopedTimer.h src/TScopedTimer.cpp
+    include/SignalHandling.h src/SignalHandling.cpp
+    include/ArgsParser.h src/ArgsParser.cpp
+    include/Environment.h
+)
 
-target_link_libraries(BeamMP-Server 
+set(BeamMP_Includes
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/commandline"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    ${LUA_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
+    "include/tomlplusplus"
+    "include/sentry-native/include"
+    "include/curl/include"
+)
+
+set(BeamMP_Definitions
+    SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
+)
+
+set(BeamMP_Libraries
+    doctest::doctest
     OpenSSL::SSL
     OpenSSL::Crypto
     sol2::sol2
@@ -145,8 +147,57 @@ target_link_libraries(BeamMP-Server
     ZLIB::ZLIB
     ${LUA_LIBRARIES}
     commandline
-    sentry)
+    sentry
+)
 
 if (WIN32)
-    target_link_libraries(BeamMP-Server wsock32 ws2_32)
+    set(BeamMP_PlatformLibs wsock32 ws2_32)
 endif ()
+
+# ------------------------ BEAMMP SERVER -----------------------------
+# ------------------------ BEAMMP SERVER TESTS -----------------------
+
+add_executable(BeamMP-Server
+        src/main.cpp
+        ${BeamMP_Sources}
+)
+
+target_compile_definitions(BeamMP-Server PRIVATE
+    ${BeamMP_Definitions}
+    DOCTEST_CONFIG_DISABLE
+)
+
+target_include_directories(BeamMP-Server PUBLIC 
+    ${BeamMP_Includes}
+)
+
+target_link_libraries(BeamMP-Server 
+    ${BeamMP_Libraries}
+    ${BeamMP_PlatformLibs}
+)
+
+# ------------------------ BEAMMP SERVER TESTS -----------------------
+
+option(BUILD_TESTS "Build BeamMP-Server tests" ON)
+
+if(BUILD_TESTS)
+    add_executable(BeamMP-Server-tests
+            test/test_main.cpp
+            ${BeamMP_Sources}
+    )
+
+    target_compile_definitions(BeamMP-Server-tests PRIVATE
+        ${BeamMP_Definitions}
+        DOCTEST_CONFIG_DISABLE
+    )
+
+    target_include_directories(BeamMP-Server-tests PUBLIC
+        ${BeamMP_Includes}
+    )
+
+    target_link_libraries(BeamMP-Server-tests
+        ${BeamMP_Libraries}
+        ${BeamMP_PlatformLibs}
+    )
+endif()
+
