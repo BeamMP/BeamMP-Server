@@ -29,8 +29,6 @@ namespace Server {
     class THttpServerInstance {
     public:
         THttpServerInstance();
-        static fs::path KeyFilePath;
-        static fs::path CertFilePath;
 
     protected:
         void operator()();

@@ -17,7 +17,7 @@
 
 #include <iostream>
 #include <thread>
-#define CPPHTTPLIB_OPENSSL_SUPPORT 1
+
 static const std::string sCommandlineArguments = R"(
 USAGE: 
     BeamMP-Server [arguments]
