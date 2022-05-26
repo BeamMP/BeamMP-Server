@@ -102,6 +102,14 @@ void LuaAPI::Print(sol::variadic_args Args) {
     luaprint(ToPrint);
 }
 
+TEST_CASE("LuaAPI::MP::GetServerVersion") {
+    const auto [ma, mi, pa] = LuaAPI::MP::GetServerVersion();
+    const auto real = Application::ServerVersion();
+    CHECK(ma == real.major);
+    CHECK(mi == real.minor);
+    CHECK(pa == real.patch);
+}
+
 static inline bool InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
     std::string Packet = "E:" + EventName + ":" + Data;
     if (PlayerID == -1)
@@ -287,12 +295,39 @@ static std::pair<bool, std::string> FSWrapper(FnT Fn, ArgsT&&... Args) {
 std::pair<bool, std::string> LuaAPI::FS::CreateDirectory(const std::string& Path) {
     std::error_code errc;
     std::pair<bool, std::string> Result;
-    fs::create_directories(fs::relative(Path), errc);
+    fs::create_directories(Path, errc);
     Result.first = errc == std::error_code {};
     if (!Result.first) {
         Result.second = errc.message();
     }
     return Result;
+}
+
+TEST_CASE("LuaAPI::FS::CreateDirectory") {
+    std::string TestDir = "beammp_test_dir";
+    fs::remove_all(TestDir);
+    SUBCASE("Single level dir") {
+        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(Ok);
+        CHECK(Err == "");
+        CHECK(fs::exists(TestDir));
+    }
+    SUBCASE("Multi level dir") {
+        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir + "/a/b/c");
+        CHECK(Ok);
+        CHECK(Err == "");
+        CHECK(fs::exists(TestDir + "/a/b/c"));
+    }
+    SUBCASE("Already exists") {
+        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(Ok);
+        CHECK(Err == "");
+        CHECK(fs::exists(TestDir));
+        const auto [Ok2, Err2] = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(Ok2);
+        CHECK(Err2 == "");
+    }
+    fs::remove_all(TestDir);
 }
 
 std::pair<bool, std::string> LuaAPI::FS::Remove(const std::string& Path) {
@@ -306,21 +341,56 @@ std::pair<bool, std::string> LuaAPI::FS::Remove(const std::string& Path) {
     return Result;
 }
 
+TEST_CASE("LuaAPI::FS::Remove") {
+    const std::string TestFileOrDir = "beammp_test_thing";
+    SUBCASE("Remove existing directory") {
+        fs::create_directory(TestFileOrDir);
+        const auto [Ok, Err] = LuaAPI::FS::Remove(TestFileOrDir);
+        CHECK(Ok);
+        CHECK_EQ(Err, "");
+        CHECK(!fs::exists(TestFileOrDir));
+    }
+    SUBCASE("Remove non-existing directory") {
+        fs::remove_all(TestFileOrDir);
+        const auto [Ok, Err] = LuaAPI::FS::Remove(TestFileOrDir);
+        CHECK(Ok);
+        CHECK_EQ(Err, "");
+        CHECK(!fs::exists(TestFileOrDir));
+    }
+    // TODO: add tests for files
+    // TODO: add tests for files and folders without access permissions (failure)
+}
+
 std::pair<bool, std::string> LuaAPI::FS::Rename(const std::string& Path, const std::string& NewPath) {
     std::error_code errc;
     std::pair<bool, std::string> Result;
-    fs::rename(fs::relative(Path), fs::relative(NewPath), errc);
+    fs::rename(Path, NewPath, errc);
     Result.first = errc == std::error_code {};
     if (!Result.first) {
         Result.second = errc.message();
     }
     return Result;
+}
+
+TEST_CASE("LuaAPI::FS::Rename") {
+    const auto TestDir = "beammp_test_dir";
+    const auto OtherTestDir = "beammp_test_dir_2";
+    fs::remove_all(OtherTestDir);
+    fs::create_directory(TestDir);
+    const auto [Ok, Err] = LuaAPI::FS::Rename(TestDir, OtherTestDir);
+    CHECK(Ok);
+    CHECK_EQ(Err, "");
+    CHECK(!fs::exists(TestDir));
+    CHECK(fs::exists(OtherTestDir));
+
+    fs::remove_all(OtherTestDir);
+    fs::remove_all(TestDir);
 }
 
 std::pair<bool, std::string> LuaAPI::FS::Copy(const std::string& Path, const std::string& NewPath) {
     std::error_code errc;
     std::pair<bool, std::string> Result;
-    fs::copy(fs::relative(Path), fs::relative(NewPath), fs::copy_options::recursive, errc);
+    fs::copy(Path, NewPath, fs::copy_options::recursive, errc);
     Result.first = errc == std::error_code {};
     if (!Result.first) {
         Result.second = errc.message();
@@ -328,8 +398,36 @@ std::pair<bool, std::string> LuaAPI::FS::Copy(const std::string& Path, const std
     return Result;
 }
 
+TEST_CASE("LuaAPI::FS::Copy") {
+    const auto TestDir = "beammp_test_dir";
+    const auto OtherTestDir = "beammp_test_dir_2";
+    fs::remove_all(OtherTestDir);
+    fs::create_directory(TestDir);
+    const auto [Ok, Err] = LuaAPI::FS::Copy(TestDir, OtherTestDir);
+    CHECK(Ok);
+    CHECK_EQ(Err, "");
+    CHECK(fs::exists(TestDir));
+    CHECK(fs::exists(OtherTestDir));
+
+    fs::remove_all(OtherTestDir);
+    fs::remove_all(TestDir);
+}
+
 bool LuaAPI::FS::Exists(const std::string& Path) {
-    return fs::exists(fs::relative(Path));
+    return fs::exists(Path);
+}
+
+TEST_CASE("LuaAPI::FS::Exists") {
+    const auto TestDir = "beammp_test_dir";
+    const auto OtherTestDir = "beammp_test_dir_2";
+    fs::remove_all(OtherTestDir);
+    fs::create_directory(TestDir);
+
+    CHECK(LuaAPI::FS::Exists(TestDir));
+    CHECK(!LuaAPI::FS::Exists(OtherTestDir));
+
+    fs::remove_all(OtherTestDir);
+    fs::remove_all(TestDir);
 }
 
 std::string LuaAPI::FS::GetFilename(const std::string& Path) {

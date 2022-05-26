@@ -1,5 +1,8 @@
 #include "Compat.h"
 
+#include <cstring>
+#include <doctest/doctest.h>
+
 #ifndef WIN32
 
 static struct termios old, current;
@@ -18,6 +21,21 @@ void initTermios(int echo) {
 
 void resetTermios(void) {
     tcsetattr(0, TCSANOW, &old);
+}
+
+TEST_CASE("init and reset termios") {
+    struct termios original;
+    tcgetattr(0, &original);
+    SUBCASE("no echo") {
+        initTermios(false);
+    }
+    SUBCASE("yes echo") {
+        initTermios(true);
+    }
+    resetTermios();
+    struct termios current;
+    tcgetattr(0, &current);
+    CHECK(std::memcmp(&original, &current, sizeof(struct termios)) == 0);
 }
 
 char getch_(int echo) {

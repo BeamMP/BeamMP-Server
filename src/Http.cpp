@@ -142,6 +142,12 @@ std::string Http::Status::ToString(int Code) {
     }
 }
 
+TEST_CASE("Http::Status::ToString") {
+    CHECK(Http::Status::ToString(200) == "OK");
+    CHECK(Http::Status::ToString(696969) == "696969");
+    CHECK(Http::Status::ToString(-1) == "Invalid Response Code");
+}
+
 Http::Server::THttpServerInstance::THttpServerInstance() {
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Starting);
     mThread = std::thread(&Http::Server::THttpServerInstance::operator(), this);
