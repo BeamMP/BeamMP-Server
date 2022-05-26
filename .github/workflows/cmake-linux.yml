@@ -62,7 +62,7 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: BeamMP-Server-linux-tests
-          path: ${{github.workspace}}/BeamMP-Server-tests
+          path: ${{github.workspace}}
 
       - name: Test
         working-directory: ${{github.workspace}}
