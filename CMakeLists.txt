@@ -26,14 +26,14 @@ endif()
 set(HTTPLIB_REQUIRE_OPENSSL ON)
 set(SENTRY_BUILD_SHARED_LIBS OFF)
 
-include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
-include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
-include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
-include_directories("${PROJECT_SOURCE_DIR}/deps/json/single_include")
-include_directories("${PROJECT_SOURCE_DIR}/deps")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/websocketpp")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/commandline")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/sol2/include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/cpp-httplib")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/json/single_include")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps")
 
 add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT=1)
 
@@ -50,13 +50,6 @@ elseif (WIN32)
     message(STATUS "MSVC -> forcing use of statically-linked runtime.")
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
     STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
-    if (MSVC)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-        set(SENTRY_BUILD_RUNTIMESTATIC ON)
-    endif ()
-    set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
-    include_directories(${VcpkgRoot}/include)
-    link_directories(${VcpkgRoot}/lib)
 # ------------------------ LINUX ---------------------------------
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++ -static-libgcc")
@@ -87,6 +80,9 @@ add_subdirectory("deps/sentry-native")
 
 # ------------------------ C++ SETUP ---------------------------------
 set(CMAKE_CXX_STANDARD 17)
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+endif ()
 
 # ------------------------ DEPENDENCIES ------------------------------
 message(STATUS "Adding local source dependencies")
@@ -171,7 +167,7 @@ target_include_directories(BeamMP-Server PUBLIC
     ${BeamMP_Includes}
 )
 
-target_link_libraries(BeamMP-Server 
+target_link_libraries(BeamMP-Server
     ${BeamMP_Libraries}
     ${BeamMP_PlatformLibs}
 )
