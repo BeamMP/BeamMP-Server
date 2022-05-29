@@ -756,11 +756,11 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
     uint32_t Split = 0x7735940; // 125MB
-    char* Data;
+    std::vector<char> Data;
     if (Size > Split)
-        Data = new char[Split];
+        Data.resize(Split);
     else
-        Data = new char[Size];
+        Data.resize(Size);
     SOCKET TCPSock;
     if (D)
         TCPSock = c.GetDownSock();
@@ -771,8 +771,8 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
         size_t Diff = Size - Sent;
         if (Diff > Split) {
             f.seekg(Sent, std::ios_base::beg);
-            f.read(Data, Split);
-            if (!TCPSendRaw(c, TCPSock, Data, Split)) {
+            f.read(Data.data(), Split);
+            if (!TCPSendRaw(c, TCPSock, Data.data(), Split)) {
                 if (c.GetStatus() > -1)
                     c.SetStatus(-1);
                 break;
@@ -780,8 +780,8 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
             Sent += Split;
         } else {
             f.seekg(Sent, std::ios_base::beg);
-            f.read(Data, Diff);
-            if (!TCPSendRaw(c, TCPSock, Data, int32_t(Diff))) {
+            f.read(Data.data(), Diff);
+            if (!TCPSendRaw(c, TCPSock, Data.data(), int32_t(Diff))) {
                 if (c.GetStatus() > -1)
                     c.SetStatus(-1);
                 break;
@@ -789,8 +789,6 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
             Sent += Diff;
         }
     }
-    delete[] Data;
-    f.close();
 }
 
 bool TNetwork::TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size) {
