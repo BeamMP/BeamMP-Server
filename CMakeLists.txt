@@ -1,17 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 
-if (WIN32)
-    set(VCPKG_TARGET_TRIPLET "x64-windows-static")
-elseif(UNIX)
-    set(VCPKG_TARGET_TRIPLET "x64-linux")
-endif()
-
-option(USE_VCPKG "USE_VCPKG" ON)
-
-if(USE_VCPKG)
-	include(vcpkg.cmake)
-endif()
-
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
@@ -21,6 +9,15 @@ project(BeamMP-Server
     LANGUAGES CXX C)
 
 set(HTTPLIB_REQUIRE_OPENSSL ON)
+
+include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
+include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
+include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
+include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
+include_directories("${PROJECT_SOURCE_DIR}/deps/json/single_include")
+include_directories("${PROJECT_SOURCE_DIR}/deps")
 
 add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
 
@@ -38,6 +35,26 @@ if (WIN32)
     STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
     STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 endif()
+
+include_directories("include/sentry-native/include")
+set(SENTRY_BUILD_SHARED_LIBS OFF)
+if (MSVC)
+    set(SENTRY_BUILD_RUNTIMESTATIC ON)
+endif()
+message(STATUS "Checking for Sentry URL")
+# this is set by the build system.
+# IMPORTANT: if you're building from source, just leave this empty
+if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
+    message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
+    This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
+    set(BEAMMP_SECRET_SENTRY_URL "")
+    set(SENTRY_BACKEND none)
+else()
+    string(LENGTH ${BEAMMP_SECRET_SENTRY_URL} URL_LEN)
+    message(STATUS "Sentry URL is length ${URL_LEN}")
+    set(SENTRY_BACKEND breakpad)
+endif()
+add_subdirectory("deps/sentry-native")
 
 if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
@@ -64,19 +81,7 @@ elseif (UNIX)
     endif (SANITIZE)
 endif ()
 
-message(STATUS "Checking for Sentry URL")
-# this is set by the build system.
-# IMPORTANT: if you're building from source, just leave this empty
-if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
-    message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
-    This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
-    set(BEAMMP_SECRET_SENTRY_URL "")
-    set(SENTRY_BACKEND none)
-else()
-    string(LENGTH ${BEAMMP_SECRET_SENTRY_URL} URL_LEN)
-    message(STATUS "Sentry URL is length ${URL_LEN}")
-    set(SENTRY_BACKEND breakpad)
-endif()
+
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -108,34 +113,57 @@ add_executable(BeamMP-Server
 target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
 include_directories(BeamMP-Server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-include(FindThreads)
+target_include_directories(BeamMP-Server PUBLIC 
+    "${CMAKE_CURRENT_SOURCE_DIR}/include" 
+    "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
 
-find_package(OpenSSL REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(CURL CONFIG REQUIRED)
-find_package(Lua REQUIRED 5.3)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(RapidJSON CONFIG REQUIRED)
-find_package(sentry CONFIG REQUIRED)
-find_package(sol2 CONFIG REQUIRED)
-find_package(toml11 CONFIG REQUIRED)
-find_path(CPP_HTTPLIB_INCLUDE_DIRS "httplib.h")
+if (APPLE)
+    message(STATUS "NOT looking for Lua on APPLE")
+else()
+    message(STATUS "Looking for Lua")
+    find_package(Lua REQUIRED VERSION 5.3)
+endif()
 
-target_include_directories(BeamMP-Server PRIVATE 
-    ${CPP_HTTPLIB_INCLUDE_DIRS}
-    ${LUA_INCLUDE_DIR}
-)
+target_include_directories(BeamMP-Server PUBLIC 
+    ${LUA_INCLUDE_DIR} 
+    ${CURL_INCLUDE_DIRS}
+    "include/tomlplusplus" 
+    "include/sentry-native/include"
+    "include/curl/include")
 
-target_link_libraries(BeamMP-Server PRIVATE OpenSSL::SSL OpenSSL::Crypto
-    ZLIB::ZLIB
-    CURL::libcurl
-    ${LUA_LIBRARIES}
-    Threads::Threads
-    commandline
-    nlohmann_json::nlohmann_json
-    rapidjson
-    sentry::sentry
-    sol2::sol2
-    toml11::toml11
-)
+message(STATUS "Looking for SSL")
 
+if (APPLE)
+    set(OPENSSL_LIBRARIES ssl crypto)
+else()
+    find_package(OpenSSL REQUIRED)
+endif()
+
+target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
+message(STATUS "CURL IS ${CURL_LIBRARIES}")
+
+if (UNIX)
+    target_link_libraries(BeamMP-Server
+        z 
+        pthread
+        ${LUA_LIBRARIES} 
+        crypto
+        ${OPENSSL_LIBRARIES} 
+        commandline 
+        sentry
+        ssl)
+elseif (WIN32)
+    include(FindLua)
+    message(STATUS "Looking for libz")
+    find_package(ZLIB REQUIRED)
+    message(STATUS "Looking for RapidJSON")
+    find_package(RapidJSON CONFIG REQUIRED)
+    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
+    target_link_libraries(BeamMP-Server
+        ws2_32 
+        ZLIB::ZLIB 
+        ${LUA_LIBRARIES} 
+        ${OPENSSL_LIBRARIES} 
+        commandline
+        sentry)
+endif ()
