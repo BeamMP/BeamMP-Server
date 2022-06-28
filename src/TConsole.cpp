@@ -227,7 +227,8 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
         say <message>           sends the message to all players in chat
         lua [state id]          switches to lua, optionally into a specific state id's lua
         settings [command]      sets or gets settings for the server, run `settings help` for more info
-        status                  how the server is doing and what it's up to)";
+        status                  how the server is doing and what it's up to
+        clear                   clears the console window)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
@@ -238,6 +239,13 @@ std::string TConsole::ConcatArgs(const std::vector<std::string>& args, char spac
     }
     Result = Result.substr(0, Result.size() - 1); // strip trailing space
     return Result;
+}
+
+void TConsole::Command_Clear(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0, size_t(-1))) {
+        return;
+    }
+    mCommandline.write("\x1b[;H\x1b[2J");
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
