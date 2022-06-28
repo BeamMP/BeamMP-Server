@@ -48,4 +48,5 @@ private:
     void SendFile(TClient& c, const std::string& Name);
     static bool TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size);
     static void SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name);
+    static uint8_t* SendSplit(TClient& c, SOCKET Socket, uint8_t* DataPtr, size_t Size);
 };

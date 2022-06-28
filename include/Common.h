@@ -135,8 +135,9 @@ std::string ThreadName(bool DebugModeOverride = false);
 void RegisterThread(const std::string& str);
 #define RegisterThreadAuto() RegisterThread(__func__)
 
-#define KB 1024
-#define MB (KB * 1024)
+#define KB 1024llu
+#define MB (KB * 1024llu)
+#define GB (MB * 1024llu)
 #define SSU_UNRAW SECRET_SENTRY_URL
 
 #define _file_basename std::filesystem::path(__FILE__).filename().string()
