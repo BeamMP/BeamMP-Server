@@ -102,6 +102,17 @@ For other distributions (e.g. Arch) you want to find packages for:
 - curl (with ssl support)
 - \+ the build time dependencies from above
 
+#### macOS
+
+Dependencies for **macOS** can be installed with homebrew.
+```
+brew install lua rapidjson websocketpp cmake
+```
+Some packages are included in **macOS** but you might want to install homebrew versions.
+```
+brew install openssl curl zlib git gcc
+```
+
 ### How to build
 
 On windows, use git-bash for these commands. On Linux, these should work in your shell.
