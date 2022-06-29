@@ -106,7 +106,7 @@ For other distributions (e.g. Arch) you want to find packages for:
 
 Dependencies for **macOS** can be installed with homebrew.
 ```
-brew install lua rapidjson websocketpp cmake openssl@1.1
+brew install lua@5.3 rapidjson websocketpp cmake openssl@1.1
 ```
 Some packages are included in **macOS** but you might want to install homebrew versions.
 ```
