@@ -113,7 +113,7 @@ Some packages are included in **macOS** but you might want to install homebrew v
 brew install curl zlib git gcc make
 ```
 Currently lionkor/commandline doesn't support macOS, so you need to manually patch it to make it working.
-```
+```patch
 diff --git a/commandline.cpp b/commandline.cpp
 index 367a0c3..c7e76ec 100644
 --- a/commandline.cpp
@@ -136,7 +136,7 @@ index 367a0c3..c7e76ec 100644
  #define LINUX
  #else
  #error "platform not supported"
- ```
+```
 
 ### How to build
 
