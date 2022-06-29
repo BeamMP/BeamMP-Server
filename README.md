@@ -112,6 +112,11 @@ Some packages are included in **macOS** but you might want to install homebrew v
 ```
 brew install curl zlib git gcc make
 ```
+Compile with homebrew gcc on apple silicon:
+```
+cmake . -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-11 -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-11
+make
+```
 Currently lionkor/commandline doesn't support macOS, so you need to manually patch it to make it working.
 ```patch
 diff --git a/commandline.cpp b/commandline.cpp
@@ -137,6 +142,7 @@ index 367a0c3..ee61449 100644
  #else
  #error "platform not supported"
 ```
+
 
 ### How to build
 
