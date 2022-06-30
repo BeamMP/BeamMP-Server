@@ -5,6 +5,7 @@
 - ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
 - ADDED FS.ListFiles and FS.ListDirectories
 - FIXED issue with client->server events which contain ':'
+- FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
 
 # v3.0.2
 
