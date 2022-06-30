@@ -274,7 +274,9 @@ std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID,
 }
 
 void TLuaEngine::CollectAndInitPlugins() {
-    fs::create_directories(mResourceServerPath);
+    if (!fs::exists(mResourceServerPath)) {
+        fs::create_directories(mResourceServerPath);
+    }
     for (const auto& Dir : fs::directory_iterator(mResourceServerPath)) {
         auto Path = Dir.path();
         Path = fs::relative(Path);
