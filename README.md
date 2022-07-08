@@ -112,31 +112,6 @@ Some packages are included in **macOS** but you might want to install homebrew v
 ```
 brew install curl zlib git make
 ```
-Currently lionkor/commandline doesn't support macOS, so you need to manually patch it to make it working.
-```patch
-diff --git a/commandline.cpp b/commandline.cpp
-index 367a0c3..ee61449 100644
---- a/commandline.cpp
-+++ b/commandline.cpp
-@@ -2,7 +2,7 @@
- #include <functional>
- #include <mutex>
-
--#if defined(__linux) || defined(__linux__)
-+#if defined(__linux) || defined(__linux__) || defined(__APPLE__)
- #include <pthread.h>
- #include <stdio.h>
- #include <termios.h>
-@@ -16,7 +16,7 @@
-
- #if defined(WIN32)
- #define WINDOWS
--#elif defined(__linux) || defined(__linux__)
-+#elif defined(__linux) || defined(__linux__) || defined(__APPLE__)
- #define LINUX
- #else
- #error "platform not supported"
-```
 
 
 ### How to build
