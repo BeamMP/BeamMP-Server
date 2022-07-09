@@ -106,6 +106,7 @@ void TConfig::FlushToFile() {
     if (N != Str.size()) {
         beammp_error("Failed to write to config file properly, config file might be misshapen");
     }
+    std::fclose(File);
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
