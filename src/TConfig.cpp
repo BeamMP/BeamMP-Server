@@ -91,8 +91,14 @@ void TConfig::FlushToFile() {
     SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to have enabled for servers which face the internet. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
+    std::stringstream Ss;
+    Ss << data;
     std::ofstream Stream(mConfigFileName, std::ios::trunc | std::ios::out);
-    Stream << data << std::flush;
+    Stream << "# This is the BeamMP-Server config file.\n"
+              "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
+              "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+           << Ss.str();
+    Stream.flush();
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
@@ -112,27 +118,6 @@ void TConfig::CreateConfigFile(std::string_view name) {
     }
 
     FlushToFile();
-
-    size_t FileSize = fs::file_size(name);
-    std::fstream ofs { std::string(name), std::ios::in | std::ios::out };
-    if (ofs.good()) {
-        std::string Contents {};
-        Contents.resize(FileSize);
-        ofs.readsome(Contents.data(), FileSize);
-        ofs.seekp(0);
-        ofs << "# This is the BeamMP-Server config file.\n"
-               "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-               "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
-            << '\n'
-            << Contents;
-        beammp_error("There was no \"" + std::string(mConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
-        mFailed = true;
-        ofs.close();
-    } else {
-        beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
-        Application::SetSubsystemStatus("Config", Application::Status::Bad);
-        mFailed = true;
-    }
 }
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {
