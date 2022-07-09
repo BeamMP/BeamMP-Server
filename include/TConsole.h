@@ -15,6 +15,7 @@ public:
     void WriteRaw(const std::string& str);
     void InitializeLuaConsole(TLuaEngine& Engine);
     void BackupOldLog();
+    void StartLoggingToFile();
     Commandline& Internal() { return mCommandline; }
 
 private:
@@ -37,4 +38,6 @@ private:
     bool mFirstTime { true };
     std::string mStateId;
     const std::string mDefaultStateId = "BEAMMP_SERVER_CONSOLE";
+    std::ofstream mLogFileStream;
+    std::mutex mLogFileStreamMtx;
 };

@@ -17,15 +17,19 @@ static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+
+// Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
-static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
-static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
+static constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
 
 // HTTP
+static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
+static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
 static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
 static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
+static constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
 
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
@@ -58,8 +62,8 @@ void SetComment(CommentsT& Comments, const std::string& Comment) {
  * whether it is in TConfig.cpp or the configuration file.
  */
 void TConfig::FlushToFile() {
-    auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
-    data["General"] = toml::table();
+    // auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
+    auto data = toml::value {};
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
@@ -71,19 +75,39 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
-    data["General"][StrSendErrors.data()] = Application::Settings.SendErrors;
-    SetComment(data["General"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
-    data["General"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    SetComment(data["General"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    // Misc
+    data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
+    SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
+    data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    SetComment(data["Misc"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
+    data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
+    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    // HTTP
     data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
     data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
     data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
+    SetComment(data["HTTP"][StrHTTPServerIP.data()].comments(), " Which IP to listen on. Pick 0.0.0.0 for a public-facing server with no specific IP, and 127.0.0.1 or 'localhost' for a local server.");
+    data["HTTP"][StrHTTPServerIP.data()] = Application::Settings.HTTPServerIP;
     data["HTTP"][StrHTTPServerUseSSL.data()] = Application::Settings.HTTPServerUseSSL;
-    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to keep enabled. With SSL the server will serve https and requires valid key and cert files");
+    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to have enabled for servers which face the internet. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
-    std::ofstream Stream(mConfigFileName);
-    Stream << data << std::flush;
+    std::stringstream Ss;
+    Ss << "# This is the BeamMP-Server config file.\n"
+          "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
+          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+       << data;
+    auto File = std::fopen(mConfigFileName.c_str(), "w+");
+    if (!File) {
+        beammp_error("Failed to create/write to config file: " + GetPlatformAgnosticErrorString());
+        throw std::runtime_error("Failed to create/write to config file");
+    }
+    auto Str = Ss.str();
+    auto N = std::fwrite(Str.data(), sizeof(char), Str.size(), File);
+    if (N != Str.size()) {
+        beammp_error("Failed to write to config file properly, config file might be misshapen");
+    }
+    std::fclose(File);
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
@@ -98,32 +122,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
         beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
     }
 
-    { // create file context
-        std::ofstream ofs(name.data());
-    }
-
     FlushToFile();
-
-    size_t FileSize = fs::file_size(name);
-    std::fstream ofs { std::string(name), std::ios::in | std::ios::out };
-    if (ofs.good()) {
-        std::string Contents {};
-        Contents.resize(FileSize);
-        ofs.readsome(Contents.data(), FileSize);
-        ofs.seekp(0);
-        ofs << "# This is the BeamMP-Server config file.\n"
-               "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-               "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
-            << '\n'
-            << Contents;
-        beammp_error("There was no \"" + std::string(mConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
-        mFailed = true;
-        ofs.close();
-    } else {
-        beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
-        Application::SetSubsystemStatus("Config", Application::Status::Bad);
-        mFailed = true;
-    }
 }
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {
@@ -158,12 +157,15 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
-        TryReadValue(data, "General", StrSendErrors, Application::Settings.SendErrors);
-        TryReadValue(data, "General", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
+        // Misc
+        TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
         // HTTP
         TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
         TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
         TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
+        TryReadValue(data, "HTTP", StrHTTPServerIP, Application::Settings.HTTPServerIP);
         TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
         TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
     } catch (const std::exception& err) {
@@ -202,6 +204,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
     beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
     beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
+    beammp_debug(std::string(StrHTTPServerIP) + ": \"" + Application::Settings.HTTPServerIP + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
 }
