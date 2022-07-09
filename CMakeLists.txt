@@ -37,7 +37,7 @@ if (WIN32)
 endif()
 
 include_directories("include/sentry-native/include")
-set(SENTRY_BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS OFF)
 if (MSVC)
     set(SENTRY_BUILD_RUNTIMESTATIC ON)
 endif()
