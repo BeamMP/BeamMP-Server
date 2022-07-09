@@ -63,7 +63,7 @@ elseif (UNIX)
 endif ()
 
 include_directories("include/sentry-native/include")
-
+set(BUILD_SHARED_LIBS OFF)
 # ------------------------ SENTRY ---------------------------------
 message(STATUS "Checking for Sentry URL")
 # this is set by the build system.

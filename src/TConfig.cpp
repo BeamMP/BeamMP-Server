@@ -88,7 +88,8 @@ void SetComment(CommentsT& Comments, const std::string& Comment) {
  * whether it is in TConfig.cpp or the configuration file.
  */
 void TConfig::FlushToFile() {
-    auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
+    // auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
+    auto data = toml::value {};
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrLogChat.data()] = Application::Settings.LogChat;
@@ -119,8 +120,22 @@ void TConfig::FlushToFile() {
     SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to have enabled for servers which face the internet. With SSL the server will serve https and requires valid key and cert files");
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
-    std::ofstream Stream(mConfigFileName, std::ios::trunc | std::ios::out);
-    Stream << data << std::flush;
+    std::stringstream Ss;
+    Ss << "# This is the BeamMP-Server config file.\n"
+          "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
+          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+       << data;
+    auto File = std::fopen(mConfigFileName.c_str(), "w+");
+    if (!File) {
+        beammp_error("Failed to create/write to config file: " + GetPlatformAgnosticErrorString());
+        throw std::runtime_error("Failed to create/write to config file");
+    }
+    auto Str = Ss.str();
+    auto N = std::fwrite(Str.data(), sizeof(char), Str.size(), File);
+    if (N != Str.size()) {
+        beammp_error("Failed to write to config file properly, config file might be misshapen");
+    }
+    std::fclose(File);
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
@@ -135,32 +150,7 @@ void TConfig::CreateConfigFile(std::string_view name) {
         beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
     }
 
-    { // create file context
-        std::ofstream ofs(name.data());
-    }
-
     FlushToFile();
-
-    size_t FileSize = fs::file_size(name);
-    std::fstream ofs { std::string(name), std::ios::in | std::ios::out };
-    if (ofs.good()) {
-        std::string Contents {};
-        Contents.resize(FileSize);
-        ofs.readsome(Contents.data(), FileSize);
-        ofs.seekp(0);
-        ofs << "# This is the BeamMP-Server config file.\n"
-               "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-               "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
-            << '\n'
-            << Contents;
-        beammp_error("There was no \"" + std::string(mConfigFileName) + "\" file (this is normal for the first time running the server), so one was generated for you. It was automatically filled with the settings from your Server.cfg, if you have one. Please open ServerConfig.toml and ensure your AuthKey and other settings are filled in and correct, then restart the server. The old Server.cfg file will no longer be used and causes a warning if it exists from now on.");
-        mFailed = true;
-        ofs.close();
-    } else {
-        beammp_error("Couldn't create " + std::string(name) + ". Check permissions, try again, and contact support if it continues not to work.");
-        Application::SetSubsystemStatus("Config", Application::Status::Bad);
-        mFailed = true;
-    }
 }
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {

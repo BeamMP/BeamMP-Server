@@ -16,6 +16,7 @@
 - FIXED `MP.CreateEventTimer` filling up the queue (see <https://wiki.beammp.com/en/Scripting/new-lua-scripting#mpcreateeventtimerevent_name-string-interval_ms-number-strategy-number-since-v302>)
 - FIXED `MP.TriggerClientEvent` not kicking the client if it failed
 - FIXED Lua result queue handling not checking all results
+- FIXED bug which caused ServerConfig.toml to generate incorrectly
 
 # v3.0.1
 
