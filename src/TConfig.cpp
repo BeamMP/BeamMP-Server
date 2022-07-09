@@ -92,13 +92,20 @@ void TConfig::FlushToFile() {
     data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
     SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
     std::stringstream Ss;
-    Ss << data;
-    std::ofstream Stream(mConfigFileName, std::ios::trunc | std::ios::out);
-    Stream << "# This is the BeamMP-Server config file.\n"
-              "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-              "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
-           << Ss.str();
-    Stream.flush();
+    Ss << "# This is the BeamMP-Server config file.\n"
+          "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
+          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+       << data;
+    auto File = std::fopen(mConfigFileName.c_str(), "w+");
+    if (!File) {
+        beammp_error("Failed to create/write to config file: " + GetPlatformAgnosticErrorString());
+        throw std::runtime_error("Failed to create/write to config file");
+    }
+    auto Str = Ss.str();
+    auto N = std::fwrite(Str.data(), sizeof(char), Str.size(), File);
+    if (N != Str.size()) {
+        beammp_error("Failed to write to config file properly, config file might be misshapen");
+    }
 }
 
 void TConfig::CreateConfigFile(std::string_view name) {
@@ -111,10 +118,6 @@ void TConfig::CreateConfigFile(std::string_view name) {
         }
     } catch (const std::exception& e) {
         beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
-    }
-
-    { // create file context
-        std::ofstream ofs(name.data());
     }
 
     FlushToFile();
