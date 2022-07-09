@@ -62,7 +62,8 @@ void SetComment(CommentsT& Comments, const std::string& Comment) {
  * whether it is in TConfig.cpp or the configuration file.
  */
 void TConfig::FlushToFile() {
-    auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
+    // auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
+    auto data = toml::value {};
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
