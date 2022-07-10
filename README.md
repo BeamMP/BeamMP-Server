@@ -61,7 +61,7 @@ Currently only Linux and Windows are supported (generally). See [Releases](https
 
 Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
-Dependencies for **windows** can be installed with `vcpkg`.
+Dependencies for **Windows** can be installed with `vcpkg`.
 These are:
 ```
 lua
@@ -74,34 +74,21 @@ curl
 
 #### Linux
 
-These package names are in the Debian / Ubuntu style. Feel free to PR your own guide for a different distro.
-
-Runtime dependencies for **Linux** are (Debian/Ubuntu):
-```
-libz-dev
-rapidjson-dev
-liblua5.3
-libssl-dev
-libwebsocketpp-dev
-libcurl4-openssl-dev
-```
-
-Build-time dependencies for **Linux** are:
-```
-git
-make
-cmake
-g++
-```
-
-For other distributions (e.g. Arch) you want to find packages for:
+Runtime dependencies - you want to find packages for:
 - libz
 - rapidjson
 - lua5.3
 - ssl / openssl
 - websocketpp
 - curl (with ssl support)
-- \+ the build time dependencies from above
+
+Build-time dependencies are:
+```
+git
+make
+cmake
+g++
+```
 
 ### How to build
 
