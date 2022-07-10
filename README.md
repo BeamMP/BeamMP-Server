@@ -110,11 +110,11 @@ On Windows, use git-bash for these commands. On Linux, these should work in your
 1. Make sure you have all [prerequisites](#prerequisites) installed
 2. Clone the repository in a location of your choice with `git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`. 
 3. Change into the BeamMP-Server directory by running `cd BeamMP-Server`. 
-3. Checkout the branch of the release you want to compile, for example `git checkout tags/v3.0.2` for version 3.0.2. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-4. Ensure that all submodules are initialized by running `git submodule update --init --recursive`
-5. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`)
-6. Run `make`
-7. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (Windows or Linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/server-installation) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
+4. Checkout the branch of the release you want to compile, for example `git checkout tags/v3.0.2` for version 3.0.2. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
+5. Ensure that all submodules are initialized by running `git submodule update --init --recursive`
+6. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`)
+7. Run `make`
+8. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (Windows or Linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/server-installation) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
 *tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
