@@ -239,13 +239,26 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
     });
 }
 
+static int get_ip_str(const struct sockaddr *sa, char *strBuf, size_t strBufSize) {
+    switch(sa->sa_family) {
+        case AF_INET:
+            inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), strBuf, strBufSize);
+            break;
+        case AF_INET6:
+            inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), strBuf, strBufSize);
+            break;
+        default:
+            return 1;
+    }
+    return 0;
+}
+
 void TNetwork::Authentication(const TConnection& ClientConnection) {
     auto Client = CreateClient(ClientConnection.Socket);
-    char AddrBuf[64];
-    // TODO: IPv6 would need this to be changed
-    auto str = inet_ntop(AF_INET, reinterpret_cast<const void*>(&ClientConnection.SockAddr), AddrBuf, sizeof(ClientConnection.SockAddr));
-    beammp_trace("This thread is ip " + std::string(str));
-    Client->SetIdentifier("ip", str);
+    char AddrBuf[INET6_ADDRSTRLEN];
+    get_ip_str(&ClientConnection.SockAddr, AddrBuf, sizeof(AddrBuf));
+    beammp_trace("This thread is ip " + std::string(AddrBuf));
+    Client->SetIdentifier("ip", AddrBuf);
 
     std::string Rc; // TODO: figure out why this is not default constructed
     beammp_info("Identifying new ClientConnection...");
