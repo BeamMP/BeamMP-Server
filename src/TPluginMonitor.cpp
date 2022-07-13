@@ -47,8 +47,8 @@ void TPluginMonitor::operator()() {
                         TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
                         auto StateID = mEngine->GetStateIDForPlugin(fs::path(Pair.first).parent_path());
                         auto Res = mEngine->EnqueueScript(StateID, Chunk);
-                        // TODO: call onInit
                         mEngine->AddResultToCheck(Res);
+                        mEngine->ReportErrors(mEngine->TriggerLocalEvent(StateID, "onInit"));
                     } else {
                         // TODO: trigger onFileChanged event
                         beammp_trace("Change detected in file \"" + Pair.first + "\", event trigger not implemented yet");

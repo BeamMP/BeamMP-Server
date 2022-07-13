@@ -62,7 +62,7 @@ TConfig::TConfig(const std::string& ConfigFileName)
     Application::SetSubsystemStatus("Config", Application::Status::Starting);
     if (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName)) {
         beammp_info("No config file found! Generating one...");
-        CreateConfigFile(mConfigFileName);
+        CreateConfigFile();
     }
     if (!mFailed) {
         if (fs::exists("Server.cfg")) {
@@ -138,7 +138,7 @@ void TConfig::FlushToFile() {
     std::fclose(File);
 }
 
-void TConfig::CreateConfigFile(std::string_view name) {
+void TConfig::CreateConfigFile() {
     // build from old config Server.cfg
 
     try {
