@@ -220,6 +220,7 @@ void RegisterThread(const std::string& str);
     
     #define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
     #define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
+    #define beammp_debugf(...) beammp_debug(fmt::format(__VA_ARGS__))
     #define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
     #define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
     #define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
