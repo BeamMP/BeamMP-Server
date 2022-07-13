@@ -119,7 +119,6 @@ public:
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
-    template <typename... ArgsT>
     /**
      *
      * @tparam ArgsT Template Arguments for the event (Metadata) todo: figure out what this means
@@ -128,6 +127,7 @@ public:
      * @param Args
      * @return
      */
+    template <typename... ArgsT>
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
         std::unique_lock Lock(mLuaEventsMutex);
         beammp_event(EventName);
@@ -146,6 +146,21 @@ public:
             }
         }
         return Results; //
+    }
+    template <typename... ArgsT>
+    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerLocalEvent(const TLuaStateId& StateId, const std::string& EventName, ArgsT&&... Args) {
+        std::unique_lock Lock(mLuaEventsMutex);
+        beammp_event(EventName + " in '" + StateId + "'");
+        if (mLuaEvents.find(EventName) == mLuaEvents.end()) { // if no event handler is defined for 'EventName', return immediately
+            return {};
+        }
+        std::vector<std::shared_ptr<TLuaResult>> Results;
+        std::vector<TLuaArgTypes> Arguments { TLuaArgTypes { std::forward<ArgsT>(Args) }... };
+        const auto Handlers = GetEventHandlersForState(EventName, StateId);
+        for (const auto& Handler : Handlers) {
+            Results.push_back(EnqueueFunctionCall(StateId, Handler, Arguments));
+        }
+        return Results;
     }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy);
