@@ -154,6 +154,19 @@ void TNetwork::TCPServerMain() {
                 beammp_warn(("Got an invalid client socket on connect! Skipping..."));
                 continue;
             }
+            // set timeout (DWORD, aka uint32_t)
+            uint32_t SendTimeoutMS = 30 * 1000;
+#if defined(BEAMMP_WINDOWS)
+            int ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&SendTimeoutMS), sizeof(SendTimeoutMS));
+#else // POSIX
+            struct timeval optval;
+            optval.tv_sec = (int)(SendTimeoutMS / 1000);
+            optval.tv_usec = (SendTimeoutMS % 1000) * 1000;
+            int ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<void*>(&optval), sizeof(optval));
+#endif
+            if (ret < 0) {
+                throw std::runtime_error("setsockopt recv timeout: " + GetPlatformAgnosticErrorString());
+            }
             std::thread ID(&TNetwork::Identify, this, client);
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
@@ -514,6 +527,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
         }
     }
 }
+
 void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
     // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
     if (c.expired() || c.lock()->GetTCPSock() == -1) {
@@ -742,11 +756,11 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
     uint32_t Split = 0x7735940; // 125MB
-    char* Data;
+    std::vector<char> Data;
     if (Size > Split)
-        Data = new char[Split];
+        Data.resize(Split);
     else
-        Data = new char[Size];
+        Data.resize(Size);
     SOCKET TCPSock;
     if (D)
         TCPSock = c.GetDownSock();
@@ -757,8 +771,8 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
         size_t Diff = Size - Sent;
         if (Diff > Split) {
             f.seekg(Sent, std::ios_base::beg);
-            f.read(Data, Split);
-            if (!TCPSendRaw(c, TCPSock, Data, Split)) {
+            f.read(Data.data(), Split);
+            if (!TCPSendRaw(c, TCPSock, Data.data(), Split)) {
                 if (c.GetStatus() > -1)
                     c.SetStatus(-1);
                 break;
@@ -766,8 +780,8 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
             Sent += Split;
         } else {
             f.seekg(Sent, std::ios_base::beg);
-            f.read(Data, Diff);
-            if (!TCPSendRaw(c, TCPSock, Data, int32_t(Diff))) {
+            f.read(Data.data(), Diff);
+            if (!TCPSendRaw(c, TCPSock, Data.data(), int32_t(Diff))) {
                 if (c.GetStatus() > -1)
                     c.SetStatus(-1);
                 break;
@@ -775,8 +789,6 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
             Sent += Diff;
         }
     }
-    delete[] Data;
-    f.close();
 }
 
 bool TNetwork::TCPSendRaw(TClient& C, SOCKET socket, char* Data, int32_t Size) {

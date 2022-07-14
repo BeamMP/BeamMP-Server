@@ -37,7 +37,7 @@ if (WIN32)
 endif()
 
 include_directories("include/sentry-native/include")
-set(SENTRY_BUILD_SHARED_LIBS OFF)
+set(BUILD_SHARED_LIBS OFF)
 if (MSVC)
     set(SENTRY_BUILD_RUNTIMESTATIC ON)
 endif()
@@ -60,6 +60,10 @@ if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif ()
 
+message(STATUS "Adding local source dependencies")
+# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
+add_subdirectory(deps)
+
 message(STATUS "Setting compiler flags")
 if (WIN32)
 
@@ -78,9 +82,6 @@ elseif (UNIX)
 endif ()
 
 
-message(STATUS "Adding local source dependencies")
-# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-add_subdirectory(deps)
 
 set(CMAKE_CXX_STANDARD 17)
 

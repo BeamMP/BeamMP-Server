@@ -97,6 +97,7 @@ void Application::SetSubsystemStatus(const std::string& Subsystem, Status status
 
 void Application::CheckForUpdates() {
     Application::SetSubsystemStatus("UpdateCheck", Application::Status::Starting);
+    static bool FirstTime = true;
     // checks current version against latest version
     std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
     for (const auto& url : GetBackendUrlsInOrder()) {
@@ -107,24 +108,31 @@ void Application::CheckForUpdates() {
             auto RemoteVersion = Version(VersionStrToInts(Response));
             if (IsOutdated(MyVersion, RemoteVersion)) {
                 std::string RealVersionString = RemoteVersion.AsString();
-                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION OUT! There's a new version (v" + RealVersionString + ") of the BeamMP-Server available! For more info visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server." + std::string(ANSI_RESET));
+                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION IS OUT! Please update to the new version (v" + RealVersionString + ") of the BeamMP-Server! Download it here: https://beammp.com/! For a guide on how to update, visit: https://wiki.beammp.com/en/home/server-maintenance#updating-the-server" + std::string(ANSI_RESET));
             } else {
-                beammp_info("Server up-to-date!");
+                if (FirstTime) {
+                    beammp_info("Server up-to-date!");
+                }
             }
             Application::SetSubsystemStatus("UpdateCheck", Application::Status::Good);
             break;
         } else {
-            beammp_debug("Failed to fetch version from: " + url);
-            beammp_trace("got " + Response);
-            auto Lock = Sentry.CreateExclusiveContext();
-            Sentry.SetContext("get-response", { { "response", Response } });
-            Sentry.LogError("failed to get server version", _file_basename, _line);
-            Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
+            if (FirstTime) {
+                beammp_debug("Failed to fetch version from: " + url);
+                beammp_trace("got " + Response);
+                auto Lock = Sentry.CreateExclusiveContext();
+                Sentry.SetContext("get-response", { { "response", Response } });
+                Sentry.LogError("failed to get server version", _file_basename, _line);
+                Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
+            }
         }
     }
     if (Application::GetSubsystemStatuses().at("UpdateCheck") == Application::Status::Bad) {
-        beammp_warn("Unable to fetch version info from backend.");
+        if (FirstTime) {
+            beammp_warn("Unable to fetch version info from backend.");
+        }
     }
+    FirstTime = false;
 }
 
 // thread name stuff

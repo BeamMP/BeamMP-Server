@@ -27,6 +27,7 @@ void TClient::ClearCars() {
 int TClient::GetOpenCarID() const {
     int OpenID = 0;
     bool found;
+    std::unique_lock lock(mVehicleDataMutex);
     do {
         found = true;
         for (auto& v : mVehicleData) {
