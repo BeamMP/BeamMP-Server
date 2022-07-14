@@ -4,8 +4,11 @@
 - ADDED lua debug facilities (type `:help` when attached to lua via `lua`)
 - ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
 - ADDED FS.ListFiles and FS.ListDirectories
+- ADDED onFileChanged event, triggered when a server plugin file changes
+- FIXED `ip` in MP.GetIdentifiers
 - FIXED issue with client->server events which contain ':'
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
+- FIXED onInit not being called on hot-reload
 
 # v3.0.2
 
