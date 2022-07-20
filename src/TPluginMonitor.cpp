@@ -48,9 +48,13 @@ void TPluginMonitor::operator()() {
                         TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
                         auto StateID = mEngine->GetStateIDForPlugin(fs::path(Pair.first).parent_path());
                         auto Res = mEngine->EnqueueScript(StateID, Chunk);
-                        mEngine->AddResultToCheck(Res);
-                        mEngine->ReportErrors(mEngine->TriggerLocalEvent(StateID, "onInit"));
-                        mEngine->ReportErrors(mEngine->TriggerEvent("onFileChanged", "", Pair.first));
+                        Res->WaitUntilReady();
+                        if (Res->Error) {
+                            beammp_lua_errorf("Error while hot-reloading \"{}\": {}", Pair.first, Res->ErrorMessage);
+                        } else {
+                            mEngine->ReportErrors(mEngine->TriggerLocalEvent(StateID, "onInit"));
+                            mEngine->ReportErrors(mEngine->TriggerEvent("onFileChanged", "", Pair.first));
+                        }
                     } else {
                         // is in subfolder, dont reload, just trigger an event
                         beammp_debugf("File \"{}\" changed, not reloading because it's in a subdirectory. Triggering 'onFileChanged' event instead", Pair.first);

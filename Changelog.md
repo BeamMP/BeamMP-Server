@@ -11,6 +11,7 @@
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
 - FIXED onInit not being called on hot-reload
 - FIXED incorrect timing calculation of Lua EventTimer loop
+- FIXED bug which caused hot-reload not to report syntax errors
 
 # v3.0.2
 
