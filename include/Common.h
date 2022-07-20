@@ -12,6 +12,7 @@ extern TSentry Sentry;
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <sstream>
 #include <zlib.h>
 
@@ -96,6 +97,8 @@ public:
     static void CheckForUpdates();
     static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
     static bool IsOutdated(const Version& Current, const Version& Newest);
+    static bool IsShuttingDown();
+    static void SleepSafeSeconds(size_t Seconds);
 
     static void InitializeConsole() {
         if (!mConsole) {
@@ -121,10 +124,14 @@ public:
     static void SetSubsystemStatus(const std::string& Subsystem, Status status);
 
 private:
+    static void SetShutdown(bool Val);
+
     static inline SystemStatusMap mSystemStatusMap {};
     static inline std::mutex mSystemStatusMapMutex {};
     static inline std::string mPPS;
     static inline std::unique_ptr<TConsole> mConsole;
+    static inline std::shared_mutex mShutdownMtx {};
+    static inline bool mShutdown { false };
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 

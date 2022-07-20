@@ -1,3 +1,4 @@
+
 # v3.1.0
 
 - ADDED Tab autocomplete in console, smart tab autocomplete (understands lua tables and types) in the lua console
@@ -9,6 +10,7 @@
 - FIXED issue with client->server events which contain ':'
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
 - FIXED onInit not being called on hot-reload
+- FIXED incorrect timing calculation of Lua EventTimer loop
 
 # v3.0.2
 

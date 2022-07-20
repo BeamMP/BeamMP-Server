@@ -18,6 +18,5 @@ public:
 private:
     std::shared_ptr<TLuaEngine> mEngine;
     fs::path mPath;
-    std::atomic_bool mShutdown { false };
     std::unordered_map<std::string, fs::file_time_type> mFileTimes;
 };

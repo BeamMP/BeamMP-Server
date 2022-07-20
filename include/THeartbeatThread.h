@@ -15,7 +15,6 @@ private:
     std::string GenerateCall();
     std::string GetPlayers();
 
-    bool mShutdown = false;
     TResourceManager& mResourceManager;
     TServer& mServer;
 };

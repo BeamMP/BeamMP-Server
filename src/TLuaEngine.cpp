@@ -15,20 +15,18 @@
 
 TLuaEngine* LuaAPI::MP::Engine;
 
-TLuaEngine::TLuaEngine() {
+TLuaEngine::TLuaEngine()
+    : mResourceServerPath(fs::path(Application::Settings.Resource) / "Server") {
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
     LuaAPI::MP::Engine = this;
     if (!fs::exists(Application::Settings.Resource)) {
         fs::create_directory(Application::Settings.Resource);
     }
-    fs::path Path = fs::path(Application::Settings.Resource) / "Server";
-    if (!fs::exists(Path)) {
-        fs::create_directory(Path);
+    if (!fs::exists(mResourceServerPath)) {
+        fs::create_directory(mResourceServerPath);
     }
-    mResourceServerPath = Path;
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("LuaEngine", Application::Status::ShuttingDown);
-        mShutdown = true;
         if (mThread.joinable()) {
             mThread.join();
         }
@@ -59,7 +57,7 @@ void TLuaEngine::operator()() {
 
     auto ResultCheckThread = std::thread([&] {
         RegisterThread("ResultCheckThread");
-        while (!mShutdown) {
+        while (!Application::IsShuttingDown()) {
             std::unique_lock Lock(mResultsToCheckMutex);
             mResultsToCheckCond.wait_for(Lock, std::chrono::milliseconds(20));
             if (!mResultsToCheck.empty()) {
@@ -79,10 +77,7 @@ void TLuaEngine::operator()() {
     });
     // event loop
     auto Before = std::chrono::high_resolution_clock::now();
-    while (!mShutdown) {
-        if (mLuaStates.size() == 0) {
-            std::this_thread::sleep_for(std::chrono::seconds(100));
-        }
+    while (!Application::IsShuttingDown()) {
         { // Timed Events Scope
             std::unique_lock Lock(mTimedEventsMutex);
             for (auto& Timer : mTimedEvents) {
@@ -108,12 +103,18 @@ void TLuaEngine::operator()() {
                 }
             }
         }
-        const auto Expected = std::chrono::milliseconds(10);
-        if (auto Diff = std::chrono::high_resolution_clock::now() - Before;
-            Diff < Expected) {
-            std::this_thread::sleep_for(Expected - Diff);
+        if (mLuaStates.size() == 0) {
+            beammp_trace("No Lua states, event loop running extremely sparsely");
+            Application::SleepSafeSeconds(10);
         } else {
-            beammp_trace("Event loop cannot keep up! Running " + std::to_string(Diff.count()) + "s behind");
+            constexpr double NsFactor = 1000000.0;
+            constexpr double Expected = 10.0; // ms
+            const auto Diff = (std::chrono::high_resolution_clock::now() - Before).count() / NsFactor;
+            if (Diff < Expected) {
+                std::this_thread::sleep_for(std::chrono::nanoseconds(size_t((Expected - Diff) * NsFactor)));
+            } else {
+                beammp_tracef("Event loop cannot keep up! Running {}ms behind", Diff);
+            }
         }
         Before = std::chrono::high_resolution_clock::now();
     }
@@ -326,7 +327,7 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
     std::unique_lock Lock(mLuaStatesMutex);
     if (mLuaStates.find(StateId) == mLuaStates.end()) {
         beammp_debug("Creating lua state for state id \"" + StateId + "\"");
-        auto DataPtr = std::make_unique<StateThreadData>(Name, mShutdown, StateId, *this);
+        auto DataPtr = std::make_unique<StateThreadData>(Name, StateId, *this);
         mLuaStates[StateId] = std::move(DataPtr);
         RegisterEvent("onInit", StateId, "onInit");
         if (!DontCallOnInit) {
@@ -614,9 +615,8 @@ sol::table TLuaEngine::StateThreadData::Lua_JsonDecode(const std::string& str) {
     return table;
 }
 
-TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine)
+TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateId StateId, TLuaEngine& Engine)
     : mName(Name)
-    , mShutdown(Shutdown)
     , mStateId(StateId)
     , mState(luaL_newstate())
     , mEngine(&Engine) {
@@ -819,7 +819,7 @@ void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, co
 
 void TLuaEngine::StateThreadData::operator()() {
     RegisterThread("Lua:" + mStateId);
-    while (!mShutdown) {
+    while (!Application::IsShuttingDown()) {
         { // StateExecuteQueue Scope
             std::unique_lock Lock(mStateExecuteQueueMutex);
             if (!mStateExecuteQueue.empty()) {

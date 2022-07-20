@@ -32,7 +32,6 @@ private:
     TServer& mServer;
     TPPSMonitor& mPPSMonitor;
     SOCKET mUDPSock {};
-    bool mShutdown { false };
     TResourceManager& mResourceManager;
     std::thread mUDPThread;
     std::thread mTCPThread;

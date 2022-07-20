@@ -22,6 +22,5 @@ private:
 
     TServer& mServer;
     std::optional<std::reference_wrapper<TNetwork>> mNetwork { std::nullopt };
-    bool mShutdown { false };
     int mInternalPPS { 0 };
 };

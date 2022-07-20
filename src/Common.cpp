@@ -25,6 +25,7 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
 }
 
 void Application::GracefullyShutdown() {
+    SetShutdown(true);
     static bool AlreadyShuttingDown = false;
     static uint8_t ShutdownAttempts = 0;
     if (AlreadyShuttingDown) {
@@ -93,6 +94,22 @@ bool Application::IsOutdated(const Version& Current, const Version& Newest) {
     }
 }
 
+bool Application::IsShuttingDown() {
+    std::shared_lock Lock(mShutdownMtx);
+    return mShutdown;
+}
+
+void Application::SleepSafeSeconds(size_t Seconds) {
+    // Sleeps for 500 ms, checks if a shutdown occurred, and so forth
+    for (size_t i = 0; i < Seconds * 2; ++i) {
+        if (Application::IsShuttingDown()) {
+            return;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    }
+}
+
 TEST_CASE("Application::IsOutdated (version check)") {
     SUBCASE("Same version") {
         CHECK(!Application::IsOutdated({ 1, 2, 3 }, { 1, 2, 3 }));
@@ -156,6 +173,11 @@ void Application::SetSubsystemStatus(const std::string& Subsystem, Status status
     }
     std::unique_lock Lock(mSystemStatusMapMutex);
     mSystemStatusMap[Subsystem] = status;
+}
+
+void Application::SetShutdown(bool Val) {
+    std::unique_lock Lock(mShutdownMtx);
+    mShutdown = Val;
 }
 
 TEST_CASE("Application::SetSubsystemStatus") {

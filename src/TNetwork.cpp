@@ -25,7 +25,6 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("UDPNetwork", Application::Status::ShuttingDown);
         if (mUDPThread.joinable()) {
-            mShutdown = true;
             mUDPThread.detach();
         }
         Application::SetSubsystemStatus("UDPNetwork", Application::Status::Shutdown);
@@ -33,7 +32,6 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("TCPNetwork", Application::Status::ShuttingDown);
         if (mTCPThread.joinable()) {
-            mShutdown = true;
             mTCPThread.detach();
         }
         Application::SetSubsystemStatus("TCPNetwork", Application::Status::Shutdown);
@@ -68,7 +66,7 @@ void TNetwork::UDPServerMain() {
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Good);
     beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
-    while (!mShutdown) {
+    while (!Application::IsShuttingDown()) {
         try {
             sockaddr_in client {};
             std::string Data = UDPRcvFromClient(client); // Receives any data from Socket
@@ -152,7 +150,7 @@ void TNetwork::TCPServerMain() {
     beammp_info("Vehicle event network online");
     do {
         try {
-            if (mShutdown) {
+            if (Application::IsShuttingDown()) {
                 beammp_debug("shutdown during TCP wait for accept loop");
                 break;
             }
@@ -239,16 +237,16 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
     });
 }
 
-static int get_ip_str(const struct sockaddr *sa, char *strBuf, size_t strBufSize) {
-    switch(sa->sa_family) {
-        case AF_INET:
-            inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), strBuf, strBufSize);
-            break;
-        case AF_INET6:
-            inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), strBuf, strBufSize);
-            break;
-        default:
-            return 1;
+static int get_ip_str(const struct sockaddr* sa, char* strBuf, size_t strBufSize) {
+    switch (sa->sa_family) {
+    case AF_INET:
+        inet_ntop(AF_INET, &(((struct sockaddr_in*)sa)->sin_addr), strBuf, strBufSize);
+        break;
+    case AF_INET6:
+        inet_ntop(AF_INET6, &(((struct sockaddr_in6*)sa)->sin6_addr), strBuf, strBufSize);
+        break;
+    default:
+        return 1;
     }
     return 0;
 }

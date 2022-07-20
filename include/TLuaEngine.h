@@ -187,7 +187,7 @@ private:
 
     class StateThreadData : IThreaded {
     public:
-        StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine);
+        StateThreadData(const std::string& Name, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
         ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
@@ -218,7 +218,6 @@ private:
         sol::table Lua_FS_ListDirectories(const std::string& Path);
 
         std::string mName;
-        std::atomic_bool& mShutdown;
         TLuaStateId mStateId;
         lua_State* mState;
         std::thread mThread;
@@ -247,8 +246,7 @@ private:
 
     TNetwork* mNetwork;
     TServer* mServer;
-    std::atomic_bool mShutdown { false };
-    fs::path mResourceServerPath;
+    const fs::path mResourceServerPath;
     std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
     std::recursive_mutex mLuaStatesMutex;

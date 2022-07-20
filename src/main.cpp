@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
         Sentry.LogException(e, _file_basename, _line);
         MainRet = -1;
     }
-    return MainRet;
+    std::exit(MainRet);
 }
 
 int BeamMPServerMain(MainArguments Arguments) {

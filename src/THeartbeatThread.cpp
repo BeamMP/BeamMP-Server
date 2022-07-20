@@ -20,7 +20,7 @@ void THeartbeatThread::operator()() {
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
     size_t UpdateReminderCounter = 0;
-    while (!mShutdown) {
+    while (!Application::IsShuttingDown()) {
         ++UpdateReminderCounter;
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
@@ -164,7 +164,6 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("Heartbeat", Application::Status::ShuttingDown);
         if (mThread.joinable()) {
-            mShutdown = true;
             mThread.join();
         }
         Application::SetSubsystemStatus("Heartbeat", Application::Status::Shutdown);

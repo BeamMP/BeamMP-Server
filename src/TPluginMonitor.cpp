@@ -17,7 +17,6 @@ TPluginMonitor::TPluginMonitor(const fs::path& Path, std::shared_ptr<TLuaEngine>
     }
 
     Application::RegisterShutdownHandler([this] {
-        mShutdown = true;
         if (mThread.joinable()) {
             mThread.join();
         }
@@ -30,7 +29,7 @@ void TPluginMonitor::operator()() {
     RegisterThread("PluginMonitor");
     beammp_info("PluginMonitor started");
     Application::SetSubsystemStatus("PluginMonitor", Application::Status::Good);
-    while (!mShutdown) {
+    while (!Application::IsShuttingDown()) {
         std::vector<std::string> ToRemove;
         for (const auto& Pair : mFileTimes) {
             try {
@@ -61,7 +60,7 @@ void TPluginMonitor::operator()() {
             } catch (const std::exception& e) {
                 ToRemove.push_back(Pair.first);
             }
-            for (size_t i = 0; i < 3 && !mShutdown; ++i) {
+            for (size_t i = 0; i < 3 && !Application::IsShuttingDown(); ++i) {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
         }
