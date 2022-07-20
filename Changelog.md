@@ -12,6 +12,7 @@
 - FIXED onInit not being called on hot-reload
 - FIXED incorrect timing calculation of Lua EventTimer loop
 - FIXED bug which caused hot-reload not to report syntax errors
+- FIXED missing error messages on some event handler calls
 
 # v3.0.2
 

@@ -59,19 +59,21 @@ void TLuaEngine::operator()() {
         RegisterThread("ResultCheckThread");
         while (!Application::IsShuttingDown()) {
             std::unique_lock Lock(mResultsToCheckMutex);
-            mResultsToCheckCond.wait_for(Lock, std::chrono::milliseconds(20));
+            beammp_tracef("Results to check: {}", mResultsToCheck.size());
             if (!mResultsToCheck.empty()) {
                 mResultsToCheck.remove_if([](const std::shared_ptr<TLuaResult>& Ptr) -> bool {
                     if (Ptr->Ready) {
-                        return true;
-                    } else if (Ptr->Error) {
-                        if (Ptr->ErrorMessage != BeamMPFnNotFoundError) {
-                            beammp_lua_error(Ptr->Function + ": " + Ptr->ErrorMessage);
+                        if (Ptr->Error) {
+                            if (Ptr->ErrorMessage != BeamMPFnNotFoundError) {
+                                beammp_lua_error(Ptr->Function + ": " + Ptr->ErrorMessage);
+                            }
                         }
                         return true;
                     }
                     return false;
                 });
+            } else {
+                mResultsToCheckCond.wait_for(Lock, std::chrono::milliseconds(20));
             }
         }
     });
@@ -161,7 +163,7 @@ void TLuaEngine::AddResultToCheck(const std::shared_ptr<TLuaResult>& Result) {
     mResultsToCheckCond.notify_one();
 }
 
-std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> TLuaEngine::Debug_GetEventsForState(TLuaStateId StateId) {
+std::unordered_map<std::string /* event name */, std::vector<std::string> /* handlers */> TLuaEngine::Debug_GetEventsForState(TLuaStateId StateId) {
     std::unordered_map<std::string, std::vector<std::string>> Result;
     std::unique_lock Lock(mLuaEventsMutex);
     for (const auto& EventNameToEventMap : mLuaEvents) {
