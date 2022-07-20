@@ -60,10 +60,8 @@ void TPluginMonitor::operator()() {
             } catch (const std::exception& e) {
                 ToRemove.push_back(Pair.first);
             }
-            for (size_t i = 0; i < 3 && !Application::IsShuttingDown(); ++i) {
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-            }
         }
+        Application::SleepSafeSeconds(3);
         for (const auto& File : ToRemove) {
             mFileTimes.erase(File);
             beammp_warnf("File \"{}\" couldn't be accessed, so it was removed from plugin hot reload monitor (probably got deleted)", File);
