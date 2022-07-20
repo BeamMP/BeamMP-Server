@@ -59,7 +59,6 @@ void TLuaEngine::operator()() {
         RegisterThread("ResultCheckThread");
         while (!Application::IsShuttingDown()) {
             std::unique_lock Lock(mResultsToCheckMutex);
-            beammp_tracef("Results to check: {}", mResultsToCheck.size());
             if (!mResultsToCheck.empty()) {
                 mResultsToCheck.remove_if([](const std::shared_ptr<TLuaResult>& Ptr) -> bool {
                     if (Ptr->Ready) {
