@@ -726,6 +726,15 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     UtilTable.set_function("JsonUnflatten", &LuaAPI::MP::JsonUnflatten);
     UtilTable.set_function("JsonPrettify", &LuaAPI::MP::JsonPrettify);
     UtilTable.set_function("JsonMinify", &LuaAPI::MP::JsonMinify);
+    UtilTable.set_function("Stress", [](size_t n) {
+        std::vector<std::thread> s;
+        for (size_t i = 0; i < n; ++i) {
+            s.emplace_back([]{ while (true); });
+        }
+        for (auto& t : s) {
+            t.detach();
+        }
+    });
     UtilTable.set_function("Random", [this] {
         return mUniformRealDistribution01(mMersenneTwister);
     });
