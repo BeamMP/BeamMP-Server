@@ -31,3 +31,6 @@
 [submodule "deps/doctest"]
 	path = deps/doctest
 	url = https://github.com/doctest/doctest
+[submodule "deps/dlhttp"]
+	path = deps/dlhttp
+	url = https://github.com/lionkor/dlhttp
