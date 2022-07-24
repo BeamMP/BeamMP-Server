@@ -6,6 +6,7 @@
 #include <Http.h>
 #include <array>
 #include <cstring>
+#include <dlhttp/dlhttp.h>
 
 TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
     : mServer(Server)
@@ -148,6 +149,11 @@ void TNetwork::TCPServerMain() {
     }
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Good);
     beammp_info("Vehicle event network online");
+    dlhttp::AsyncContext Ctx(4);
+    dlhttp::EndpointHandlerMap Map {
+        { "/", []() -> dlhttp::Response { return { 200, "Hello! :)" }; } },
+        { "/fuck", []() -> dlhttp::Response { return { 200, "fuck lol" }; } },
+    };
     do {
         try {
             if (Application::IsShuttingDown()) {
@@ -173,6 +179,15 @@ void TNetwork::TCPServerMain() {
             if (ret < 0) {
                 throw std::runtime_error("setsockopt recv timeout: " + GetPlatformAgnosticErrorString());
             }
+
+            // check for http
+            if (dlhttp::is_http(client.Socket)) {
+                beammp_info("IS HTTP!");
+                dlhttp::handle_http(client.Socket, Ctx, Map);
+            } else {
+                beammp_info("IS NOT HTTP!");
+            }
+
             std::thread ID(&TNetwork::Identify, this, client);
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
