@@ -55,6 +55,7 @@ public:
         int MaxCars { 1 };
         bool DebugModeEnabled { false };
         int Port { 30814 };
+        int DownloadThreads { 4 };
         std::string CustomIP {};
         bool LogChat { true };
         bool SendErrors { true };

@@ -18,6 +18,7 @@ static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrLogChat = "LogChat";
+static constexpr std::string_view StrDownloadThreads = "DownloadThreads";
 
 // Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
@@ -103,6 +104,8 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrDownloadThreads.data()] = Application::Settings.DownloadThreads;
+    SetComment(data["General"][StrDownloadThreads.data()].comments(), " How many simultaneous downloads may run at the same time");
     // Misc
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
@@ -186,6 +189,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
         TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
+        TryReadValue(data, "General", StrDownloadThreads, Application::Settings.DownloadThreads);
         // Misc
         TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
         TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
@@ -221,22 +225,26 @@ void TConfig::ParseFromFile(std::string_view name) {
 }
 
 void TConfig::PrintDebug() {
-    beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
-    beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
-    beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
-    beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.MaxCars));
-    beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.MaxPlayers));
-    beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
-    beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
-    beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
-    beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
-    beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
-    beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
-    beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
-    beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
-    beammp_debug(std::string(StrHTTPServerIP) + ": \"" + Application::Settings.HTTPServerIP + "\"");
+    beammp_debugf("{}: {}", StrDebug, Application::Settings.DebugModeEnabled ? "true" : "false");
+    beammp_debugf("{}: {}", StrPrivate, Application::Settings.Private ? "true" : "false");
+    beammp_debugf("{}: {}", StrPort, Application::Settings.Port);
+    beammp_debugf("{}: {}", StrMaxCars, Application::Settings.MaxCars);
+    beammp_debugf("{}: {}", StrMaxPlayers, Application::Settings.MaxPlayers);
+    beammp_debugf("{}: '{}'", StrMap, Application::Settings.MapName);
+    beammp_debugf("{}: '{}'", StrName, Application::Settings.ServerName);
+    beammp_debugf("{}: '{}'", StrDescription, Application::Settings.ServerDesc);
+    beammp_debugf("{}: {}", StrLogChat, Application::Settings.LogChat ? "true" : "false");
+    beammp_debugf("{}: '{}'", StrResourceFolder, Application::Settings.Resource);
+    beammp_debugf("{}: '{}'", StrSSLKeyPath, Application::Settings.SSLKeyPath);
+    beammp_debugf("{}: '{}'", StrSSLCertPath, Application::Settings.SSLCertPath);
+    beammp_debugf("{}: {}", StrHTTPServerPort, Application::Settings.HTTPServerPort);
+    beammp_debugf("{}: '{}'", StrHTTPServerIP, Application::Settings.HTTPServerIP);
+    beammp_debugf("{}: {}", StrDownloadThreads, Application::Settings.DownloadThreads);
+    if (Application::Settings.DownloadThreads < 1) {
+        beammp_warnf("'{}' of <1 is not allowed, will use 1", StrDownloadThreads);
+    }
     // special!
-    beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
+    beammp_debugf("Key Length: {}", Application::Settings.Key.length());
 }
 
 void TConfig::ParseOldFormat() {

@@ -149,10 +149,11 @@ void TNetwork::TCPServerMain() {
     }
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Good);
     beammp_info("Vehicle event network online");
-    dlhttp::AsyncContext Ctx(4);
+    const auto ThreadCount = std::max(1, Application::Settings.DownloadThreads);
+    beammp_debugf("Using {} download threads", ThreadCount);
+    dlhttp::AsyncContext Ctx(ThreadCount);
     dlhttp::EndpointHandlerMap Map {
-        { "/", []() -> dlhttp::Response { return { 200, "Hello! :)" }; } },
-        { "/fuck", []() -> dlhttp::Response { return { 200, "fuck lol" }; } },
+        { "/modlist", [this]() -> dlhttp::Response { return { mResourceManager.FileList() }; } },
     };
     do {
         try {
