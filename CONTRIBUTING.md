@@ -19,6 +19,12 @@ Once you picked a bug, you need to reproduce it. Start by following the instruct
 
 Refer to [getting started with the codebase](#getting-started-with-the-codebase) for more information on how to build the server. You can also ask on our [Discord server](https://discord.gg/beammp), or on IRC ([irc.libera.chat](https://web.libera.chat/), join `#beammp`).
 
+## Features
+
+If you want to add new features, please make an issue for it first or ask on our [Discord server](https://discord.gg/beammp), or on IRC ([irc.libera.chat](https://web.libera.chat/), join `#beammp`).
+
+You need to make sure the feature isn't being worked on by someone else, and aligns with the vision we have for the server.
+
 # Git Guidelines
 
 **Read this carefully. Failing to follow these rules results in your changes not being accepted**. This applies for outside contributors, members of the BeamMP development team ("BeamMP Developers"), project owners, maintainers, frequent contributors, and literally everyone else. **It applies to everyone**.
