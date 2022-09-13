@@ -47,6 +47,23 @@ TClient::TVehicleDataLockPair TClient::GetAllCars() {
     return { &mVehicleData, std::unique_lock(mVehicleDataMutex) };
 }
 
+std::string TClient::GetCarPositionRaw(int Ident) {
+    std::unique_lock lock(mVehiclePositionMutex);
+    try
+    {
+        return mVehiclePosition.at(Ident);
+    }
+    catch (const std::out_of_range& oor) {
+        return "";
+    }
+    return "";
+}
+
+void TClient::SetCarPosition(int Ident, const std::string& Data) {
+    std::unique_lock lock(mVehiclePositionMutex);
+    mVehiclePosition[Ident] = Data;
+}
+
 std::string TClient::GetCarData(int Ident) {
     { // lock
         std::unique_lock lock(mVehicleDataMutex);

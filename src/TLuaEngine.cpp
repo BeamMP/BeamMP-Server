@@ -517,6 +517,35 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
         return sol::lua_nil;
 }
 
+std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionRaw(int PID, int VID) {
+    std::pair<sol::table, std::string> Result;
+    auto MaybeClient = GetClient(mEngine->Server(), PID);
+    if (MaybeClient && !MaybeClient.value().expired()) {
+        auto Client = MaybeClient.value().lock();
+        std::string VehiclePos = Client->GetCarPositionRaw(VID);
+
+        if (VehiclePos.empty()) {
+            //return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Vehicle not found"));
+            Result.second = "Vehicle not found";
+            return Result;
+        }
+
+        sol::table t = Lua_JsonDecode(VehiclePos);
+        if (t == sol::lua_nil){
+            Result.second = "Packet decode failed";
+        }
+        //return std::make_tuple(Result, sol::make_object(StateView, sol::lua_nil));
+        Result.first = t;
+        return Result;
+    }
+    else {
+        //return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Client expired"));
+        Result.second = "Client expired";
+        return Result;
+    }
+}
+
+
 sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
     auto table = mStateView.create_table();
     constexpr const char* InternalClient = "__InternalClient";
@@ -672,6 +701,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("RemoveVehicle", &LuaAPI::MP::RemoveVehicle);
     MPTable.set_function("GetPlayerVehicles", [&](int ID) -> sol::table {
         return Lua_GetPlayerVehicles(ID);
+    });
+    MPTable.set_function("GetPositionRaw", [&](int PID, int VID) -> std::pair<sol::table, std::string> {
+        return Lua_GetPositionRaw(PID, VID);
     });
     MPTable.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
     MPTable.set_function("GetPlayers", [&]() -> sol::table {

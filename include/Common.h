@@ -4,6 +4,7 @@
 extern TSentry Sentry;
 
 #include <array>
+#include <unordered_map>
 #include <atomic>
 #include <cstring>
 #include <deque>
@@ -32,6 +33,9 @@ struct Version {
     Version(const std::array<uint8_t, 3>& v);
     std::string AsString();
 };
+
+template<typename T>
+using SparseArray = std::unordered_map<size_t, T>;
 
 // static class handling application start, shutdown, etc.
 // yes, static classes, singletons, globals are all pretty

@@ -15,6 +15,67 @@
 
 #include "Json.h"
 
+static std::optional<std::pair<int, int>> GetPidVid(std::string str) {
+    auto IDSep = str.find('-');
+    std::string pid = str.substr(0, IDSep);
+    std::string vid = str.substr(IDSep + 1);
+
+    if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
+        try {
+        int PID = stoi(pid);
+        int VID = stoi(vid);
+        return {{ PID, VID }};
+        } catch(const std::exception&) {
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
+TEST_CASE("GetPidVid") {
+    SUBCASE("Valid singledigit") {
+        const auto MaybePidVid = GetPidVid("0-1");
+        CHECK(MaybePidVid);
+        auto [pid, vid] = MaybePidVid.value();
+
+        CHECK_EQ(pid, 0);
+        CHECK_EQ(vid, 1);
+    }
+    SUBCASE("Valid doubledigit") {
+        const auto MaybePidVid = GetPidVid("10-12");
+        CHECK(MaybePidVid);
+        auto [pid, vid] = MaybePidVid.value();
+
+        CHECK_EQ(pid, 10);
+        CHECK_EQ(vid, 12);
+    }
+    SUBCASE("Empty string") {
+        const auto MaybePidVid = GetPidVid("");
+        CHECK(!MaybePidVid);
+    }
+    SUBCASE("Invalid separator") {
+        const auto MaybePidVid = GetPidVid("0x0");
+        CHECK(!MaybePidVid);
+    }
+    SUBCASE("Missing pid") {
+        const auto MaybePidVid = GetPidVid("-0");
+        CHECK(!MaybePidVid);
+    }
+    SUBCASE("Missing vid") {
+        const auto MaybePidVid = GetPidVid("0-");
+        CHECK(!MaybePidVid);
+    }
+    SUBCASE("Invalid pid") {
+        const auto MaybePidVid = GetPidVid("x-0");
+        CHECK(!MaybePidVid);
+    }
+    SUBCASE("Invalid vid") {
+        const auto MaybePidVid = GetPidVid("0-x");
+        CHECK(!MaybePidVid);
+    }
+}
+
+
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
     Application::SetSubsystemStatus("Server", Application::Status::Starting);
@@ -86,8 +147,8 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
     std::any Res;
     char Code = Packet.at(0);
 
-    // V to Z
-    if (Code <= 90 && Code >= 86) {
+    // V to Y
+    if (Code <= 89 && Code >= 86) {
         PPSMonitor.IncrementInternalPPS();
         Network.SendToAll(LockedClient.get(), Packet, false, false);
         return;
@@ -145,6 +206,11 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::string Pac
         beammp_trace("got 'N' packet (" + std::to_string(Packet.size()) + ")");
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
+    case 'Z': // position packet
+        PPSMonitor.IncrementInternalPPS();
+        Network.SendToAll(LockedClient.get(), Packet, false, false);
+
+        HandlePosition(*LockedClient, Packet);
     default:
         return;
     }
@@ -223,13 +289,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             }
         }
         return;
-    case 'c':
+    case 'c': {
         beammp_trace(std::string(("got 'Oc' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        pid = Data.substr(0, Data.find('-'));
-        vid = Data.substr(Data.find('-') + 1, Data.find(':', 1) - Data.find('-') - 1);
-        if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
-            PID = stoi(pid);
-            VID = stoi(vid);
+        auto MaybePidVid = GetPidVid(Data.substr(0, Data.find(':', 1)));
+        if (MaybePidVid) {
+            std::tie(PID, VID) = MaybePidVid.value();
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleEdited", "", c.GetID(), VID, Packet.substr(3));
@@ -250,20 +314,17 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     c.SetUnicycleID(-1);
                 }
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
-                if (!Network.Respond(c, Destroy, true)) {
-                    // TODO: handle
-                }
+                Network.SendToAll(nullptr, Destroy, true, true);
                 c.DeleteCar(VID);
             }
         }
         return;
-    case 'd':
+    }
+    case 'd': {
         beammp_trace(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        pid = Data.substr(0, Data.find('-'));
-        vid = Data.substr(Data.find('-') + 1);
-        if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
-            PID = stoi(pid);
-            VID = stoi(vid);
+        auto MaybePidVid = GetPidVid(Data);
+        if (MaybePidVid) {
+            std::tie(PID, VID) = MaybePidVid.value();
         }
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
             if (c.GetUnicycleID() == VID) {
@@ -276,15 +337,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
         }
         return;
-    case 'r':
+    }
+    case 'r': {
         beammp_trace(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        Pos = int(Data.find('-'));
-        pid = Data.substr(0, Pos++);
-        vid = Data.substr(Pos, Data.find(':') - Pos);
-
-        if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
-            PID = stoi(pid);
-            VID = stoi(vid);
+        auto MaybePidVid = GetPidVid(Data);
+        if (MaybePidVid) {
+            std::tie(PID, VID) = MaybePidVid.value();
         }
 
         if (PID != -1 && VID != -1 && PID == c.GetID()) {
@@ -293,6 +351,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             Network.SendToAll(&c, Packet, false, true);
         }
         return;
+    }
     case 't':
         beammp_trace(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
         Network.SendToAll(&c, Packet, false, true);
@@ -364,4 +423,22 @@ void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     beammp_debug("inserting client (" + std::to_string(ClientCount()) + ")");
     WriteLock Lock(mClientsMutex); // TODO why is there 30+ threads locked here
     (void)mClients.insert(NewClient);
+}
+
+void TServer::HandlePosition(TClient& c, std::string Packet) {
+    // Zp:serverVehicleID:data
+    std::string withoutCode = Packet.substr(3);
+    auto NameDataSep = withoutCode.find(':', 2);
+    std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
+    std::string Data = withoutCode.substr(NameDataSep + 1);
+
+    // parse veh ID
+    auto MaybePidVid = GetPidVid(ServerVehicleID);
+    if (MaybePidVid) {
+        int PID = -1;
+        int VID = -1;
+        std::tie(PID, VID) = MaybePidVid.value();
+
+        c.SetCarPosition(VID, Data);
+    }
 }
