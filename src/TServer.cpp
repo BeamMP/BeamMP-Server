@@ -15,7 +15,7 @@
 
 #include "Json.h"
 
-static std::optional<std::pair<int, int>> GetPidVid(std::string str) {
+static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
     auto IDSep = str.find('-');
     std::string pid = str.substr(0, IDSep);
     std::string vid = str.substr(IDSep + 1);
@@ -425,7 +425,7 @@ void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     (void)mClients.insert(NewClient);
 }
 
-void TServer::HandlePosition(TClient& c, std::string Packet) {
+void TServer::HandlePosition(TClient& c, const std::string& Packet) {
     // Zp:serverVehicleID:data
     std::string withoutCode = Packet.substr(3);
     auto NameDataSep = withoutCode.find(':', 2);
