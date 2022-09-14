@@ -7,6 +7,7 @@
 - ADDED FS.ListFiles and FS.ListDirectories
 - ADDED onFileChanged event, triggered when a server plugin file changes
 - ADDED MP.GetPositionRaw(), which can be used to retrieve the latest position packet per player, per vehicle
+- ADDED error messages to some lua functions
 - FIXED `ip` in MP.GetIdentifiers
 - FIXED issue with client->server events which contain ':'
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink

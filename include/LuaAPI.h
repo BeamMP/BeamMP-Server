@@ -12,12 +12,12 @@ namespace MP {
 
     std::string GetOSName();
     std::tuple<int, int, int> GetServerVersion();
-    bool TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& Data);
-    bool TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data);
+    std::pair<bool, std::string> TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& Data);
+    std::pair<bool, std::string> TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data);
     inline size_t GetPlayerCount() { return Engine->Server().ClientCount(); }
-    void DropPlayer(int ID, std::optional<std::string> MaybeReason);
-    void SendChatMessage(int ID, const std::string& Message);
-    void RemoveVehicle(int PlayerID, int VehicleID);
+    std::pair<bool, std::string> DropPlayer(int ID, std::optional<std::string> MaybeReason);
+    std::pair<bool, std::string> SendChatMessage(int ID, const std::string& Message);
+    std::pair<bool, std::string> RemoveVehicle(int PlayerID, int VehicleID);
     void Set(int ConfigID, sol::object NewValue);
     bool IsPlayerGuest(int ID);
     bool IsPlayerConnected(int ID);
