@@ -110,72 +110,93 @@ TEST_CASE("LuaAPI::MP::GetServerVersion") {
     CHECK(pa == real.patch);
 }
 
-static inline bool InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
+static inline std::pair<bool, std::string> InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
     std::string Packet = "E:" + EventName + ":" + Data;
-    if (PlayerID == -1)
+    if (PlayerID == -1) {
         LuaAPI::MP::Engine->Network().SendToAll(nullptr, Packet, true, true);
-    else {
+        return {true, ""};
+    } else {
         auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
         if (!MaybeClient || MaybeClient.value().expired()) {
-            beammp_lua_error("TriggerClientEvent invalid Player ID");
-            return false;
+            beammp_lua_errorf("TriggerClientEvent invalid Player ID '{}'", PlayerID);
+            return {false, "Invalid Player ID"};
         }
         auto c = MaybeClient.value().lock();
         if (!LuaAPI::MP::Engine->Network().Respond(*c, Packet, true)) {
-            beammp_lua_error("Respond failed, dropping client " + std::to_string(PlayerID));
+            beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
             LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
-            return false;
+            return {false, "Respond failed, dropping client"};
+
         }
+        return {true, ""};
     }
-    return true;
 }
 
-bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& DataObj) {
+std::pair<bool, std::string> LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& DataObj) {
     std::string Data = DataObj.as<std::string>();
     return InternalTriggerClientEvent(PlayerID, EventName, Data);
 }
 
-void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
+std::pair<bool, std::string> LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (!MaybeClient || MaybeClient.value().expired()) {
-        beammp_lua_error("Tried to drop client with id " + std::to_string(ID) + ", who doesn't exist");
-        return;
+        beammp_lua_errorf("Tried to drop client with id {}, who doesn't exist", ID);
+        return {false, "Player does not exist"};
     }
     auto c = MaybeClient.value().lock();
     LuaAPI::MP::Engine->Network().ClientKick(*c, MaybeReason.value_or("No reason"));
+    return {true, ""};
 }
 
-void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
+std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
+    std::pair<bool, std::string> Result;
     std::string Packet = "C:Server: " + Message;
     if (ID == -1) {
         LogChatMessage("<Server> (to everyone) ", -1, Message);
         Engine->Network().SendToAll(nullptr, Packet, true, true);
+        Result.first = true;
     } else {
         auto MaybeClient = GetClient(Engine->Server(), ID);
         if (MaybeClient && !MaybeClient.value().expired()) {
             auto c = MaybeClient.value().lock();
-            if (!c->IsSynced())
-                return;
+            if (!c->IsSynced()) {
+                Result.first = false;
+                Result.second = "Player still syncing data";
+                return Result;
+            }
             LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, Message);
             Engine->Network().Respond(*c, Packet, true);
+            Result.first = true;
         } else {
             beammp_lua_error("SendChatMessage invalid argument [1] invalid ID");
+            Result.first = false;
+            Result.second = "Invalid Player ID";
         }
+        return Result;
     }
+    return Result;
 }
 
-void LuaAPI::MP::RemoveVehicle(int PID, int VID) {
+std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
+    std::pair<bool, std::string> Result;
     auto MaybeClient = GetClient(Engine->Server(), PID);
     if (!MaybeClient || MaybeClient.value().expired()) {
         beammp_lua_error("RemoveVehicle invalid Player ID");
-        return;
+        Result.first = false;
+        Result.second = "Invalid Player ID";
+        return Result;
     }
     auto c = MaybeClient.value().lock();
     if (!c->GetCarData(VID).empty()) {
         std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
         Engine->Network().SendToAll(nullptr, Destroy, true, true);
         c->DeleteCar(VID);
+        Result.first = true;
+    } else {
+        Result.first = false;
+        Result.second = "Vehicle does not exist";
     }
+    return Result;
 }
 
 void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
@@ -645,6 +666,6 @@ std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
     return nlohmann::json::parse(json).unflatten().dump(-1);
 }
 
-bool LuaAPI::MP::TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data) {
+std::pair<bool, std::string> LuaAPI::MP::TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data) {
     return InternalTriggerClientEvent(PlayerID, EventName, JsonEncode(Data));
 }

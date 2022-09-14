@@ -6,6 +6,8 @@
 - ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
 - ADDED FS.ListFiles and FS.ListDirectories
 - ADDED onFileChanged event, triggered when a server plugin file changes
+- ADDED MP.GetPositionRaw(), which can be used to retrieve the latest position packet per player, per vehicle
+- ADDED error messages to some lua functions
 - FIXED `ip` in MP.GetIdentifiers
 - FIXED issue with client->server events which contain ':'
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
@@ -13,6 +15,7 @@
 - FIXED incorrect timing calculation of Lua EventTimer loop
 - FIXED bug which caused hot-reload not to report syntax errors
 - FIXED missing error messages on some event handler calls
+- FIXED vehicles not deleting for all players if an edit was cancelled by Lua
 
 # v3.0.2
 

@@ -211,6 +211,7 @@ private:
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
+        std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);

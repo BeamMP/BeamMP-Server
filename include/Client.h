@@ -39,11 +39,13 @@ public:
 
     void AddNewCar(int Ident, const std::string& Data);
     void SetCarData(int Ident, const std::string& Data);
+    void SetCarPosition(int Ident, const std::string& Data);
     TVehicleDataLockPair GetAllCars();
     void SetName(const std::string& Name) { mName = Name; }
     void SetRoles(const std::string& Role) { mRole = Role; }
     void SetIdentifier(const std::string& key, const std::string& value) { mIdentifiers[key] = value; }
     std::string GetCarData(int Ident);
+    std::string GetCarPositionRaw(int Ident);
     void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
     void SetTCPSock(SOCKET CSock) { mSocket[0] = CSock; }
@@ -93,7 +95,9 @@ private:
     std::unordered_map<std::string, std::string> mIdentifiers;
     bool mIsGuest = false;
     mutable std::mutex mVehicleDataMutex;
+    mutable std::mutex mVehiclePositionMutex;
     TSetOfVehicleData mVehicleData;
+    SparseArray<std::string> mVehiclePosition;
     std::string mName = "Unknown Client";
     SOCKET mSocket[2] { SOCKET(0), SOCKET(0) };
     sockaddr_in mUDPAddress {}; // is this initialization OK? yes it is
