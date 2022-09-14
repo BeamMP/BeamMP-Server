@@ -1,6 +1,11 @@
 name: CMake Windows Build
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [opened, reopened]
+  pull_request_review:
+    types: [submitted]
 
 env:
   BUILD_TYPE: Release
@@ -8,20 +13,20 @@ env:
 jobs:
   windows-build:
     runs-on: windows-latest
-    
+
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'recursive'
-      
+          submodules: "recursive"
+
       - name: Restore artifacts, or run vcpkg, build and cache artifacts
         uses: lukka/run-vcpkg@v7
         id: runvcpkg
         with:
-            vcpkgArguments: 'lua zlib rapidjson openssl websocketpp curl'
-            vcpkgDirectory: '${{ runner.workspace }}/b/vcpkg'
-            vcpkgGitCommitId: 'a106de33bbee694e3be6243718aa2a549a692832'
-            vcpkgTriplet: 'x64-windows-static'
+          vcpkgArguments: "lua zlib rapidjson openssl websocketpp curl"
+          vcpkgDirectory: "${{ runner.workspace }}/b/vcpkg"
+          vcpkgGitCommitId: "a106de33bbee694e3be6243718aa2a549a692832"
+          vcpkgTriplet: "x64-windows-static"
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-windows
@@ -49,10 +54,9 @@ jobs:
         shell: bash
         run: |
           cmake --build . --config Debug
-      
+
       - name: Archive debug artifacts
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-debug.exe
           path: ${{github.workspace}}/build-windows/Debug/BeamMP-Server.exe
-
