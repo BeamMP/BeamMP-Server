@@ -38,5 +38,5 @@ private:
     static bool ShouldSpawn(TClient& c, const std::string& CarJson, int ID);
     static bool IsUnicycle(TClient& c, const std::string& CarJson);
     static void Apply(TClient& c, int VID, const std::string& pckt);
-    static void HandlePosition(TClient& c, std::string Packet);
+    static void HandlePosition(TClient& c, const std::string& Packet);
 };
