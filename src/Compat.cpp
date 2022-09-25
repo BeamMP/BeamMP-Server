@@ -36,7 +36,14 @@ TEST_CASE("init and reset termios") {
         resetTermios();
         struct termios current;
         tcgetattr(0, &current);
-        CHECK(std::memcmp(&original, &current, sizeof(struct termios)) == 0);
+        CHECK_EQ(std::memcmp(&current.c_cc, &original.c_cc, sizeof(current.c_cc)), 0);
+        CHECK_EQ(current.c_cflag, original.c_cflag);
+        CHECK_EQ(current.c_iflag, original.c_iflag);
+        CHECK_EQ(current.c_ispeed, original.c_ispeed);
+        CHECK_EQ(current.c_lflag, original.c_lflag);
+        CHECK_EQ(current.c_line, original.c_line);
+        CHECK_EQ(current.c_oflag, original.c_oflag);
+        CHECK_EQ(current.c_ospeed, original.c_ospeed);
     }
 }
 
