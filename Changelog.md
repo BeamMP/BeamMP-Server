@@ -10,7 +10,7 @@
 - ADDED error messages to some lua functions
 - ADDED HOME and END button working in console
 - FIXED `ip` in MP.GetPlayerIdentifiers
-- FIXED issue with client->server events which contain 
+- FIXED issue with client->server events which contain `:`
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
 - FIXED onInit not being called on hot-reload
 - FIXED incorrect timing calculation of Lua EventTimer loop
