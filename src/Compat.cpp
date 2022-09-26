@@ -50,7 +50,7 @@ TEST_CASE("init and reset termios") {
 static char getch_(int echo) {
     char ch;
     initTermios(echo);
-    read(STDIN_FILENO, &ch, 1);
+    (void)read(STDIN_FILENO, &ch, 1);
     resetTermios();
     return ch;
 }
