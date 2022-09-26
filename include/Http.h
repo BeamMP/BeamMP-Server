@@ -9,6 +9,8 @@
 #if defined(BEAMMP_LINUX)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#pragma GCC diagnostic ignored "-Wcast-qual"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif
 #include <httplib.h>
 #if defined(BEAMMP_LINUX)

@@ -26,15 +26,6 @@ endif()
 set(HTTPLIB_REQUIRE_OPENSSL ON)
 set(SENTRY_BUILD_SHARED_LIBS OFF)
 
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/websocketpp")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/commandline")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/sol2/include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/cpp-httplib")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps/json/single_include")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/deps")
-
 add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT=1)
 
 # ------------------------ APPLE ---------------------------------
@@ -62,17 +53,15 @@ elseif (WIN32)
     STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
 # ------------------------ LINUX ---------------------------------
 elseif (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++ -static-libgcc")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
     option(SANITIZE "Turns on thread and UB sanitizers" OFF)
     if (SANITIZE)
         message(STATUS "sanitize is ON")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize={address,thread,undefined}")
     endif (SANITIZE)
 endif ()
 
-include_directories("include/sentry-native/include")
 set(BUILD_SHARED_LIBS OFF)
 # ------------------------ SENTRY ---------------------------------
 message(STATUS "Checking for Sentry URL")
@@ -131,18 +120,56 @@ set(BeamMP_Sources
 )
 
 set(BeamMP_Includes
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/commandline"
     ${LUA_INCLUDE_DIR}
     ${CURL_INCLUDE_DIRS}
-    "include/tomlplusplus"
-    "include/sentry-native/include"
-    "include/curl/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/cpp-httplib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/commandline"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/json/single_include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/sol2/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps"
 )
 
 set(BeamMP_Definitions
     SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
 )
+
+if (UNIX)
+    set(BeamMP_CompileOptions
+        -Wall
+        -Wextra
+        -Wpedantic
+    
+        -Werror=uninitialized
+        -Werror=float-equal
+        -Werror=pointer-arith
+        -Werror=double-promotion
+        -Werror=write-strings
+        -Werror=cast-qual
+        -Werror=init-self
+        -Werror=cast-align
+        -Werror=unreachable-code
+        -Werror=strict-aliasing -fstrict-aliasing
+        -Werror=redundant-decls
+        -Werror=missing-declarations
+        -Werror=missing-field-initializers
+        -Werror=write-strings
+        -Werror=inline
+        -Werror=disabled-optimization
+        -Werror=ctor-dtor-privacy
+        -Werror=switch-enum
+        -Werror=switch-default
+        -Werror=old-style-cast
+        -Werror=overloaded-virtual
+        -Werror=zero-as-null-pointer-constant
+        -Werror=overloaded-virtual
+        -Werror=missing-include-dirs
+        -Werror=unused-result
+
+        -fstack-protector
+    )
+endif()
 
 set(BeamMP_Libraries
     doctest::doctest
@@ -173,7 +200,15 @@ target_compile_definitions(BeamMP-Server PRIVATE
     DOCTEST_CONFIG_DISABLE
 )
 
-target_include_directories(BeamMP-Server PUBLIC 
+target_compile_options(BeamMP-Server PRIVATE 
+    ${BeamMP_CompileOptions}
+)
+
+target_include_directories(BeamMP-Server PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_include_directories(BeamMP-Server SYSTEM PRIVATE
     ${BeamMP_Includes}
 )
 
@@ -195,11 +230,19 @@ if(BUILD_TESTS)
     target_compile_definitions(BeamMP-Server-tests PRIVATE
         ${BeamMP_Definitions}
     )
-
-    target_include_directories(BeamMP-Server-tests PUBLIC
-        ${BeamMP_Includes}
+    
+    target_compile_options(BeamMP-Server-tests PRIVATE 
+       ${BeamMP_CompileOptions}
     )
 
+    target_include_directories(BeamMP-Server-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+
+    target_include_directories(BeamMP-Server-tests SYSTEM PRIVATE
+        ${BeamMP_Includes}
+    )
+    
     target_link_libraries(BeamMP-Server-tests
         ${BeamMP_Libraries}
         ${BeamMP_PlatformLibs}

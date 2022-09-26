@@ -2,7 +2,6 @@
 
 #include "ArgsParser.h"
 #include "Common.h"
-#include "CustomAssert.h"
 #include "Http.h"
 #include "LuaAPI.h"
 #include "SignalHandling.h"
@@ -13,7 +12,6 @@
 #include "TPPSMonitor.h"
 #include "TPluginMonitor.h"
 #include "TResourceManager.h"
-#include "TScopedTimer.h"
 #include "TServer.h"
 
 #include <iostream>
@@ -56,7 +54,7 @@ int BeamMPServerMain(MainArguments Arguments);
 
 int main(int argc, char** argv) {
     MainArguments Args { argc, argv, {}, argv[0] };
-    Args.List.reserve(argc);
+    Args.List.reserve(size_t(argc));
     for (int i = 1; i < argc; ++i) {
         Args.List.push_back(argv[i]);
     }

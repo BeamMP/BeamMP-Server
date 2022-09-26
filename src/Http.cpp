@@ -4,7 +4,6 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "LuaAPI.h"
-#include "httplib.h"
 
 #include <map>
 #include <nlohmann/json.hpp>
@@ -177,6 +176,8 @@ void Http::Server::THttpServerInstance::operator()() try {
             case Application::Status::Bad:
                 SystemsBad++;
                 break;
+            default:
+                beammp_assert_not_reachable();
             }
         }
         res.set_content(

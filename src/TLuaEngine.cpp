@@ -7,7 +7,6 @@
 
 #include <chrono>
 #include <condition_variable>
-#include <httplib.h>
 #include <nlohmann/json.hpp>
 #include <random>
 #include <thread>
@@ -679,6 +678,8 @@ static void JsonDecodeRecursive(sol::state_view& StateView, sol::table& table, c
         return;
     case nlohmann::detail::value_t::discarded:
         return;
+    default:
+        beammp_assert_not_reachable();
     }
 }
 

@@ -22,10 +22,10 @@ static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
 
     if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
         try {
-        int PID = stoi(pid);
-        int VID = stoi(vid);
-        return {{ PID, VID }};
-        } catch(const std::exception&) {
+            int PID = stoi(pid);
+            int VID = stoi(vid);
+            return { { PID, VID } };
+        } catch (const std::exception&) {
             return std::nullopt;
         }
     }
@@ -74,7 +74,6 @@ TEST_CASE("GetPidVid") {
         CHECK(!MaybePidVid);
     }
 }
-
 
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
@@ -256,7 +255,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     std::string Packet = Pckt;
     char Code = Packet.at(1);
     int PID = -1;
-    int VID = -1, Pos;
+    int VID = -1;
     std::string Data = Packet.substr(3), pid, vid;
     switch (Code) { // Spawned Destroyed Switched/Moved NotFound Reset
     case 's':

@@ -6,7 +6,7 @@
 #include <sstream>
 
 TSentry::TSentry() {
-    if (std::strlen(S_DSN) == 0) {
+    if (std::strlen(S_DSN) == /* DISABLES CODE */ (0)) {
         mValid = false;
     } else {
         mValid = true;

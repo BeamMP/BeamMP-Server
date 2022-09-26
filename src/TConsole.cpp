@@ -62,8 +62,7 @@ static inline void SplitString(std::string const& str, const char delim, std::ve
     }
 }
 
-
-std::string GetDate() {
+static std::string GetDate() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     time_t tt = std::chrono::system_clock::to_time_t(now);
     auto local_tm = std::localtime(&tt);
@@ -156,10 +155,10 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
         mStateId = LuaStateId;
         mIsLuaConsole = true;
         if (mStateId != mDefaultStateId) {
-            Application::Console().WriteRaw("Attached to Lua state '" + mStateId + "'. For help, type `:help`. To detach, type `:detach`");
+            Application::Console().WriteRaw("Attached to Lua state '" + mStateId + "'. For help, type `:help`. To detach, type `:exit`");
             mCommandline.set_prompt("lua @" + LuaStateId + "> ");
         } else {
-            Application::Console().WriteRaw("Attached to Lua. For help, type `:help`. To detach, type `:detach`");
+            Application::Console().WriteRaw("Attached to Lua. For help, type `:help`. To detach, type `:exit`");
             mCommandline.set_prompt("lua> ");
         }
         mCachedRegularHistory = mCommandline.history();
@@ -271,9 +270,10 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
     }
     beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
     bool Kicked = false;
+    // TODO: this sucks, tolower is locale-dependent.
     auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
-        std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = tolower(c); });
-        std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = tolower(c); });
+        std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = char(std::tolower(char(c))); });
+        std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = char(std::tolower(char(c))); });
         return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
     };
     mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
@@ -332,7 +332,9 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
             }
             ++Ptr;
         }
-        Arg = std::string(PrevPtr, Ptr - PrevPtr);
+        // this is required, otherwise we get negative int to unsigned cast in the next operations
+        beammp_assert(PrevPtr <= Ptr);
+        Arg = std::string(PrevPtr, std::string::size_type(Ptr - PrevPtr));
         // remove quotes if enclosed in quotes
         for (char Quote : { '"', '\'', '`' }) {
             if (!Arg.empty() && Arg.at(0) == Quote && Arg.at(Arg.size() - 1) == Quote) {
@@ -448,6 +450,8 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
             SystemsShutdown++;
             SystemsShutdownList += NameStatusPair.first + ", ";
             break;
+        default:
+            beammp_assert_not_reachable();
         }
     }
     // remove ", " at the end
@@ -466,7 +470,7 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
            << "\tConnected Players:         " << ConnectedCount << "\n"
            << "\tGuests:                    " << GuestCount << "\n"
            << "\tCars:                      " << CarCount << "\n"
-           << "\tUptime:                    " << ElapsedTime << "ms (~" << size_t(ElapsedTime / 1000.0 / 60.0 / 60.0) << "h) \n"
+           << "\tUptime:                    " << ElapsedTime << "ms (~" << size_t(double(ElapsedTime) / 1000.0 / 60.0 / 60.0) << "h) \n"
            << "\tLua:\n"
            << "\t\tQueued results to check:     " << mLuaEngine->GetResultsToCheckSize() << "\n"
            << "\t\tStates:                      " << mLuaEngine->GetLuaStateCount() << "\n"
@@ -630,7 +634,7 @@ TConsole::TConsole() {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
     };
-    mCommandline.on_autocomplete = [this](Commandline& c, std::string stub, int cursorPos) {
+    mCommandline.on_autocomplete = [this](Commandline&, std::string stub, int) {
         std::vector<std::string> suggestions;
         try {
             if (mIsLuaConsole) { // if lua
@@ -638,7 +642,7 @@ TConsole::TConsole() {
                     beammp_info("Lua not started yet, please try again in a second");
                 } else {
                     std::string prefix {}; // stores non-table part of input
-                    for (size_t i = stub.length(); i > 0; i--) { //separate table from input
+                    for (size_t i = stub.length(); i > 0; i--) { // separate table from input
                         if (!std::isalnum(stub[i - 1]) && stub[i - 1] != '_' && stub[i - 1] != '.') {
                             prefix = stub.substr(0, i);
                             stub = stub.substr(i);

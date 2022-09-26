@@ -57,7 +57,7 @@ void TNetwork::UDPServerMain() {
     serverAddr.sin_port = htons(uint16_t(Application::Settings.Port)); // Convert from little to big endian
 
     // Try and bind the socket to the IP and port
-    if (bind(mUDPSock, (sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
+    if (bind(mUDPSock, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) != 0) {
         beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         exit(-1); // TODO: Wtf.
@@ -134,7 +134,7 @@ void TNetwork::TCPServerMain() {
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(uint16_t(Application::Settings.Port));
-    if (bind(Listener, (sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (bind(Listener, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) < 0) {
         beammp_error("bind() failed, the server cannot operate and will shut down now. "
                      "Error: "
             + GetPlatformAgnosticErrorString());
@@ -166,7 +166,7 @@ void TNetwork::TCPServerMain() {
             int ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&SendTimeoutMS), sizeof(SendTimeoutMS));
 #else // POSIX
             struct timeval optval;
-            optval.tv_sec = (int)(SendTimeoutMS / 1000);
+            optval.tv_sec = int(SendTimeoutMS / 1000);
             optval.tv_usec = (SendTimeoutMS % 1000) * 1000;
             ret = ::setsockopt(client.Socket, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<void*>(&optval), sizeof(optval));
 #endif
@@ -237,13 +237,13 @@ void TNetwork::HandleDownload(SOCKET TCPSock) {
     });
 }
 
-static int get_ip_str(const struct sockaddr* sa, char* strBuf, size_t strBufSize) {
+static int get_ip_str(const struct sockaddr* sa, char* strBuf, socklen_t strBufSize) {
     switch (sa->sa_family) {
     case AF_INET:
-        inet_ntop(AF_INET, &(((struct sockaddr_in*)sa)->sin_addr), strBuf, strBufSize);
+        inet_ntop(AF_INET, &reinterpret_cast<const struct sockaddr_in*>(sa)->sin_addr, strBuf, strBufSize);
         break;
     case AF_INET6:
-        inet_ntop(AF_INET6, &(((struct sockaddr_in6*)sa)->sin6_addr), strBuf, strBufSize);
+        inet_ntop(AF_INET6, &reinterpret_cast<const struct sockaddr_in6*>(sa)->sin6_addr, strBuf, strBufSize);
         break;
     default:
         return 1;
@@ -453,7 +453,7 @@ bool TNetwork::CheckBytes(TClient& c, int32_t BytesRcv) {
 }
 
 std::string TNetwork::TCPRcv(TClient& c) {
-    int32_t Header, BytesRcv = 0, Temp;
+    int32_t Header {}, BytesRcv = 0, Temp {};
     if (c.GetStatus() < 0)
         return "";
 
@@ -470,7 +470,7 @@ std::string TNetwork::TCPRcv(TClient& c) {
     if (!CheckBytes(c, BytesRcv)) {
         return "";
     }
-    if (Header < 100 * MB) {
+    if (Header < int32_t(100 * MB)) {
         Data.resize(Header);
     } else {
         ClientKick(c, "Header size limit exceeded");
@@ -822,7 +822,6 @@ uint8_t* /* end ptr */ TNetwork::SendSplit(TClient& c, SOCKET Socket, uint8_t* D
 
 void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
     std::ifstream f(Name.c_str(), std::ios::binary);
-    auto Buf = f.rdbuf();
     uint32_t Split = 125 * MB;
     std::vector<uint8_t> Data;
     if (Size > Split)
@@ -1018,7 +1017,7 @@ bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
     size_t len = Data.size();
 #endif // WIN32
 
-    sendOk = sendto(mUDPSock, Data.c_str(), len, 0, (sockaddr*)&Addr, int(AddrSize));
+    sendOk = sendto(mUDPSock, Data.c_str(), len, 0, reinterpret_cast<struct sockaddr*>(&Addr), int(AddrSize));
     if (sendOk == -1) {
         beammp_debug("(UDP) sendto() failed: " + GetPlatformAgnosticErrorString());
         if (Client.GetStatus() > -1)
@@ -1039,7 +1038,7 @@ std::string TNetwork::UDPRcvFromClient(sockaddr_in& client) const {
 #ifdef WIN32
     auto Rcv = recvfrom(mUDPSock, Ret.data(), int(Ret.size()), 0, (sockaddr*)&client, (int*)&clientLength);
 #else // unix
-    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, (sockaddr*)&client, (socklen_t*)&clientLength);
+    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, reinterpret_cast<struct sockaddr*>(&client), reinterpret_cast<socklen_t*>(&clientLength));
 #endif // WIN32
 
     if (Rcv == -1) {

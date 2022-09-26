@@ -9,6 +9,7 @@
 #include <sstream>
 #include <thread>
 
+#include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"
 
@@ -170,6 +171,8 @@ void Application::SetSubsystemStatus(const std::string& Subsystem, Status status
     case Status::Shutdown:
         beammp_trace("Subsystem '" + Subsystem + "': Shutdown");
         break;
+    default:
+        beammp_assert_not_reachable();
     }
     std::unique_lock Lock(mSystemStatusMapMutex);
     mSystemStatusMap[Subsystem] = status;
@@ -347,5 +350,7 @@ std::string GetPlatformAgnosticErrorString() {
     }
 #elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
     return std::strerror(errno);
+#else
+    return "(no human-readable errors on this platform)";
 #endif
 }

@@ -1,6 +1,7 @@
 #include "LuaAPI.h"
 #include "Client.h"
 #include "Common.h"
+#include "CustomAssert.h"
 #include "TLuaEngine.h"
 
 #include <nlohmann/json.hpp>
@@ -74,8 +75,10 @@ std::string LuaAPI::LuaToString(const sol::object Value, size_t Indent, bool Quo
         ss << "[[function: " << Value.as<sol::function>().pointer() << "]]";
         return ss.str();
     }
+    case sol::type::poly:
+        return "<poly>";
     default:
-        return "((unprintable type))";
+        return "<unprintable type>";
     }
 }
 
@@ -114,21 +117,20 @@ static inline std::pair<bool, std::string> InternalTriggerClientEvent(int Player
     std::string Packet = "E:" + EventName + ":" + Data;
     if (PlayerID == -1) {
         LuaAPI::MP::Engine->Network().SendToAll(nullptr, Packet, true, true);
-        return {true, ""};
+        return { true, "" };
     } else {
         auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
         if (!MaybeClient || MaybeClient.value().expired()) {
             beammp_lua_errorf("TriggerClientEvent invalid Player ID '{}'", PlayerID);
-            return {false, "Invalid Player ID"};
+            return { false, "Invalid Player ID" };
         }
         auto c = MaybeClient.value().lock();
         if (!LuaAPI::MP::Engine->Network().Respond(*c, Packet, true)) {
             beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
             LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
-            return {false, "Respond failed, dropping client"};
-
+            return { false, "Respond failed, dropping client" };
         }
-        return {true, ""};
+        return { true, "" };
     }
 }
 
@@ -141,11 +143,11 @@ std::pair<bool, std::string> LuaAPI::MP::DropPlayer(int ID, std::optional<std::s
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (!MaybeClient || MaybeClient.value().expired()) {
         beammp_lua_errorf("Tried to drop client with id {}, who doesn't exist", ID);
-        return {false, "Player does not exist"};
+        return { false, "Player does not exist" };
     }
     auto c = MaybeClient.value().lock();
     LuaAPI::MP::Engine->Network().ClientKick(*c, MaybeReason.value_or("No reason"));
-    return {true, ""};
+    return { true, "" };
 }
 
 std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
@@ -165,7 +167,10 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
                 return Result;
             }
             LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, Message);
-            Engine->Network().Respond(*c, Packet, true);
+            if (!Engine->Network().Respond(*c, Packet, true)) {
+                beammp_errorf("Failed to send chat message back to sender (id {}) - did the sender disconnect?", ID);
+                // TODO: should we return an error here?
+            }
             Result.first = true;
         } else {
             beammp_lua_error("SendChatMessage invalid argument [1] invalid ID");
@@ -521,7 +526,7 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
         beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
         return;
     }
-    std::string key;
+    std::string key{};
     switch (left.get_type()) {
     case sol::type::lua_nil:
     case sol::type::none:
@@ -540,6 +545,8 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
     case sol::type::number:
         key = std::to_string(left.as<double>());
         break;
+    default:
+        beammp_assert_not_reachable();
     }
     nlohmann::json value;
     switch (right.get_type()) {
@@ -582,6 +589,8 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
         }
         break;
     }
+    default:
+        beammp_assert_not_reachable();
     }
     if (is_array) {
         json.push_back(value);

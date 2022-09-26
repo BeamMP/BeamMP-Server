@@ -4,7 +4,6 @@
 extern TSentry Sentry;
 
 #include <array>
-#include <unordered_map>
 #include <atomic>
 #include <cstring>
 #include <deque>
@@ -15,13 +14,12 @@ extern TSentry Sentry;
 #include <mutex>
 #include <shared_mutex>
 #include <sstream>
+#include <unordered_map>
 #include <zlib.h>
 
 #include <doctest/doctest.h>
 #include <filesystem>
 namespace fs = std::filesystem;
-
-#include "Compat.h"
 
 #include "TConsole.h"
 
@@ -34,7 +32,7 @@ struct Version {
     std::string AsString();
 };
 
-template<typename T>
+template <typename T>
 using SparseArray = std::unordered_map<size_t, T>;
 
 // static class handling application start, shutdown, etc.
@@ -277,11 +275,11 @@ inline T Comp(const T& Data) {
     // obsolete
     C.fill(0);
     z_stream defstream;
-    defstream.zalloc = Z_NULL;
-    defstream.zfree = Z_NULL;
-    defstream.opaque = Z_NULL;
-    defstream.avail_in = (uInt)Data.size();
-    defstream.next_in = (Bytef*)&Data[0];
+    defstream.zalloc = nullptr;
+    defstream.zfree = nullptr;
+    defstream.opaque = nullptr;
+    defstream.avail_in = uInt(Data.size());
+    defstream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(&Data[0]));
     defstream.avail_out = Biggest;
     defstream.next_out = reinterpret_cast<Bytef*>(C.data());
     deflateInit(&defstream, Z_BEST_COMPRESSION);
@@ -302,13 +300,13 @@ inline T DeComp(const T& Compressed) {
     // not needed
     C.fill(0);
     z_stream infstream;
-    infstream.zalloc = Z_NULL;
-    infstream.zfree = Z_NULL;
-    infstream.opaque = Z_NULL;
+    infstream.zalloc = nullptr;
+    infstream.zfree = nullptr;
+    infstream.opaque = nullptr;
     infstream.avail_in = Biggest;
-    infstream.next_in = (Bytef*)(&Compressed[0]);
+    infstream.next_in = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(&Compressed[0]));
     infstream.avail_out = Biggest;
-    infstream.next_out = (Bytef*)(C.data());
+    infstream.next_out = const_cast<Bytef*>(reinterpret_cast<const Bytef*>(C.data()));
     inflateInit(&infstream);
     inflate(&infstream, Z_SYNC_FLUSH);
     inflate(&infstream, Z_FINISH);
@@ -323,5 +321,3 @@ inline T DeComp(const T& Compressed) {
 
 std::string GetPlatformAgnosticErrorString();
 #define S_DSN SU_RAW
-
-void LogChatMessage(const std::string& name, int id, const std::string& msg);

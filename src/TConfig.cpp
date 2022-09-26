@@ -167,7 +167,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue) {
     if (Table[Category.c_str()][Key.data()].is_integer()) {
-        OutValue = Table[Category.c_str()][Key.data()].as_integer();
+        OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
     }
 }
 
