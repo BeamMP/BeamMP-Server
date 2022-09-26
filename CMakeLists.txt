@@ -155,8 +155,6 @@ if (UNIX)
         -Werror=missing-declarations
         -Werror=missing-field-initializers
         -Werror=write-strings
-        -Werror=inline
-        -Werror=disabled-optimization
         -Werror=ctor-dtor-privacy
         -Werror=switch-enum
         -Werror=switch-default

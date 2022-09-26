@@ -8,7 +8,8 @@
 - ADDED onFileChanged event, triggered when a server plugin file changes
 - ADDED MP.GetPositionRaw(), which can be used to retrieve the latest position packet per player, per vehicle
 - ADDED error messages to some lua functions
-- FIXED `ip` in MP.GetIdentifiers
+- ADDED HOME and END button working in console
+- FIXED `ip` in MP.GetPlayerIdentifiers
 - FIXED issue with client->server events which contain ':'
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
 - FIXED onInit not being called on hot-reload
