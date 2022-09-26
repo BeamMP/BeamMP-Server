@@ -90,6 +90,17 @@ cmake
 g++
 ```
 
+#### macOS
+
+Dependencies for **macOS** can be installed with homebrew.
+```
+brew install lua@5.3 rapidjson websocketpp cmake openssl@1.1
+```
+Some packages are included in **macOS** but you might want to install homebrew versions.
+```
+brew install curl zlib git make
+```
+
 ### How to build
 
 On Windows, use git-bash for these commands. On Linux, these should work in your shell.
