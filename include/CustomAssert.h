@@ -58,16 +58,17 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
 #define beammp_assert(cond) _assert(__FILE__, __func__, __LINE__, #cond, (cond))
 #define beammp_assert_not_reachable() _assert(__FILE__, __func__, __LINE__, "reached unreachable code", false)
 #else
-// In release build, these macros turn into NOPs. The compiler will optimize these out.
-#define beammp_assert(cond)                                           \
-    do {                                                              \
-        bool result = (cond);                                         \
-        if (!result) {                                                \
-            Sentry.LogAssert(#cond, _file_basename, _line, __func__); \
-        }                                                             \
+#define beammp_assert(cond)                                                            \
+    do {                                                                               \
+        bool result = (cond);                                                          \
+        if (!result) {                                                                 \
+            beammp_errorf("Assertion failed in '{}:{}': {}.", __func__, _line, #cond); \
+            Sentry.LogAssert(#cond, _file_basename, _line, __func__);                  \
+        }                                                                              \
     } while (false)
-#define beammp_assert_not_reachable()                                             \
-    do {                                                                          \
-        Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__); \
+#define beammp_assert_not_reachable()                                                      \
+    do {                                                                                   \
+        beammp_errorf("Assertion failed in '{}:{}': Unreachable code reached. This may result in a crash or undefined state of the program.", __func__, _line); \
+        Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__);          \
     } while (false)
 #endif // DEBUG
