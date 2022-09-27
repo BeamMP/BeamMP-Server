@@ -90,10 +90,27 @@ add_subdirectory(deps)
 
 # ------------------------ VARIABLES ---------------------------------
 
-include(FindLua)
+option(FIND_OPENSSL "Whether or not to find openssl automatically (keep on unless you know what you're doing)" ON)
+option(FIND_ZLIB "Whether or not to find zlib automatically (keep on unless you know what you're doing)" ON)
+
 include(FindOpenSSL)
+if (${FIND_OPENSSL})
+    set(OPENSSL_CRYPTO OpenSSL::Crypto)
+    set(OPENSSL_SSL OpenSSL::SSL)
+else()
+    message(STATUS "Using custom openssl libs: ${OPENSSL_CRYPTO} ${OPENSSL_SSL}")
+endif()
+
+include(FindLua)
 include(FindThreads)
+
 include(FindZLIB)
+
+if (${FIND_ZLIB})
+    set(ZLIB_ZLIB ZLIB::ZLIB)
+else()
+    message(STATUS "Using custom zlib: ${ZLIB_ZLIB}")
+endif()
 
 set(BeamMP_Sources
     include/TConsole.h src/TConsole.cpp
@@ -171,12 +188,12 @@ endif()
 
 set(BeamMP_Libraries
     doctest::doctest
-    OpenSSL::SSL
-    OpenSSL::Crypto
+    ${OPENSSL_SSL}
+    ${OPENSSL_CRYPTO}
     sol2::sol2
     fmt::fmt
     Threads::Threads
-    ZLIB::ZLIB
+    ${ZLIB_ZLIB}
     ${LUA_LIBRARIES}
     commandline
     sentry
