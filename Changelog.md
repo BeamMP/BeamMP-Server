@@ -9,6 +9,7 @@
 - ADDED MP.GetPositionRaw(), which can be used to retrieve the latest position packet per player, per vehicle
 - ADDED error messages to some lua functions
 - ADDED HOME and END button working in console
+- ADDED `MP.TriggerClientEventJson()` which takes a table as the data argument and sends it as JSON
 - FIXED `ip` in MP.GetPlayerIdentifiers
 - FIXED issue with client->server events which contain `:`
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
