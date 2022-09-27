@@ -3,7 +3,7 @@
 
 - ADDED Tab autocomplete in console, smart tab autocomplete (understands lua tables and types) in the lua console
 - ADDED lua debug facilities (type `:help` when attached to lua via `lua`)
-- ADDED MP.JsonEncode() and MP.JsonDecode(), which turn lua tables into json and vice-versa
+- ADDED Util.JsonEncode() and Util.JsonDecode(), which turn lua tables into json and vice-versa
 - ADDED FS.ListFiles and FS.ListDirectories
 - ADDED onFileChanged event, triggered when a server plugin file changes
 - ADDED MP.GetPositionRaw(), which can be used to retrieve the latest position packet per player, per vehicle
