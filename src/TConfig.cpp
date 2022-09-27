@@ -44,7 +44,10 @@ TEST_CASE("TConfig::TConfig") {
     {
         buf.resize(fs::file_size(CfgFile));
         auto fp = std::fopen(CfgFile.c_str(), "r");
-        std::fread(buf.data(), 1, buf.size(), fp);
+        auto res = std::fread(buf.data(), 1, buf.size(), fp);
+        if (res != buf.size()) {
+            // IGNORE?
+        }
         std::fclose(fp);
     }
     INFO("file contents are:", buf);
