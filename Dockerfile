@@ -1,9 +1,11 @@
 FROM lionkor/alpine-static-cpp:latest
 
-RUN apk update && apk --no-cache add python3 git lua zlib-static openssl curl rapidjson curl-dev wget
-RUN apk --no-cache add openssl-libs-static curl-static
+ARG LUA_V=5.3.6
 
-RUN wget "https://www.lua.org/ftp/lua-5.4.4.tar.gz"; tar xzvf lua-5.4.4.tar.gz; mv lua-5.4.4 /lua; rm lua-5.4.4.tar.gz
+RUN apk update && apk --no-cache add python3 git lua zlib-static openssl curl rapidjson curl-dev wget readline-static
+RUN apk --no-cache add openssl-libs-static curl-static readline-dev
 
-RUN cd /lua; make all -j; cd ..
+RUN wget "https://www.lua.org/ftp/lua-${LUA_V}.tar.gz"; tar xzvf lua-${LUA_V}.tar.gz; mv "lua-${LUA_V}" /lua; rm lua-${LUA_V}.tar.gz
+
+RUN cd /lua; make all -j linux; cd ..
 
