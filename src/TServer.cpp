@@ -264,7 +264,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             int CarID = c.GetOpenCarID();
             beammp_debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
 
-            std::string CarJson = Packet.substr(5);
+            std::string CarJson = Packet.substr(6);
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
             auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", "", c.GetID(), CarID, Packet.substr(3));
             TLuaEngine::WaitForAll(Futures);
