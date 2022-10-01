@@ -259,10 +259,10 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     std::string Data = Packet.substr(3), pid, vid;
     switch (Code) { // Spawned Destroyed Switched/Moved NotFound Reset
     case 's':
-        beammp_trace(std::string(("got 'Os' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        beammp_tracef("got 'Os' packet: '{}' ({})", Packet, Packet.size());
         if (Data.at(0) == '0') {
             int CarID = c.GetOpenCarID();
-            beammp_debug(c.GetName() + (" created a car with ID ") + std::to_string(CarID));
+            beammp_debugf("'{}' created a car with ID {}", c.GetName(), CarID);
 
             std::string CarJson = Packet.substr(6);
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
@@ -284,7 +284,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 if (!Network.Respond(c, Destroy, true)) {
                     // TODO: handle
                 }
-                beammp_debug(c.GetName() + (" (force : car limit/lua) removed ID ") + std::to_string(CarID));
+                beammp_debugf("{} (force : car limit/lua) removed ID {}", c.GetName(), CarID);
             }
         }
         return;
