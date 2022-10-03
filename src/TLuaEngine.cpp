@@ -417,7 +417,6 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
         if (Fn.valid()) {
             auto LuaResult = Fn(EventArgs);
             auto Result = std::make_shared<TLuaResult>();
-            Result->Ready = true;
             if (LuaResult.valid()) {
                 Result->Error = false;
                 Result->Result = LuaResult;
@@ -425,6 +424,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
                 Result->Error = true;
                 Result->ErrorMessage = "Function result in TriggerGlobalEvent was invalid";
             }
+            Result->Ready = true;
             Return.push_back(Result);
         }
     }
@@ -948,15 +948,14 @@ void TLuaEngine::StateThreadData::operator()() {
                 }
                 sol::state_view StateView(mState);
                 auto Res = StateView.safe_script(*S.first.Content, sol::script_pass_on_error, S.first.FileName);
-                S.second->Ready = true;
                 if (Res.valid()) {
                     S.second->Error = false;
                     S.second->Result = std::move(Res);
                 } else {
                     S.second->Error = true;
-                    sol::error Err = Res;
-                    S.second->ErrorMessage = Err.what();
+                    S.second->ErrorMessage = std::string(sol::error(Res).what());
                 }
+                S.second->Ready = true;
             }
         }
         { // StateFunctionQueue Scope
