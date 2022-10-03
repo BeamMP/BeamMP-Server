@@ -425,10 +425,24 @@ void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
 }
 
 void TServer::HandlePosition(TClient& c, const std::string& Packet) {
+    if (Packet.size() < 3) {
+        // invalid packet
+        return;
+    }
     // Zp:serverVehicleID:data
+    // Zp:0:data
     std::string withoutCode = Packet.substr(3);
     auto NameDataSep = withoutCode.find(':', 2);
+    if (NameDataSep == std::string::npos || NameDataSep < 2) {
+        // invalid packet
+        return;
+    }
+    // FIXME: ensure that -2 does what it should... it seems weird.
     std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
+    if (NameDataSep + 1 > withoutCode.size()) {
+        // invalid packet
+        return;
+    }
     std::string Data = withoutCode.substr(NameDataSep + 1);
 
     // parse veh ID
@@ -436,6 +450,7 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
     if (MaybePidVid) {
         int PID = -1;
         int VID = -1;
+        // FIXME: check that the VID and PID are valid, so that we don't waste memory
         std::tie(PID, VID) = MaybePidVid.value();
 
         c.SetCarPosition(VID, Data);
