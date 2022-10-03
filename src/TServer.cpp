@@ -250,7 +250,7 @@ bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
 }
 
 void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network) {
-    if (Pckt.length() < 4)
+    if (Pckt.length() < 6)
         return;
     std::string Packet = Pckt;
     char Code = Packet.at(1);
@@ -264,7 +264,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             int CarID = c.GetOpenCarID();
             beammp_debugf("'{}' created a car with ID {}", c.GetName(), CarID);
 
-            std::string CarJson = Packet.substr(6);
+            std::string CarJson = Packet.substr(5);
             Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
             auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", "", c.GetID(), CarID, Packet.substr(3));
             TLuaEngine::WaitForAll(Futures);
