@@ -4,6 +4,7 @@
 #include "Http.h"
 #include "LuaAPI.h"
 #include "TLuaPlugin.h"
+#include "sol/object.hpp"
 
 #include <chrono>
 #include <condition_variable>
@@ -992,6 +993,15 @@ void TLuaEngine::StateThreadData::operator()() {
                         case TLuaArgTypes_Bool:
                             LuaArgs.push_back(sol::make_object(StateView, std::get<bool>(Arg)));
                             break;
+                        case TLuaArgTypes_StringStringMap: {
+                            auto Map = std::get<std::unordered_map<std::string, std::string>>(Arg);
+                            auto Table = StateView.create_table();
+                            for (const auto& [k, v] : Map) {
+                                Table[k] = v;
+                            }
+                            LuaArgs.push_back(sol::make_object(StateView, Table));
+                            break;
+                        }
                         default:
                             beammp_error("Unknown argument type, passed as nil");
                             break;

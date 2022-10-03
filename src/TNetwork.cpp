@@ -355,7 +355,7 @@ void TNetwork::Authentication(const TConnection& ClientConnection) {
         return true;
     });
 
-    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", "", Client->GetName(), Client->GetRoles(), Client->IsGuest());
+    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", "", Client->GetName(), Client->GetRoles(), Client->IsGuest(), Client->GetIdentifiers());
     TLuaEngine::WaitForAll(Futures);
     bool NotAllowed = std::any_of(Futures.begin(), Futures.end(),
         [](const std::shared_ptr<TLuaResult>& Result) {

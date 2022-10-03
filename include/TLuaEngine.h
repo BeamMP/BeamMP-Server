@@ -25,11 +25,12 @@ namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool>;
+using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>>;
 static constexpr size_t TLuaArgTypes_String = 0;
 static constexpr size_t TLuaArgTypes_Int = 1;
 static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
 static constexpr size_t TLuaArgTypes_Bool = 3;
+static constexpr size_t TLuaArgTypes_StringStringMap = 4;
 
 class TLuaPlugin;
 
