@@ -584,26 +584,24 @@ std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionR
         std::string VehiclePos = Client->GetCarPositionRaw(VID);
 
         if (VehiclePos.empty()) {
-            //return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Vehicle not found"));
+            // return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Vehicle not found"));
             Result.second = "Vehicle not found";
             return Result;
         }
 
         sol::table t = Lua_JsonDecode(VehiclePos);
-        if (t == sol::lua_nil){
+        if (t == sol::lua_nil) {
             Result.second = "Packet decode failed";
         }
-        //return std::make_tuple(Result, sol::make_object(StateView, sol::lua_nil));
+        // return std::make_tuple(Result, sol::make_object(StateView, sol::lua_nil));
         Result.first = t;
         return Result;
-    }
-    else {
-        //return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Client expired"));
+    } else {
+        // return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Client expired"));
         Result.second = "Client expired";
         return Result;
     }
 }
-
 
 sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
     auto table = mStateView.create_table();
@@ -953,7 +951,8 @@ void TLuaEngine::StateThreadData::operator()() {
                     S.second->Result = std::move(Res);
                 } else {
                     S.second->Error = true;
-                    S.second->ErrorMessage = std::string(sol::error(Res).what());
+                    sol::error Err = Res;
+                    S.second->ErrorMessage = Err.what();
                 }
                 S.second->Ready = true;
             }
