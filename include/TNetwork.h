@@ -1,8 +1,11 @@
 #pragma once
 
+#include "BoostAliases.h"
 #include "Compat.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/udp.hpp>
 
 struct TConnection;
 
@@ -21,7 +24,7 @@ public:
     void Authentication(const TConnection& ClientConnection);
     [[nodiscard]] bool CheckBytes(TClient& c, int32_t BytesRcv);
     void SyncResources(TClient& c);
-    [[nodiscard]] bool UDPSend(TClient& Client, std::string Data) const;
+    [[nodiscard]] bool UDPSend(TClient& Client, std::string Data);
     void SendToAll(TClient* c, const std::string& Data, bool Self, bool Rel);
     void UpdatePlayer(TClient& Client);
 
@@ -31,12 +34,13 @@ private:
 
     TServer& mServer;
     TPPSMonitor& mPPSMonitor;
-    SOCKET mUDPSock {};
+    io_context mIoCtx;
+    ip::udp::socket mUDPSock;
     TResourceManager& mResourceManager;
     std::thread mUDPThread;
     std::thread mTCPThread;
 
-    std::string UDPRcvFromClient(sockaddr_in& client) const;
+    std::string UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint);
     void HandleDownload(SOCKET TCPSock);
     void OnConnect(const std::weak_ptr<TClient>& c);
     void TCPClient(const std::weak_ptr<TClient>& c);

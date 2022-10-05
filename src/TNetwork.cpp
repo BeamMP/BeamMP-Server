@@ -5,11 +5,15 @@
 #include <CustomAssert.h>
 #include <Http.h>
 #include <array>
+#include <boost/asio/ip/address_v4.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <cstring>
 
 TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
+    , mIoCtx {}
+    , mUDPSock(mIoCtx)
     , mResourceManager(ResourceManager) {
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Starting);
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Starting);
@@ -42,40 +46,25 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-#if defined(BEAMMP_WINDOWS)
-    WSADATA data;
-    if (WSAStartup(514, &data)) {
-        beammp_error(("Can't start Winsock!"));
-        // return;
-    }
-#endif // WINDOWS
-    mUDPSock = socket(AF_INET, SOCK_DGRAM, 0);
-    // Create a server hint structure for the server
-    sockaddr_in serverAddr {};
-    serverAddr.sin_addr.s_addr = INADDR_ANY; // Any Local
-    serverAddr.sin_family = AF_INET; // Address format is IPv4
-    serverAddr.sin_port = htons(uint16_t(Application::Settings.Port)); // Convert from little to big endian
-
-    // Try and bind the socket to the IP and port
-    if (bind(mUDPSock, reinterpret_cast<struct sockaddr*>(&serverAddr), sizeof(serverAddr)) != 0) {
+    mUDPSock = ip::udp::socket(mIoCtx);
+    ip::udp::endpoint UdpListenEndpoint(ip::udp::v4(), Application::Settings.Port);
+    boost::system::error_code ec;
+    mUDPSock.bind(UdpListenEndpoint, ec);
+    if (ec) {
         beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        exit(-1); // TODO: Wtf.
-        // return;
+        Application::GracefullyShutdown();
     }
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Good);
     beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
         + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
     while (!Application::IsShuttingDown()) {
         try {
-            sockaddr_in client {};
+            ip::udp::endpoint client {};
             std::string Data = UDPRcvFromClient(client); // Receives any data from Socket
             size_t Pos = Data.find(':');
             if (Data.empty() || Pos > 2)
                 continue;
-            /*char clientIp[256];
-            ZeroMemory(clientIp, 256); ///Code to get IP we don't need that yet
-            inet_ntop(AF_INET, &client.sin_addr, clientIp, 256);*/
             uint8_t ID = uint8_t(Data.at(0)) - 1;
             mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
                 std::shared_ptr<TClient> Client;
@@ -995,7 +984,7 @@ void TNetwork::SendToAll(TClient* c, const std::string& Data, bool Self, bool Re
     return;
 }
 
-bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
+bool TNetwork::UDPSend(TClient& Client, std::string Data) {
     if (!Client.IsConnected() || Client.GetStatus() < 0) {
         // this can happen if we try to send a packet to a client that is either
         // 1. not yet fully connected, or
@@ -1003,28 +992,15 @@ bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
         // this is fine can can be ignored :^)
         return true;
     }
-    sockaddr_in Addr = Client.GetUDPAddr();
-    auto AddrSize = sizeof(Client.GetUDPAddr());
+    const auto Addr = Client.GetUDPAddr();
     if (Data.length() > 400) {
         std::string CMP(Comp(Data));
         Data = "ABG:" + CMP;
     }
-#ifdef WIN32
-    int sendOk;
-    int len = static_cast<int>(Data.size());
-#else
-    int64_t sendOk;
-    size_t len = Data.size();
-#endif // WIN32
-
-    sendOk = sendto(mUDPSock, Data.c_str(), len, 0, reinterpret_cast<struct sockaddr*>(&Addr), int(AddrSize));
-    if (sendOk == -1) {
-        beammp_debug("(UDP) sendto() failed: " + GetPlatformAgnosticErrorString());
-        if (Client.GetStatus() > -1)
-            Client.SetStatus(-1);
-        return false;
-    } else if (sendOk == 0) {
-        beammp_debug(("(UDP) sendto() returned 0"));
+    boost::system::error_code ec;
+    mUDPSock.send_to(buffer(Data), Addr, 0, ec);
+    if (ec) {
+        beammp_debugf("UDP sendto() failed: {}", ec.what());
         if (Client.GetStatus() > -1)
             Client.SetStatus(-1);
         return false;
@@ -1032,18 +1008,14 @@ bool TNetwork::UDPSend(TClient& Client, std::string Data) const {
     return true;
 }
 
-std::string TNetwork::UDPRcvFromClient(sockaddr_in& client) const {
-    size_t clientLength = sizeof(client);
+std::string TNetwork::UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint) {
     std::array<char, 1024> Ret {};
-#ifdef WIN32
-    auto Rcv = recvfrom(mUDPSock, Ret.data(), int(Ret.size()), 0, (sockaddr*)&client, (int*)&clientLength);
-#else // unix
-    int64_t Rcv = recvfrom(mUDPSock, Ret.data(), Ret.size(), 0, reinterpret_cast<struct sockaddr*>(&client), reinterpret_cast<socklen_t*>(&clientLength));
-#endif // WIN32
-
-    if (Rcv == -1) {
-        beammp_error("(UDP) Error receiving from client! recvfrom() failed: " + GetPlatformAgnosticErrorString());
+    boost::system::error_code ec;
+    const auto Rcv = mUDPSock.receive_from(mutable_buffer(Ret.data(), Ret.size()), ClientEndpoint, 0, ec);
+    if (ec) {
+        beammp_errorf("UDP recvfrom() failed: {}", ec.what());
         return "";
     }
+    // FIXME: This breaks binary data due to \0.
     return std::string(Ret.begin(), Ret.begin() + Rcv);
 }

@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "BoostAliases.h"
 #include "Common.h"
 #include "Compat.h"
 #include "VehicleData.h"
@@ -46,14 +47,15 @@ public:
     void SetIdentifier(const std::string& key, const std::string& value) { mIdentifiers[key] = value; }
     std::string GetCarData(int Ident);
     std::string GetCarPositionRaw(int Ident);
-    void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
+    void SetUDPAddr(const ip::udp::endpoint& Addr) { mUDPAddress = Addr; }
     void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
     void SetTCPSock(SOCKET CSock) { mSocket[0] = CSock; }
     void SetStatus(int Status) { mStatus = Status; }
     // locks
     void DeleteCar(int Ident);
     [[nodiscard]] const std::unordered_map<std::string, std::string>& GetIdentifiers() const { return mIdentifiers; }
-    [[nodiscard]] sockaddr_in GetUDPAddr() const { return mUDPAddress; }
+    [[nodiscard]] const ip::udp::endpoint& GetUDPAddr() const { return mUDPAddress; }
+    [[nodiscard]] ip::udp::endpoint& GetUDPAddr() { return mUDPAddress; }
     [[nodiscard]] SOCKET GetDownSock() const { return mSocket[1]; }
     [[nodiscard]] SOCKET GetTCPSock() const { return mSocket[0]; }
     [[nodiscard]] std::string GetRoles() const { return mRole; }
@@ -100,7 +102,7 @@ private:
     SparseArray<std::string> mVehiclePosition;
     std::string mName = "Unknown Client";
     SOCKET mSocket[2] { SOCKET(0), SOCKET(0) };
-    sockaddr_in mUDPAddress {}; // is this initialization OK? yes it is
+    ip::udp::endpoint mUDPAddress {};
     int mUnicycleID = -1;
     std::string mRole;
     std::string mDID;

@@ -119,6 +119,7 @@ set(BeamMP_Sources
     include/ArgsParser.h src/ArgsParser.cpp
     include/TPluginMonitor.h src/TPluginMonitor.cpp
     include/Environment.h
+    include/BoostAliases.h
 )
 
 set(BeamMP_Includes
