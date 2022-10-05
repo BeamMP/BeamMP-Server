@@ -5,6 +5,7 @@
 #include <CustomAssert.h>
 #include <Http.h>
 #include <array>
+#include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 #include <boost/system/detail/error_code.hpp>
 #include <cstring>
@@ -46,12 +47,17 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-    mUDPSock = ip::udp::socket(mIoCtx);
-    ip::udp::endpoint UdpListenEndpoint(ip::udp::v4(), Application::Settings.Port);
+    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::Settings.Port);
     boost::system::error_code ec;
+    mUDPSock.open(UdpListenEndpoint.protocol(), ec);
+    if (ec) {
+        beammp_error("open() failed: " + ec.what());
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        Application::GracefullyShutdown();
+    }
     mUDPSock.bind(UdpListenEndpoint, ec);
     if (ec) {
-        beammp_error("bind() failed: " + GetPlatformAgnosticErrorString());
+        beammp_error("bind() failed: " + ec.what());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         Application::GracefullyShutdown();
     }
@@ -1011,7 +1017,9 @@ bool TNetwork::UDPSend(TClient& Client, std::string Data) {
 std::string TNetwork::UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint) {
     std::array<char, 1024> Ret {};
     boost::system::error_code ec;
+    beammp_debugf("receiving data from {}:{}", ClientEndpoint.address().to_string(), ClientEndpoint.port());
     const auto Rcv = mUDPSock.receive_from(mutable_buffer(Ret.data(), Ret.size()), ClientEndpoint, 0, ec);
+    beammp_debugf("received {} bytes from {}:{}", Rcv, ClientEndpoint.address().to_string(), ClientEndpoint.port());
     if (ec) {
         beammp_errorf("UDP recvfrom() failed: {}", ec.what());
         return "";
