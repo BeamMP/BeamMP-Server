@@ -151,9 +151,6 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.what());
             }
-            if (!ec) {
-                beammp_errorf("failed to set send timeout on client socket: {}", ec.what());
-            }
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
