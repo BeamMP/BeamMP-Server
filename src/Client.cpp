@@ -4,7 +4,6 @@
 #include "TServer.h"
 #include <memory>
 #include <optional>
-#include <boost/system.hpp>
 
 void TClient::DeleteCar(int Ident) {
     std::unique_lock lock(mVehicleDataMutex);
