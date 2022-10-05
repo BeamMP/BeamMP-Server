@@ -152,7 +152,6 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.what());
             }
-            //ClientSocket.set_option(boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_SNDTIMEO> { 30 * 1000 }, ec);
             if (!ec) {
                 beammp_errorf("failed to set send timeout on client socket: {}", ec.what());
             }
