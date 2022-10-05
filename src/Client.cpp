@@ -2,7 +2,6 @@
 
 #include "CustomAssert.h"
 #include "TServer.h"
-#include <boost/system/errc.hpp>
 #include <memory>
 #include <optional>
 
