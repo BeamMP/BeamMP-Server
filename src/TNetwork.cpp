@@ -9,7 +9,7 @@
 #include <array>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/address_v4.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/errc.hpp>
 #include <cstring>
 
 std::vector<uint8_t> StringToVector(const std::string& Str) {
