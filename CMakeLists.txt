@@ -163,12 +163,12 @@ if (UNIX)
         -Werror=switch-default
         -Werror=old-style-cast
         -Werror=overloaded-virtual
-        -Werror=zero-as-null-pointer-constant
         -Werror=overloaded-virtual
         -Werror=missing-include-dirs
         -Werror=unused-result
 
         -fstack-protector
+        -Wzero-as-null-pointer-constant
     )
 endif()
 
