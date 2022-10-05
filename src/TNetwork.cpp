@@ -397,7 +397,6 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
         return {};
     }
     Header = *reinterpret_cast<int32_t*>(HeaderData.data());
-    beammp_tracef("Expecting to read {} bytes", Header);
 
     std::vector<uint8_t> Data;
     // TODO: This is arbitrary, this needs to be handled another way
@@ -498,10 +497,13 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
 
         auto res = TCPRcv(*Client);
         if (res.empty()) {
-            beammp_debug("TCPRcv empty, ignoring");
+            beammp_debug("TCPRcv empty");
+            Client->Disconnect("TCPRcv failed");
+            break;
         }
         TServer::GlobalParser(c, std::move(res), mPPSMonitor, *this);
     }
+
     if (QueueSync.joinable())
         QueueSync.join();
 
@@ -929,9 +931,7 @@ bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
 std::vector<uint8_t> TNetwork::UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint) {
     std::array<char, 1024> Ret {};
     boost::system::error_code ec;
-    beammp_debugf("receiving data from {}:{}", ClientEndpoint.address().to_string(), ClientEndpoint.port());
     const auto Rcv = mUDPSock.receive_from(mutable_buffer(Ret.data(), Ret.size()), ClientEndpoint, 0, ec);
-    beammp_debugf("received {} bytes from {}:{}", Rcv, ClientEndpoint.address().to_string(), ClientEndpoint.port());
     if (ec) {
         beammp_errorf("UDP recvfrom() failed: {}", ec.what());
         return {};
