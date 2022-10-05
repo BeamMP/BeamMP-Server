@@ -64,13 +64,13 @@ void TNetwork::UDPServerMain() {
     boost::system::error_code ec;
     mUDPSock.open(UdpListenEndpoint.protocol(), ec);
     if (ec) {
-        beammp_error("open() failed: " + ec.what());
+        beammp_error("open() failed: " + ec.message());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         Application::GracefullyShutdown();
     }
     mUDPSock.bind(UdpListenEndpoint, ec);
     if (ec) {
-        beammp_error("bind() failed: " + ec.what());
+        beammp_error("bind() failed: " + ec.message());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         Application::GracefullyShutdown();
     }
@@ -118,7 +118,7 @@ void TNetwork::TCPServerMain() {
     boost::system::error_code ec;
     Listener.open(ListenEp.protocol(), ec);
     if (ec) {
-        beammp_errorf("Failed to open socket: {}", ec.what());
+        beammp_errorf("Failed to open socket: {}", ec.message());
         return;
     }
     socket_base::linger LingerOpt {};
@@ -127,7 +127,7 @@ void TNetwork::TCPServerMain() {
     if (ec) {
         beammp_errorf("Failed to set up listening socket to not linger / reuse address. "
                       "This may cause the socket to refuse to bind(). Error: {}",
-            ec.what());
+            ec.message());
     }
 
     ip::tcp::acceptor Acceptor(mServer.IoCtx(), ListenEp);
@@ -135,7 +135,7 @@ void TNetwork::TCPServerMain() {
     if (ec) {
         beammp_errorf("listen() failed, which is needed for the server to operate. "
                       "Shutting down. Error: {}",
-            ec.what());
+            ec.message());
         Application::GracefullyShutdown();
     }
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Good);
@@ -149,7 +149,7 @@ void TNetwork::TCPServerMain() {
             ip::tcp::endpoint ClientEp;
             ip::tcp::socket ClientSocket = Acceptor.accept(ClientEp, ec);
             if (ec) {
-                beammp_errorf("failed to accept: {}", ec.what());
+                beammp_errorf("failed to accept: {}", ec.message());
             }
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
@@ -366,7 +366,7 @@ bool TNetwork::TCPSend(TClient& c, const std::vector<uint8_t>& Data, bool IsSync
     boost::system::error_code ec;
     write(Sock, buffer(ToSend), ec);
     if (ec) {
-        beammp_debugf("write(): {}", ec.what());
+        beammp_debugf("write(): {}", ec.message());
         c.Disconnect("write() failed");
         return false;
     }
@@ -388,7 +388,7 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     read(Sock, buffer(HeaderData), ec);
     if (ec) {
         // TODO: handle this case (read failed)
-        beammp_debugf("TCPRcv: Reading header failed: {}", ec.what());
+        beammp_debugf("TCPRcv: Reading header failed: {}", ec.message());
         return {};
     }
     Header = *reinterpret_cast<int32_t*>(HeaderData.data());
@@ -405,7 +405,7 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     auto N = read(Sock, buffer(Data), ec);
     if (ec) {
         // TODO: handle this case properly
-        beammp_debugf("TCPRcv: Reading data failed: {}", ec.what());
+        beammp_debugf("TCPRcv: Reading data failed: {}", ec.message());
         return {};
     }
 
@@ -771,7 +771,7 @@ bool TNetwork::TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Da
     boost::system::error_code ec;
     write(socket, buffer(Data, Size), ec);
     if (ec) {
-        beammp_errorf("Failed to send raw data to client: {}", ec.what());
+        beammp_errorf("Failed to send raw data to client: {}", ec.message());
         return false;
     }
     C.UpdatePingTime();
@@ -911,7 +911,7 @@ bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
     boost::system::error_code ec;
     mUDPSock.send_to(buffer(Data), Addr, 0, ec);
     if (ec) {
-        beammp_debugf("UDP sendto() failed: {}", ec.what());
+        beammp_debugf("UDP sendto() failed: {}", ec.message());
         if (!Client.IsDisconnected())
             Client.Disconnect("UDP send failed");
         return false;
@@ -924,7 +924,7 @@ std::vector<uint8_t> TNetwork::UDPRcvFromClient(ip::udp::endpoint& ClientEndpoin
     boost::system::error_code ec;
     const auto Rcv = mUDPSock.receive_from(mutable_buffer(Ret.data(), Ret.size()), ClientEndpoint, 0, ec);
     if (ec) {
-        beammp_errorf("UDP recvfrom() failed: {}", ec.what());
+        beammp_errorf("UDP recvfrom() failed: {}", ec.message());
         return {};
     }
     // FIXME: This breaks binary data due to \0.
