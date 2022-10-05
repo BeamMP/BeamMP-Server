@@ -95,6 +95,8 @@ include(FindOpenSSL)
 include(FindThreads)
 include(FindZLIB)
 
+find_package(Boost 1.75 REQUIRED COMPONENTS system)
+
 set(BeamMP_Sources
     include/TConsole.h src/TConsole.cpp
     include/TServer.h src/TServer.cpp
@@ -170,6 +172,7 @@ if (UNIX)
 endif()
 
 set(BeamMP_Libraries
+    Boost::boost
     doctest::doctest
     OpenSSL::SSL
     OpenSSL::Crypto
