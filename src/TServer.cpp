@@ -311,7 +311,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     }
     case 'd': {
         beammp_trace(std::string(("got 'Od' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        auto MaybePidVid = GetPidVid(Data);
+        auto MaybePidVid = GetPidVid(Data.substr(0, Data.find(':', 1)));
         if (MaybePidVid) {
             std::tie(PID, VID) = MaybePidVid.value();
         }
@@ -329,7 +329,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
     }
     case 'r': {
         beammp_trace(std::string(("got 'Or' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
-        auto MaybePidVid = GetPidVid(Data);
+        auto MaybePidVid = GetPidVid(Data.substr(0, Data.find(':', 1)));
         if (MaybePidVid) {
             std::tie(PID, VID) = MaybePidVid.value();
         }
