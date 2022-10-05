@@ -174,6 +174,7 @@ endif()
 
 set(BeamMP_Libraries
     Boost::boost
+    Boost::system
     doctest::doctest
     OpenSSL::SSL
     OpenSSL::Crypto
