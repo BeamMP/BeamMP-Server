@@ -80,7 +80,7 @@ public:
     static TConsole& Console() { return *mConsole; }
     static std::string ServerVersionString();
     static const Version& ServerVersion() { return mVersion; }
-    static std::string ClientVersionString() { return "2.0"; }
+    static uint8_t ClientMajorVersion() { return 2; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 

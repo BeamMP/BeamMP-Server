@@ -116,7 +116,7 @@ TEST_CASE("LuaAPI::MP::GetServerVersion") {
 static inline std::pair<bool, std::string> InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
     std::string Packet = "E:" + EventName + ":" + Data;
     if (PlayerID == -1) {
-        LuaAPI::MP::Engine->Network().SendToAll(nullptr, Packet, true, true);
+        LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
         return { true, "" };
     } else {
         auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
@@ -125,7 +125,7 @@ static inline std::pair<bool, std::string> InternalTriggerClientEvent(int Player
             return { false, "Invalid Player ID" };
         }
         auto c = MaybeClient.value().lock();
-        if (!LuaAPI::MP::Engine->Network().Respond(*c, Packet, true)) {
+        if (!LuaAPI::MP::Engine->Network().Respond(*c, StringToVector(Packet), true)) {
             beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
             LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
             return { false, "Respond failed, dropping client" };
@@ -155,7 +155,7 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
     std::string Packet = "C:Server: " + Message;
     if (ID == -1) {
         LogChatMessage("<Server> (to everyone) ", -1, Message);
-        Engine->Network().SendToAll(nullptr, Packet, true, true);
+        Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
         Result.first = true;
     } else {
         auto MaybeClient = GetClient(Engine->Server(), ID);
@@ -167,7 +167,7 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
                 return Result;
             }
             LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, Message);
-            if (!Engine->Network().Respond(*c, Packet, true)) {
+            if (!Engine->Network().Respond(*c, StringToVector(Packet), true)) {
                 beammp_errorf("Failed to send chat message back to sender (id {}) - did the sender disconnect?", ID);
                 // TODO: should we return an error here?
             }
@@ -194,7 +194,7 @@ std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
     auto c = MaybeClient.value().lock();
     if (!c->GetCarData(VID).empty()) {
         std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
-        Engine->Network().SendToAll(nullptr, Destroy, true, true);
+        Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
         c->DeleteCar(VID);
         Result.first = true;
     } else {
@@ -526,7 +526,7 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
         beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
         return;
     }
-    std::string key{};
+    std::string key {};
     switch (left.get_type()) {
     case sol::type::lua_nil:
     case sol::type::none:
