@@ -25,7 +25,7 @@ jobs:
         run: |
           echo ${#beammp_sentry_url}
           sudo apt-get update
-          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev cmake g++-10
+          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev cmake g++-10 libboost-all-dev
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-linux
