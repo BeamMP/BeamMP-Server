@@ -32,7 +32,7 @@ jobs:
 
   upload-release-files-linux:
     name: Upload Linux Release Files
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: create-release
     steps:
       - uses: actions/checkout@v2
@@ -42,7 +42,7 @@ jobs:
       - name: Install Dependencies
         run: |
             sudo apt-get update
-            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev libboost-dev libboost-system-dev
+            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev libboost-dev libboost1.74-all-dev libboost1.74-dev
 
       - name: Create Build Environment
         run: cmake -E make_directory ${{github.workspace}}/build-linux
