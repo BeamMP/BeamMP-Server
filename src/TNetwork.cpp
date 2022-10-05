@@ -152,7 +152,7 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.what());
             }
-            ClientSocket.set_option(boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_SNDTIMEO> { 30 * 1000 }, ec);
+            //ClientSocket.set_option(boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_SNDTIMEO> { 30 * 1000 }, ec);
             if (!ec) {
                 beammp_errorf("failed to set send timeout on client socket: {}", ec.what());
             }
@@ -457,15 +457,11 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
                 } // end locked context
                 // beammp_debug("sending a missed packet: " + QData);
                 if (!TCPSend(*Client, QData, true)) {
-                    if (!Client->IsDisconnected())
-                        Client->Disconnect("Failed to TCPSend while clearing the missed packet queue");
-                    {
-                        std::unique_lock lock(Client->MissedPacketQueueMutex());
-                        while (!Client->MissedPacketQueue().empty()) {
-                            Client->MissedPacketQueue().pop();
-                        }
+                    Client->Disconnect("Failed to TCPSend while clearing the missed packet queue");
+                    std::unique_lock lock(Client->MissedPacketQueueMutex());
+                    while (!Client->MissedPacketQueue().empty()) {
+                        Client->MissedPacketQueue().pop();
                     }
-                    Client->Disconnect("WHY THE FUCK NOT");
                     break;
                 }
             }
