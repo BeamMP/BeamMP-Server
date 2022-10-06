@@ -42,8 +42,6 @@ void THeartbeatThread::operator()() {
 
         Body += "&pps=" + Application::PPS();
 
-        beammp_trace("heartbeat body: '" + Body + "'");
-
         auto SentryReportError = [&](const std::string& transaction, int status) {
             auto Lock = Sentry.CreateExclusiveContext();
             Sentry.SetContext("heartbeat",
@@ -61,7 +59,6 @@ void THeartbeatThread::operator()() {
         bool Ok = false;
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
-            beammp_trace(T);
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
                 if (!Application::Settings.Private) {
