@@ -173,7 +173,7 @@ void TNetwork::Identify(TConnection&& RawConnection) {
     read(RawConnection.Socket, buffer(&Code, 1), ec);
     if (ec) {
         // TODO: is this right?!
-        RawConnection.Socket.shutdown(socket_base::shutdown_both);
+        RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
         return;
     }
     std::shared_ptr<TClient> Client { nullptr };
