@@ -224,7 +224,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     constexpr std::string_view VC = "VC";
     if (Data.size() > 3 && std::equal(Data.begin(), Data.begin() + VC.size(), VC.begin(), VC.end())) {
         std::string ClientVersionStr(reinterpret_cast<const char*>(Data.data() + 2), Data.size() - 2);
-        Version ClientVersion = Application::VersionStrToInts(ClientVersionStr);
+        Version ClientVersion = Application::VersionStrToInts(ClientVersionStr + ".0");
         if (ClientVersion.major != Application::ClientMajorVersion()) {
             beammp_errorf("Client tried to connect with version '{}', but only versions '{}.x.x' is allowed",
                 ClientVersion.AsString(), Application::ClientMajorVersion());
