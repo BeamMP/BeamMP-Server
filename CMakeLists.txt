@@ -46,11 +46,14 @@ if(APPLE)
         link_directories(/usr/local/opt/openssl@1.1/lib)
     endif()
 # ------------------------ WINDOWS ---------------------------------
+option(WIN32_STATIC_RUNTIME "Build statically-linked runtime on windows (don't touch unless you know what you're doing)" ON)
 elseif (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
-    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
-    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    if (WIN32_STATIC_RUNTIME)
+        message(STATUS "MSVC -> forcing use of statically-linked runtime.")
+        STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+        STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    endif()
 # ------------------------ LINUX ---------------------------------
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
