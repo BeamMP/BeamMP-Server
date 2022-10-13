@@ -62,7 +62,7 @@ void THeartbeatThread::operator()() {
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
                 if (!Application::Settings.Private) {
-                    beammp_error("Backend response failed to parse as valid json");
+                    beammp_trace("Backend response failed to parse as valid json");
                     beammp_trace("Response was: `" + T + "`");
                 }
                 Sentry.SetContext("JSON Response", { { "reponse", T } });
