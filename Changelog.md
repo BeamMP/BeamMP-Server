@@ -21,6 +21,7 @@
 - FIXED bug which caused hot-reload not to report syntax errors
 - FIXED missing error messages on some event handler calls
 - FIXED vehicles not deleting for all players if an edit was cancelled by Lua
+- FIXED server not handling binary UDP packets properly
 - REMOVED "Backend response failed to parse as valid json" message
 
 # v3.0.2
