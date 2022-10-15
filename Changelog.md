@@ -11,6 +11,8 @@
 - ADDED HOME and END button working in console
 - ADDED `MP.TriggerClientEventJson()` which takes a table as the data argument and sends it as JSON
 - ADDED identifiers (beammp id, ip) to onPlayerAuth (4th argument)
+- ADDED more network debug logging
+- CHANGED all networking to be more stable, performant, and safe
 - FIXED `ip` in MP.GetPlayerIdentifiers
 - FIXED issue with client->server events which contain `:`
 - FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
