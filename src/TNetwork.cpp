@@ -927,6 +927,6 @@ std::vector<uint8_t> TNetwork::UDPRcvFromClient(ip::udp::endpoint& ClientEndpoin
         beammp_errorf("UDP recvfrom() failed: {}", ec.message());
         return {};
     }
-    // FIXME: This breaks binary data due to \0.
-    return std::vector<uint8_t>(Ret.begin(), Ret.end());
+    beammp_assert(Rcv <= Ret.size());
+    return std::vector<uint8_t>(Ret.begin(), Ret.begin() + Rcv);
 }
