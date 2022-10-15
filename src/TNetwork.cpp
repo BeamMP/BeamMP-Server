@@ -273,7 +273,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             return nullptr;
         }
     } catch (const std::exception& e) {
-        beammp_errorf("Client sent invalid key: {}", e.what());
+        beammp_errorf("Client sent invalid key. Error was: {}", e.what());
         // TODO: we should really clarify that this was a backend response or parsing error
         ClientKick(*Client, "Invalid key! Please restart your game.");
         return nullptr;
@@ -425,7 +425,7 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     beammp_info("Client kicked: " + R);
     if (!TCPSend(c, StringToVector("K" + R))) {
-        beammp_warn("tried to kick player '" + c.GetName() + "' (id " + std::to_string(c.GetID()) + "), but was already disconnected");
+        beammp_debugf("tried to kick player '{}' (id {}), but was already connected", c.GetName(), c.GetID());
     }
     c.Disconnect("Kicked");
 }

@@ -225,7 +225,7 @@ bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
             return true;
         }
     } catch (const std::exception& e) {
-        beammp_error("Failed to parse vehicle data as json for client " + std::to_string(c.GetID()) + ": '" + CarJson + "'");
+        beammp_warn("Failed to parse vehicle data as json for client " + std::to_string(c.GetID()) + ": '" + CarJson + "'.");
     }
     return false;
 }
