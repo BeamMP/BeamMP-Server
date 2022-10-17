@@ -46,11 +46,14 @@ if(APPLE)
         link_directories(/usr/local/opt/openssl@1.1/lib)
     endif()
 # ------------------------ WINDOWS ---------------------------------
+option(WIN32_STATIC_RUNTIME "Build statically-linked runtime on windows (don't touch unless you know what you're doing)" ON)
 elseif (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
-    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
-    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    if (WIN32_STATIC_RUNTIME)
+        message(STATUS "MSVC -> forcing use of statically-linked runtime.")
+        STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+        STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    endif()
 # ------------------------ LINUX ---------------------------------
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
@@ -95,6 +98,8 @@ include(FindOpenSSL)
 include(FindThreads)
 include(FindZLIB)
 
+find_package(Boost 1.70 REQUIRED COMPONENTS system)
+
 set(BeamMP_Sources
     include/TConsole.h src/TConsole.cpp
     include/TServer.h src/TServer.cpp
@@ -117,6 +122,7 @@ set(BeamMP_Sources
     include/ArgsParser.h src/ArgsParser.cpp
     include/TPluginMonitor.h src/TPluginMonitor.cpp
     include/Environment.h
+    include/BoostAliases.h
 )
 
 set(BeamMP_Includes
@@ -160,16 +166,18 @@ if (UNIX)
         -Werror=switch-default
         -Werror=old-style-cast
         -Werror=overloaded-virtual
-        -Werror=zero-as-null-pointer-constant
         -Werror=overloaded-virtual
         -Werror=missing-include-dirs
         -Werror=unused-result
 
         -fstack-protector
+        -Wzero-as-null-pointer-constant
     )
 endif()
 
 set(BeamMP_Libraries
+    Boost::boost
+    Boost::system
     doctest::doctest
     OpenSSL::SSL
     OpenSSL::Crypto

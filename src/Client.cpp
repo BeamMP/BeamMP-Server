@@ -49,14 +49,25 @@ TClient::TVehicleDataLockPair TClient::GetAllCars() {
 
 std::string TClient::GetCarPositionRaw(int Ident) {
     std::unique_lock lock(mVehiclePositionMutex);
-    try
-    {
+    try {
         return mVehiclePosition.at(Ident);
-    }
-    catch (const std::out_of_range& oor) {
+    } catch (const std::out_of_range& oor) {
         return "";
     }
     return "";
+}
+
+void TClient::Disconnect(std::string_view Reason) {
+    beammp_debugf("Disconnecting client {} for reason: {}", GetID(), Reason);
+    boost::system::error_code ec;
+    mSocket.shutdown(socket_base::shutdown_both, ec);
+    if (ec) {
+        beammp_debugf("Failed to shutdown client socket: {}", ec.message());
+    }
+    mSocket.close(ec);
+    if (ec) {
+        beammp_debugf("Failed to close client socket: {}", ec.message());
+    }
 }
 
 void TClient::SetCarPosition(int Ident, const std::string& Data) {
@@ -98,14 +109,20 @@ TServer& TClient::Server() const {
     return mServer;
 }
 
-void TClient::EnqueuePacket(const std::string& Packet) {
+void TClient::EnqueuePacket(const std::vector<uint8_t>& Packet) {
     std::unique_lock Lock(mMissedPacketsMutex);
     mPacketsSync.push(Packet);
 }
 
-TClient::TClient(TServer& Server)
+TClient::TClient(TServer& Server, ip::tcp::socket&& Socket)
     : mServer(Server)
+    , mSocket(std::move(Socket))
+    , mDownSocket(ip::tcp::socket(Server.IoCtx()))
     , mLastPingTime(std::chrono::high_resolution_clock::now()) {
+}
+
+TClient::~TClient() {
+    beammp_debugf("client destroyed: {} ('{}')", this->GetID(), this->GetName());
 }
 
 void TClient::UpdatePingTime() {

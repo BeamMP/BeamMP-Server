@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "BoostAliases.h"
 #include "Common.h"
 #include "Compat.h"
 #include "VehicleData.h"
@@ -19,9 +20,8 @@ class TServer;
 #endif // WINDOWS
 
 struct TConnection final {
-    SOCKET Socket;
-    struct sockaddr SockAddr;
-    socklen_t SockAddrLen;
+    ip::tcp::socket Socket;
+    ip::tcp::endpoint SockAddr;
 };
 
 class TClient final {
@@ -33,8 +33,9 @@ public:
         std::unique_lock<std::mutex> Lock;
     };
 
-    explicit TClient(TServer& Server);
+    TClient(TServer& Server, ip::tcp::socket&& Socket);
     TClient(const TClient&) = delete;
+    ~TClient();
     TClient& operator=(const TClient&) = delete;
 
     void AddNewCar(int Ident, const std::string& Data);
@@ -46,16 +47,20 @@ public:
     void SetIdentifier(const std::string& key, const std::string& value) { mIdentifiers[key] = value; }
     std::string GetCarData(int Ident);
     std::string GetCarPositionRaw(int Ident);
-    void SetUDPAddr(sockaddr_in Addr) { mUDPAddress = Addr; }
-    void SetDownSock(SOCKET CSock) { mSocket[1] = CSock; }
-    void SetTCPSock(SOCKET CSock) { mSocket[0] = CSock; }
-    void SetStatus(int Status) { mStatus = Status; }
+    void SetUDPAddr(const ip::udp::endpoint& Addr) { mUDPAddress = Addr; }
+    void SetDownSock(ip::tcp::socket&& CSock) { mDownSocket = std::move(CSock); }
+    void SetTCPSock(ip::tcp::socket&& CSock) { mSocket = std::move(CSock); }
+    void Disconnect(std::string_view Reason);
+    bool IsDisconnected() const { return !mSocket.is_open(); }
     // locks
     void DeleteCar(int Ident);
     [[nodiscard]] const std::unordered_map<std::string, std::string>& GetIdentifiers() const { return mIdentifiers; }
-    [[nodiscard]] sockaddr_in GetUDPAddr() const { return mUDPAddress; }
-    [[nodiscard]] SOCKET GetDownSock() const { return mSocket[1]; }
-    [[nodiscard]] SOCKET GetTCPSock() const { return mSocket[0]; }
+    [[nodiscard]] const ip::udp::endpoint& GetUDPAddr() const { return mUDPAddress; }
+    [[nodiscard]] ip::udp::endpoint& GetUDPAddr() { return mUDPAddress; }
+    [[nodiscard]] ip::tcp::socket& GetDownSock() { return mDownSocket; }
+    [[nodiscard]] const ip::tcp::socket& GetDownSock() const { return mDownSocket; }
+    [[nodiscard]] ip::tcp::socket& GetTCPSock() { return mSocket; }
+    [[nodiscard]] const ip::tcp::socket& GetTCPSock() const { return mSocket; }
     [[nodiscard]] std::string GetRoles() const { return mRole; }
     [[nodiscard]] std::string GetName() const { return mName; }
     void SetUnicycleID(int ID) { mUnicycleID = ID; }
@@ -63,7 +68,6 @@ public:
     [[nodiscard]] int GetOpenCarID() const;
     [[nodiscard]] int GetCarCount() const;
     void ClearCars();
-    [[nodiscard]] int GetStatus() const { return mStatus; }
     [[nodiscard]] int GetID() const { return mID; }
     [[nodiscard]] int GetUnicycleID() const { return mUnicycleID; }
     [[nodiscard]] bool IsConnected() const { return mIsConnected; }
@@ -73,9 +77,9 @@ public:
     void SetIsGuest(bool NewIsGuest) { mIsGuest = NewIsGuest; }
     void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
     void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
-    void EnqueuePacket(const std::string& Packet);
-    [[nodiscard]] std::queue<std::string>& MissedPacketQueue() { return mPacketsSync; }
-    [[nodiscard]] const std::queue<std::string>& MissedPacketQueue() const { return mPacketsSync; }
+    void EnqueuePacket(const std::vector<uint8_t>& Packet);
+    [[nodiscard]] std::queue<std::vector<uint8_t>>& MissedPacketQueue() { return mPacketsSync; }
+    [[nodiscard]] const std::queue<std::vector<uint8_t>>& MissedPacketQueue() const { return mPacketsSync; }
     [[nodiscard]] size_t MissedPacketQueueSize() const { return mPacketsSync.size(); }
     [[nodiscard]] std::mutex& MissedPacketQueueMutex() const { return mMissedPacketsMutex; }
     void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
@@ -91,7 +95,7 @@ private:
     bool mIsSynced = false;
     bool mIsSyncing = false;
     mutable std::mutex mMissedPacketsMutex;
-    std::queue<std::string> mPacketsSync;
+    std::queue<std::vector<uint8_t>> mPacketsSync;
     std::unordered_map<std::string, std::string> mIdentifiers;
     bool mIsGuest = false;
     mutable std::mutex mVehicleDataMutex;
@@ -99,12 +103,12 @@ private:
     TSetOfVehicleData mVehicleData;
     SparseArray<std::string> mVehiclePosition;
     std::string mName = "Unknown Client";
-    SOCKET mSocket[2] { SOCKET(0), SOCKET(0) };
-    sockaddr_in mUDPAddress {}; // is this initialization OK? yes it is
+    ip::tcp::socket mSocket;
+    ip::tcp::socket mDownSocket;
+    ip::udp::endpoint mUDPAddress {};
     int mUnicycleID = -1;
     std::string mRole;
     std::string mDID;
-    int mStatus = 0;
     int mID = -1;
     std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
 };
