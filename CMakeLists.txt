@@ -139,9 +139,12 @@ set(BeamMP_Includes
 
 set(BeamMP_Definitions
     SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
-    _CRT_SECURE_NO_WARNINGS
 )
 
+if (WIN32)
+    list(APPEND BeamMP_Definitions _WIN32_WINNT=0x0601)
+    list(APPEND BeamMP_Definitions _CRT_SECURE_NO_WARNINGS)
+endif()
 if (UNIX)
     set(BeamMP_CompileOptions
         -Wall
