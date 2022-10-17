@@ -139,6 +139,7 @@ set(BeamMP_Includes
 
 set(BeamMP_Definitions
     SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
+    _CRT_SECURE_NO_WARNINGS
 )
 
 if (UNIX)
