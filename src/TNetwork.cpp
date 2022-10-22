@@ -262,7 +262,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             Client->SetName(AuthRes["username"]);
             Client->SetRoles(AuthRes["roles"]);
             Client->SetIsGuest(AuthRes["guest"]);
-            for (const auto& ID : AuthRes["identifier"]) {
+            for (const auto& ID : AuthRes["identifiers"]) {
                 auto Raw = std::string(ID);
                 auto SepIndex = Raw.find(':');
                 Client->SetIdentifier(Raw.substr(0, SepIndex), Raw.substr(SepIndex + 1));
