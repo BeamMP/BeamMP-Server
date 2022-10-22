@@ -29,7 +29,7 @@ These values are guesstimated and are subject to change with each release.
 
 ## Contributing
 
-TLDR; [Issues](https://github.com/BeamMP/BeamMP-Server/issues) with the "help wanted" label or with nobody assigned.
+TLDR; [Issues](https://github.com/BeamMP/BeamMP-Server/issues) with the "help wanted" or "good first issue" label or with nobody assigned.
 
 To contribute, look at the active [issues](https://github.com/BeamMP/BeamMP-Server/issues). Any issues that have the "help wanted" label or don't have anyone assigned are good tasks to take on. You can either contribute by programming or by testing and adding more info and ideas.
 
@@ -64,25 +64,22 @@ Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/Beam
 Dependencies for **Windows** can be installed with `vcpkg`.
 These are:
 ```
-lua
-zlib
-rapidjson
-openssl
-websocketpp
-curl
+lua zlib rapidjson openssl websocketpp curl
 ```
+The triplet we use for releases is `x64-windows-static`.
 
 #### Linux
 
-Runtime dependencies - you want to find packages for:
-- libz
-- rapidjson
-- lua5.3
-- ssl / openssl
-- websocketpp
-- curl (with ssl support)
+We recommend Ubuntu 22.04 or Arch Linux. Any Linux distribution will work, but you have to figure out the package names yourself (please feel free to PR in a change to this README with that info).
 
-Build-time dependencies are:
+##### Runtime Dependencies
+**Ubuntu 22.04**
+```
+
+```
+
+##### Buildtime Dependencies
+These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
 ```
 git
 make
