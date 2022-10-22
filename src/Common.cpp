@@ -9,8 +9,12 @@
 #include <sstream>
 #include <thread>
 
+#include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"
+
+// global, yes, this is ugly, no, it cant be done another way
+TSentry Sentry {};
 
 Application::TSettings Application::Settings = {};
 
@@ -22,6 +26,7 @@ void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
 }
 
 void Application::GracefullyShutdown() {
+    SetShutdown(true);
     static bool AlreadyShuttingDown = false;
     static uint8_t ShutdownAttempts = 0;
     if (AlreadyShuttingDown) {
@@ -43,6 +48,7 @@ void Application::GracefullyShutdown() {
         beammp_info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
         mShutdownHandlers[i]();
     }
+    // std::exit(-1);
 }
 
 std::string Application::ServerVersionString() {
@@ -60,7 +66,23 @@ std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
     return Version;
 }
 
-// FIXME: This should be used by operator< on Version
+TEST_CASE("Application::VersionStrToInts") {
+    auto v = Application::VersionStrToInts("1.2.3");
+    CHECK(v[0] == 1);
+    CHECK(v[1] == 2);
+    CHECK(v[2] == 3);
+
+    v = Application::VersionStrToInts("10.20.30");
+    CHECK(v[0] == 10);
+    CHECK(v[1] == 20);
+    CHECK(v[2] == 30);
+
+    v = Application::VersionStrToInts("100.200.255");
+    CHECK(v[0] == 100);
+    CHECK(v[1] == 200);
+    CHECK(v[2] == 255);
+}
+
 bool Application::IsOutdated(const Version& Current, const Version& Newest) {
     if (Newest.major > Current.major) {
         return true;
@@ -70,6 +92,65 @@ bool Application::IsOutdated(const Version& Current, const Version& Newest) {
         return true;
     } else {
         return false;
+    }
+}
+
+bool Application::IsShuttingDown() {
+    std::shared_lock Lock(mShutdownMtx);
+    return mShutdown;
+}
+
+void Application::SleepSafeSeconds(size_t Seconds) {
+    // Sleeps for 500 ms, checks if a shutdown occurred, and so forth
+    for (size_t i = 0; i < Seconds * 2; ++i) {
+        if (Application::IsShuttingDown()) {
+            return;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+    }
+}
+
+TEST_CASE("Application::IsOutdated (version check)") {
+    SUBCASE("Same version") {
+        CHECK(!Application::IsOutdated({ 1, 2, 3 }, { 1, 2, 3 }));
+    }
+    // we need to use over 1-2 digits to test against lexical comparisons
+    SUBCASE("Patch outdated") {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ uint8_t(Major), uint8_t(Minor), uint8_t(Patch) }, { uint8_t(Major), uint8_t(Minor), uint8_t(Patch + 1) }));
+                }
+            }
+        }
+    }
+    SUBCASE("Minor outdated") {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ uint8_t(Major), uint8_t(Minor), uint8_t(Patch) }, { uint8_t(Major), uint8_t(Minor + 1), uint8_t(Patch) }));
+                }
+            }
+        }
+    }
+    SUBCASE("Major outdated") {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ uint8_t(Major), uint8_t(Minor), uint8_t(Patch) }, { uint8_t(Major + 1), uint8_t(Minor), uint8_t(Patch) }));
+                }
+            }
+        }
+    }
+    SUBCASE("All outdated") {
+        for (uint8_t Patch = 0; Patch < 10; ++Patch) {
+            for (uint8_t Minor = 0; Minor < 10; ++Minor) {
+                for (uint8_t Major = 0; Major < 10; ++Major) {
+                    CHECK(Application::IsOutdated({ uint8_t(Major), uint8_t(Minor), uint8_t(Patch) }, { uint8_t(Major + 1), uint8_t(Minor + 1), uint8_t(Patch + 1) }));
+                }
+            }
+        }
     }
 }
 
@@ -90,9 +171,25 @@ void Application::SetSubsystemStatus(const std::string& Subsystem, Status status
     case Status::Shutdown:
         beammp_trace("Subsystem '" + Subsystem + "': Shutdown");
         break;
+    default:
+        beammp_assert_not_reachable();
     }
     std::unique_lock Lock(mSystemStatusMapMutex);
     mSystemStatusMap[Subsystem] = status;
+}
+
+void Application::SetShutdown(bool Val) {
+    std::unique_lock Lock(mShutdownMtx);
+    mShutdown = Val;
+}
+
+TEST_CASE("Application::SetSubsystemStatus") {
+    Application::SetSubsystemStatus("Test", Application::Status::Good);
+    auto Map = Application::GetSubsystemStatuses();
+    CHECK(Map.at("Test") == Application::Status::Good);
+    Application::SetSubsystemStatus("Test", Application::Status::Bad);
+    Map = Application::GetSubsystemStatuses();
+    CHECK(Map.at("Test") == Application::Status::Bad);
 }
 
 void Application::CheckForUpdates() {
@@ -101,7 +198,7 @@ void Application::CheckForUpdates() {
     // checks current version against latest version
     std::regex VersionRegex { R"(\d+\.\d+\.\d+\n*)" };
     for (const auto& url : GetBackendUrlsInOrder()) {
-        auto Response = Http::GET(GetBackendUrlsInOrder().at(0), 443, "/v/s");
+        auto Response = Http::GET(url, 443, "/v/s");
         bool Matches = std::regex_match(Response, VersionRegex);
         if (Matches) {
             auto MyVersion = ServerVersion();
@@ -152,6 +249,25 @@ std::string ThreadName(bool DebugModeOverride) {
     return "";
 }
 
+TEST_CASE("ThreadName") {
+    RegisterThread("MyThread");
+    auto OrigDebug = Application::Settings.DebugModeEnabled;
+
+    // ThreadName adds a space at the end, legacy but we need it still
+    SUBCASE("Debug mode enabled") {
+        Application::Settings.DebugModeEnabled = true;
+        CHECK(ThreadName(true) == "MyThread ");
+        CHECK(ThreadName(false) == "MyThread ");
+    }
+    SUBCASE("Debug mode disabled") {
+        Application::Settings.DebugModeEnabled = false;
+        CHECK(ThreadName(true) == "MyThread ");
+        CHECK(ThreadName(false) == "");
+    }
+    // cleanup
+    Application::Settings.DebugModeEnabled = OrigDebug;
+}
+
 void RegisterThread(const std::string& str) {
     std::string ThreadId;
 #ifdef BEAMMP_WINDOWS
@@ -162,11 +278,16 @@ void RegisterThread(const std::string& str) {
     ThreadId = std::to_string(gettid());
 #endif
     if (Application::Settings.DebugModeEnabled) {
-        std::ofstream ThreadFile("Threads.log", std::ios::app);
+        std::ofstream ThreadFile(".Threads.log", std::ios::app);
         ThreadFile << ("Thread \"" + str + "\" is TID " + ThreadId) << std::endl;
     }
     auto Lock = std::unique_lock(ThreadNameMapMutex);
     threadNameMap[std::this_thread::get_id()] = str;
+}
+
+TEST_CASE("RegisterThread") {
+    RegisterThread("MyThread");
+    CHECK(threadNameMap.at(std::this_thread::get_id()) == "MyThread");
 }
 
 Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
@@ -179,22 +300,30 @@ Version::Version(const std::array<uint8_t, 3>& v)
 }
 
 std::string Version::AsString() {
-    std::stringstream ss {};
-    ss << int(major) << "." << int(minor) << "." << int(patch);
-    return ss.str();
+    return fmt::format("{:d}.{:d}.{:d}", major, minor, patch);
+}
+
+TEST_CASE("Version::AsString") {
+    CHECK(Version { 0, 0, 0 }.AsString() == "0.0.0");
+    CHECK(Version { 1, 2, 3 }.AsString() == "1.2.3");
+    CHECK(Version { 255, 255, 255 }.AsString() == "255.255.255");
 }
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
-    std::stringstream ss;
-    ss << ThreadName();
-    ss << "[CHAT] ";
-    if (id != -1) {
-        ss << "(" << id << ") <" << name << "> ";
-    } else {
-        ss << name << "";
+    if (Application::Settings.LogChat) {
+        std::stringstream ss;
+        ss << ThreadName();
+        ss << "[CHAT] ";
+        if (id != -1) {
+            ss << "(" << id << ") <" << name << "> ";
+        } else {
+            ss << name << "";
+        }
+        ss << msg;
+#ifdef DOCTEST_CONFIG_DISABLE
+        Application::Console().Write(ss.str());
+#endif
     }
-    ss << msg;
-    Application::Console().Write(ss.str());
 }
 
 std::string GetPlatformAgnosticErrorString() {
@@ -221,5 +350,7 @@ std::string GetPlatformAgnosticErrorString() {
     }
 #elif defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
     return std::strerror(errno);
+#else
+    return "(no human-readable errors on this platform)";
 #endif
 }

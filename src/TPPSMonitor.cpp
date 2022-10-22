@@ -10,7 +10,6 @@ TPPSMonitor::TPPSMonitor(TServer& Server)
         Application::SetSubsystemStatus("PPSMonitor", Application::Status::ShuttingDown);
         if (mThread.joinable()) {
             beammp_debug("shutting down PPSMonitor");
-            mShutdown = true;
             mThread.join();
             beammp_debug("shut down PPSMonitor");
         }
@@ -27,7 +26,7 @@ void TPPSMonitor::operator()() {
     beammp_debug("PPSMonitor starting");
     Application::SetSubsystemStatus("PPSMonitor", Application::Status::Good);
     std::vector<std::shared_ptr<TClient>> TimedOutClients;
-    while (!mShutdown) {
+    while (!Application::IsShuttingDown()) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         int C = 0, V = 0;
         if (mServer.ClientCount() == 0) {

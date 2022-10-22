@@ -17,6 +17,7 @@ static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+static constexpr std::string_view StrLogChat = "LogChat";
 
 // Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
@@ -31,12 +32,40 @@ static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
 static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
 static constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
 
+TEST_CASE("TConfig::TConfig") {
+    const std::string CfgFile = "beammp_server_testconfig.toml";
+    fs::remove(CfgFile);
+
+    TConfig Cfg(CfgFile);
+
+    CHECK(fs::file_size(CfgFile) != 0);
+
+    std::string buf;
+    {
+        buf.resize(fs::file_size(CfgFile));
+        auto fp = std::fopen(CfgFile.c_str(), "r");
+        auto res = std::fread(buf.data(), 1, buf.size(), fp);
+        if (res != buf.size()) {
+            // IGNORE?
+        }
+        std::fclose(fp);
+    }
+    INFO("file contents are:", buf);
+
+    const auto table = toml::parse(CfgFile);
+    CHECK(table.at("General").is_table());
+    CHECK(table.at("Misc").is_table());
+    CHECK(table.at("HTTP").is_table());
+
+    fs::remove(CfgFile);
+}
+
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
     Application::SetSubsystemStatus("Config", Application::Status::Starting);
     if (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName)) {
         beammp_info("No config file found! Generating one...");
-        CreateConfigFile(mConfigFileName);
+        CreateConfigFile();
     }
     if (!mFailed) {
         if (fs::exists("Server.cfg")) {
@@ -66,6 +95,8 @@ void TConfig::FlushToFile() {
     auto data = toml::value {};
     data["General"][StrAuthKey.data()] = Application::Settings.Key;
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
+    data["General"][StrLogChat.data()] = Application::Settings.LogChat;
+    SetComment(data["General"][StrLogChat.data()].comments(), " Whether to log chat messages in the console / log");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
@@ -110,7 +141,7 @@ void TConfig::FlushToFile() {
     std::fclose(File);
 }
 
-void TConfig::CreateConfigFile(std::string_view name) {
+void TConfig::CreateConfigFile() {
     // build from old config Server.cfg
 
     try {
@@ -139,7 +170,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue) {
     if (Table[Category.c_str()][Key.data()].is_integer()) {
-        OutValue = Table[Category.c_str()][Key.data()].as_integer();
+        OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
     }
 }
 
@@ -157,6 +188,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
         // Misc
         TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
         TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
@@ -200,6 +232,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
     beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");

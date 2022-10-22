@@ -28,8 +28,9 @@ TResourceManager::TResourceManager() {
         }
     }
 
-    if (mModsLoaded)
+    if (mModsLoaded) {
         beammp_info("Loaded " + std::to_string(mModsLoaded) + " Mods");
+    }
 
     Application::SetSubsystemStatus("ResourceManager", Application::Status::Good);
 }

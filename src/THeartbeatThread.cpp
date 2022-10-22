@@ -20,7 +20,7 @@ void THeartbeatThread::operator()() {
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
     size_t UpdateReminderCounter = 0;
-    while (!mShutdown) {
+    while (!Application::IsShuttingDown()) {
         ++UpdateReminderCounter;
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
@@ -40,10 +40,6 @@ void THeartbeatThread::operator()() {
             Body += "&ip=" + Application::Settings.CustomIP;
         }
 
-        Body += "&pps=" + Application::PPS();
-
-        beammp_trace("heartbeat body: '" + Body + "'");
-
         auto SentryReportError = [&](const std::string& transaction, int status) {
             auto Lock = Sentry.CreateExclusiveContext();
             Sentry.SetContext("heartbeat",
@@ -61,11 +57,12 @@ void THeartbeatThread::operator()() {
         bool Ok = false;
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
-            beammp_trace(T);
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
-                beammp_debug("Failed to contact backend at " + Url + " (this is not an error).");
-                beammp_trace("Response was: " + T);
+                if (!Application::Settings.Private) {
+                    beammp_trace("Backend response failed to parse as valid json");
+                    beammp_trace("Response was: `" + T + "`");
+                }
                 Sentry.SetContext("JSON Response", { { "reponse", T } });
                 SentryReportError(Url + Target, ResponseCode);
             } else if (ResponseCode != 200) {
@@ -113,21 +110,21 @@ void THeartbeatThread::operator()() {
             }
         }
 
-        if (Ok && !isAuth) {
+        if (Ok && !isAuth && !Application::Settings.Private) {
             if (Status == "2000") {
-                beammp_info(("Authenticated!"));
+                beammp_info(("Authenticated! " + Message));
                 isAuth = true;
             } else if (Status == "200") {
-                beammp_info(("Resumed authenticated session!"));
+                beammp_info(("Resumed authenticated session! " + Message));
                 isAuth = true;
             } else {
                 if (Message.empty()) {
-                    Message = "Backend didn't provide a reason";
+                    Message = "Backend didn't provide a reason.";
                 }
-                beammp_error("Backend REFUSED the auth key. " + Message);
+                beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
         }
-        if (isAuth) {
+        if (isAuth || Application::Settings.Private) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
         if (!Application::Settings.HideUpdateMessages && UpdateReminderCounter % 5) {
@@ -146,7 +143,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&map=" << Application::Settings.MapName
         << "&private=" << (Application::Settings.Private ? "true" : "false")
         << "&version=" << Application::ServerVersionString()
-        << "&clientversion=" << Application::ClientVersionString()
+        << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
         << "&name=" << Application::Settings.ServerName
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
@@ -162,7 +159,6 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("Heartbeat", Application::Status::ShuttingDown);
         if (mThread.joinable()) {
-            mShutdown = true;
             mThread.join();
         }
         Application::SetSubsystemStatus("Heartbeat", Application::Status::Shutdown);

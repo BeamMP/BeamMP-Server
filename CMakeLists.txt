@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.0)
+# 3.4 is required for imported targets.
+cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
@@ -8,19 +9,26 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+find_package(Git REQUIRED)
+# Update submodules as needed
+option(GIT_SUBMODULE "Check submodules during build" ON)
+if(GIT_SUBMODULE)
+    message(STATUS "Submodule update")
+    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
+    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+        message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+    endif()
+endif()
+
+
 set(HTTPLIB_REQUIRE_OPENSSL ON)
+set(SENTRY_BUILD_SHARED_LIBS OFF)
 
-include_directories("${PROJECT_SOURCE_DIR}/deps/asio/asio/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/rapidjson/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/websocketpp")
-include_directories("${PROJECT_SOURCE_DIR}/deps/commandline")
-include_directories("${PROJECT_SOURCE_DIR}/deps/sol2/include")
-include_directories("${PROJECT_SOURCE_DIR}/deps/cpp-httplib")
-include_directories("${PROJECT_SOURCE_DIR}/deps/json/single_include")
-include_directories("${PROJECT_SOURCE_DIR}/deps")
+add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT=1)
 
-add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT)
-
+# ------------------------ APPLE ---------------------------------
 if(APPLE)
     if(IS_DIRECTORY /opt/homebrew/Cellar/lua@5.3/5.3.6)
         set(LUA_INCLUDE_DIR /opt/homebrew/Cellar/lua@5.3/5.3.6/include/lua5.3)
@@ -37,20 +45,28 @@ if(APPLE)
         include_directories(/usr/local/opt/openssl@1.1/include)
         link_directories(/usr/local/opt/openssl@1.1/lib)
     endif()
-endif()
-
-if (WIN32)
+# ------------------------ WINDOWS ---------------------------------
+option(WIN32_STATIC_RUNTIME "Build statically-linked runtime on windows (don't touch unless you know what you're doing)" ON)
+elseif (WIN32)
     # this has to happen before sentry, so that crashpad on windows links with these settings.
-    message(STATUS "MSVC -> forcing use of statically-linked runtime.")
-    STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-    STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
-endif()
+    if (WIN32_STATIC_RUNTIME)
+        message(STATUS "MSVC -> forcing use of statically-linked runtime.")
+        STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+        STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    endif()
+# ------------------------ LINUX ---------------------------------
+elseif (UNIX)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
+    option(SANITIZE "Turns on thread and UB sanitizers" OFF)
+    if (SANITIZE)
+        message(STATUS "sanitize is ON")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize={address,thread,undefined}")
+    endif (SANITIZE)
+endif ()
 
-include_directories("include/sentry-native/include")
 set(BUILD_SHARED_LIBS OFF)
-if (MSVC)
-    set(SENTRY_BUILD_RUNTIMESTATIC ON)
-endif()
+# ------------------------ SENTRY ---------------------------------
 message(STATUS "Checking for Sentry URL")
 # this is set by the build system.
 # IMPORTANT: if you're building from source, just leave this empty
@@ -60,120 +76,186 @@ if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
     set(BEAMMP_SECRET_SENTRY_URL "")
     set(SENTRY_BACKEND none)
 else()
-    string(LENGTH ${BEAMMP_SECRET_SENTRY_URL} URL_LEN)
-    message(STATUS "Sentry URL is length ${URL_LEN}")
     set(SENTRY_BACKEND breakpad)
 endif()
 add_subdirectory("deps/sentry-native")
 
+# ------------------------ C++ SETUP ---------------------------------
+set(CMAKE_CXX_STANDARD 17)
 if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif ()
 
+# ------------------------ DEPENDENCIES ------------------------------
 message(STATUS "Adding local source dependencies")
 # this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
 add_subdirectory(deps)
 
-message(STATUS "Setting compiler flags")
-if (WIN32)
+# ------------------------ VARIABLES ---------------------------------
 
-    #-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
-    set(VcpkgRoot ${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET})
-    include_directories(${VcpkgRoot}/include)
-    link_directories(${VcpkgRoot}/lib)
-elseif (UNIX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -static-libstdc++")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
-    if (SANITIZE)
-        message(STATUS "sanitize is ON")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=undefined,thread")
-    endif (SANITIZE)
+include(FindLua)
+include(FindOpenSSL)
+include(FindThreads)
+include(FindZLIB)
+
+find_package(Boost 1.70 REQUIRED COMPONENTS system)
+
+set(BeamMP_Sources
+    include/TConsole.h src/TConsole.cpp
+    include/TServer.h src/TServer.cpp
+    include/Compat.h src/Compat.cpp
+    include/Common.h src/Common.cpp
+    include/Client.h src/Client.cpp
+    include/VehicleData.h src/VehicleData.cpp
+    include/TConfig.h src/TConfig.cpp
+    include/TLuaEngine.h src/TLuaEngine.cpp
+    include/TLuaPlugin.h src/TLuaPlugin.cpp
+    include/TResourceManager.h src/TResourceManager.cpp
+    include/THeartbeatThread.h src/THeartbeatThread.cpp
+    include/Http.h src/Http.cpp
+    include/TSentry.h src/TSentry.cpp
+    include/TPPSMonitor.h src/TPPSMonitor.cpp
+    include/TNetwork.h src/TNetwork.cpp
+    include/LuaAPI.h src/LuaAPI.cpp
+    include/TScopedTimer.h src/TScopedTimer.cpp
+    include/SignalHandling.h src/SignalHandling.cpp
+    include/ArgsParser.h src/ArgsParser.cpp
+    include/TPluginMonitor.h src/TPluginMonitor.cpp
+    include/Environment.h
+    include/BoostAliases.h
+)
+
+set(BeamMP_Includes
+    ${LUA_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/cpp-httplib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/commandline"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/json/single_include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/sol2/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps"
+)
+
+set(BeamMP_Definitions
+    SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
+)
+
+if (WIN32)
+    list(APPEND BeamMP_Definitions _WIN32_WINNT=0x0601)
+    list(APPEND BeamMP_Definitions _CRT_SECURE_NO_WARNINGS)
+endif()
+if (UNIX)
+    set(BeamMP_CompileOptions
+        -Wall
+        -Wextra
+        -Wpedantic
+    
+        -Werror=uninitialized
+        -Werror=float-equal
+        -Werror=pointer-arith
+        -Werror=double-promotion
+        -Werror=write-strings
+        -Werror=cast-qual
+        -Werror=init-self
+        -Werror=cast-align
+        -Werror=unreachable-code
+        -Werror=strict-aliasing -fstrict-aliasing
+        -Werror=redundant-decls
+        -Werror=missing-declarations
+        -Werror=missing-field-initializers
+        -Werror=write-strings
+        -Werror=ctor-dtor-privacy
+        -Werror=switch-enum
+        -Werror=switch-default
+        -Werror=old-style-cast
+        -Werror=overloaded-virtual
+        -Werror=overloaded-virtual
+        -Werror=missing-include-dirs
+        -Werror=unused-result
+
+        -fstack-protector
+        -Wzero-as-null-pointer-constant
+    )
+endif()
+
+set(BeamMP_Libraries
+    Boost::boost
+    Boost::system
+    doctest::doctest
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    sol2::sol2
+    fmt::fmt
+    Threads::Threads
+    ZLIB::ZLIB
+    ${LUA_LIBRARIES}
+    commandline
+    sentry
+)
+
+if (WIN32)
+    set(BeamMP_PlatformLibs wsock32 ws2_32)
 endif ()
 
-
-
-set(CMAKE_CXX_STANDARD 17)
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+# ------------------------ BEAMMP SERVER -----------------------------
 
 add_executable(BeamMP-Server
         src/main.cpp
-        include/TConsole.h src/TConsole.cpp
-        include/TServer.h src/TServer.cpp
-        include/Compat.h src/Compat.cpp
-        include/Common.h src/Common.cpp
-        include/Client.h src/Client.cpp
-        include/VehicleData.h src/VehicleData.cpp
-        include/TConfig.h src/TConfig.cpp
-        include/TLuaEngine.h src/TLuaEngine.cpp
-        include/TLuaPlugin.h src/TLuaPlugin.cpp
-        include/TResourceManager.h src/TResourceManager.cpp
-        include/THeartbeatThread.h src/THeartbeatThread.cpp
-        include/Http.h src/Http.cpp
-        include/TSentry.h src/TSentry.cpp
-        include/TPPSMonitor.h src/TPPSMonitor.cpp
-        include/TNetwork.h src/TNetwork.cpp
-        include/LuaAPI.h src/LuaAPI.cpp
-        include/TScopedTimer.h src/TScopedTimer.cpp
-        include/SignalHandling.h src/SignalHandling.cpp
-        include/ArgsParser.h src/ArgsParser.cpp
-        include/Environment.h)
+        ${BeamMP_Sources}
+)
 
-target_compile_definitions(BeamMP-Server PRIVATE SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}")
-include_directories(BeamMP-Server PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_definitions(BeamMP-Server PRIVATE
+    ${BeamMP_Definitions}
+    DOCTEST_CONFIG_DISABLE
+)
 
-target_include_directories(BeamMP-Server PUBLIC 
-    "${CMAKE_CURRENT_SOURCE_DIR}/include" 
-    "${CMAKE_CURRENT_SOURCE_DIR}/commandline")
+target_compile_options(BeamMP-Server PRIVATE 
+    ${BeamMP_CompileOptions}
+)
 
-if (APPLE)
-    message(STATUS "NOT looking for Lua on APPLE")
-else()
-    message(STATUS "Looking for Lua")
-    find_package(Lua REQUIRED VERSION 5.3)
+target_include_directories(BeamMP-Server PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_include_directories(BeamMP-Server SYSTEM PRIVATE
+    ${BeamMP_Includes}
+)
+
+target_link_libraries(BeamMP-Server
+    ${BeamMP_Libraries}
+    ${BeamMP_PlatformLibs}
+)
+
+# ------------------------ BEAMMP SERVER TESTS -----------------------
+
+option(BUILD_TESTS "Build BeamMP-Server tests" ON)
+
+if(BUILD_TESTS)
+    add_executable(BeamMP-Server-tests
+            test/test_main.cpp
+            ${BeamMP_Sources}
+    )
+
+    target_compile_definitions(BeamMP-Server-tests PRIVATE
+        ${BeamMP_Definitions}
+    )
+    
+    target_compile_options(BeamMP-Server-tests PRIVATE 
+       ${BeamMP_CompileOptions}
+    )
+
+    target_include_directories(BeamMP-Server-tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    )
+
+    target_include_directories(BeamMP-Server-tests SYSTEM PRIVATE
+        ${BeamMP_Includes}
+    )
+    
+    target_link_libraries(BeamMP-Server-tests
+        ${BeamMP_Libraries}
+        ${BeamMP_PlatformLibs}
+    )
 endif()
 
-target_include_directories(BeamMP-Server PUBLIC 
-    ${LUA_INCLUDE_DIR} 
-    ${CURL_INCLUDE_DIRS}
-    "include/tomlplusplus" 
-    "include/sentry-native/include"
-    "include/curl/include")
-
-message(STATUS "Looking for SSL")
-
-if (APPLE)
-    set(OPENSSL_LIBRARIES ssl crypto)
-else()
-    find_package(OpenSSL REQUIRED)
-endif()
-
-target_link_libraries(BeamMP-Server sol2::sol2 ${LUA_LIBRARIES})
-message(STATUS "CURL IS ${CURL_LIBRARIES}")
-
-if (UNIX)
-    target_link_libraries(BeamMP-Server
-        z 
-        pthread
-        ${LUA_LIBRARIES} 
-        crypto
-        ${OPENSSL_LIBRARIES} 
-        commandline 
-        sentry
-        ssl)
-elseif (WIN32)
-    include(FindLua)
-    message(STATUS "Looking for libz")
-    find_package(ZLIB REQUIRED)
-    message(STATUS "Looking for RapidJSON")
-    find_package(RapidJSON CONFIG REQUIRED)
-    target_include_directories(BeamMP-Server PRIVATE ${RAPIDJSON_INCLUDE_DIRS})
-    target_link_libraries(BeamMP-Server
-        ws2_32 
-        ZLIB::ZLIB 
-        ${LUA_LIBRARIES} 
-        ${OPENSSL_LIBRARIES} 
-        commandline
-        sentry)
-endif ()

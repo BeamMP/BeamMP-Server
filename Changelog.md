@@ -1,3 +1,29 @@
+
+# v3.1.0
+
+- ADDED Tab autocomplete in console, smart tab autocomplete (understands lua tables and types) in the lua console
+- ADDED lua debug facilities (type `:help` when attached to lua via `lua`)
+- ADDED Util.JsonEncode() and Util.JsonDecode(), which turn lua tables into json and vice-versa
+- ADDED FS.ListFiles and FS.ListDirectories
+- ADDED onFileChanged event, triggered when a server plugin file changes
+- ADDED MP.GetPositionRaw(), which can be used to retrieve the latest position packet per player, per vehicle
+- ADDED error messages to some lua functions
+- ADDED HOME and END button working in console
+- ADDED `MP.TriggerClientEventJson()` which takes a table as the data argument and sends it as JSON
+- ADDED identifiers (beammp id, ip) to onPlayerAuth (4th argument)
+- ADDED more network debug logging
+- CHANGED all networking to be more stable, performant, and safe
+- FIXED `ip` in MP.GetPlayerIdentifiers
+- FIXED issue with client->server events which contain `:`
+- FIXED a fatal exception on LuaEngine startup if Resources/Server is a symlink
+- FIXED onInit not being called on hot-reload
+- FIXED incorrect timing calculation of Lua EventTimer loop
+- FIXED bug which caused hot-reload not to report syntax errors
+- FIXED missing error messages on some event handler calls
+- FIXED vehicles not deleting for all players if an edit was cancelled by Lua
+- FIXED server not handling binary UDP packets properly
+- REMOVED "Backend response failed to parse as valid json" message
+
 # v3.0.2
 
 - ADDED Periodic update message if a new server is released

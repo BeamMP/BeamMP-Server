@@ -2,7 +2,6 @@
 
 #include "ArgsParser.h"
 #include "Common.h"
-#include "CustomAssert.h"
 #include "Http.h"
 #include "LuaAPI.h"
 #include "SignalHandling.h"
@@ -11,13 +10,13 @@
 #include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
+#include "TPluginMonitor.h"
 #include "TResourceManager.h"
-#include "TScopedTimer.h"
 #include "TServer.h"
 
 #include <iostream>
 #include <thread>
-#define CPPHTTPLIB_OPENSSL_SUPPORT 1
+
 static const std::string sCommandlineArguments = R"(
 USAGE: 
     BeamMP-Server [arguments]
@@ -44,10 +43,6 @@ EXAMPLES:
         'MyWestCoastServerConfig.toml'.
 )";
 
-// this is provided by the build system, leave empty for source builds
-// global, yes, this is ugly, no, it cant be done another way
-TSentry Sentry {};
-
 struct MainArguments {
     int argc {};
     char** argv {};
@@ -59,7 +54,7 @@ int BeamMPServerMain(MainArguments Arguments);
 
 int main(int argc, char** argv) {
     MainArguments Args { argc, argv, {}, argv[0] };
-    Args.List.reserve(argc);
+    Args.List.reserve(size_t(argc));
     for (int i = 1; i < argc; ++i) {
         Args.List.push_back(argv[i]);
     }
@@ -72,7 +67,7 @@ int main(int argc, char** argv) {
         Sentry.LogException(e, _file_basename, _line);
         MainRet = -1;
     }
-    return MainRet;
+    std::exit(MainRet);
 }
 
 int BeamMPServerMain(MainArguments Arguments) {
@@ -113,7 +108,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             try {
                 fs::current_path(fs::path(MaybeWorkingDirectory.value()));
             } catch (const std::exception& e) {
-                beammp_error("Could not set working directory to '" + MaybeWorkingDirectory.value() + "': " + e.what());
+                beammp_errorf("Could not set working directory to '{}': {}", MaybeWorkingDirectory.value(), e.what());
             }
         }
     }
@@ -137,9 +132,9 @@ int BeamMPServerMain(MainArguments Arguments) {
 
     TServer Server(Arguments.List);
     TConfig Config(ConfigPath);
-    TLuaEngine LuaEngine;
-    LuaEngine.SetServer(&Server);
-    Application::Console().InitializeLuaConsole(LuaEngine);
+    auto LuaEngine = std::make_shared<TLuaEngine>();
+    LuaEngine->SetServer(&Server);
+    Application::Console().InitializeLuaConsole(*LuaEngine);
 
     if (Config.Failed()) {
         beammp_info("Closing in 10 seconds");
@@ -159,12 +154,13 @@ int BeamMPServerMain(MainArguments Arguments) {
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
-    LuaEngine.SetNetwork(&Network);
+    LuaEngine->SetNetwork(&Network);
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
 
+    TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
+
     if (Application::Settings.HTTPServerEnabled) {
-        Http::Server::SetupEnvironment();
         Http::Server::THttpServerInstance HttpServerInstance {};
     }
 

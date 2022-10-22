@@ -11,6 +11,7 @@
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <set>
 #include <toml11/toml.hpp>
 #include <unordered_map>
@@ -24,17 +25,18 @@ namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool>;
+using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>>;
 static constexpr size_t TLuaArgTypes_String = 0;
 static constexpr size_t TLuaArgTypes_Int = 1;
 static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
 static constexpr size_t TLuaArgTypes_Bool = 3;
+static constexpr size_t TLuaArgTypes_StringStringMap = 4;
 
 class TLuaPlugin;
 
 struct TLuaResult {
-    std::atomic_bool Ready;
-    std::atomic_bool Error;
+    bool Ready;
+    bool Error;
     std::string ErrorMessage;
     sol::object Result { sol::lua_nil };
     TLuaStateId StateId;
@@ -47,6 +49,7 @@ struct TLuaPluginConfig {
     static inline const std::string FileName = "PluginConfig.toml";
     TLuaStateId StateId;
     // TODO: Add execute list
+    // TODO: Build a better toml serializer, or some way to do this in an easier way
 };
 
 struct TLuaChunk {
@@ -58,20 +61,7 @@ struct TLuaChunk {
     std::string PluginPath;
 };
 
-class TPluginMonitor : IThreaded {
-public:
-    TPluginMonitor(const fs::path& Path, TLuaEngine& Engine, std::atomic_bool& Shutdown);
-
-    void operator()();
-
-private:
-    TLuaEngine& mEngine;
-    fs::path mPath;
-    std::atomic_bool& mShutdown;
-    std::unordered_map<std::string, fs::file_time_type> mFileTimes;
-};
-
-class TLuaEngine : IThreaded {
+class TLuaEngine : public std::enable_shared_from_this<TLuaEngine>, IThreaded {
 public:
     enum CallStrategy : int {
         BestEffort,
@@ -102,9 +92,17 @@ public:
         std::unique_lock Lock(mResultsToCheckMutex);
         return mResultsToCheck.size();
     }
+
     size_t GetLuaStateCount() {
         std::unique_lock Lock(mLuaStatesMutex);
         return mLuaStates.size();
+    }
+    std::vector<std::string> GetLuaStateNames() {
+        std::vector<std::string> names{};
+        for(auto const& [stateId, _ ] : mLuaStates) {
+            names.push_back(stateId);
+        }
+        return names;
     }
     size_t GetTimedEventsCount() {
         std::unique_lock Lock(mTimedEventsMutex);
@@ -129,7 +127,6 @@ public:
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
-    template <typename... ArgsT>
     /**
      *
      * @tparam ArgsT Template Arguments for the event (Metadata) todo: figure out what this means
@@ -138,6 +135,7 @@ public:
      * @param Args
      * @return
      */
+    template <typename... ArgsT>
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
         std::unique_lock Lock(mLuaEventsMutex);
         beammp_event(EventName);
@@ -157,6 +155,21 @@ public:
         }
         return Results; //
     }
+    template <typename... ArgsT>
+    [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerLocalEvent(const TLuaStateId& StateId, const std::string& EventName, ArgsT&&... Args) {
+        std::unique_lock Lock(mLuaEventsMutex);
+        beammp_event(EventName + " in '" + StateId + "'");
+        if (mLuaEvents.find(EventName) == mLuaEvents.end()) { // if no event handler is defined for 'EventName', return immediately
+            return {};
+        }
+        std::vector<std::shared_ptr<TLuaResult>> Results;
+        std::vector<TLuaArgTypes> Arguments { TLuaArgTypes { std::forward<ArgsT>(Args) }... };
+        const auto Handlers = GetEventHandlersForState(EventName, StateId);
+        for (const auto& Handler : Handlers) {
+            Results.push_back(EnqueueFunctionCall(StateId, Handler, Arguments));
+        }
+        return Results;
+    }
     std::set<std::string> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy);
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
@@ -166,6 +179,15 @@ public:
 
     static constexpr const char* BeamMPFnNotFoundError = "BEAMMP_FN_NOT_FOUND";
 
+    std::vector<std::string> GetStateGlobalKeysForState(TLuaStateId StateId);
+    std::vector<std::string> GetStateTableKeysForState(TLuaStateId StateId, std::vector<std::string> keys);
+
+    // Debugging functions (slow)
+    std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
+    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
+    std::vector<QueuedFunction> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
+    std::vector<TLuaResult> Debug_GetResultsToCheckForState(TLuaStateId StateId);
+
 private:
     void CollectAndInitPlugins();
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
@@ -174,7 +196,7 @@ private:
 
     class StateThreadData : IThreaded {
     public:
-        StateThreadData(const std::string& Name, std::atomic_bool& Shutdown, TLuaStateId StateId, TLuaEngine& Engine);
+        StateThreadData(const std::string& Name, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
         ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
@@ -185,6 +207,13 @@ private:
         void operator()() override;
         sol::state_view State() { return sol::state_view(mState); }
 
+        std::vector<std::string> GetStateGlobalKeys();
+        std::vector<std::string> GetStateTableKeys(const std::vector<std::string>& keys);
+
+        // Debug functions, slow
+        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
+        std::vector<TLuaEngine::QueuedFunction> Debug_GetStateFunctionQueue();
+
     private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs);
@@ -192,11 +221,14 @@ private:
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
+        std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
+        sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
+        sol::table Lua_FS_ListFiles(const std::string& Path);
+        sol::table Lua_FS_ListDirectories(const std::string& Path);
 
         std::string mName;
-        std::atomic_bool& mShutdown;
         TLuaStateId mStateId;
         lua_State* mState;
         std::thread mThread;
@@ -209,6 +241,8 @@ private:
         sol::state_view mStateView { mState };
         std::queue<fs::path> mPaths;
         std::recursive_mutex mPathsMutex;
+        std::mt19937 mMersenneTwister;
+        std::uniform_real_distribution<double> mUniformRealDistribution01;
     };
 
     struct TimedEvent {
@@ -223,9 +257,7 @@ private:
 
     TNetwork* mNetwork;
     TServer* mServer;
-    TPluginMonitor mPluginMonitor;
-    std::atomic_bool mShutdown { false };
-    fs::path mResourceServerPath;
+    const fs::path mResourceServerPath;
     std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
     std::recursive_mutex mLuaStatesMutex;

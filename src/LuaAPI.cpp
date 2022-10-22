@@ -1,7 +1,10 @@
 #include "LuaAPI.h"
 #include "Client.h"
 #include "Common.h"
+#include "CustomAssert.h"
 #include "TLuaEngine.h"
+
+#include <nlohmann/json.hpp>
 
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
@@ -72,8 +75,10 @@ std::string LuaAPI::LuaToString(const sol::object Value, size_t Indent, bool Quo
         ss << "[[function: " << Value.as<sol::function>().pointer() << "]]";
         return ss.str();
     }
+    case sol::type::poly:
+        return "<poly>";
     default:
-        return "((unprintable type))";
+        return "<unprintable type>";
     }
 }
 
@@ -100,67 +105,103 @@ void LuaAPI::Print(sol::variadic_args Args) {
     luaprint(ToPrint);
 }
 
-bool LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
-    std::string Packet = "E:" + EventName + ":" + Data;
-    if (PlayerID == -1)
-        Engine->Network().SendToAll(nullptr, Packet, true, true);
-    else {
-        auto MaybeClient = GetClient(Engine->Server(), PlayerID);
-        if (!MaybeClient || MaybeClient.value().expired()) {
-            beammp_lua_error("TriggerClientEvent invalid Player ID");
-            return false;
-        }
-        auto c = MaybeClient.value().lock();
-        if (!Engine->Network().Respond(*c, Packet, true)) {
-            beammp_lua_error("Respond failed, dropping client " + std::to_string(PlayerID));
-            Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
-            return false;
-        }
-    }
-    return true;
+TEST_CASE("LuaAPI::MP::GetServerVersion") {
+    const auto [ma, mi, pa] = LuaAPI::MP::GetServerVersion();
+    const auto real = Application::ServerVersion();
+    CHECK(ma == real.major);
+    CHECK(mi == real.minor);
+    CHECK(pa == real.patch);
 }
 
-void LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
+static inline std::pair<bool, std::string> InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
+    std::string Packet = "E:" + EventName + ":" + Data;
+    if (PlayerID == -1) {
+        LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
+        return { true, "" };
+    } else {
+        auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
+        if (!MaybeClient || MaybeClient.value().expired()) {
+            beammp_lua_errorf("TriggerClientEvent invalid Player ID '{}'", PlayerID);
+            return { false, "Invalid Player ID" };
+        }
+        auto c = MaybeClient.value().lock();
+        if (!LuaAPI::MP::Engine->Network().Respond(*c, StringToVector(Packet), true)) {
+            beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
+            LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
+            return { false, "Respond failed, dropping client" };
+        }
+        return { true, "" };
+    }
+}
+
+std::pair<bool, std::string> LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& DataObj) {
+    std::string Data = DataObj.as<std::string>();
+    return InternalTriggerClientEvent(PlayerID, EventName, Data);
+}
+
+std::pair<bool, std::string> LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (!MaybeClient || MaybeClient.value().expired()) {
-        beammp_lua_error("Tried to drop client with id " + std::to_string(ID) + ", who doesn't exist");
-        return;
+        beammp_lua_errorf("Tried to drop client with id {}, who doesn't exist", ID);
+        return { false, "Player does not exist" };
     }
     auto c = MaybeClient.value().lock();
     LuaAPI::MP::Engine->Network().ClientKick(*c, MaybeReason.value_or("No reason"));
+    return { true, "" };
 }
 
-void LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
+std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
+    std::pair<bool, std::string> Result;
     std::string Packet = "C:Server: " + Message;
     if (ID == -1) {
         LogChatMessage("<Server> (to everyone) ", -1, Message);
-        Engine->Network().SendToAll(nullptr, Packet, true, true);
+        Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
+        Result.first = true;
     } else {
         auto MaybeClient = GetClient(Engine->Server(), ID);
         if (MaybeClient && !MaybeClient.value().expired()) {
             auto c = MaybeClient.value().lock();
-            if (!c->IsSynced())
-                return;
+            if (!c->IsSynced()) {
+                Result.first = false;
+                Result.second = "Player still syncing data";
+                return Result;
+            }
             LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, Message);
-            Engine->Network().Respond(*c, Packet, true);
+            if (!Engine->Network().Respond(*c, StringToVector(Packet), true)) {
+                beammp_errorf("Failed to send chat message back to sender (id {}) - did the sender disconnect?", ID);
+                // TODO: should we return an error here?
+            }
+            Result.first = true;
         } else {
             beammp_lua_error("SendChatMessage invalid argument [1] invalid ID");
+            Result.first = false;
+            Result.second = "Invalid Player ID";
         }
+        return Result;
     }
+    return Result;
 }
 
-void LuaAPI::MP::RemoveVehicle(int PID, int VID) {
+std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
+    std::pair<bool, std::string> Result;
     auto MaybeClient = GetClient(Engine->Server(), PID);
     if (!MaybeClient || MaybeClient.value().expired()) {
         beammp_lua_error("RemoveVehicle invalid Player ID");
-        return;
+        Result.first = false;
+        Result.second = "Invalid Player ID";
+        return Result;
     }
     auto c = MaybeClient.value().lock();
     if (!c->GetCarData(VID).empty()) {
         std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
-        Engine->Network().SendToAll(nullptr, Destroy, true, true);
+        Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
         c->DeleteCar(VID);
+        Result.first = true;
+    } else {
+        Result.first = false;
+        Result.second = "Vehicle does not exist";
     }
+    return Result;
 }
 
 void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
@@ -169,50 +210,57 @@ void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
         if (NewValue.is<bool>()) {
             Application::Settings.DebugModeEnabled = NewValue.as<bool>();
             beammp_info(std::string("Set `Debug` to ") + (Application::Settings.DebugModeEnabled ? "true" : "false"));
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected boolean");
+        }
         break;
     case 1: // private
         if (NewValue.is<bool>()) {
             Application::Settings.Private = NewValue.as<bool>();
             beammp_info(std::string("Set `Private` to ") + (Application::Settings.Private ? "true" : "false"));
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected boolean");
+        }
         break;
     case 2: // max cars
         if (NewValue.is<int>()) {
             Application::Settings.MaxCars = NewValue.as<int>();
             beammp_info(std::string("Set `MaxCars` to ") + std::to_string(Application::Settings.MaxCars));
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected integer");
+        }
         break;
     case 3: // max players
         if (NewValue.is<int>()) {
             Application::Settings.MaxPlayers = NewValue.as<int>();
             beammp_info(std::string("Set `MaxPlayers` to ") + std::to_string(Application::Settings.MaxPlayers));
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected integer");
+        }
         break;
     case 4: // Map
         if (NewValue.is<std::string>()) {
             Application::Settings.MapName = NewValue.as<std::string>();
             beammp_info(std::string("Set `Map` to ") + Application::Settings.MapName);
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected string");
+        }
         break;
     case 5: // Name
         if (NewValue.is<std::string>()) {
             Application::Settings.ServerName = NewValue.as<std::string>();
             beammp_info(std::string("Set `Name` to ") + Application::Settings.ServerName);
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected string");
+        }
         break;
     case 6: // Desc
         if (NewValue.is<std::string>()) {
             Application::Settings.ServerDesc = NewValue.as<std::string>();
             beammp_info(std::string("Set `Description` to ") + Application::Settings.ServerDesc);
-        } else
+        } else {
             beammp_lua_error("set invalid argument [2] expected string");
+        }
         break;
     default:
         beammp_warn("Invalid config ID \"" + std::to_string(ConfigID) + "\". Use `MP.Settings.*` enum for this.");
@@ -248,7 +296,9 @@ void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
         ToPrint += LuaToString(static_cast<const sol::object>(Arg));
         ToPrint += "\t";
     }
+#ifdef DOCTEST_CONFIG_DISABLE
     Application::Console().WriteRaw(ToPrint);
+#endif
 }
 
 int LuaAPI::PanicHandler(lua_State* State) {
@@ -271,12 +321,39 @@ static std::pair<bool, std::string> FSWrapper(FnT Fn, ArgsT&&... Args) {
 std::pair<bool, std::string> LuaAPI::FS::CreateDirectory(const std::string& Path) {
     std::error_code errc;
     std::pair<bool, std::string> Result;
-    fs::create_directories(fs::relative(Path), errc);
+    fs::create_directories(Path, errc);
     Result.first = errc == std::error_code {};
     if (!Result.first) {
         Result.second = errc.message();
     }
     return Result;
+}
+
+TEST_CASE("LuaAPI::FS::CreateDirectory") {
+    std::string TestDir = "beammp_test_dir";
+    fs::remove_all(TestDir);
+    SUBCASE("Single level dir") {
+        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(Ok);
+        CHECK(Err == "");
+        CHECK(fs::exists(TestDir));
+    }
+    SUBCASE("Multi level dir") {
+        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir + "/a/b/c");
+        CHECK(Ok);
+        CHECK(Err == "");
+        CHECK(fs::exists(TestDir + "/a/b/c"));
+    }
+    SUBCASE("Already exists") {
+        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(Ok);
+        CHECK(Err == "");
+        CHECK(fs::exists(TestDir));
+        const auto [Ok2, Err2] = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(Ok2);
+        CHECK(Err2 == "");
+    }
+    fs::remove_all(TestDir);
 }
 
 std::pair<bool, std::string> LuaAPI::FS::Remove(const std::string& Path) {
@@ -290,21 +367,56 @@ std::pair<bool, std::string> LuaAPI::FS::Remove(const std::string& Path) {
     return Result;
 }
 
+TEST_CASE("LuaAPI::FS::Remove") {
+    const std::string TestFileOrDir = "beammp_test_thing";
+    SUBCASE("Remove existing directory") {
+        fs::create_directory(TestFileOrDir);
+        const auto [Ok, Err] = LuaAPI::FS::Remove(TestFileOrDir);
+        CHECK(Ok);
+        CHECK_EQ(Err, "");
+        CHECK(!fs::exists(TestFileOrDir));
+    }
+    SUBCASE("Remove non-existing directory") {
+        fs::remove_all(TestFileOrDir);
+        const auto [Ok, Err] = LuaAPI::FS::Remove(TestFileOrDir);
+        CHECK(Ok);
+        CHECK_EQ(Err, "");
+        CHECK(!fs::exists(TestFileOrDir));
+    }
+    // TODO: add tests for files
+    // TODO: add tests for files and folders without access permissions (failure)
+}
+
 std::pair<bool, std::string> LuaAPI::FS::Rename(const std::string& Path, const std::string& NewPath) {
     std::error_code errc;
     std::pair<bool, std::string> Result;
-    fs::rename(fs::relative(Path), fs::relative(NewPath), errc);
+    fs::rename(Path, NewPath, errc);
     Result.first = errc == std::error_code {};
     if (!Result.first) {
         Result.second = errc.message();
     }
     return Result;
+}
+
+TEST_CASE("LuaAPI::FS::Rename") {
+    const auto TestDir = "beammp_test_dir";
+    const auto OtherTestDir = "beammp_test_dir_2";
+    fs::remove_all(OtherTestDir);
+    fs::create_directory(TestDir);
+    const auto [Ok, Err] = LuaAPI::FS::Rename(TestDir, OtherTestDir);
+    CHECK(Ok);
+    CHECK_EQ(Err, "");
+    CHECK(!fs::exists(TestDir));
+    CHECK(fs::exists(OtherTestDir));
+
+    fs::remove_all(OtherTestDir);
+    fs::remove_all(TestDir);
 }
 
 std::pair<bool, std::string> LuaAPI::FS::Copy(const std::string& Path, const std::string& NewPath) {
     std::error_code errc;
     std::pair<bool, std::string> Result;
-    fs::copy(fs::relative(Path), fs::relative(NewPath), fs::copy_options::recursive, errc);
+    fs::copy(Path, NewPath, fs::copy_options::recursive, errc);
     Result.first = errc == std::error_code {};
     if (!Result.first) {
         Result.second = errc.message();
@@ -312,30 +424,86 @@ std::pair<bool, std::string> LuaAPI::FS::Copy(const std::string& Path, const std
     return Result;
 }
 
+TEST_CASE("LuaAPI::FS::Copy") {
+    const auto TestDir = "beammp_test_dir";
+    const auto OtherTestDir = "beammp_test_dir_2";
+    fs::remove_all(OtherTestDir);
+    fs::create_directory(TestDir);
+    const auto [Ok, Err] = LuaAPI::FS::Copy(TestDir, OtherTestDir);
+    CHECK(Ok);
+    CHECK_EQ(Err, "");
+    CHECK(fs::exists(TestDir));
+    CHECK(fs::exists(OtherTestDir));
+
+    fs::remove_all(OtherTestDir);
+    fs::remove_all(TestDir);
+}
+
 bool LuaAPI::FS::Exists(const std::string& Path) {
-    return fs::exists(fs::relative(Path));
+    return fs::exists(Path);
+}
+
+TEST_CASE("LuaAPI::FS::Exists") {
+    const auto TestDir = "beammp_test_dir";
+    const auto OtherTestDir = "beammp_test_dir_2";
+    fs::remove_all(OtherTestDir);
+    fs::create_directory(TestDir);
+
+    CHECK(LuaAPI::FS::Exists(TestDir));
+    CHECK(!LuaAPI::FS::Exists(OtherTestDir));
+
+    fs::remove_all(OtherTestDir);
+    fs::remove_all(TestDir);
 }
 
 std::string LuaAPI::FS::GetFilename(const std::string& Path) {
     return fs::path(Path).filename().string();
 }
 
+TEST_CASE("LuaAPI::FS::GetFilename") {
+    CHECK(LuaAPI::FS::GetFilename("test.txt") == "test.txt");
+    CHECK(LuaAPI::FS::GetFilename("/test.txt") == "test.txt");
+    CHECK(LuaAPI::FS::GetFilename("place/test.txt") == "test.txt");
+    CHECK(LuaAPI::FS::GetFilename("/some/../place/test.txt") == "test.txt");
+}
+
 std::string LuaAPI::FS::GetExtension(const std::string& Path) {
     return fs::path(Path).extension().string();
+}
+
+TEST_CASE("LuaAPI::FS::GetExtension") {
+    CHECK(LuaAPI::FS::GetExtension("test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("/test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("place/test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.txt") == ".txt");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test") == "");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.a.b.c") == ".c");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.") == ".");
+    CHECK(LuaAPI::FS::GetExtension("/some/../place/test.a.b.") == ".");
 }
 
 std::string LuaAPI::FS::GetParentFolder(const std::string& Path) {
     return fs::path(Path).parent_path().string();
 }
 
+TEST_CASE("LuaAPI::FS::GetParentFolder") {
+    CHECK(LuaAPI::FS::GetParentFolder("test.txt") == "");
+    CHECK(LuaAPI::FS::GetParentFolder("/test.txt") == "/");
+    CHECK(LuaAPI::FS::GetParentFolder("place/test.txt") == "place");
+    CHECK(LuaAPI::FS::GetParentFolder("/some/../place/test.txt") == "/some/../place");
+}
+
+// TODO: add tests
 bool LuaAPI::FS::IsDirectory(const std::string& Path) {
     return fs::is_directory(Path);
 }
 
+// TODO: add tests
 bool LuaAPI::FS::IsFile(const std::string& Path) {
     return fs::is_regular_file(Path);
 }
 
+// TODO: add tests
 std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     fs::path Path;
     for (size_t i = 0; i < Args.size(); ++i) {
@@ -351,4 +519,162 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     }
     auto Result = Path.lexically_normal().string();
     return Result;
+}
+
+static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, bool is_array, size_t depth = 0) {
+    if (depth > 100) {
+        beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
+        return;
+    }
+    std::string key {};
+    switch (left.get_type()) {
+    case sol::type::lua_nil:
+    case sol::type::none:
+    case sol::type::poly:
+    case sol::type::boolean:
+    case sol::type::lightuserdata:
+    case sol::type::userdata:
+    case sol::type::thread:
+    case sol::type::function:
+    case sol::type::table:
+        beammp_lua_error("JsonEncode: left side of table field is unexpected type");
+        return;
+    case sol::type::string:
+        key = left.as<std::string>();
+        break;
+    case sol::type::number:
+        key = std::to_string(left.as<double>());
+        break;
+    default:
+        beammp_assert_not_reachable();
+    }
+    nlohmann::json value;
+    switch (right.get_type()) {
+    case sol::type::lua_nil:
+    case sol::type::none:
+        return;
+    case sol::type::poly:
+        beammp_lua_warn("unsure what to do with poly type in JsonEncode, ignoring");
+        return;
+    case sol::type::boolean:
+        value = right.as<bool>();
+        break;
+    case sol::type::lightuserdata:
+        beammp_lua_warn("unsure what to do with lightuserdata in JsonEncode, ignoring");
+        return;
+    case sol::type::userdata:
+        beammp_lua_warn("unsure what to do with userdata in JsonEncode, ignoring");
+        return;
+    case sol::type::thread:
+        beammp_lua_warn("unsure what to do with thread in JsonEncode, ignoring");
+        return;
+    case sol::type::string:
+        value = right.as<std::string>();
+        break;
+    case sol::type::number:
+        value = right.as<double>();
+        break;
+    case sol::type::function:
+        beammp_lua_warn("unsure what to do with function in JsonEncode, ignoring");
+        return;
+    case sol::type::table: {
+        bool local_is_array = true;
+        for (const auto& pair : right.as<sol::table>()) {
+            if (pair.first.get_type() != sol::type::number) {
+                local_is_array = false;
+            }
+        }
+        for (const auto& pair : right.as<sol::table>()) {
+            JsonEncodeRecursive(value, pair.first, pair.second, local_is_array, depth + 1);
+        }
+        break;
+    }
+    default:
+        beammp_assert_not_reachable();
+    }
+    if (is_array) {
+        json.push_back(value);
+    } else {
+        json[key] = value;
+    }
+}
+
+std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
+    nlohmann::json json;
+    // table
+    bool is_array = true;
+    for (const auto& pair : object.as<sol::table>()) {
+        if (pair.first.get_type() != sol::type::number) {
+            is_array = false;
+        }
+    }
+    for (const auto& entry : object) {
+        JsonEncodeRecursive(json, entry.first, entry.second, is_array);
+    }
+    return json.dump();
+}
+
+std::string LuaAPI::MP::JsonDiff(const std::string& a, const std::string& b) {
+    if (!nlohmann::json::accept(a)) {
+        beammp_lua_error("JsonDiff first argument is not valid json: `" + a + "`");
+        return "";
+    }
+    if (!nlohmann::json::accept(b)) {
+        beammp_lua_error("JsonDiff second argument is not valid json: `" + b + "`");
+        return "";
+    }
+    auto a_json = nlohmann::json::parse(a);
+    auto b_json = nlohmann::json::parse(b);
+    return nlohmann::json::diff(a_json, b_json).dump();
+}
+
+std::string LuaAPI::MP::JsonDiffApply(const std::string& data, const std::string& patch) {
+    if (!nlohmann::json::accept(data)) {
+        beammp_lua_error("JsonDiffApply first argument is not valid json: `" + data + "`");
+        return "";
+    }
+    if (!nlohmann::json::accept(patch)) {
+        beammp_lua_error("JsonDiffApply second argument is not valid json: `" + patch + "`");
+        return "";
+    }
+    auto a_json = nlohmann::json::parse(data);
+    auto b_json = nlohmann::json::parse(patch);
+    a_json.patch(b_json);
+    return a_json.dump();
+}
+
+std::string LuaAPI::MP::JsonPrettify(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonPrettify argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).dump(4);
+}
+
+std::string LuaAPI::MP::JsonMinify(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonMinify argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).dump(-1);
+}
+
+std::string LuaAPI::MP::JsonFlatten(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonFlatten argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).flatten().dump(-1);
+}
+
+std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
+    if (!nlohmann::json::accept(json)) {
+        beammp_lua_error("JsonUnflatten argument is not valid json: `" + json + "`");
+        return "";
+    }
+    return nlohmann::json::parse(json).unflatten().dump(-1);
+}
+
+std::pair<bool, std::string> LuaAPI::MP::TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data) {
+    return InternalTriggerClientEvent(PlayerID, EventName, JsonEncode(Data));
 }

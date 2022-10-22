@@ -1,6 +1,7 @@
 #include "ArgsParser.h"
 #include "Common.h"
 #include <algorithm>
+#include <doctest/doctest.h>
 
 void ArgsParser::Parse(const std::vector<std::string_view>& ArgList) {
     for (const auto& Arg : ArgList) {
@@ -12,7 +13,7 @@ void ArgsParser::Parse(const std::vector<std::string_view>& ArgList) {
                 ConsumeLongFlag(std::string(Arg));
             }
         } else {
-            beammp_error("Error parsing commandline arguments: Supplied argument '" + std::string(Arg) + "' is not a valid argument and was ignored.");
+            beammp_errorf("Error parsing commandline arguments: Supplied argument '{}' is not a valid argument and was ignored.", Arg);
         }
     }
 }
@@ -21,7 +22,7 @@ bool ArgsParser::Verify() {
     bool Ok = true;
     for (const auto& RegisteredArg : mRegisteredArguments) {
         if (RegisteredArg.Flags & Flags::REQUIRED && !FoundArgument(RegisteredArg.Names)) {
-            beammp_error("Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' is required but wasn't found.");
+            beammp_errorf("Error in commandline arguments: Argument '{}' is required but wasn't found.", RegisteredArg.Names.at(0));
             Ok = false;
             continue;
         } else if (FoundArgument(RegisteredArg.Names)) {
@@ -90,5 +91,80 @@ void ArgsParser::ConsumeLongFlag(const std::string& Arg) {
     mFoundArgs.push_back({ Name, std::nullopt });
     if (!IsRegistered(Name)) {
         beammp_warn("Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
+    }
+}
+
+TEST_CASE("ArgsParser") {
+    ArgsParser parser;
+
+    SUBCASE("Simple args") {
+        parser.RegisterArgument({ "a" }, ArgsParser::Flags::NONE);
+        parser.RegisterArgument({ "hello" }, ArgsParser::Flags::NONE);
+        parser.Parse({ "--a", "--hello" });
+        CHECK(parser.Verify());
+        CHECK(parser.FoundArgument({ "a" }));
+        CHECK(parser.FoundArgument({ "hello" }));
+        CHECK(parser.FoundArgument({ "a", "hello" }));
+        CHECK(!parser.FoundArgument({ "b" }));
+        CHECK(!parser.FoundArgument({ "goodbye" }));
+    }
+
+    SUBCASE("No args") {
+        parser.RegisterArgument({ "a" }, ArgsParser::Flags::NONE);
+        parser.RegisterArgument({ "hello" }, ArgsParser::Flags::NONE);
+        parser.Parse({});
+        CHECK(parser.Verify());
+        CHECK(!parser.FoundArgument({ "a" }));
+        CHECK(!parser.FoundArgument({ "hello" }));
+        CHECK(!parser.FoundArgument({ "a", "hello" }));
+        CHECK(!parser.FoundArgument({ "b" }));
+        CHECK(!parser.FoundArgument({ "goodbye" }));
+        CHECK(!parser.FoundArgument({ "" }));
+    }
+
+    SUBCASE("Value args") {
+        parser.RegisterArgument({ "a" }, ArgsParser::Flags::HAS_VALUE);
+        parser.RegisterArgument({ "hello" }, ArgsParser::Flags::HAS_VALUE);
+        parser.Parse({ "--a=5", "--hello=world" });
+        CHECK(parser.Verify());
+        REQUIRE(parser.FoundArgument({ "a" }));
+        REQUIRE(parser.FoundArgument({ "hello" }));
+        CHECK(parser.GetValueOfArgument({ "a" }).has_value());
+        CHECK(parser.GetValueOfArgument({ "a" }).value() == "5");
+        CHECK(parser.GetValueOfArgument({ "hello" }).has_value());
+        CHECK(parser.GetValueOfArgument({ "hello" }).value() == "world");
+    }
+
+    SUBCASE("Mixed value & no-value args") {
+        parser.RegisterArgument({ "a" }, ArgsParser::Flags::HAS_VALUE);
+        parser.RegisterArgument({ "hello" }, ArgsParser::Flags::NONE);
+        parser.Parse({ "--a=5", "--hello" });
+        CHECK(parser.Verify());
+        REQUIRE(parser.FoundArgument({ "a" }));
+        REQUIRE(parser.FoundArgument({ "hello" }));
+        CHECK(parser.GetValueOfArgument({ "a" }).has_value());
+        CHECK(parser.GetValueOfArgument({ "a" }).value() == "5");
+        CHECK(!parser.GetValueOfArgument({ "hello" }).has_value());
+    }
+
+    SUBCASE("Required args") {
+        SUBCASE("Two required, two present") {
+            parser.RegisterArgument({ "a" }, ArgsParser::Flags::REQUIRED);
+            parser.RegisterArgument({ "hello" }, ArgsParser::Flags::REQUIRED);
+            parser.Parse({ "--a", "--hello" });
+            CHECK(parser.Verify());
+        }
+        SUBCASE("Two required, one present") {
+            parser.RegisterArgument({ "a" }, ArgsParser::Flags::REQUIRED);
+            parser.RegisterArgument({ "hello" }, ArgsParser::Flags::REQUIRED);
+            parser.Parse({ "--a" });
+            CHECK(!parser.Verify());
+        }
+        SUBCASE("Two required, none present") {
+            parser.RegisterArgument({ "a" }, ArgsParser::Flags::REQUIRED);
+            parser.RegisterArgument({ "hello" }, ArgsParser::Flags::REQUIRED);
+            parser.Parse({ "--b" });
+            CHECK(!parser.Verify());
+        }
     }
 }
