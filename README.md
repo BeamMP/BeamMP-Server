@@ -39,7 +39,7 @@ If you need support with understanding the codebase, please write us in the Disc
 
 ## About Building from Source
 
-We only allow building unmodified (original) source code for public use. `master` is considered **unstable** and we will not provide technical support if such a build doesn't work, so always build from a tag. You can checkout a tag with `git checkout tags/TAGNAME`, where `TAGNAME` is the tag, for example `v1.20`. 
+We only allow building unmodified (original) source code for public use. `master` is considered **unstable** and we will not provide technical support if such a build doesn't work, so always build from a tag. You can checkout a tag with `git checkout tags/TAGNAME`, where `TAGNAME` is the tag, for example `v3.1.0`. 
 
 ## Supported Operating Systems
 
@@ -51,13 +51,15 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 ## Build Instructions
 
-**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v2.3.3`!__**
+**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v3.1.0`!__**
 
 Currently only Linux and Windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
 
 ### Prerequisites
 
 #### Windows
+
+There are **no runtime libraries** needed for Windows.
 
 Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
 
@@ -73,19 +75,84 @@ The triplet we use for releases is `x64-windows-static`.
 We recommend Ubuntu 22.04 or Arch Linux. Any Linux distribution will work, but you have to figure out the package names yourself (please feel free to PR in a change to this README with that info).
 
 ##### Runtime Dependencies
+
+These are needed to *run* the server.
+
+<details>
+<summary>
+Ubuntu 22.04
+</summary>
+
+`apt-get install` the following libraries:
+```
+liblua5.3-0
+libssl3
+curl
+```
+</details>
+
+<details>
+<summary>
+Arch Linux
+</summary>
+
+`pacman -Syu` the following libraries:
+```
+lua53
+openssl
+curl
+```
+</details>
+
+##### Build Dependencies
+These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
+
 **Ubuntu 22.04**
 ```
 
 ```
 
-##### Buildtime Dependencies
-These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
+<details>
+<summary>
+Ubuntu 22.04
+</summary>
+
+`apt-get install` the following libraries and programs:
 ```
 git
-make
+libz-dev
+rapidjson-dev
+liblua5.3
+libssl-dev
+libwebsocketpp-dev
+libcurl4-openssl-dev
+cmake
+g++-10
+libboost1.74-all-dev
+libssl3
+curl
+```
+</details>
+
+<details>
+<summary>
+Arch Linux
+</summary>
+
+`pacman -Syu` the following libraries and programs:
+```
+lua53
+openssl
+curl
+git
 cmake
 g++
+cmake
+zlib
+boost
+websocketpp
 ```
+</details>
 
 #### macOS
 
@@ -103,13 +170,12 @@ brew install curl zlib git make
 On Windows, use git-bash for these commands. On Linux, these should work in your shell.
 
 1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with `git clone --recurse-submodules https://github.com/BeamMP/BeamMP-Server`. 
+2. Clone the repository in a location of your choice with `git clone https://github.com/BeamMP/BeamMP-Server` . 
 3. Change into the BeamMP-Server directory by running `cd BeamMP-Server`. 
-4. Checkout the branch of the release you want to compile, for example `git checkout tags/v3.0.2` for version 3.0.2. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-5. Ensure that all submodules are initialized by running `git submodule update --init --recursive`
-6. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`)
-7. Run `make`
-8. You will now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (Windows or Linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/server-installation) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
+4. Checkout the branch or tag of the release you want to compile, for example `git checkout tags/v3.0.2` for version 3.0.2. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
+6. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`). This may take some time, and will update all submodules and prepare the build.
+7. Run `make -j` . This step will take some time and will use a lot of CPU and RAM. Remove the `-j` if you run out of memory. *If you change something in the source code, you only have to re-run this step.*
+8. You now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (Windows or Linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/server-installation) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
 
 *tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
