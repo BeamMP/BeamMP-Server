@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y liblua5.3 libcurl4-openssl libssl
+          sudo apt-get install -y liblua5.3 openssl libssl
 
       - name: Test
         working-directory: ${{github.workspace}}
