@@ -36,8 +36,8 @@ void THeartbeatThread::operator()() {
 
         Last = Body;
         LastNormalUpdateTime = Now;
-        if (!Application::Settings.CustomIP.empty()) {
-            Body += "&ip=" + Application::Settings.CustomIP;
+        if (!Application::GetSettingString(StrCustomIP).empty()) {
+            Body += "&ip=" + Application::GetSettingString(StrCustomIP);
         }
 
         auto SentryReportError = [&](const std::string& transaction, int status) {
@@ -59,7 +59,7 @@ void THeartbeatThread::operator()() {
             T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
-                if (!Application::Settings.Private) {
+                if (!Application::GetSettingBool(StrPrivate)) {
                     beammp_trace("Backend response failed to parse as valid json");
                     beammp_trace("Response was: `" + T + "`");
                 }
@@ -105,12 +105,12 @@ void THeartbeatThread::operator()() {
                 Sentry.LogError("Missing/invalid json members in backend response", __FILE__, std::to_string(__LINE__));
             }
         } else {
-            if (!Application::Settings.Private) {
+            if (!Application::GetSettingBool(StrPrivate)) {
                 beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
             }
         }
 
-        if (Ok && !isAuth && !Application::Settings.Private) {
+        if (Ok && !isAuth && !Application::GetSettingBool(StrPrivate)) {
             if (Status == "2000") {
                 beammp_info(("Authenticated! " + Message));
                 isAuth = true;
@@ -124,10 +124,10 @@ void THeartbeatThread::operator()() {
                 beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
         }
-        if (isAuth || Application::Settings.Private) {
+        if (isAuth || Application::GetSettingBool(StrPrivate)) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
-        if (!Application::Settings.HideUpdateMessages && UpdateReminderCounter % 5) {
+        if (!Application::GetSettingBool(StrHideUpdateMessages) && UpdateReminderCounter % 5) {
             Application::CheckForUpdates();
         }
     }
@@ -136,20 +136,20 @@ void THeartbeatThread::operator()() {
 std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
 
-    Ret << "uuid=" << Application::Settings.Key
+    Ret << "uuid=" << Application::GetSettingString(StrAuthKey)
         << "&players=" << mServer.ClientCount()
-        << "&maxplayers=" << Application::Settings.MaxPlayers
-        << "&port=" << Application::Settings.Port
-        << "&map=" << Application::Settings.MapName
-        << "&private=" << (Application::Settings.Private ? "true" : "false")
+        << "&maxplayers=" << Application::GetSettingInt(StrMaxPlayers)
+        << "&port=" << Application::GetSettingInt(StrPort)
+        << "&map=" << Application::GetSettingString(StrMap)
+        << "&private=" << (Application::GetSettingBool(StrPrivate) ? "true" : "false")
         << "&version=" << Application::ServerVersionString()
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
-        << "&name=" << Application::Settings.ServerName
+        << "&name=" << Application::GetSettingString(StrName)
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()
         << "&playerslist=" << GetPlayers()
-        << "&desc=" << Application::Settings.ServerDesc;
+        << "&desc=" << Application::GetSettingString(StrDescription);
     return Ret.str();
 }
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)

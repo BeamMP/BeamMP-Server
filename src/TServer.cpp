@@ -81,11 +81,12 @@ TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
     Application::SetSubsystemStatus("Server", Application::Status::Starting);
     if (Arguments.size() > 1) {
-        Application::Settings.CustomIP = Arguments[0];
-        size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
-        auto p = Application::Settings.CustomIP.find_first_not_of(".0123456789");
-        if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == "127") {
-            Application::Settings.CustomIP.clear();
+        Application::SetSetting(StrCustomIP, std::string(Arguments[0]));
+        auto CustomIP = Application::GetSettingString(StrCustomIP);
+        size_t n = std::count(CustomIP.begin(), CustomIP.end(), '.');
+        auto p = Application::GetSettingString(StrCustomIP).find_first_not_of(".0123456789");
+        if (p != std::string::npos || n != 3 || CustomIP.substr(0, 3) == "127") {
+            Application::SetSetting(StrCustomIP, "");
             beammp_warn("IP Specified is invalid! Ignoring");
         } else {
             beammp_info("server started with custom IP");
@@ -253,7 +254,7 @@ bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
         c.SetUnicycleID(ID);
         return true;
     } else {
-        return c.GetCarCount() < Application::Settings.MaxCars;
+        return c.GetCarCount() < Application::GetSettingInt(StrMaxCars);
     }
 }
 

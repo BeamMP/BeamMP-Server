@@ -16,11 +16,11 @@
 TLuaEngine* LuaAPI::MP::Engine;
 
 TLuaEngine::TLuaEngine()
-    : mResourceServerPath(fs::path(Application::Settings.Resource) / "Server") {
+    : mResourceServerPath(fs::path(Application::GetSettingString(StrResourceFolder)) / "Server") {
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
     LuaAPI::MP::Engine = this;
-    if (!fs::exists(Application::Settings.Resource)) {
-        fs::create_directory(Application::Settings.Resource);
+    if (!fs::exists(Application::GetSettingString(StrResourceFolder))) {
+        fs::create_directory(Application::GetSettingString(StrResourceFolder));
     }
     if (!fs::exists(mResourceServerPath)) {
         fs::create_directory(mResourceServerPath);
@@ -36,7 +36,7 @@ TLuaEngine::TLuaEngine()
 }
 
 TEST_CASE("TLuaEngine ctor & dtor") {
-    Application::Settings.Resource = "beammp_server_test_resources";
+    Application::SetSetting(StrResourceFolder, "beammp_server_test_resources");
     TLuaEngine engine;
     Application::GracefullyShutdown();
 }
