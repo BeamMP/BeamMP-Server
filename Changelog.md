@@ -1,3 +1,7 @@
+# v3.2.0
+
+- ADDED `settings` command, which lets you `get`, `list`, and `set` config options from the console
+
 # v3.1.1
 
 - FIXED many issues which could cause the server to crash when receiving weird data
