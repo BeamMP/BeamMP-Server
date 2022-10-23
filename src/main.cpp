@@ -158,9 +158,9 @@ int BeamMPServerMain(MainArguments Arguments) {
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
 
-    TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
+    TPluginMonitor PluginMonitor(fs::path(Application::GetSettingString(StrResourceFolder)) / "Server", LuaEngine);
 
-    if (Application::Settings.HTTPServerEnabled) {
+    if (Application::GetSettingBool(StrHTTPServerEnabled)) {
         Http::Server::THttpServerInstance HttpServerInstance {};
     }
 

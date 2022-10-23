@@ -154,7 +154,7 @@ Http::Server::THttpServerInstance::THttpServerInstance() {
 }
 
 void Http::Server::THttpServerInstance::operator()() try {
-    beammp_info("HTTP(S) Server started on port " + std::to_string(Application::Settings.HTTPServerPort));
+    beammp_info("HTTP(S) Server started on port " + std::to_string(Application::GetSettingInt(StrHTTPServerPort)));
     std::unique_ptr<httplib::Server> HttpLibServerInstance;
     HttpLibServerInstance = std::make_unique<httplib::Server>();
     // todo: make this IP agnostic so people can set their own IP
@@ -196,7 +196,7 @@ void Http::Server::THttpServerInstance::operator()() try {
         beammp_debug("Http Server: " + Req.method + " " + Req.target + " -> " + std::to_string(Res.status));
     });
     Application::SetSubsystemStatus("HTTPServer", Application::Status::Good);
-    auto ret = HttpLibServerInstance->listen(Application::Settings.HTTPServerIP.c_str(), Application::Settings.HTTPServerPort);
+    auto ret = HttpLibServerInstance->listen(Application::GetSettingString(StrHTTPServerIP).c_str(), Application::GetSettingInt(StrHTTPServerPort));
     if (!ret) {
         beammp_error("Failed to start http server (failed to listen). Please ensure the http server is configured properly in the ServerConfig.toml, or turn it off if you don't need it.");
     }

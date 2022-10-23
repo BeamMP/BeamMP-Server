@@ -60,7 +60,7 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::Settings.Port);
+    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::GetSettingInt(StrPort));
     boost::system::error_code ec;
     mUDPSock.open(UdpListenEndpoint.protocol(), ec);
     if (ec) {
@@ -75,8 +75,8 @@ void TNetwork::UDPServerMain() {
         Application::GracefullyShutdown();
     }
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Good);
-    beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
-        + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
+    beammp_info(("Vehicle data network online on port ") + std::to_string(Application::GetSettingInt(StrPort)) + (" with a Max of ")
+        + std::to_string(Application::GetSettingInt(StrMaxPlayers)) + (" Clients"));
     while (!Application::IsShuttingDown()) {
         try {
             ip::udp::endpoint client {};
@@ -113,7 +113,7 @@ void TNetwork::UDPServerMain() {
 void TNetwork::TCPServerMain() {
     RegisterThread("TCPServer");
 
-    ip::tcp::endpoint ListenEp(ip::address::from_string("0.0.0.0"), Application::Settings.Port);
+    ip::tcp::endpoint ListenEp(ip::address::from_string("0.0.0.0"), Application::GetSettingInt(StrPort));
     ip::tcp::socket Listener(mServer.IoCtx());
     boost::system::error_code ec;
     Listener.open(ListenEp.protocol(), ec);
@@ -321,7 +321,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return {};
     }
 
-    if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
+    if (mServer.ClientCount() < size_t(Application::GetSettingInt(StrMaxPlayers))) {
         beammp_info("Identification success");
         mServer.InsertClient(Client);
         TCPClient(Client);
@@ -513,7 +513,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
 }
 
 void TNetwork::UpdatePlayer(TClient& Client) {
-    std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
+    std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::GetSettingInt(StrMaxPlayers)) + ":";
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         ReadLock Lock(mServer.GetClientMutex());
         if (!ClientPtr.expired()) {
@@ -587,7 +587,7 @@ void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     SyncResources(*LockedClient);
     if (LockedClient->IsDisconnected())
         return;
-    (void)Respond(*LockedClient, StringToVector("M" + Application::Settings.MapName), true); // Send the Map on connect
+    (void)Respond(*LockedClient, StringToVector("M" + Application::GetSettingString(StrMap)), true); // Send the Map on connect
     beammp_info(LockedClient->GetName() + " : Connected");
     LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoining", "", LockedClient->GetID()));
 }
@@ -646,7 +646,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
         return;
     }
     auto FileName = fs::path(UnsafeName).filename().string();
-    FileName = Application::Settings.Resource + "/Client/" + FileName;
+    FileName = Application::GetSettingString(StrResourceFolder) + "/Client/" + FileName;
 
     if (!std::filesystem::exists(FileName)) {
         if (!TCPSend(c, StringToVector("CO"))) {
