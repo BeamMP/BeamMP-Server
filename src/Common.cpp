@@ -13,10 +13,83 @@
 #include "CustomAssert.h"
 #include "Http.h"
 
+Application::SettingsMap Application::mSettings = {
+    { StrName, std::string("BeamMP Server") },
+    { StrDescription, std::string("No description") },
+    { StrResourceFolder, std::string("Resources") },
+    { StrMap, std::string("/levels/gridmap_v2/info.json") },
+    { StrSSLKeyPath, std::string("./.ssl/HttpServer/key.pem") },
+    { StrSSLCertPath, std::string("./.ssl/HttpServer/cert.pem") },
+    { StrHTTPServerEnabled, false },
+    { StrMaxPlayers, int(8) },
+    { StrPrivate, true },
+    { StrMaxCars, int(1) },
+    { StrDebug, false },
+    { StrPort, int(30814) },
+    { StrCustomIP, std::string("") },
+    { StrLogChat, true },
+    { StrSendErrors, true },
+    { StrSendErrorsMessageEnabled, true },
+    { StrHTTPServerPort, int(8080) },
+    { StrHTTPServerIP, std::string("127.0.0.1") },
+    { StrHTTPServerUseSSL, false },
+    { StrHideUpdateMessages, false },
+};
+
 // global, yes, this is ugly, no, it cant be done another way
 TSentry Sentry {};
 
-Application::TSettings Application::Settings = {};
+std::string Application::SettingToString(const Application::SettingValue& Value) {
+    switch (Value.which()) {
+    case 0:
+        return fmt::format("{}", boost::get<std::string>(Value));
+    case 1:
+        return fmt::format("{}", boost::get<bool>(Value));
+    case 2:
+        return fmt::format("{}", boost::get<int>(Value));
+    default:
+        return "<unknown type>";
+    }
+}
+
+std::string Application::GetSettingString(std::string_view Name) {
+    try {
+        return boost::get<std::string>(Application::mSettings.at(Name));
+    } catch (const std::exception& e) {
+        beammp_errorf("Failed to get string setting '{}': {}", Name, e.what());
+        return "";
+    }
+}
+
+int Application::GetSettingInt(std::string_view Name) {
+    try {
+        return boost::get<int>(Application::mSettings.at(Name));
+    } catch (const std::exception& e) {
+        beammp_errorf("Failed to get int setting '{}': {}", Name, e.what());
+        return 0;
+    }
+}
+
+bool Application::GetSettingBool(std::string_view Name) {
+    try {
+        return boost::get<bool>(Application::mSettings.at(Name));
+    } catch (const std::exception& e) {
+        beammp_errorf("Failed to get bool setting '{}': {}", Name, e.what());
+        return false;
+    }
+}
+
+void Application::SetSetting(std::string_view Name, const Application::SettingValue& Value) {
+    if (mSettings.contains(Name)) {
+        if (mSettings[Name].type() == Value.type()) {
+            mSettings[Name] = Value;
+        } else {
+            beammp_errorf("Could not change value of setting '{}', because it has a different type.", Name);
+        }
+    } else {
+        mSettings[Name] = Value;
+    }
+}
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
@@ -239,7 +312,7 @@ static std::mutex ThreadNameMapMutex {};
 
 std::string ThreadName(bool DebugModeOverride) {
     auto Lock = std::unique_lock(ThreadNameMapMutex);
-    if (DebugModeOverride || Application::Settings.DebugModeEnabled) {
+    if (DebugModeOverride || Application::GetSettingBool(StrDebug)) {
         auto id = std::this_thread::get_id();
         if (threadNameMap.find(id) != threadNameMap.end()) {
             // found
@@ -251,21 +324,21 @@ std::string ThreadName(bool DebugModeOverride) {
 
 TEST_CASE("ThreadName") {
     RegisterThread("MyThread");
-    auto OrigDebug = Application::Settings.DebugModeEnabled;
+    auto OrigDebug = Application::GetSettingBool(StrDebug);
 
     // ThreadName adds a space at the end, legacy but we need it still
     SUBCASE("Debug mode enabled") {
-        Application::Settings.DebugModeEnabled = true;
+        Application::SetSetting(StrDebug, true);
         CHECK(ThreadName(true) == "MyThread ");
         CHECK(ThreadName(false) == "MyThread ");
     }
     SUBCASE("Debug mode disabled") {
-        Application::Settings.DebugModeEnabled = false;
+        Application::SetSetting(StrDebug, false);
         CHECK(ThreadName(true) == "MyThread ");
         CHECK(ThreadName(false) == "");
     }
     // cleanup
-    Application::Settings.DebugModeEnabled = OrigDebug;
+    Application::SetSetting(StrDebug, OrigDebug);
 }
 
 void RegisterThread(const std::string& str) {
@@ -277,7 +350,7 @@ void RegisterThread(const std::string& str) {
 #elif defined(BEAMMP_LINUX)
     ThreadId = std::to_string(gettid());
 #endif
-    if (Application::Settings.DebugModeEnabled) {
+    if (Application::GetSettingBool(StrDebug)) {
         std::ofstream ThreadFile(".Threads.log", std::ios::app);
         ThreadFile << ("Thread \"" + str + "\" is TID " + ThreadId) << std::endl;
     }
@@ -310,7 +383,7 @@ TEST_CASE("Version::AsString") {
 }
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
-    if (Application::Settings.LogChat) {
+    if (Application::GetSettingBool(StrLogChat)) {
         std::stringstream ss;
         ss << ThreadName();
         ss << "[CHAT] ";

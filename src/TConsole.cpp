@@ -68,7 +68,7 @@ static std::string GetDate() {
     auto local_tm = std::localtime(&tt);
     char buf[30];
     std::string date;
-    if (Application::Settings.DebugModeEnabled) {
+    if (Application::GetSettingBool(StrDebug)) {
         std::strftime(buf, sizeof(buf), "[%d/%m/%y %T.", local_tm);
         date += buf;
         auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
@@ -360,7 +360,7 @@ void TConsole::Command_Say(const std::string& FullCmd) {
     if (FullCmd.size() > 3) {
         auto Message = FullCmd.substr(4);
         LuaAPI::MP::SendChatMessage(-1, Message);
-        if (!Application::Settings.LogChat) {
+        if (!Application::GetSettingBool(StrLogChat)) {
             Application::Console().WriteRaw("Chat message sent!");
         }
     }
