@@ -1,0 +1,9 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -y
+
+RUN apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev git make cmake g++
+
+RUN apt-get install -y libboost1.71-all-dev
