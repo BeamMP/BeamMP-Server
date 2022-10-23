@@ -7,8 +7,13 @@
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
 
+#include <boost/spirit/home/qi/directive/lexeme.hpp>
+#include <boost/spirit/home/qi/parse.hpp>
 #include <ctime>
 #include <sstream>
+
+#include <boost/phoenix.hpp>
+#include <boost/spirit/include/qi.hpp>
 
 static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
@@ -350,10 +355,74 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
 }
 
 void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
-    if (!EnsureArgsCount(args, 1, 2)) {
+    if (!EnsureArgsCount(args, 1, 100)) {
         return;
     }
-    
+
+    static const char* SETTINGS_HELP = R"(Settings:
+    settings help                   Displays this help
+    settings list                   Lists all settings
+    settings get <setting>          Prints the current value of the specified setting
+    settings set <setting> <value>  Sets the specified setting to the value)";
+    if (args.at(0) == "help") {
+        Application::Console().WriteRaw(SETTINGS_HELP);
+    } else if (args.at(0) == "list") {
+        Application::Console().WriteRaw("Available settings:");
+        Application::Console().WriteRaw(fmt::format("\t{:<25} {}", "<NAME>", "<CURRENT VALUE>"));
+        for (const auto& [k, v] : Application::mSettings) {
+            if (k == StrAuthKey) {
+                Application::Console().WriteRaw(fmt::format("\t{:<25} <key of length {}>", k, Application::SettingToString(v).size()));
+            } else {
+                Application::Console().WriteRaw(fmt::format("\t{:<25} {}", k, Application::SettingToString(v)));
+            }
+        }
+    } else if (args.at(0) == "get") {
+        if (args.size() < 2) {
+            Application::Console().WriteRaw("Not enough arguments: `settings get` requires a setting name.");
+        } else {
+            if (Application::mSettings.contains(args.at(1))) {
+                if (args.at(1) != StrAuthKey) {
+                    Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), Application::SettingToString(Application::mSettings.at(args.at(1)))));
+                } else {
+                    Application::Console().WriteRaw(fmt::format("{} = <key of length {}>", args.at(1), Application::SettingToString(Application::mSettings.at(args.at(1))).size()));
+                }
+            } else {
+                Application::Console().WriteRaw(fmt::format("Setting '{}' doesn't exist.", args.at(1)));
+            }
+        }
+    } else if (args.at(0) == "set") {
+        if (args.size() < 3) {
+            Application::Console().WriteRaw("Not enough arguments: `settings set` requires a setting name and value.");
+        } else {
+            if (args.at(1) == StrAuthKey) {
+                Application::Console().WriteRaw("It's not allowed to set the AuthKey during runtime.");
+            } else {
+                using namespace boost::spirit;
+                using qi::_1;
+                std::string ValueString = args.at(2);
+                Application::SettingValue Value;
+                qi::rule<std::string::iterator, std::string()> StringRule;
+                StringRule
+                    %= qi::lexeme['"' >> *(qi::char_ - '"') >> '"' ]
+                    | +(qi::char_ - '"')
+                    ;
+                qi::rule<std::string::iterator, Application::SettingValue()> ValueRule 
+                    = qi::bool_
+                    | qi::int_
+                    | StringRule;
+                auto It = ValueString.begin();
+                if (qi::phrase_parse(It, ValueString.end(), ValueRule[boost::phoenix::ref(Value) = _1], ascii::space)
+                        && It == ValueString.end()) {
+                    Application::SetSetting(args.at(1), Value);
+                    Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), Application::SettingToString(Application::mSettings.at(args.at(1)))));
+                } else {
+                    Application::Console().WriteRaw(fmt::format("New value '{}' did not parse as a valid value.", ValueString));
+                }
+            }
+        }
+    } else {
+        Application::Console().WriteRaw(fmt::format("Unknown argument '{}' - 'settings {}' is not a valid command.", args.at(0), args.at(0)));
+    }
 }
 
 void TConsole::Command_Say(const std::string& FullCmd) {
