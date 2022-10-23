@@ -28,22 +28,22 @@ TSentry::~TSentry() {
 
 void TSentry::PrintWelcome() {
     if (mValid) {
-        if (!Application::Settings.SendErrors) {
+        if (!Application::GetSettingBool("SendErrors")) {
             mValid = false;
-            if (Application::Settings.SendErrorsMessageEnabled) {
+            if (Application::GetSettingBool(StrSendErrors)) {
                 beammp_info("Opted out of error reporting (SendErrors), Sentry disabled.");
             } else {
                 beammp_info("Sentry disabled");
             }
         } else {
-            if (Application::Settings.SendErrorsMessageEnabled) {
+            if (Application::GetSettingBool(StrSendErrors)) {
                 beammp_info("Sentry started! Reporting errors automatically. This sends data to the developers in case of errors and crashes. You can learn more, turn this message off or opt-out of this in the ServerConfig.toml.");
             } else {
                 beammp_info("Sentry started");
             }
         }
     } else {
-        if (Application::Settings.SendErrorsMessageEnabled) {
+        if (Application::GetSettingBool(StrSendErrors)) {
             beammp_info("Sentry disabled in unofficial build. Automatic error reporting disabled.");
         } else {
             beammp_info("Sentry disabled in unofficial build");
@@ -57,8 +57,8 @@ void TSentry::SetupUser() {
     }
     Application::SetSubsystemStatus("Sentry", Application::Status::Good);
     sentry_value_t user = sentry_value_new_object();
-    if (Application::Settings.Key.size() == 36) {
-        sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::Settings.Key.c_str()));
+    if (Application::GetSettingString(StrAuthKey).size() == 36) {
+        sentry_value_set_by_key(user, "id", sentry_value_new_string(Application::GetSettingString(StrAuthKey).c_str()));
     } else {
         sentry_value_set_by_key(user, "id", sentry_value_new_string("unauthenticated"));
     }

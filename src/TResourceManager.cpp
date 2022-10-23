@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 
 TResourceManager::TResourceManager() {
     Application::SetSubsystemStatus("ResourceManager", Application::Status::Starting);
-    std::string Path = Application::Settings.Resource + "/Client";
+    std::string Path = Application::GetSettingString(StrResourceFolder) + "/Client";
     if (!fs::exists(Path))
         fs::create_directories(Path);
     for (const auto& entry : fs::directory_iterator(Path)) {
