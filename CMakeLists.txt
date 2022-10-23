@@ -166,8 +166,8 @@ if (UNIX)
         -Werror=missing-field-initializers
         -Werror=write-strings
         -Werror=ctor-dtor-privacy
-        -Werror=switch-enum
-        -Werror=switch-default
+        -Wswitch-enum
+        -Wswitch-default
         -Werror=old-style-cast
         -Werror=overloaded-virtual
         -Werror=overloaded-virtual
@@ -222,7 +222,7 @@ target_include_directories(BeamMP-Server SYSTEM PRIVATE
     ${BeamMP_Includes}
 )
 
-target_link_libraries(BeamMP-Server
+target_link_libraries(BeamMP-Server 
     ${BeamMP_Libraries}
     ${BeamMP_PlatformLibs}
 )

@@ -1,0 +1,9 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -y
+
+RUN apt-get install -y git libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev cmake g++-10 libboost1.74-all-dev libssl3 curl
+
+ENV CXX=g++-10
