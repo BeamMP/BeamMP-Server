@@ -1,0 +1,3 @@
+FROM archlinux
+
+RUN pacman -Syu --noconfirm lua53 openssl curl git cmake gcc make zlib boost websocketpp

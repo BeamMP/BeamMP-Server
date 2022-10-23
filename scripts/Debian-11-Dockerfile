@@ -1,0 +1,9 @@
+FROM debian:11
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -y
+
+RUN apt-get install -y git cmake g++-10 curl libboost1.74-all-dev libssl-dev libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev 
+
+ENV CXX=g++-10
