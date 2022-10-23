@@ -1,3 +1,6 @@
+# v3.2.0
+
+- ADDED `settings` command, which lets you `get`, `list`, and `set` config options from the console
 
 # v3.1.0
 
