@@ -107,11 +107,6 @@ curl
 ##### Build Dependencies
 These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
 
-**Ubuntu 22.04**
-```
-
-```
-
 <details>
 <summary>
 Ubuntu 22.04
