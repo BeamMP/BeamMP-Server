@@ -7,13 +7,12 @@
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
 
+#include <boost/asio/ip/address.hpp>
 #include <boost/spirit/home/qi/directive/lexeme.hpp>
 #include <boost/spirit/home/qi/parse.hpp>
-#include <bits/chrono.h>
-#include <boost/asio/ip/address.hpp>
-#include <fmt/chrono.h>
 #include <chrono>
 #include <ctime>
+#include <fmt/chrono.h>
 #include <sstream>
 
 #include <boost/phoenix.hpp>
@@ -312,9 +311,9 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
             auto Now = std::chrono::high_resolution_clock::now();
             auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Now - Locked->ConnectionTime);
             std::string ConnectedSince = fmt::format("{:%Y/%m/%d %H:%M:%S}, {:%H:%M:%S} ago ({} seconds)",
-                    fmt::localtime(std::chrono::high_resolution_clock::to_time_t(Locked->ConnectionTime)),
-                    Seconds,
-                    Seconds.count());
+                fmt::localtime(std::chrono::high_resolution_clock::to_time_t(Locked->ConnectionTime)),
+                Seconds,
+                Seconds.count());
             Application::Console().WriteRaw(fmt::format(
                 R"(        {} ('{}'):
             Roles:              {}
@@ -496,16 +495,15 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
                 Application::SettingValue Value;
                 qi::rule<std::string::iterator, std::string()> StringRule;
                 StringRule
-                    %= qi::lexeme['"' >> *(qi::char_ - '"') >> '"' ]
-                    | +(qi::char_ - '"')
-                    ;
-                qi::rule<std::string::iterator, Application::SettingValue()> ValueRule 
+                    %= qi::lexeme['"' >> *(qi::char_ - '"') >> '"']
+                    | +(qi::char_ - '"');
+                qi::rule<std::string::iterator, Application::SettingValue()> ValueRule
                     = qi::bool_
                     | qi::int_
                     | StringRule;
                 auto It = ValueString.begin();
                 if (qi::phrase_parse(It, ValueString.end(), ValueRule[boost::phoenix::ref(Value) = _1], ascii::space)
-                        && It == ValueString.end()) {
+                    && It == ValueString.end()) {
                     Application::SetSetting(args.at(1), Value);
                     Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), Application::SettingToString(Application::mSettings.at(args.at(1)))));
                 } else {
