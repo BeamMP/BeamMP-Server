@@ -148,6 +148,14 @@ public:
 
     static std::string SettingToString(const SettingValue& Value);
 
+    // Keeps track of how many packets we dropped on UDP due to fundamentally being malformed
+    static inline std::atomic_size_t MalformedUdpPackets { 0 };
+    // Keeps track of how many packets we dropped on UDP due to 
+    // 1) not having a valid (known) player id
+    // 2) player disconnecting
+    // 3) packet failing to parse
+    static inline std::atomic_size_t InvalidUdpPackets { 0 };
+
 private:
     static void SetShutdown(bool Val);
 
