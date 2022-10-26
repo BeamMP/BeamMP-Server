@@ -9,6 +9,10 @@
 
 #include <boost/spirit/home/qi/directive/lexeme.hpp>
 #include <boost/spirit/home/qi/parse.hpp>
+#include <bits/chrono.h>
+#include <boost/asio/ip/address.hpp>
+#include <fmt/chrono.h>
+#include <chrono>
 #include <ctime>
 #include <sstream>
 
@@ -244,6 +248,7 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
         lua [state id]          switches to lua, optionally into a specific state id's lua
         settings [command]      sets or gets settings for the server, run `settings help` for more info
         status                  how the server is doing and what it's up to
+        debug                   internal error and debug state of the server (for development)
         clear                   clears the console window)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
@@ -262,6 +267,94 @@ void TConsole::Command_Clear(const std::string&, const std::vector<std::string>&
         return;
     }
     mCommandline.write("\x1b[;H\x1b[2J");
+}
+
+void TConsole::Command_Debug(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
+    Application::Console().WriteRaw(fmt::format(R"(Debug info (for developers):
+    UDP:
+        Malformed packets:  {}
+        Invalid packets:    {})",
+        Application::MalformedUdpPackets,
+        Application::InvalidUdpPackets));
+    Application::Console().WriteRaw(fmt::format(R"(    Clients:
+        Note: All data/second rates are an average across the total time since 
+              connection and do not necessarily reflect the *current* data rate 
+              of that client.
+)"));
+    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        if (!Client.expired()) {
+            auto Locked = Client.lock();
+            std::string State = "";
+            if (Locked->IsSyncing()) {
+                State += "Syncing";
+            }
+            if (Locked->IsSynced()) {
+                if (!State.empty()) {
+                    State += " & ";
+                }
+                State += "Synced";
+            }
+            if (Locked->IsConnected()) {
+                if (!State.empty()) {
+                    State += " & ";
+                }
+                State += "Connected";
+            }
+            if (Locked->IsDisconnected()) {
+                if (!State.empty()) {
+                    State += " & ";
+                }
+                State += "Disconnected";
+            }
+            auto Now = std::chrono::high_resolution_clock::now();
+            auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Now - Locked->ConnectionTime);
+            std::string ConnectedSince = fmt::format("{:%Y/%m/%d %H:%M:%S}, {:%H:%M:%S} ago ({} seconds)",
+                    fmt::localtime(std::chrono::high_resolution_clock::to_time_t(Locked->ConnectionTime)),
+                    Seconds,
+                    Seconds.count());
+            Application::Console().WriteRaw(fmt::format(
+                R"(        {} ('{}'):
+            Roles:              {}
+            Cars:               {}
+            Is guest:           {}
+            Has unicycle:       {}
+            TCP:                {} (on port {})
+            UDP:                {} (on port {})
+            Sent via TCP:       {}
+            Received via TCP:   {}
+            Sent via UDP:       {} ({} packets)
+            Received via UDP:   {} ({} packets)
+            Status:             {}
+            Queued packets:     {}
+            Latest packet:      {}s ago
+            Connected since:    {}
+            Average send:       {}/s
+            Average receive:    {}/s)",
+                Locked->GetID(), Locked->GetName(),
+                Locked->GetRoles(),
+                Locked->GetCarCount(),
+                Locked->IsGuest() ? "yes" : "no",
+                Locked->GetUnicycleID() == -1 ? "no" : "yes",
+                Locked->GetTCPSock().remote_endpoint().address() == ip::address::from_string("0.0.0.0") ? "not connected" : "connected", Locked->GetTCPSock().remote_endpoint().port(),
+                Locked->GetUDPAddr().address() == ip::address::from_string("0.0.0.0") ? "NOT connected" : "connected", Locked->GetUDPAddr().port(),
+                ToHumanReadableSize(Locked->TcpSent),
+                ToHumanReadableSize(Locked->TcpReceived),
+                ToHumanReadableSize(Locked->UdpSent), Locked->UdpPacketsSent,
+                ToHumanReadableSize(Locked->UdpReceived), Locked->UdpPacketsReceived,
+                State.empty() ? "None (likely pre-sync)" : State,
+                Locked->MissedPacketQueueSize(),
+                Locked->SecondsSinceLastPing(),
+                ConnectedSince,
+                ToHumanReadableSize((Locked->TcpSent + Locked->UdpSent) / Seconds.count()),
+                ToHumanReadableSize((Locked->TcpReceived + Locked->UdpReceived) / Seconds.count())));
+        } else {
+            Application::Console().WriteRaw(fmt::format(R"(        <expired client>)"));
+        }
+        return true;
+    });
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
