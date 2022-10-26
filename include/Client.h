@@ -87,6 +87,23 @@ public:
     void UpdatePingTime();
     int SecondsSinceLastPing();
 
+    // bytes received on UDP
+    std::atomic_size_t UdpReceived = 0;
+    // number of packets received on UDP
+    std::atomic_size_t UdpPacketsReceived = 0;
+    // bytes sent on UDP
+    std::atomic_size_t UdpSent = 0;
+    // number of packets sent on UDP
+    std::atomic_size_t UdpPacketsSent = 0;
+
+    // bytes received on TCP
+    std::atomic_size_t TcpReceived = 0;
+    // bytes sent on TCP
+    std::atomic_size_t TcpSent = 0;
+
+    std::chrono::high_resolution_clock::time_point ConnectionTime{};
+
+
 private:
     void InsertVehicle(int ID, const std::string& Data);
 
