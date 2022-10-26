@@ -161,8 +161,8 @@ if (UNIX)
         -Werror=missing-field-initializers
         -Werror=write-strings
         -Werror=ctor-dtor-privacy
-        -Werror=switch-enum
-        -Werror=switch-default
+        -Wswitch-enum
+        -Wswitch-default
         -Werror=old-style-cast
         -Werror=overloaded-virtual
         -Werror=overloaded-virtual
