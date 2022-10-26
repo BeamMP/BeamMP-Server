@@ -4,6 +4,7 @@
 #include "Http.h"
 #include "LuaAPI.h"
 #include "TLuaPlugin.h"
+#include "Uuid.h"
 #include "sol/object.hpp"
 
 #include <chrono>
@@ -818,6 +819,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     UtilTable.set_function("JsonUnflatten", &LuaAPI::MP::JsonUnflatten);
     UtilTable.set_function("JsonPrettify", &LuaAPI::MP::JsonPrettify);
     UtilTable.set_function("JsonMinify", &LuaAPI::MP::JsonMinify);
+    UtilTable.set_function("GenerateUUID", &uuid::GenerateUuid);
     UtilTable.set_function("Random", [this] {
         return mUniformRealDistribution01(mMersenneTwister);
     });
