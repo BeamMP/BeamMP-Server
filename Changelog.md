@@ -1,6 +1,7 @@
 # v3.2.0
 
 - ADDED `settings` command, which lets you `get`, `list`, and `set` config options from the console
+- ADDED `Util.GenerateUUID()`, which generates an RFC4122 UUID (universally unique identifier)
 
 # v3.1.1
 

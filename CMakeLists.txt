@@ -118,6 +118,7 @@ set(BeamMP_Sources
     include/TPluginMonitor.h src/TPluginMonitor.cpp
     include/Environment.h
     include/BoostAliases.h
+    include/Uuid.h src/Uuid.cpp
 )
 
 set(BeamMP_Includes
@@ -161,8 +162,6 @@ if (UNIX)
         -Werror=missing-field-initializers
         -Werror=write-strings
         -Werror=ctor-dtor-privacy
-        -Wswitch-enum
-        -Wswitch-default
         -Werror=old-style-cast
         -Werror=overloaded-virtual
         -Werror=overloaded-virtual
