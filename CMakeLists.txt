@@ -47,11 +47,6 @@ if(APPLE)
         include_directories(/usr/local/opt/openssl@1.1/include)
         link_directories(/usr/local/opt/openssl@1.1/lib)
     endif()
-# ------------------------ WINDOWS ---------------------------------
-elseif (WIN32)
-    if (WIN32_STATIC_RUNTIME)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    endif()
 # ------------------------ UNIX ------------------------------------
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
@@ -171,6 +166,16 @@ if (UNIX)
 
         -fstack-protector
         -Wzero-as-null-pointer-constant
+    )
+else()
+    set(BEAMMP_RT /MDd)
+    if (WIN32_STATIC_RUNTIME)
+        set(BEAMMP_RT /MT)
+    endif()
+
+    set(BeamMP_CompileOptions
+        ${BEAMMP_RT}
+        /bigobj
     )
 else()
 
