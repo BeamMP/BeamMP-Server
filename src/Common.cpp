@@ -427,3 +427,17 @@ std::string GetPlatformAgnosticErrorString() {
     return "(no human-readable errors on this platform)";
 #endif
 }
+
+std::string ToHumanReadableSize(size_t Size) {
+    if (Size > TB) {
+        return fmt::format("{:.2f} TiB", double(Size) / TB);
+    } else if (Size > GB) {
+        return fmt::format("{:.2f} GiB", double(Size) / GB);
+    } else if (Size > MB) {
+        return fmt::format("{:.2f} MiB", double(Size) / MB);
+    } else if (Size > KB) {
+        return fmt::format("{:.2f} KiB", double(Size) / KB);
+    } else {
+        return fmt::format("{} B", Size);
+    }
+}

@@ -178,6 +178,7 @@ void RegisterThread(const std::string& str);
 #define KB 1024llu
 #define MB (KB * 1024llu)
 #define GB (MB * 1024llu)
+#define TB (GB * 1024llu)
 #define SSU_UNRAW SECRET_SENTRY_URL
 
 #define _file_basename std::filesystem::path(__FILE__).filename().string()
@@ -352,3 +353,5 @@ inline T DeComp(const T& Compressed) {
 
 std::string GetPlatformAgnosticErrorString();
 #define S_DSN SU_RAW
+
+std::string ToHumanReadableSize(size_t Size);
