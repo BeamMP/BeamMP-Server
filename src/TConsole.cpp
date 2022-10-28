@@ -479,12 +479,12 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
            << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
            << "\tSubsystems:\n"
            << "\t\tGood/Starting/Bad:           " << SystemsGood << "/" << SystemsStarting << "/" << SystemsBad << "\n"
-           << "\t\tShutting down/Shut down:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
+           << "\t\tShutting down/Shut down:     " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
            << "\t\tGood:                        [ " << SystemsGoodList << " ]\n"
            << "\t\tStarting:                    [ " << SystemsStartingList << " ]\n"
            << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
            << "\t\tShutting down:               [ " << SystemsShuttingDownList << " ]\n"
-           << "\t\tShut down:                    [ " << SystemsShutdownList << " ]\n"
+           << "\t\tShut down:                   [ " << SystemsShutdownList << " ]\n"
            << "";
 
     Application::Console().WriteRaw(Status.str());
