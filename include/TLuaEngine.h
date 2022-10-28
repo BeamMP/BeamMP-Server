@@ -98,8 +98,8 @@ public:
         return mLuaStates.size();
     }
     std::vector<std::string> GetLuaStateNames() {
-        std::vector<std::string> names{};
-        for(auto const& [stateId, _ ] : mLuaStates) {
+        std::vector<std::string> names {};
+        for (auto const& [stateId, _] : mLuaStates) {
             names.push_back(stateId);
         }
         return names;
