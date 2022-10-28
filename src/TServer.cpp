@@ -1,6 +1,7 @@
 #include "TServer.h"
 #include "Client.h"
 #include "Common.h"
+#include "CustomAssert.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include <TLuaPlugin.h>
@@ -94,13 +95,20 @@ TServer::TServer(const std::vector<std::string_view>& Arguments) {
 }
 
 void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
-    if (!WeakClientPtr.expired()) {
-        TClient& Client = *WeakClientPtr.lock();
-        beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
-        Client.ClearCars();
-        WriteLock Lock(mClientsMutex);
-        mClients.erase(WeakClientPtr.lock());
+    std::shared_ptr<TClient> LockedClientPtr { nullptr };
+    try {
+        LockedClientPtr = WeakClientPtr.lock();
+    } catch (const std::exception&) {
+        // silently fail, as there's nothing to do
+        return;
     }
+    beammp_assert(LockedClientPtr != nullptr);
+    TClient& Client = *LockedClientPtr;
+    beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
+    // TODO: Send delete packets for all cars
+    Client.ClearCars();
+    WriteLock Lock(mClientsMutex);
+    mClients.erase(WeakClientPtr.lock());
 }
 
 void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {

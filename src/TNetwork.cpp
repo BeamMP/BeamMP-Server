@@ -522,8 +522,14 @@ void TNetwork::UpdatePlayer(TClient& Client) {
 }
 
 void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
-    beammp_assert(!ClientPtr.expired());
-    auto LockedClientPtr = ClientPtr.lock();
+    std::shared_ptr<TClient> LockedClientPtr { nullptr };
+    try {
+        LockedClientPtr = ClientPtr.lock();
+    } catch (const std::exception&) {
+        // do nothing ig
+        return;
+    }
+    beammp_assert(LockedClientPtr != nullptr);
     TClient& c = *LockedClientPtr;
     beammp_info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
@@ -540,7 +546,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     SendToAll(&c, StringToVector(Packet), false, true);
     Packet.clear();
     auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", c.GetID());
-    LuaAPI::MP::Engine->ReportErrors(Futures);
+    LuaAPI::MP::Engine->WaitForAll(Futures);
     c.Disconnect("Already Disconnected (OnDisconnect)");
     mServer.RemoveClient(ClientPtr);
 }
