@@ -6,6 +6,7 @@
 #include <optional>
 
 void TClient::DeleteCar(int Ident) {
+    // TODO: Send delete packets
     std::unique_lock lock(mVehicleDataMutex);
     auto iter = std::find_if(mVehicleData.begin(), mVehicleData.end(), [&](auto& elem) {
         return Ident == elem.ID();
