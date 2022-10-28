@@ -526,7 +526,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     try {
         LockedClientPtr = ClientPtr.lock();
     } catch (const std::exception&) {
-        // do nothing ig
+        beammp_warn("Client expired in OnDisconnect, this is unexpected");
         return;
     }
     beammp_assert(LockedClientPtr != nullptr);
@@ -866,12 +866,13 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
     bool ret = true;
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         std::shared_ptr<TClient> Client;
-        {
+        try {
             ReadLock Lock(mServer.GetClientMutex());
-            if (!ClientPtr.expired()) {
-                Client = ClientPtr.lock();
-            } else
-                return true;
+            Client = ClientPtr.lock();
+        } catch (const std::exception&) {
+            // continue
+            beammp_warn("Client expired, shouldn't happen - if a client disconnected recently, you can ignore this");
+            return true;
         }
         if (Self || Client.get() != c) {
             if (Client->IsSynced() || Client->IsSyncing()) {
