@@ -9,6 +9,9 @@ project(BeamMP-Server
     HOMEPAGE_URL https://beammp.com
     LANGUAGES CXX C)
 
+# quality of life stuff
+set(CMAKE_COLOR_DIAGNOSTICS ON)
+
 find_package(Git REQUIRED)
 # Update submodules as needed
 option(GIT_SUBMODULE "Check submodules during build" ON)
@@ -131,6 +134,7 @@ set(BeamMP_Includes
     "${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/deps"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include"
 )
 
 set(BeamMP_Definitions
@@ -186,12 +190,12 @@ set(BeamMP_Libraries
     OpenSSL::SSL
     OpenSSL::Crypto
     sol2::sol2
-    fmt::fmt
     Threads::Threads
     ZLIB::ZLIB
     ${LUA_LIBRARIES}
     commandline
     sentry
+    fmt::fmt
 )
 
 if (WIN32)

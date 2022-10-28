@@ -76,7 +76,7 @@ public:
     };
 
     TLuaEngine();
-    ~TLuaEngine() noexcept {
+    virtual ~TLuaEngine() noexcept {
         beammp_debug("Lua Engine terminated");
     }
 
@@ -98,8 +98,8 @@ public:
         return mLuaStates.size();
     }
     std::vector<std::string> GetLuaStateNames() {
-        std::vector<std::string> names{};
-        for(auto const& [stateId, _ ] : mLuaStates) {
+        std::vector<std::string> names {};
+        for (auto const& [stateId, _] : mLuaStates) {
             names.push_back(stateId);
         }
         return names;
@@ -198,7 +198,7 @@ private:
     public:
         StateThreadData(const std::string& Name, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
-        ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
+        virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
