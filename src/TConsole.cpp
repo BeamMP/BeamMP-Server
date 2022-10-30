@@ -311,7 +311,7 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
             auto Now = std::chrono::high_resolution_clock::now();
             auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Now - Locked->ConnectionTime);
             std::string ConnectedSince = fmt::format("{:%Y/%m/%d %H:%M:%S}, {:%H:%M:%S} ago ({} seconds)",
-                fmt::localtime(std::chrono::high_resolution_clock::to_time_t(Locked->ConnectionTime)),
+                fmt::localtime(std::chrono::system_clock::to_time_t(Locked->ConnectionTime)),
                 Seconds,
                 Seconds.count());
             Application::Console().WriteRaw(fmt::format(
