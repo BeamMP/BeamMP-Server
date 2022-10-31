@@ -176,7 +176,7 @@ else()
 
     set(BeamMP_CompileOptions
         /bigobj
-        /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT
+        /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:LIBCMT
     )
 endif()
 
