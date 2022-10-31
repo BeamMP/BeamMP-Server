@@ -199,7 +199,8 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
                 })) {
             break;
         }
-        Network.SendToAll(nullptr, Packet, true, true);
+        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
+        Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
         return;
     }
     case 'E':
@@ -212,7 +213,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     case 'Z': // position packet
         PPSMonitor.IncrementInternalPPS();
         Network.SendToAll(LockedClient.get(), Packet, false, false);
-
         HandlePosition(*LockedClient, StringPacket);
     default:
         return;
