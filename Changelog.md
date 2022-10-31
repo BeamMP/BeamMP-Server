@@ -1,6 +1,10 @@
 # v3.1.1
 
-- FIXED many issues which could cause the server to crash when receiving weird data
+- FIXED bug which caused GetPlayerIdentifiers, GetPlayerName, etc not to work in `onPlayerDisconnect`
+- FIXED some issues which could cause the server to crash when receiving malformed data
+- FIXED a bug which caused a server to crash during authentication when receiving malformed data
+- FIXED minor vulnerability in chat message handling
+- FIXED a minor formatting bug in the `status` command
 
 # v3.1.0
 
