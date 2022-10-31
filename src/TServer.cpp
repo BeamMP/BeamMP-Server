@@ -182,7 +182,12 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         if (Packet.size() < 4 || std::find(Packet.begin() + 3, Packet.end(), ':') == Packet.end())
             break;
         const auto PacketAsString = std::string(reinterpret_cast<const char*>(Packet.data()), Packet.size());
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), PacketAsString.substr(PacketAsString.find(':', 3) + 2));
+        std::string Message = "";
+        const auto ColonPos = PacketAsString.find(':', 3);
+        if (ColonPos != std::string::npos && ColonPos + 2 < PacketAsString.size()) {
+            Message = PacketAsString.substr(ColonPos + 2);
+        }
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Message);
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
         if (std::any_of(Futures.begin(), Futures.end(),
