@@ -222,6 +222,10 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
 void TServer::HandleEvent(TClient& c, const std::string& RawData) {
     // E:Name:Data
     // Data is allowed to have ':'
+    if (RawData.size() < 2) {
+        beammp_debugf("Client '{}' ({}) tried to send an empty event, ignoring", c.GetName(), c.GetID());
+        return;
+    }
     auto NameDataSep = RawData.find(':', 2);
     if (NameDataSep == std::string::npos) {
         beammp_warn("received event in invalid format (missing ':'), got: '" + RawData + "'");
