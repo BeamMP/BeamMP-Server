@@ -1,6 +1,7 @@
 #include "TServer.h"
 #include "Client.h"
 #include "Common.h"
+#include "CustomAssert.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include <TLuaPlugin.h>
@@ -94,13 +95,20 @@ TServer::TServer(const std::vector<std::string_view>& Arguments) {
 }
 
 void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
-    if (!WeakClientPtr.expired()) {
-        TClient& Client = *WeakClientPtr.lock();
-        beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
-        Client.ClearCars();
-        WriteLock Lock(mClientsMutex);
-        mClients.erase(WeakClientPtr.lock());
+    std::shared_ptr<TClient> LockedClientPtr { nullptr };
+    try {
+        LockedClientPtr = WeakClientPtr.lock();
+    } catch (const std::exception&) {
+        // silently fail, as there's nothing to do
+        return;
     }
+    beammp_assert(LockedClientPtr != nullptr);
+    TClient& Client = *LockedClientPtr;
+    beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
+    // TODO: Send delete packets for all cars
+    Client.ClearCars();
+    WriteLock Lock(mClientsMutex);
+    mClients.erase(WeakClientPtr.lock());
 }
 
 void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
@@ -167,14 +175,20 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         }
         ParseVehicle(*LockedClient, StringPacket, Network);
         return;
-    case 'J':
-        Network.SendToAll(LockedClient.get(), Packet, false, true);
-        return;
     case 'C': {
         if (Packet.size() < 4 || std::find(Packet.begin() + 3, Packet.end(), ':') == Packet.end())
             break;
         const auto PacketAsString = std::string(reinterpret_cast<const char*>(Packet.data()), Packet.size());
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), PacketAsString.substr(PacketAsString.find(':', 3) + 2));
+        std::string Message = "";
+        const auto ColonPos = PacketAsString.find(':', 3);
+        if (ColonPos != std::string::npos && ColonPos + 2 < PacketAsString.size()) {
+            Message = PacketAsString.substr(ColonPos + 2);
+        }
+        if (Message.empty()) {
+            beammp_debugf("Empty chat message received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
+            return;
+        }
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Message);
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
         if (std::any_of(Futures.begin(), Futures.end(),
@@ -185,7 +199,8 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
                 })) {
             break;
         }
-        Network.SendToAll(nullptr, Packet, true, true);
+        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
+        Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
         return;
     }
     case 'E':
@@ -198,7 +213,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     case 'Z': // position packet
         PPSMonitor.IncrementInternalPPS();
         Network.SendToAll(LockedClient.get(), Packet, false, false);
-
         HandlePosition(*LockedClient, StringPacket);
     default:
         return;
@@ -208,6 +222,10 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
 void TServer::HandleEvent(TClient& c, const std::string& RawData) {
     // E:Name:Data
     // Data is allowed to have ':'
+    if (RawData.size() < 2) {
+        beammp_debugf("Client '{}' ({}) tried to send an empty event, ignoring", c.GetName(), c.GetID());
+        return;
+    }
     auto NameDataSep = RawData.find(':', 2);
     if (NameDataSep == std::string::npos) {
         beammp_warn("received event in invalid format (missing ':'), got: '" + RawData + "'");

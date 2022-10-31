@@ -393,6 +393,12 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     }
     Header = *reinterpret_cast<int32_t*>(HeaderData.data());
 
+    if (Header < 0) {
+        ClientKick(c, "Invalid packet - header negative");
+        beammp_errorf("Client {} send negative TCP header, ignoring packet", c.GetID());
+        return {};
+    }
+
     std::vector<uint8_t> Data;
     // TODO: This is arbitrary, this needs to be handled another way
     if (Header < int32_t(100 * MB)) {
@@ -425,7 +431,7 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     beammp_info("Client kicked: " + R);
     if (!TCPSend(c, StringToVector("K" + R))) {
-        beammp_debugf("tried to kick player '{}' (id {}), but was already connected", c.GetName(), c.GetID());
+        beammp_debugf("tried to kick player '{}' (id {}), but was already disconnected", c.GetName(), c.GetID());
     }
     c.Disconnect("Kicked");
 }
@@ -522,8 +528,14 @@ void TNetwork::UpdatePlayer(TClient& Client) {
 }
 
 void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
-    beammp_assert(!ClientPtr.expired());
-    auto LockedClientPtr = ClientPtr.lock();
+    std::shared_ptr<TClient> LockedClientPtr { nullptr };
+    try {
+        LockedClientPtr = ClientPtr.lock();
+    } catch (const std::exception&) {
+        beammp_warn("Client expired in OnDisconnect, this is unexpected");
+        return;
+    }
+    beammp_assert(LockedClientPtr != nullptr);
     TClient& c = *LockedClientPtr;
     beammp_info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
@@ -540,7 +552,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     SendToAll(&c, StringToVector(Packet), false, true);
     Packet.clear();
     auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", c.GetID());
-    LuaAPI::MP::Engine->ReportErrors(Futures);
+    LuaAPI::MP::Engine->WaitForAll(Futures);
     c.Disconnect("Already Disconnected (OnDisconnect)");
     mServer.RemoveClient(ClientPtr);
 }
@@ -860,12 +872,13 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
     bool ret = true;
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         std::shared_ptr<TClient> Client;
-        {
+        try {
             ReadLock Lock(mServer.GetClientMutex());
-            if (!ClientPtr.expired()) {
-                Client = ClientPtr.lock();
-            } else
-                return true;
+            Client = ClientPtr.lock();
+        } catch (const std::exception&) {
+            // continue
+            beammp_warn("Client expired, shouldn't happen - if a client disconnected recently, you can ignore this");
+            return true;
         }
         if (Self || Client.get() != c) {
             if (Client->IsSynced() || Client->IsSyncing()) {

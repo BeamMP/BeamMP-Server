@@ -28,6 +28,8 @@ set(SENTRY_BUILD_SHARED_LIBS OFF)
 
 add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT=1)
 
+option(WIN32_STATIC_RUNTIME "Build statically-linked runtime on windows (don't touch unless you know what you're doing)" ON)
+
 # ------------------------ APPLE ---------------------------------
 if(APPLE)
     if(IS_DIRECTORY /opt/homebrew/Cellar/lua@5.3/5.3.6)
@@ -46,18 +48,14 @@ if(APPLE)
         link_directories(/usr/local/opt/openssl@1.1/lib)
     endif()
 # ------------------------ WINDOWS ---------------------------------
-option(WIN32_STATIC_RUNTIME "Build statically-linked runtime on windows (don't touch unless you know what you're doing)" ON)
 elseif (WIN32)
-    # this has to happen before sentry, so that crashpad on windows links with these settings.
     if (WIN32_STATIC_RUNTIME)
-        message(STATUS "MSVC -> forcing use of statically-linked runtime.")
-        STRING(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
-        STRING(REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
-# ------------------------ LINUX ---------------------------------
+# ------------------------ UNIX ------------------------------------
 elseif (UNIX)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-builtin")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
     option(SANITIZE "Turns on thread and UB sanitizers" OFF)
     if (SANITIZE)
         message(STATUS "sanitize is ON")
@@ -82,9 +80,6 @@ add_subdirectory("deps/sentry-native")
 
 # ------------------------ C++ SETUP ---------------------------------
 set(CMAKE_CXX_STANDARD 17)
-if (MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-endif ()
 
 # ------------------------ DEPENDENCIES ------------------------------
 message(STATUS "Adding local source dependencies")
@@ -176,6 +171,12 @@ if (UNIX)
 
         -fstack-protector
         -Wzero-as-null-pointer-constant
+    )
+else()
+
+    set(BeamMP_CompileOptions
+        /bigobj
+        /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:LIBCMT
     )
 endif()
 

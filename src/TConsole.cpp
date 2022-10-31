@@ -198,10 +198,10 @@ bool TConsole::EnsureArgsCount(const std::vector<std::string>& args, size_t min,
         return EnsureArgsCount(args, min);
     } else {
         if (args.size() > max) {
-            Application::Console().WriteRaw("Too many arguments. At most " + std::to_string(max) + " arguments expected, got " + std::to_string(args.size()) + " instead.");
+            Application::Console().WriteRaw("Too many arguments. At most " + std::to_string(max) + " argument(s) expected, got " + std::to_string(args.size()) + " instead.");
             return false;
         } else if (args.size() < min) {
-            Application::Console().WriteRaw("Too few arguments. At least " + std::to_string(max) + " arguments expected, got " + std::to_string(args.size()) + " instead.");
+            Application::Console().WriteRaw("Too few arguments. At least " + std::to_string(min) + " argument(s) expected, got " + std::to_string(args.size()) + " instead.");
             return false;
         }
     }
@@ -350,9 +350,10 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
 }
 
 void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
-    if (!EnsureArgsCount(args, 0)) {
+    if (!EnsureArgsCount(args, 1, 2)) {
         return;
     }
+    
 }
 
 void TConsole::Command_Say(const std::string& FullCmd) {
@@ -478,12 +479,12 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
            << "\t\tEvent handlers:              " << mLuaEngine->GetRegisteredEventHandlerCount() << "\n"
            << "\tSubsystems:\n"
            << "\t\tGood/Starting/Bad:           " << SystemsGood << "/" << SystemsStarting << "/" << SystemsBad << "\n"
-           << "\t\tShutting down/Shut down:      " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
+           << "\t\tShutting down/Shut down:     " << SystemsShuttingDown << "/" << SystemsShutdown << "\n"
            << "\t\tGood:                        [ " << SystemsGoodList << " ]\n"
            << "\t\tStarting:                    [ " << SystemsStartingList << " ]\n"
            << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
            << "\t\tShutting down:               [ " << SystemsShuttingDownList << " ]\n"
-           << "\t\tShut down:                    [ " << SystemsShutdownList << " ]\n"
+           << "\t\tShut down:                   [ " << SystemsShutdownList << " ]\n"
            << "";
 
     Application::Console().WriteRaw(Status.str());
