@@ -1,3 +1,6 @@
+# v3.1.1
+
+- FIXED many issues which could cause the server to crash when receiving weird data
 
 # v3.1.0
 
