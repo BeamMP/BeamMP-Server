@@ -111,7 +111,7 @@ void TNetwork::UDPServerMain() {
                     ++Locked->UdpPacketsReceived;
                     Data.erase(Data.begin() + 0, Data.begin() + 2);
                     TServer::GlobalParser(Locked, std::move(Data), mPPSMonitor, *this);
-                } catch (const std::exception&) { 
+                } catch (const std::exception&) {
                     ++Application::InvalidUdpPackets;
                 }
             }
