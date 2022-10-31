@@ -393,6 +393,12 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     }
     Header = *reinterpret_cast<int32_t*>(HeaderData.data());
 
+    if (Header < 0) {
+        ClientKick(c, "Invalid packet - header negative");
+        beammp_errorf("Client {} send negative TCP header, ignoring packet", c.GetID());
+        return {};
+    }
+
     std::vector<uint8_t> Data;
     // TODO: This is arbitrary, this needs to be handled another way
     if (Header < int32_t(100 * MB)) {
@@ -425,7 +431,7 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     beammp_info("Client kicked: " + R);
     if (!TCPSend(c, StringToVector("K" + R))) {
-        beammp_debugf("tried to kick player '{}' (id {}), but was already connected", c.GetName(), c.GetID());
+        beammp_debugf("tried to kick player '{}' (id {}), but was already disconnected", c.GetName(), c.GetID());
     }
     c.Disconnect("Kicked");
 }
