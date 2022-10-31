@@ -175,9 +175,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         }
         ParseVehicle(*LockedClient, StringPacket, Network);
         return;
-    case 'J':
-        Network.SendToAll(LockedClient.get(), Packet, false, true);
-        return;
     case 'C': {
         if (Packet.size() < 4 || std::find(Packet.begin() + 3, Packet.end(), ':') == Packet.end())
             break;
