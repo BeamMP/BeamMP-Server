@@ -177,7 +177,7 @@ void TConfig::ParseFromFile(std::string_view name) {
     FlushToFile();
     // all good so far, let's check if there's a key
     if (Application::GetSettingString(StrAuthKey).empty()) {
-        beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server. Alternatively, if you only want a private server (one that doesn't show up in the server list), you may put anything as your AuthKey, like \"hello\".");
         Application::SetSubsystemStatus("Config", Application::Status::Bad);
         mFailed = true;
         return;
