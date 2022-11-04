@@ -152,8 +152,11 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
 
     // V to Y
     if (Code <= 89 && Code >= 86) {
-        PPSMonitor.IncrementInternalPPS();
-        Network.SendToAll(LockedClient.get(), Packet, false, false);
+        if (HandleVehicleUpdate(*LockedClient, StringPacket)){
+            Network.SendToAll(LockedClient.get(), Packet, false, false);
+        } else {
+            beammp_debugf("Invalid vehicle update packet received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
+        }
         return;
     }
     switch (Code) {
@@ -464,6 +467,40 @@ bool TServer::HandlePosition(TClient& c, const std::string& Packet) {
         std::tie(PID, VID) = MaybePidVid.value();
         if (PID == c.GetID()) {
             c.SetCarPosition(VID, Data);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool TServer::HandleVehicleUpdate(TClient& c, const std::string& Packet) {
+    if (Packet.size() < 3) {
+        // invalid packet
+        return false;
+    }
+    // (Vi/We/Yl):serverVehicleID:data
+    // (Vi/We/Yl):serverVehicleID:data
+    std::string withoutCode = Packet.substr(3);
+    auto NameDataSep = withoutCode.find(':', 2);
+    if (NameDataSep == std::string::npos || NameDataSep < 2) {
+        // invalid packet
+        return false;
+    }
+    // FIXME: ensure that -2 does what it should... it seems weird.
+    std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
+    if (NameDataSep + 1 > withoutCode.size()) {
+        // invalid packet
+        return false;
+    }
+    std::string Data = withoutCode.substr(NameDataSep + 1);
+
+    // parse veh ID
+    auto MaybePidVid = GetPidVid(ServerVehicleID);
+    if (MaybePidVid) {
+        int PID = -1;
+        int VID = -1;
+        std::tie(PID, VID) = MaybePidVid.value();
+        if (PID == c.GetID()) {
             return true;
         }
     }
