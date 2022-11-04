@@ -44,6 +44,7 @@ private:
     static bool IsUnicycle(TClient& c, const std::string& CarJson);
     static void Apply(TClient& c, int VID, const std::string& pckt);
     static bool HandlePosition(TClient& c, const std::string& Packet);
+    static bool HandleVehicleUpdate(TClient& c, const std::string& Packet);
 };
 
 struct BufferView {
