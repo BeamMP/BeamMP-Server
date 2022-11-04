@@ -212,9 +212,11 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
     case 'Z': // position packet
-        PPSMonitor.IncrementInternalPPS();
-        Network.SendToAll(LockedClient.get(), Packet, false, false);
-        HandlePosition(*LockedClient, StringPacket);
+        if (HandlePosition(*LockedClient, StringPacket)){
+            Network.SendToAll(LockedClient.get(), Packet, false, false);
+        } else {
+            beammp_debugf("Invalid vehicle position packet received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
+        }
     default:
         return;
     }
@@ -433,10 +435,10 @@ void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     (void)mClients.insert(NewClient);
 }
 
-void TServer::HandlePosition(TClient& c, const std::string& Packet) {
+bool TServer::HandlePosition(TClient& c, const std::string& Packet) {
     if (Packet.size() < 3) {
         // invalid packet
-        return;
+        return false;
     }
     // Zp:serverVehicleID:data
     // Zp:0:data
@@ -444,13 +446,13 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
     auto NameDataSep = withoutCode.find(':', 2);
     if (NameDataSep == std::string::npos || NameDataSep < 2) {
         // invalid packet
-        return;
+        return false;
     }
     // FIXME: ensure that -2 does what it should... it seems weird.
     std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
     if (NameDataSep + 1 > withoutCode.size()) {
         // invalid packet
-        return;
+        return false;
     }
     std::string Data = withoutCode.substr(NameDataSep + 1);
 
@@ -459,9 +461,11 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
     if (MaybePidVid) {
         int PID = -1;
         int VID = -1;
-        // FIXME: check that the VID and PID are valid, so that we don't waste memory
         std::tie(PID, VID) = MaybePidVid.value();
-
-        c.SetCarPosition(VID, Data);
+        if (PID == c.GetID()) {
+            c.SetCarPosition(VID, Data);
+            return true;
+        }
     }
+    return false;
 }
