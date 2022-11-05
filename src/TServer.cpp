@@ -78,7 +78,7 @@ TEST_CASE("GetPidVid") {
 }
 
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
-    beammp_info("BeamMP Server v" + Application::ServerVersionString());
+    beammp_infof("BeamMP Server v{} ({})", Application::ServerVersionString(), BEAMMP_GIT_HASH);
     Application::SetSubsystemStatus("Server", Application::Status::Starting);
     if (Arguments.size() > 1) {
         Application::SetSetting(StrCustomIP, std::string(Arguments[0]));

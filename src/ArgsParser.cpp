@@ -13,7 +13,7 @@ void ArgsParser::Parse(const std::vector<std::string_view>& ArgList) {
                 ConsumeLongFlag(std::string(Arg));
             }
         } else {
-            beammp_errorf("Error parsing commandline arguments: Supplied argument '{}' is not a valid argument and was ignored.", Arg);
+            fmt::print(stderr, "Error parsing commandline arguments: Supplied argument '{}' is not a valid argument and was ignored.", Arg);
         }
     }
 }
@@ -22,17 +22,17 @@ bool ArgsParser::Verify() {
     bool Ok = true;
     for (const auto& RegisteredArg : mRegisteredArguments) {
         if (RegisteredArg.Flags & Flags::REQUIRED && !FoundArgument(RegisteredArg.Names)) {
-            beammp_errorf("Error in commandline arguments: Argument '{}' is required but wasn't found.", RegisteredArg.Names.at(0));
+            fmt::print(stderr, "Error in commandline arguments: Argument '{}' is required but wasn't found.", RegisteredArg.Names.at(0));
             Ok = false;
             continue;
         } else if (FoundArgument(RegisteredArg.Names)) {
             if (RegisteredArg.Flags & Flags::HAS_VALUE) {
                 if (!GetValueOfArgument(RegisteredArg.Names).has_value()) {
-                    beammp_error("Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' expects a value, but no value was given.");
+                    fmt::print(stderr, "Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' expects a value, but no value was given.");
                     Ok = false;
                 }
             } else if (GetValueOfArgument(RegisteredArg.Names).has_value()) {
-                beammp_error("Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' does not expect a value, but one was given.");
+                fmt::print(stderr, "Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' does not expect a value, but one was given.");
                 Ok = false;
             }
         }
@@ -81,7 +81,7 @@ void ArgsParser::ConsumeLongAssignment(const std::string& Arg) {
     auto Value = Arg.substr(Arg.rfind("=") + 1);
     auto Name = Arg.substr(2, Arg.rfind("=") - 2);
     if (!IsRegistered(Name)) {
-        beammp_warn("Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
+        fmt::print(stdout, "Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
     }
     mFoundArgs.push_back({ Name, Value });
 }
@@ -90,7 +90,7 @@ void ArgsParser::ConsumeLongFlag(const std::string& Arg) {
     auto Name = Arg.substr(2, Arg.rfind("=") - 2);
     mFoundArgs.push_back({ Name, std::nullopt });
     if (!IsRegistered(Name)) {
-        beammp_warn("Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
+        fmt::print(stdout, "Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
     }
 }
 
