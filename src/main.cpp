@@ -73,6 +73,7 @@ int main(int argc, char** argv) {
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
     Application::InitializeConsole();
+    Application::Console().Internal().set_prompt("");
     ArgsParser Parser;
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
@@ -83,13 +84,11 @@ int BeamMPServerMain(MainArguments Arguments) {
         return 1;
     }
     if (Parser.FoundArgument({ "help" })) {
-        Application::Console().Internal().set_prompt("");
         Application::Console().WriteRaw(sCommandlineArguments);
         return 0;
     }
     if (Parser.FoundArgument({ "version" })) {
-        Application::Console().Internal().set_prompt("");
-        Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
+        Application::Console().WriteRaw(fmt::format("BeamMP Server v{} ({})", Application::ServerVersionString(), BEAMMP_GIT_HASH));
         return 0;
     }
 
@@ -112,6 +111,8 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
+    
+    Application::Console().Internal().set_prompt("> ");
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
 

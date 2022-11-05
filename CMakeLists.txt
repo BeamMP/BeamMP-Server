@@ -4,6 +4,24 @@ cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 message(STATUS "You can find build instructions and a list of dependencies in the README at \
 https://github.com/BeamMP/BeamMP-Server")
 
+include(FetchContent)
+FetchContent_Declare(
+  cmake-tools
+  GIT_REPOSITORY https://github.com/brobeson/cmake-tools.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(cmake-tools)
+list(APPEND CMAKE_MODULE_PATH "${cmake-tools_SOURCE_DIR}")
+
+include(CMakeToolsVersionFromGit)
+
+execute_process(
+    COMMAND git log -1 --format=%h
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    OUTPUT_VARIABLE GIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
 project(BeamMP-Server
     DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
     HOMEPAGE_URL https://beammp.com
@@ -24,7 +42,6 @@ if(GIT_SUBMODULE)
         message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
     endif()
 endif()
-
 
 set(HTTPLIB_REQUIRE_OPENSSL ON)
 set(SENTRY_BUILD_SHARED_LIBS OFF)
@@ -139,6 +156,7 @@ set(BeamMP_Includes
 
 set(BeamMP_Definitions
     SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
+    BEAMMP_GIT_HASH="${GIT_HASH}"
 )
 
 if (WIN32)

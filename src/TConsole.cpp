@@ -751,7 +751,6 @@ Commands
 TConsole::TConsole() {
     mCommandline.enable_history();
     mCommandline.set_history_limit(20);
-    mCommandline.set_prompt("> ");
     BackupOldLog();
     mCommandline.on_command = [this](Commandline& c) {
         try {
