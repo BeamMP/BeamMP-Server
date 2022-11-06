@@ -446,6 +446,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
     }
     JsonString Str { LuaAPI::MP::JsonEncode(Table) };
     auto Return = mEngine->TriggerEvent(EventName, mStateId, Str);
+    mEngine->ReportErrors(Return);
     auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
 
     sol::variadic_results LocalArgs = JsonStringToArray(Str);
