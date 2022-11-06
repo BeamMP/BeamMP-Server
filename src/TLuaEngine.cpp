@@ -444,16 +444,21 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
             break;
         }
     }
-    JsonString Str { LuaAPI::MP::JsonEncode(Table) };
+    JsonString Str { "" };
+    if (!Table.empty()) {
+        Str.value = LuaAPI::MP::JsonEncode(Table);
+    }
+
     auto Return = mEngine->TriggerEvent(EventName, mStateId, Str);
     mEngine->ReportErrors(Return);
     auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
 
-    sol::variadic_results LocalArgs = JsonStringToArray(Str);
+    sol::variadic_results LocalArgs = Str.value.empty() ? sol::variadic_results {} : JsonStringToArray(Str);
+
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
         if (Fn.valid()) {
-            auto LuaResult = Fn(LocalArgs);
+            auto LuaResult = LocalArgs.empty() ? Fn() : Fn(LocalArgs);
             auto Result = std::make_shared<TLuaResult>();
             if (LuaResult.valid()) {
                 Result->Error = false;
@@ -491,6 +496,15 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
                 Result.add(Value->Result);
             }
             return Result;
+        });
+    AsyncEventReturn.set_function("Wait",
+        [](const sol::table& Self, std::optional<float> TimeoutS) {
+            auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
+            if (TimeoutS.has_value()) {
+                TLuaEngine::WaitForAll(Vector, std::chrono::milliseconds(size_t(TimeoutS.value() * 1000.0f)));
+            } else {
+                TLuaEngine::WaitForAll(Vector);
+            }
         });
     return AsyncEventReturn;
 }
@@ -1026,8 +1040,11 @@ void TLuaEngine::StateThreadData::operator()() {
                             LuaArgs.push_back(sol::make_object(StateView, std::get<int>(Arg)));
                             break;
                         case TLuaType::Json: {
-                            auto LocalArgs = JsonStringToArray(std::get<JsonString>(Arg));
-                            LuaArgs.insert(LuaArgs.end(), LocalArgs.begin(), LocalArgs.end());
+                            auto Str = std::get<JsonString>(Arg);
+                            if (!Str.value.empty()) {
+                                auto LocalArgs = JsonStringToArray(Str);
+                                LuaArgs.insert(LuaArgs.end(), LocalArgs.begin(), LocalArgs.end());
+                            }
                             break;
                         }
                         case TLuaType::Bool:
