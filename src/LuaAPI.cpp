@@ -551,8 +551,6 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
     nlohmann::json value;
     switch (right.get_type()) {
     case sol::type::lua_nil:
-        value = nullptr;
-        return;
     case sol::type::none:
         return;
     case sol::type::poly:

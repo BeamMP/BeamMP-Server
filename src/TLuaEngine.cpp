@@ -674,7 +674,6 @@ static void AddToTable(sol::table& table, const std::string& left, const T& valu
 static void JsonDecodeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
     switch (right.type()) {
     case nlohmann::detail::value_t::null:
-        AddToTable(table, left, sol::lua_nil_t {});
         return;
     case nlohmann::detail::value_t::object: {
         auto value = table.create();
