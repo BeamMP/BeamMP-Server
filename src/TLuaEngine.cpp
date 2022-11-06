@@ -5,7 +5,6 @@
 #include "LuaAPI.h"
 #include "TLuaPlugin.h"
 #include "Uuid.h"
-#include "sol/object.hpp"
 
 #include <chrono>
 #include <condition_variable>
@@ -446,7 +445,6 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
         }
     }
     JsonString Str { LuaAPI::MP::JsonEncode(Table) };
-    beammp_debugf("json: {}", Str.value);
     auto Return = mEngine->TriggerEvent(EventName, mStateId, Str);
     auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
 
