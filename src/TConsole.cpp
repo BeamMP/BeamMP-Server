@@ -77,7 +77,7 @@ static std::string GetDate() {
     char buf[30];
     std::string date;
     if (Application::GetSettingBool(StrDebug)) {
-        std::strftime(buf, sizeof(buf), "[%d/%m/%y %T.", local_tm);
+        std::strftime(buf, sizeof(buf), "[%Y/%m/%d %T.", local_tm);
         date += buf;
         auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
         auto fraction = now - seconds;
@@ -87,7 +87,7 @@ static std::string GetDate() {
         date += fracstr;
         date += "] ";
     } else {
-        std::strftime(buf, sizeof(buf), "[%d/%m/%y %T] ", local_tm);
+        std::strftime(buf, sizeof(buf), "[%Y/%m/%d %T] ", local_tm);
         date += buf;
     }
 
