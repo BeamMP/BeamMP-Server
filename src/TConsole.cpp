@@ -240,7 +240,8 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
     static constexpr const char* sHelpString = R"(
     Commands:
         help                    displays this help
-        exit                    shuts down the server
+        exit
+        quit                    shuts down the server
         kick <name> [reason]    kicks specified player with an optional reason
         list                    lists all players and info about them
         say <message>           sends the message to all players in chat
@@ -775,7 +776,7 @@ TConsole::TConsole() {
             } else {
                 if (!mLuaEngine) {
                     beammp_error("Attempted to run a command before Lua engine started. Please wait and try again.");
-                } else if (cmd == "exit") {
+                } else if (cmd == "exit"  || cmd == "quit") {
                     beammp_info("gracefully shutting down");
                     Application::GracefullyShutdown();
                 } else if (cmd == "say") {
