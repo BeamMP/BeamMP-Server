@@ -196,12 +196,6 @@ if (UNIX)
         -Wzero-as-null-pointer-constant
     )
 else()
-
-    set(BeamMP_CompileOptions
-        /bigobj
-    )
-else()
-
     set(BeamMP_CompileOptions
         /bigobj
         /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:LIBCMT
