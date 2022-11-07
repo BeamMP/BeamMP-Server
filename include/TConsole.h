@@ -38,6 +38,10 @@ private:
     void Command_Clear(const std::string&, const std::vector<std::string>& args);
     void Command_Debug(const std::string&, const std::vector<std::string>& args);
 
+    void Autocomplete_Lua(const std::string&, std::vector<std::string>& suggestions);
+    void Autocomplete_Kick(const std::string&, std::vector<std::string>& suggestions);
+    void Autocomplete_Settings(const std::string&, std::vector<std::string>& suggestions);
+
     void Command_Say(const std::string& FullCommand);
     bool EnsureArgsCount(const std::vector<std::string>& args, size_t n);
     bool EnsureArgsCount(const std::vector<std::string>& args, size_t min, size_t max);
@@ -56,6 +60,12 @@ private:
         { "debug", [this](const auto& a, const auto& b) { Command_Debug(a, b); } },
         { "say", [this](const auto&, const auto&) { Command_Say(""); } }, // shouldn't actually be called
     };
+
+    std::unordered_map<std::string, std::function<void(const std::string&, std::vector<std::string>&)>> mCommandAutocompleteMap = {
+        { "lua", [this](const auto& a, auto& b) { Autocomplete_Lua(a, b); } },
+        { "kick", [this](const auto& a, auto& b) { Autocomplete_Kick(a, b); } },
+        { "settings", [this](const auto& a, auto& b) { Autocomplete_Settings(a, b); } },
+	};
 
     Commandline mCommandline;
     std::vector<std::string> mCachedLuaHistory;
