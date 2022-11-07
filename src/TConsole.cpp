@@ -282,8 +282,8 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
         Application::MalformedUdpPackets,
         Application::InvalidUdpPackets));
     Application::Console().WriteRaw(fmt::format(R"(    Clients:
-        Note: All data/second rates are an average across the total time since 
-              connection and do not necessarily reflect the *current* data rate 
+        Note: All data/second rates are an average across the total time since
+              connection and do not necessarily reflect the *current* data rate
               of that client.
 )"));
     mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
@@ -653,6 +653,69 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
     Application::Console().WriteRaw(Status.str());
 }
 
+void TConsole::Autocomplete_Lua(const std::string& stub, std::vector<std::string>& suggestions) {
+    auto stateNames = mLuaEngine->GetLuaStateNames();
+
+    for (const auto& name : stateNames) {
+        if (name.find(stub) == 0) {
+            suggestions.push_back("lua " + name);
+        }
+    }
+}
+
+void TConsole::Autocomplete_Kick(const std::string& stub, std::vector<std::string>& suggestions) {
+    std::string stub_lower = boost::algorithm::to_lower_copy(stub);
+
+    auto LowercaseCompare = [](std::string Name1, std::string Name2) -> bool {
+        std::string NameLower = boost::algorithm::to_lower_copy(Name1);
+        return StringStartsWith(NameLower, Name2);
+    };
+
+    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        auto Locked = Client.lock();
+        if (Locked) {
+            if (LowercaseCompare(Locked->GetName(), stub_lower)) {
+                suggestions.push_back("kick " + Locked->GetName());
+            }
+        }
+        return true;
+    });
+
+}
+
+void TConsole::Autocomplete_Settings(const std::string& stub, std::vector<std::string>& suggestions) {
+    const std::string subcommands[] = { "help", "list", "set", "get" };
+
+    auto [command, args] = ParseCommand(stub);
+
+    std::string arg;
+    if (!args.empty()) arg = boost::algorithm::to_lower_copy(args.at(0));
+
+    auto LowercaseCompare = [](std::string Name1, std::string Name2) -> bool {
+        std::string NameLower = boost::algorithm::to_lower_copy(Name1);
+        return StringStartsWith(NameLower, Name2);
+    };
+
+    // suggest setting names
+    if (command == "set" || command == "get") {
+        for (const auto& [k, v] : Application::mSettings) {
+            std::string key = std::string(k);
+            if (LowercaseCompare(key, arg)) {
+                suggestions.push_back("settings " + command + " " + key);
+            }
+        }
+
+        return;
+    }
+
+    // suggest subcommands
+    for (const auto& cmd : subcommands) {
+        if (cmd.find(command) == 0) {
+            suggestions.push_back("settings " + cmd);
+        }
+    }
+}
+
 void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
     auto FutureIsNonNil =
         [](const std::shared_ptr<TLuaResult>& Future) {
@@ -840,16 +903,15 @@ TConsole::TConsole() {
                     }
                 }
             } else { // if not lua
-                if (stub.find("lua") == 0) { // starts with "lua" means we should suggest state names
-                    std::string after_prefix = TrimString(stub.substr(3));
-                    auto stateNames = mLuaEngine->GetLuaStateNames();
-
-                    for (const auto& name : stateNames) {
-                        if (name.find(after_prefix) == 0) {
-                            suggestions.push_back("lua " + name);
-                        }
+                for (const auto& [cmd_name, autocomplete_fn] : mCommandAutocompleteMap) {
+                    if (stub.find(cmd_name) == 0) { // input starts with a full command (that has autocomplete)
+                        std::size_t cmd_len = cmd_name.length();
+                        std::string trimmed = TrimString(stub.substr(cmd_len));
+                        autocomplete_fn(trimmed, suggestions);
+                        break;
                     }
-                } else {
+                }
+                if (suggestions.empty()) {
                     for (const auto& [cmd_name, cmd_fn] : mCommandMap) {
                         if (cmd_name.find(stub) == 0) {
                             suggestions.push_back(cmd_name);
