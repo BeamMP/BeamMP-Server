@@ -130,7 +130,7 @@ size_t TServer::ClientCount() const {
     return mClients.size();
 }
 
-void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
+void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TNetwork& Network) {
     constexpr std::string_view ABG = "ABG:";
     if (Packet.size() >= ABG.size() && std::equal(Packet.begin(), Packet.begin() + ABG.size(), ABG.begin(), ABG.end())) {
         Packet.erase(Packet.begin(), Packet.begin() + ABG.size());
