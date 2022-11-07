@@ -17,6 +17,12 @@
 
 #include "Json.h"
 
+struct VehiclePacket {
+    std::string Data;
+    int Pid;
+    int Vid;
+};
+
 static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
     auto IDSep = str.find('-');
     std::string pid = str.substr(0, IDSep);
@@ -29,6 +35,42 @@ static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
             return { { PID, VID } };
         } catch (const std::exception&) {
             return std::nullopt;
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<VehiclePacket> ParseVehiclePacket(const std::string& Packet, const int playerID) {
+    if (Packet.size() < 8) { //2 for code, 3<= for pidvid, 1<= for data, 2 for dividers
+        // invalid packet
+        return std::nullopt;
+    }
+    // Zp:serverVehicleID:data
+    // 0-0:data
+    std::string withoutCode = Packet.substr(3);
+
+    auto NameDataSep = withoutCode.find(':', 3);
+    if (NameDataSep == std::string::npos) {
+        // invalid packet
+        return std::nullopt;
+    }
+    if (NameDataSep + 1 > withoutCode.size()) {
+        // invalid packet
+        return std::nullopt;
+    }
+
+    std::string ServerVehicleID = withoutCode.substr(0, NameDataSep);
+
+    std::string Data = withoutCode.substr(NameDataSep + 1);
+
+    // parse veh ID
+    auto MaybePidVid = GetPidVid(ServerVehicleID);
+    if (MaybePidVid) {
+        int PID, VID;
+        std::tie(PID, VID) = MaybePidVid.value();
+
+        if (PID == playerID) {
+            return { {Data, PID, VID} }; //std::vector<char>(Data.begin(), Data.end())
         }
     }
     return std::nullopt;
@@ -74,6 +116,39 @@ TEST_CASE("GetPidVid") {
     SUBCASE("Invalid vid") {
         const auto MaybePidVid = GetPidVid("0-x");
         CHECK(!MaybePidVid);
+    }
+}
+
+TEST_CASE("ParseVehiclePacket") {
+    SUBCASE("Valid packet") {
+        const auto valid = ParseVehiclePacket("Zp:0-0:{jsonstring}", 0);
+        CHECK(valid.has_value());
+    }
+    SUBCASE("Valid packet 2") {
+        const auto packet = ParseVehiclePacket("Zp:12-3:{jsonstring}", 12);
+        CHECK(packet.has_value());
+        CHECK_EQ(packet.value().Pid, 12);
+        CHECK_EQ(packet.value().Vid, 3);
+    }
+    SUBCASE("Missing packet") {
+        const auto valid = ParseVehiclePacket("", 0);
+        CHECK(!valid.has_value());
+    }
+    SUBCASE("Missing ServerVehicleID") {
+        const auto valid = ParseVehiclePacket("Zp:{jsonstring}", 0);
+        CHECK(!valid.has_value());
+    }
+    SUBCASE("Missing data") {
+        const auto valid = ParseVehiclePacket("Zp:0-0:", 0);
+        CHECK(!valid.has_value());
+    }
+    SUBCASE("Incorrect Pid") {
+        const auto valid = ParseVehiclePacket("Zp:0-0:{jsonstring}", 1);
+        CHECK(!valid.has_value());
+    }
+    SUBCASE("Incorrect Pid 2") {
+        const auto valid = ParseVehiclePacket("Zp:12-0:{jsonstring}", 13);
+        CHECK(!valid.has_value());
     }
 }
 
@@ -152,7 +227,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
 
     // V to Y
     if (Code <= 89 && Code >= 86) {
-        if (HandleVehicleUpdate(*LockedClient, StringPacket)){
+        if (HandleVehicleUpdate(StringPacket, LockedClient->GetID())){
             Network.SendToAll(LockedClient.get(), Packet, false, false);
         } else {
             beammp_debugf("Invalid vehicle update packet received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
@@ -438,71 +513,19 @@ void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     (void)mClients.insert(NewClient);
 }
 
-bool TServer::HandlePosition(TClient& c, const std::string& Packet) {
-    if (Packet.size() < 3) {
-        // invalid packet
-        return false;
-    }
-    // Zp:serverVehicleID:data
-    // Zp:0:data
-    std::string withoutCode = Packet.substr(3);
-    auto NameDataSep = withoutCode.find(':', 2);
-    if (NameDataSep == std::string::npos || NameDataSep < 2) {
-        // invalid packet
-        return false;
-    }
-    // FIXME: ensure that -2 does what it should... it seems weird.
-    std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
-    if (NameDataSep + 1 > withoutCode.size()) {
-        // invalid packet
-        return false;
-    }
-    std::string Data = withoutCode.substr(NameDataSep + 1);
+bool TServer::HandlePosition(TClient& c, const std::string& PacketStr) {
+    auto MaybePacket = ParseVehiclePacket(PacketStr, c.GetID());
 
-    // parse veh ID
-    auto MaybePidVid = GetPidVid(ServerVehicleID);
-    if (MaybePidVid) {
-        int PID = -1;
-        int VID = -1;
-        std::tie(PID, VID) = MaybePidVid.value();
-        if (PID == c.GetID()) {
-            c.SetCarPosition(VID, Data);
-            return true;
-        }
+    if (MaybePacket) {
+        auto packet = MaybePacket.value();
+        c.SetCarPosition(packet.Vid, packet.Data);
+        return true;
     }
     return false;
 }
 
-bool TServer::HandleVehicleUpdate(TClient& c, const std::string& Packet) {
-    if (Packet.size() < 3) {
-        // invalid packet
-        return false;
-    }
-    // (Vi/We/Yl):serverVehicleID:data
-    // (Vi/We/Yl):serverVehicleID:data
-    std::string withoutCode = Packet.substr(3);
-    auto NameDataSep = withoutCode.find(':', 2);
-    if (NameDataSep == std::string::npos || NameDataSep < 2) {
-        // invalid packet
-        return false;
-    }
-    // FIXME: ensure that -2 does what it should... it seems weird.
-    std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
-    if (NameDataSep + 1 > withoutCode.size()) {
-        // invalid packet
-        return false;
-    }
-    std::string Data = withoutCode.substr(NameDataSep + 1);
+bool TServer::HandleVehicleUpdate(const std::string& PacketStr, const int playerID) {
+    auto MaybePacket = ParseVehiclePacket(PacketStr, playerID);
 
-    // parse veh ID
-    auto MaybePidVid = GetPidVid(ServerVehicleID);
-    if (MaybePidVid) {
-        int PID = -1;
-        int VID = -1;
-        std::tie(PID, VID) = MaybePidVid.value();
-        if (PID == c.GetID()) {
-            return true;
-        }
-    }
-    return false;
+    return MaybePacket.has_value();
 }
