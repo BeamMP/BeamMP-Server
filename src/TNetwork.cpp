@@ -110,7 +110,7 @@ void TNetwork::UDPServerMain() {
                     Locked->UdpReceived += Data.size();
                     ++Locked->UdpPacketsReceived;
                     Data.erase(Data.begin() + 0, Data.begin() + 2);
-                    TServer::GlobalParser(Locked, std::move(Data), mPPSMonitor, *this);
+                    TServer::GlobalParser(Locked, std::move(Data), *this);
                 } catch (const std::exception&) {
                     ++Application::InvalidUdpPackets;
                 }
@@ -512,7 +512,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
             Client->Disconnect("TCPRcv failed");
             break;
         }
-        TServer::GlobalParser(c, std::move(res), mPPSMonitor, *this);
+        TServer::GlobalParser(c, std::move(res), *this);
     }
 
     if (QueueSync.joinable())
