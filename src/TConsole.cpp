@@ -18,6 +18,8 @@
 #include <boost/phoenix.hpp>
 #include <boost/spirit/include/qi.hpp>
 
+#include <boost/algorithm/string.hpp>
+
 static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
 }
@@ -370,15 +372,15 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
     bool Kicked = false;
     // TODO: this sucks, tolower is locale-dependent.
     auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
-        std::for_each(Name1.begin(), Name1.end(), [](char& c) { c = char(std::tolower(char(c))); });
-        std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = char(std::tolower(char(c))); });
-        return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
+        std::string Name1Lower = boost::algorithm::to_lower_copy(Name1);
+        std::string Name2Lower = boost::algorithm::to_lower_copy(Name2);
+        return StringStartsWith(Name1Lower, Name2Lower) || StringStartsWith(Name2Lower, Name1Lower);
     };
     mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
         auto Locked = Client.lock();
         if (Locked) {
-            if (NameCompare(locked->GetName(), Name)) {
-                mLuaEngine->Network().ClientKick(*locked, Reason);
+            if (NameCompare(Locked->GetName(), Name)) {
+                mLuaEngine->Network().ClientKick(*Locked, Reason);
                 Kicked = true;
                 return false;
             }
