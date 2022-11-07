@@ -374,8 +374,8 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
         return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
     };
     mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
-        if (!Client.expired()) {
-            auto locked = Client.lock();
+        auto Locked = Client.lock();
+        if (Locked) {
             if (NameCompare(locked->GetName(), Name)) {
                 mLuaEngine->Network().ClientKick(*locked, Reason);
                 Kicked = true;
