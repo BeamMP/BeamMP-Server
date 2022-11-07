@@ -24,6 +24,17 @@ static inline bool StringStartsWith(const std::string& What, const std::string& 
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
 }
 
+static inline bool StringStartsWithLower(const std::string& Name1, const std::string& Name2) {
+    std::string Name1Lower = boost::algorithm::to_lower_copy(Name1);
+    return StringStartsWith(Name1Lower, Name2) || StringStartsWith(Name2, Name1Lower);
+};
+
+static inline bool StringStartsWithLowerBoth(const std::string& Name1, const std::string& Name2) {
+    std::string Name1Lower = boost::algorithm::to_lower_copy(Name1);
+    std::string Name2Lower = boost::algorithm::to_lower_copy(Name2);
+    return StringStartsWith(Name1Lower, Name2Lower) || StringStartsWith(Name2Lower, Name1Lower);
+};
+
 TEST_CASE("StringStartsWith") {
     CHECK(StringStartsWith("Hello, World", "Hello"));
     CHECK(StringStartsWith("Hello, World", "H"));
@@ -363,23 +374,18 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
     if (!EnsureArgsCount(args, 1, size_t(-1))) {
         return;
     }
-    auto Name = args.at(0);
+    auto Name = boost::algorithm::to_lower_copy(args.at(0));
     std::string Reason = "Kicked by server console";
     if (args.size() > 1) {
         Reason = ConcatArgs({ args.begin() + 1, args.end() });
     }
     beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
     bool Kicked = false;
-    // TODO: this sucks, tolower is locale-dependent.
-    auto NameCompare = [](std::string Name1, std::string Name2) -> bool {
-        std::string Name1Lower = boost::algorithm::to_lower_copy(Name1);
-        std::string Name2Lower = boost::algorithm::to_lower_copy(Name2);
-        return StringStartsWith(Name1Lower, Name2Lower) || StringStartsWith(Name2Lower, Name1Lower);
-    };
+
     mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
         auto Locked = Client.lock();
         if (Locked) {
-            if (NameCompare(Locked->GetName(), Name)) {
+            if (StringStartsWithLower(Locked->GetName(), Name)) {
                 mLuaEngine->Network().ClientKick(*Locked, Reason);
                 Kicked = true;
                 return false;
@@ -666,15 +672,10 @@ void TConsole::Autocomplete_Lua(const std::string& stub, std::vector<std::string
 void TConsole::Autocomplete_Kick(const std::string& stub, std::vector<std::string>& suggestions) {
     std::string stub_lower = boost::algorithm::to_lower_copy(stub);
 
-    auto LowercaseCompare = [](std::string Name1, std::string Name2) -> bool {
-        std::string NameLower = boost::algorithm::to_lower_copy(Name1);
-        return StringStartsWith(NameLower, Name2);
-    };
-
     mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
         auto Locked = Client.lock();
         if (Locked) {
-            if (LowercaseCompare(Locked->GetName(), stub_lower)) {
+            if (StringStartsWithLower(Locked->GetName(), stub_lower)) {
                 suggestions.push_back("kick " + Locked->GetName());
             }
         }
@@ -691,16 +692,11 @@ void TConsole::Autocomplete_Settings(const std::string& stub, std::vector<std::s
     std::string arg;
     if (!args.empty()) arg = boost::algorithm::to_lower_copy(args.at(0));
 
-    auto LowercaseCompare = [](std::string Name1, std::string Name2) -> bool {
-        std::string NameLower = boost::algorithm::to_lower_copy(Name1);
-        return StringStartsWith(NameLower, Name2);
-    };
-
     // suggest setting names
     if (command == "set" || command == "get") {
         for (const auto& [k, v] : Application::mSettings) {
             std::string key = std::string(k);
-            if (LowercaseCompare(key, arg)) {
+            if (StringStartsWithLower(key, arg)) {
                 suggestions.push_back("settings " + command + " " + key);
             }
         }
