@@ -111,7 +111,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
-    
+
     Application::Console().Internal().set_prompt("> ");
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);

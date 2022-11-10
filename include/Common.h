@@ -150,7 +150,7 @@ public:
 
     // Keeps track of how many packets we dropped on UDP due to fundamentally being malformed
     static inline std::atomic_size_t MalformedUdpPackets { 0 };
-    // Keeps track of how many packets we dropped on UDP due to 
+    // Keeps track of how many packets we dropped on UDP due to
     // 1) not having a valid (known) player id
     // 2) player disconnecting
     // 3) packet failing to parse
@@ -219,41 +219,88 @@ void RegisterThread(const std::string& str);
 
     #endif // defined(DEBUG)
     
-    #define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
-    #define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
-    #define beammp_error(x)                                                               \
-        do {                                                                              \
-            Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
-            Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
+    #define beammp_internal_error(x) Application::Console().Write(_this_location + std::string("[INTERNAL ERROR] ") + (x))
+    
+    #define beammp_warn(x)                                                                          \
+        do {                                                                                        \
+            try{                                                                                    \
+                Application::Console().Write(_this_location + std::string("[WARN] ") + (x));        \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
         } while (false)
-    #define beammp_lua_error(x)                                                               \
-        do {                                                                                  \
-            Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x)); \
+    #define beammp_info(x)                                                                          \
+        do {                                                                                        \
+            try{                                                                                    \
+                Application::Console().Write(_this_location + std::string("[INFO] ") + (x));        \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
         } while (false)
-    #define beammp_lua_warn(x)                                                               \
-        do {                                                                                 \
-            Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
+    #define beammp_error(x)                                                                         \
+        do {                                                                                        \
+            try{                                                                                    \
+                Application::Console().Write(_this_location + std::string("[ERROR] ") + (x));       \
+                Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                              \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
         } while (false)
-    #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
-    #define beammp_debug(x)                                                                   \
-        do {                                                                                  \
-            if (Application::GetSettingBool("Debug")) {                                     \
-                Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
-            }                                                                                 \
+    #define beammp_lua_error(x)                                                                     \
+        do {                                                                                        \
+            try{                                                                                    \
+                Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x));   \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
         } while (false)
-    #define beammp_event(x)                                                                   \
-        do {                                                                                  \
-            if (Application::GetSettingBool("Debug")) {                                     \
-                Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
-            }                                                                                 \
+    #define beammp_lua_warn(x)                                                                      \
+        do {                                                                                        \
+            try{                                                                                    \
+                Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x));    \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
+        } while (false)
+    #define luaprint(x)                                                                             \
+        do {                                                                                        \
+            try{                                                                                    \
+                Application::Console().Write(_this_location + std::string("[LUA] ") + (x));         \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
+        } while (false)
+    #define beammp_debug(x)                                                                         \
+        do {                                                                                        \
+            try{                                                                                    \
+                if (Application::GetSettingBool("Debug")) {                                         \
+                    Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x));   \
+                }                                                                                   \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
+        } while (false)
+    #define beammp_event(x)                                                                         \
+        do {                                                                                        \
+            try{                                                                                    \
+                if (Application::GetSettingBool("Debug")) {                                         \
+                    Application::Console().Write(_this_location + std::string("[EVENT] ") + (x));   \
+                }                                                                                   \
+            } catch (const std::exception& e) {                                                     \
+                beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}': {}", #x, e.what()));\
+            }                                                                                       \
         } while (false)
     // trace() is a debug-build debug()
     #if defined(DEBUG)
-        #define beammp_trace(x)                                                                   \
-            do {                                                                                  \
-                if (Application::GetSettingBool("Debug")) {                                     \
-                    Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
-                }                                                                                 \
+        #define beammp_trace(x)                                                                         \
+            do {                                                                                        \
+                try{                                                                                    \
+                    if (Application::GetSettingBool("Debug")) {                                         \
+                        Application::Console().Write(_this_location + std::string("[TRACE] ") + (x));   \
+                    }                                                                                   \
+                } catch (const std::exception& e) {                                                     \
+                    beammp_internal_error(fmt::format("Exception in logging function, failed to print '{}'", #x));           \
+                }                                                                                       \
             } while (false)
     #else
         #define beammp_trace(x)
