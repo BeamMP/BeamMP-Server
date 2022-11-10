@@ -277,7 +277,11 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             for (const auto& ID : AuthRes["identifiers"]) {
                 auto Raw = std::string(ID);
                 auto SepIndex = Raw.find(':');
-                Client->SetIdentifier(Raw.substr(0, SepIndex), Raw.substr(SepIndex + 1));
+                if (SepIndex != std::string::npos) {
+                    Client->SetIdentifier(Raw.substr(0, SepIndex), Raw.substr(SepIndex + 1));
+                } else {
+                    beammp_errorf("Invalid response from auth servers: No ':' in identifier '{}', ignoring it", Raw);
+                }
             }
         } else {
             beammp_error("Invalid authentication data received from authentication backend");
