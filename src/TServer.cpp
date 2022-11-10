@@ -25,6 +25,10 @@ struct VehiclePacket {
 
 static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
     auto IDSep = str.find('-');
+    if (IDSep == std::string::npos) {
+        beammp_debugf("Invalid packet: Could not parse pid/vid from packet, as there is no '-' separator: '{}'", str);
+        return std::nullopt;
+    }
     std::string pid = str.substr(0, IDSep);
     std::string vid = str.substr(IDSep + 1);
 
