@@ -57,11 +57,11 @@ static std::optional<VehiclePacket> ParseVehiclePacket(const std::string& Packet
 
     auto NameDataSep = withoutCode.find(':', 3);
     if (NameDataSep == std::string::npos) {
-        // invalid packet
+        beammp_debugf("Invalid packet from {} in ParseVehiclePacket: No ':' separator, assuming corrupted packet. Packet: '{}'", playerID, Packet);
         return std::nullopt;
     }
     if (NameDataSep + 1 > withoutCode.size()) {
-        // invalid packet
+        beammp_debugf("Invalid packet from {} in ParseVehiclePacket: Separator in unexpected place, assuming corrupted packet. Packet: '{}'", playerID, Packet);
         return std::nullopt;
     }
 
@@ -79,6 +79,7 @@ static std::optional<VehiclePacket> ParseVehiclePacket(const std::string& Packet
             return { { Data, PID, VID } }; // std::vector<char>(Data.begin(), Data.end())
         }
     }
+    beammp_debugf("Failed to parse packet from player {}", playerID);
     return std::nullopt;
 }
 
