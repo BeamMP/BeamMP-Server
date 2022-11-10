@@ -66,7 +66,7 @@ Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/Beam
 Dependencies for **Windows** can be installed with `vcpkg`.
 These are:
 ```
-lua zlib rapidjson openssl websocketpp curl
+lua zlib rapidjson openssl websocketpp curl boost
 ```
 The triplet we use for releases is `x64-windows-static`.
 
