@@ -650,7 +650,14 @@ void TNetwork::Parse(TClient& c, const std::vector<uint8_t>& Packet) {
 }
 
 void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
-    beammp_info(c.GetName() + " requesting : " + UnsafeName.substr(UnsafeName.find_last_of('/')));
+    beammp_infof("{} ({}) requesting : '{}'", c.GetName(), c.GetID(), UnsafeName);
+
+    if (!fs::exists(UnsafeName)) {
+        if (!TCPSend(c, StringToVector("CO"))) {
+            // TODO: handle
+        }
+        beammp_warn("File '" + UnsafeName + "' does not exist!");
+    }
 
     if (!fs::path(UnsafeName).has_filename()) {
         if (!TCPSend(c, StringToVector("CO"))) {
