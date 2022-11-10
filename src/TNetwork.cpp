@@ -652,16 +652,10 @@ void TNetwork::Parse(TClient& c, const std::vector<uint8_t>& Packet) {
 void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
     beammp_infof("{} ({}) requesting : '{}'", c.GetName(), c.GetID(), UnsafeName);
 
-    if (!fs::exists(UnsafeName)) {
-        if (!TCPSend(c, StringToVector("CO"))) {
-            // TODO: handle
-        }
-        beammp_warn("File '" + UnsafeName + "' does not exist!");
-    }
-
     if (!fs::path(UnsafeName).has_filename()) {
         if (!TCPSend(c, StringToVector("CO"))) {
-            // TODO: handle
+            c.Disconnect("TCP send failed in SendFile, when trying to cancel file transfer because the requested file doesn't contain a valid filename");
+            return;
         }
         beammp_warn("File " + UnsafeName + " is not a file!");
         return;
@@ -671,14 +665,15 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 
     if (!std::filesystem::exists(FileName)) {
         if (!TCPSend(c, StringToVector("CO"))) {
-            // TODO: handle
+            c.Disconnect("TCP send failed in SendFile, when trying to cancel file transfer because the requested file doesn't exist or couldn't be accessed");
         }
         beammp_warn("File " + UnsafeName + " could not be accessed!");
         return;
     }
 
     if (!TCPSend(c, StringToVector("AG"))) {
-        // TODO: handle
+        c.Disconnect("TCP send failed in SendFile, when trying to send ");
+        return;
     }
 
     /// Wait for connections
