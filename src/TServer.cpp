@@ -34,18 +34,20 @@ static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
 
     if (pid.find_first_not_of("0123456789") == std::string::npos && vid.find_first_not_of("0123456789") == std::string::npos) {
         try {
-            int PID = stoi(pid);
-            int VID = stoi(vid);
+            int PID = std::stoi(pid);
+            int VID = std::stoi(vid);
             return { { PID, VID } };
         } catch (const std::exception&) {
+            beammp_debugf("Invalid packet: Could not parse pid/vid from packet, as one or both are not valid numbers: '{}'", str);
             return std::nullopt;
         }
     }
+    beammp_debugf("Invalid packet: Could not parse pid/vid from packet: '{}'", str);
     return std::nullopt;
 }
 
 static std::optional<VehiclePacket> ParseVehiclePacket(const std::string& Packet, const int playerID) {
-    if (Packet.size() < 8) { //2 for code, 3<= for pidvid, 1<= for data, 2 for dividers
+    if (Packet.size() < 8) { // 2 for code, 3<= for pidvid, 1<= for data, 2 for dividers
         // invalid packet
         return std::nullopt;
     }
@@ -74,7 +76,7 @@ static std::optional<VehiclePacket> ParseVehiclePacket(const std::string& Packet
         std::tie(PID, VID) = MaybePidVid.value();
 
         if (PID == playerID) {
-            return { {Data, PID, VID} }; //std::vector<char>(Data.begin(), Data.end())
+            return { { Data, PID, VID } }; // std::vector<char>(Data.begin(), Data.end())
         }
     }
     return std::nullopt;
@@ -231,7 +233,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
 
     // V to Y
     if (Code <= 89 && Code >= 86) {
-        if (HandleVehicleUpdate(StringPacket, LockedClient->GetID())){
+        if (HandleVehicleUpdate(StringPacket, LockedClient->GetID())) {
             Network.SendToAll(LockedClient.get(), Packet, false, false);
         } else {
             beammp_debugf("Invalid vehicle update packet received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
@@ -294,7 +296,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
     case 'Z': // position packet
-        if (HandlePosition(*LockedClient, StringPacket)){
+        if (HandlePosition(*LockedClient, StringPacket)) {
             Network.SendToAll(LockedClient.get(), Packet, false, false);
         } else {
             beammp_debugf("Invalid vehicle position packet received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
