@@ -112,14 +112,28 @@ int BeamMPServerMain(MainArguments Arguments) {
         }
     }
 
-    Application::Console().Internal().set_prompt("> ");
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
 
-    Application::Console().StartLoggingToFile();
-
     SetupSignalHandlers();
+    
+    beammp_infof("BeamMP Server v{} ({})", Application::ServerVersionString(), BEAMMP_GIT_HASH);
 
+    TConfig Config(ConfigPath);
+
+    if (Config.Failed()) {
+        beammp_info("Closing in 10 seconds");
+        // loop to make it possible to ctrl+c instead
+        Application::SleepSafeSeconds(5);
+        beammp_info("Closing in 5 seconds");
+        Application::SleepSafeSeconds(5);
+        Application::GracefullyShutdown();
+        return 1;
+    }
+    
+    Application::Console().Internal().set_prompt("> ");
+    Application::Console().StartLoggingToFile();
+    
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {
         beammp_info("If this takes too long, you can press Ctrl+C repeatedly to force a shutdown.");
@@ -130,21 +144,11 @@ int BeamMPServerMain(MainArguments Arguments) {
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
         TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
     });
-
+    
     TServer Server(Arguments.List);
-    TConfig Config(ConfigPath);
     auto LuaEngine = std::make_shared<TLuaEngine>();
     LuaEngine->SetServer(&Server);
     Application::Console().InitializeLuaConsole(*LuaEngine);
-
-    if (Config.Failed()) {
-        beammp_info("Closing in 10 seconds");
-        // loop to make it possible to ctrl+c instead
-        for (size_t i = 0; i < 20; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        return 1;
-    }
 
     RegisterThread("Main");
 

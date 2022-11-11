@@ -160,7 +160,6 @@ TEST_CASE("ParseVehiclePacket") {
 }
 
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
-    beammp_infof("BeamMP Server v{} ({})", Application::ServerVersionString(), BEAMMP_GIT_HASH);
     Application::SetSubsystemStatus("Server", Application::Status::Starting);
     if (Arguments.size() > 1) {
         Application::SetSetting(StrCustomIP, std::string(Arguments[0]));
