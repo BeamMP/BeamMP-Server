@@ -101,7 +101,7 @@ public:
     // bytes sent on TCP
     std::atomic_size_t TcpSent = 0;
 
-    std::chrono::high_resolution_clock::time_point ConnectionTime{};
+    std::chrono::system_clock::time_point ConnectionTime{};
 
 
 private:
