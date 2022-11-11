@@ -3,6 +3,7 @@
 - ADDED `settings` command, which lets you `get`, `list`, and `set` config options from the console
 - ADDED `debug` command, which shows info about connected clients & networking (for developers)
 - ADDED `Util.GenerateUUID()`, which generates an RFC4122 UUID (universally unique identifier)
+- ADDED `version` command, which shows version information
 
 # v3.1.1
 
