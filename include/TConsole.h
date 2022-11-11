@@ -37,6 +37,7 @@ private:
     void Command_Settings(const std::string& cmd, const std::vector<std::string>& args);
     void Command_Clear(const std::string&, const std::vector<std::string>& args);
     void Command_Debug(const std::string&, const std::vector<std::string>& args);
+    void Command_Version(const std::string&, const std::vector<std::string>& args);
 
     void Autocomplete_Lua(const std::string&, std::vector<std::string>& suggestions);
     void Autocomplete_Kick(const std::string&, std::vector<std::string>& suggestions);
@@ -58,6 +59,7 @@ private:
         { "settings", [this](const auto& a, const auto& b) { Command_Settings(a, b); } },
         { "clear", [this](const auto& a, const auto& b) { Command_Clear(a, b); } },
         { "debug", [this](const auto& a, const auto& b) { Command_Debug(a, b); } },
+        { "version", [this](const auto& a, const auto& b) { Command_Version(a, b); } },
         { "say", [this](const auto&, const auto&) { Command_Say(""); } }, // shouldn't actually be called
     };
 
