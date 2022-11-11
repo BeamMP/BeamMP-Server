@@ -262,7 +262,8 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
         settings [command]      sets or gets settings for the server, run `settings help` for more info
         status                  how the server is doing and what it's up to
         debug                   internal error and debug state of the server (for development)
-        clear                   clears the console window)";
+        clear                   clears the console window
+        version                 version info)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
@@ -368,6 +369,13 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
         }
         return true;
     });
+}
+
+void TConsole::Command_Version(const std::string&, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
+    Application::Console().WriteRaw(fmt::format("BeamMP Server v{} ({})", Application::ServerVersionString(), BEAMMP_GIT_HASH));
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
@@ -681,7 +689,6 @@ void TConsole::Autocomplete_Kick(const std::string& stub, std::vector<std::strin
         }
         return true;
     });
-
 }
 
 void TConsole::Autocomplete_Settings(const std::string& stub, std::vector<std::string>& suggestions) {
@@ -690,7 +697,8 @@ void TConsole::Autocomplete_Settings(const std::string& stub, std::vector<std::s
     auto [command, args] = ParseCommand(stub);
 
     std::string arg;
-    if (!args.empty()) arg = boost::algorithm::to_lower_copy(args.at(0));
+    if (!args.empty())
+        arg = boost::algorithm::to_lower_copy(args.at(0));
 
     // suggest setting names
     if (command == "set" || command == "get") {
@@ -837,7 +845,7 @@ TConsole::TConsole() {
             } else {
                 if (!mLuaEngine) {
                     beammp_error("Attempted to run a command before Lua engine started. Please wait and try again.");
-                } else if (cmd == "exit"  || cmd == "quit") {
+                } else if (cmd == "exit" || cmd == "quit") {
                     beammp_info("gracefully shutting down");
                     Application::GracefullyShutdown();
                 } else if (cmd == "say") {
