@@ -298,6 +298,7 @@ void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
 }
 
 int LuaAPI::PanicHandler(lua_State* State) {
+    //FIXME: unsafe operation, can cause stack overflow
     beammp_lua_error("PANIC: " + sol::stack::get<std::string>(State, 1));
     return 0;
 }

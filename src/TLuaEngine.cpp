@@ -253,11 +253,15 @@ std::vector<std::string> TLuaEngine::StateThreadData::GetStateTableKeys(const st
         } else if (i == keys.size() - 1) {
             if (obj.get_type() == sol::type::table) {
                 for (const auto& [key, value] : obj.as<sol::table>()) {
-                    std::string s = key.as<std::string>();
-                    if (value.get_type() == sol::type::function) {
-                        s += "(";
+                    if (key.get_type() == sol::type::string) {
+                        std::string s = key.as<std::string>();
+
+                        if (value.get_type() == sol::type::function) {
+                            s += "(";
+                        }
+
+                        Result.push_back(s);
                     }
-                    Result.push_back(s);
                 }
             } else {
                 Result = { obj.as<std::string>() };
