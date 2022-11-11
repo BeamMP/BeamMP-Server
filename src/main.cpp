@@ -140,10 +140,6 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
         Shutdown = true;
     });
-    Application::RegisterShutdownHandler([] {
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
-        TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
-    });
     
     TServer Server(Arguments.List);
     auto LuaEngine = std::make_shared<TLuaEngine>();
