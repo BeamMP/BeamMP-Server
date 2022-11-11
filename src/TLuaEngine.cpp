@@ -77,7 +77,7 @@ void TLuaEngine::operator()() {
         }
     });
     // event loop
-    auto Before = std::chrono::high_resolution_clock::now();
+    auto Before = TimeType::now();
     while (!Application::IsShuttingDown()) {
         { // Timed Events Scope
             std::unique_lock Lock(mTimedEventsMutex);
@@ -110,14 +110,14 @@ void TLuaEngine::operator()() {
         } else {
             constexpr double NsFactor = 1000000.0;
             constexpr double Expected = 10.0; // ms
-            const auto Diff = (std::chrono::high_resolution_clock::now() - Before).count() / NsFactor;
+            const auto Diff = (TimeType::now() - Before).count() / NsFactor;
             if (Diff < Expected) {
                 std::this_thread::sleep_for(std::chrono::nanoseconds(size_t((Expected - Diff) * NsFactor)));
             } else {
                 beammp_tracef("Event loop cannot keep up! Running {}ms behind", Diff);
             }
         }
-        Before = std::chrono::high_resolution_clock::now();
+        Before = TimeType::now();
     }
 
     if (ResultCheckThread.joinable()) {
@@ -281,7 +281,7 @@ std::vector<std::string> TLuaEngine::StateThreadData::GetStateTableKeys(const st
 
 */
 
-void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<std::chrono::high_resolution_clock::duration>& Max) {
+void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, const std::optional<TimeType::duration>& Max) {
     for (const auto& Result : Results) {
         bool Cancelled = false;
         size_t ms = 0;
@@ -777,14 +777,14 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("CreateTimer", [&]() -> sol::table {
         sol::state_view StateView(mState);
         sol::table Result = StateView.create_table();
-        Result["__StartTime"] = std::chrono::high_resolution_clock::now();
+        Result["__StartTime"] = TimeType::now();
         Result.set_function("GetCurrent", [&](const sol::table& Table) -> float {
-            auto End = std::chrono::high_resolution_clock::now();
-            auto Start = Table.get<std::chrono::high_resolution_clock::time_point>("__StartTime");
+            auto End = TimeType::now();
+            auto Start = Table.get<TimeType::time_point>("__StartTime");
             return std::chrono::duration_cast<std::chrono::microseconds>(End - Start).count() / 1000000.0f;
         });
         Result.set_function("Start", [&](sol::table Table) {
-            Table["__StartTime"] = std::chrono::high_resolution_clock::now();
+            Table["__StartTime"] = TimeType::now();
         });
         return Result;
     });
@@ -1097,8 +1097,8 @@ std::vector<TLuaEngine::QueuedFunction> TLuaEngine::StateThreadData::Debug_GetSt
 void TLuaEngine::CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy) {
     std::unique_lock Lock(mTimedEventsMutex);
     TimedEvent Event {
-        std::chrono::high_resolution_clock::duration { std::chrono::milliseconds(IntervalMS) },
-        std::chrono::high_resolution_clock::now(),
+        TimeType::duration { std::chrono::milliseconds(IntervalMS) },
+        TimeType::now(),
         EventName,
         StateId,
         Strategy
@@ -1141,10 +1141,10 @@ TLuaChunk::TLuaChunk(std::shared_ptr<std::string> Content, std::string FileName,
 }
 
 bool TLuaEngine::TimedEvent::Expired() {
-    auto Waited = (std::chrono::high_resolution_clock::now() - LastCompletion);
+    auto Waited = (TimeType::now() - LastCompletion);
     return Waited >= Duration;
 }
 
 void TLuaEngine::TimedEvent::Reset() {
-    LastCompletion = std::chrono::high_resolution_clock::now();
+    LastCompletion = TimeType::now();
 }

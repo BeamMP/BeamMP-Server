@@ -17,14 +17,14 @@ void THeartbeatThread::operator()() {
     // these are "hot-change" related variables
     static std::string Last;
 
-    static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
+    static TimeType::time_point LastNormalUpdateTime = TimeType::now();
     bool isAuth = false;
     size_t UpdateReminderCounter = 0;
     while (!Application::IsShuttingDown()) {
         ++UpdateReminderCounter;
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
-        auto Now = std::chrono::high_resolution_clock::now();
+        auto Now = TimeType::now();
         bool Unchanged = Last == Body;
         auto TimePassed = (Now - LastNormalUpdateTime);
         auto Threshold = Unchanged ? 30 : 5;

@@ -119,7 +119,7 @@ TClient::TClient(TServer& Server, ip::tcp::socket&& Socket)
     : mServer(Server)
     , mSocket(std::move(Socket))
     , mDownSocket(ip::tcp::socket(Server.IoCtx()))
-    , mLastPingTime(std::chrono::high_resolution_clock::now()) {
+    , mLastPingTime(TimeType::now()) {
 }
 
 TClient::~TClient() {
@@ -127,11 +127,11 @@ TClient::~TClient() {
 }
 
 void TClient::UpdatePingTime() {
-    mLastPingTime = std::chrono::high_resolution_clock::now();
+    mLastPingTime = TimeType::now();
 }
 int TClient::SecondsSinceLastPing() {
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::high_resolution_clock::now() - mLastPingTime)
+        TimeType::now() - mLastPingTime)
                        .count();
     return int(seconds);
 }

@@ -4,6 +4,8 @@
 #include <functional>
 #include <string>
 
+#include "Common.h"
+
 class TScopedTimer {
 public:
     TScopedTimer();
@@ -11,7 +13,7 @@ public:
     TScopedTimer(std::function<void(size_t)> OnDestroy);
     ~TScopedTimer();
     auto GetElapsedTime() const {
-        auto EndTime = std::chrono::system_clock::now();
+        auto EndTime = TimeType::now();
         auto Delta = EndTime - mStartTime;
         size_t TimeDelta = Delta / std::chrono::milliseconds(1);
         return TimeDelta;
@@ -20,6 +22,6 @@ public:
     std::function<void(size_t /* time_ms */)> OnDestroy { nullptr };
 
 private:
-    std::chrono::system_clock::time_point mStartTime;
+    TimeType::time_point mStartTime;
     std::string Name;
 };

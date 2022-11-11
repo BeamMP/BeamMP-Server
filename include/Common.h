@@ -27,6 +27,10 @@ namespace fs = std::filesystem;
 #include <boost/container/flat_map.hpp>
 #include <boost/variant.hpp>
 
+#include <chrono>
+
+using TimeType = std::chrono::system_clock;
+
 // General
 constexpr std::string_view StrDebug = "Debug";
 constexpr std::string_view StrPrivate = "Private";

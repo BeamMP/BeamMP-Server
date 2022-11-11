@@ -133,7 +133,7 @@ public:
     }
 
     static void WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results,
-        const std::optional<std::chrono::high_resolution_clock::duration>& Max = std::nullopt);
+        const std::optional<TimeType::duration>& Max = std::nullopt);
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
@@ -260,8 +260,8 @@ private:
     };
 
     struct TimedEvent {
-        std::chrono::high_resolution_clock::duration Duration {};
-        std::chrono::high_resolution_clock::time_point LastCompletion {};
+        TimeType::duration Duration {};
+        TimeType::time_point LastCompletion {};
         std::string EventName;
         TLuaStateId StateId;
         CallStrategy Strategy;
