@@ -34,6 +34,7 @@ Application::SettingsMap Application::mSettings = {
     { StrHTTPServerIP, std::string("127.0.0.1") },
     { StrHTTPServerUseSSL, false },
     { StrHideUpdateMessages, false },
+    { StrAuthKey, std::string("") },
 };
 
 // global, yes, this is ugly, no, it cant be done another way
