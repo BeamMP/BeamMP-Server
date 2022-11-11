@@ -101,7 +101,7 @@ public:
     // bytes sent on TCP
     std::atomic_size_t TcpSent = 0;
 
-    std::chrono::system_clock::time_point ConnectionTime{};
+    TimeType::time_point ConnectionTime{};
 
 
 private:
@@ -127,7 +127,7 @@ private:
     std::string mRole;
     std::string mDID;
     int mID = -1;
-    std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
+    std::chrono::time_point<TimeType> mLastPingTime;
 };
 
 std::optional<std::weak_ptr<TClient>> GetClient(class TServer& Server, int ID);

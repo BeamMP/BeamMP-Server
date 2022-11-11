@@ -84,8 +84,8 @@ static inline void SplitString(std::string const& str, const char delim, std::ve
 }
 
 static std::string GetDate() {
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    time_t tt = std::chrono::high_resolution_clock::to_time_t(now);
+    TimeType::time_point now = TimeType::now();
+    time_t tt = TimeType::to_time_t(now);
     auto local_tm = std::localtime(&tt);
     char buf[30];
     std::string date;
@@ -323,10 +323,10 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
                 }
                 State += "Disconnected";
             }
-            auto Now = std::chrono::system_clock::now();
+            auto Now = TimeType::now();
             auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Now - Locked->ConnectionTime);
             std::string ConnectedSince = fmt::format("{:%Y/%m/%d %H:%M:%S}, {:%H:%M:%S} ago ({} seconds)",
-                fmt::localtime(std::chrono::high_resolution_clock::to_time_t(Locked->ConnectionTime)),
+                fmt::localtime(TimeType::to_time_t(Locked->ConnectionTime)),
                 Seconds,
                 Seconds.count());
             Application::Console().WriteRaw(fmt::format(

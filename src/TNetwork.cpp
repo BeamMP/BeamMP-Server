@@ -227,7 +227,7 @@ void TNetwork::HandleDownload(TConnection&& Conn) {
 
 std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     auto Client = CreateClient(std::move(RawConnection.Socket));
-    Client->ConnectionTime = std::chrono::high_resolution_clock::now();
+    Client->ConnectionTime = TimeType::now();
     Client->SetIdentifier("ip", RawConnection.SockAddr.address().to_string());
     beammp_tracef("This thread is ip {}", RawConnection.SockAddr.address().to_string());
 
