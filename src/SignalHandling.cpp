@@ -1,6 +1,8 @@
 #include "SignalHandling.h"
 #include "Common.h"
 
+#include "Compat.h"
+
 #if defined(BEAMMP_LINUX) || defined(BEAMMP_APPLE)
 #include <csignal>
 static void UnixSignalHandler(int sig) {
