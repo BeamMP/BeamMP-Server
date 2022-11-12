@@ -99,7 +99,7 @@ endif()
 add_subdirectory("deps/sentry-native")
 
 # ------------------------ C++ SETUP ---------------------------------
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 # ------------------------ DEPENDENCIES ------------------------------
 message(STATUS "Adding local source dependencies")

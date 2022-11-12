@@ -28,11 +28,11 @@ bool ArgsParser::Verify() {
         } else if (FoundArgument(RegisteredArg.Names)) {
             if (RegisteredArg.Flags & Flags::HAS_VALUE) {
                 if (!GetValueOfArgument(RegisteredArg.Names).has_value()) {
-                    fmt::print(stderr, "Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' expects a value, but no value was given.");
+                    fmt::print(stderr, "Error in commandline arguments: Argument '{}' expects a value, but no value was given.", RegisteredArg.Names.at(0));
                     Ok = false;
                 }
             } else if (GetValueOfArgument(RegisteredArg.Names).has_value()) {
-                fmt::print(stderr, "Error in commandline arguments: Argument '" + std::string(RegisteredArg.Names.at(0)) + "' does not expect a value, but one was given.");
+                fmt::print(stderr, "Error in commandline arguments: Argument '{}' does not expect a value, but one was given.", RegisteredArg.Names.at(0));
                 Ok = false;
             }
         }
@@ -81,7 +81,7 @@ void ArgsParser::ConsumeLongAssignment(const std::string& Arg) {
     auto Value = Arg.substr(Arg.rfind("=") + 1);
     auto Name = Arg.substr(2, Arg.rfind("=") - 2);
     if (!IsRegistered(Name)) {
-        fmt::print(stdout, "Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
+        fmt::print(stdout, "Argument '{}' was supplied but isn't a known argument, so it is likely being ignored.", Name);
     }
     mFoundArgs.push_back({ Name, Value });
 }
@@ -90,7 +90,7 @@ void ArgsParser::ConsumeLongFlag(const std::string& Arg) {
     auto Name = Arg.substr(2, Arg.rfind("=") - 2);
     mFoundArgs.push_back({ Name, std::nullopt });
     if (!IsRegistered(Name)) {
-        fmt::print(stdout, "Argument '" + Name + "' was supplied but isn't a known argument, so it is likely being ignored.");
+        fmt::print(stdout, "Argument '{}' was supplied but isn't a known argument, so it is likely being ignored.", Name);
     }
 }
 
