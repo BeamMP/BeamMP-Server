@@ -112,11 +112,10 @@ int BeamMPServerMain(MainArguments Arguments) {
         }
     }
 
-
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
 
     SetupSignalHandlers();
-    
+
     beammp_infof("BeamMP Server v{} ({})", Application::ServerVersionString(), BEAMMP_GIT_HASH);
 
     TConfig Config(ConfigPath);
@@ -130,17 +129,17 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::GracefullyShutdown();
         return 1;
     }
-    
+
     Application::Console().Internal().set_prompt("> ");
     Application::Console().StartLoggingToFile();
-    
+
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {
         beammp_info("If this takes too long, you can press Ctrl+C repeatedly to force a shutdown.");
         Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
         Shutdown = true;
     });
-    
+
     TServer Server(Arguments.List);
     auto LuaEngine = std::make_shared<TLuaEngine>();
     LuaEngine->SetServer(&Server);

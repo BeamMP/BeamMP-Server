@@ -66,9 +66,9 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
             Sentry.LogAssert(#cond, _file_basename, _line, __func__);                  \
         }                                                                              \
     } while (false)
-#define beammp_assert_not_reachable()                                                      \
-    do {                                                                                   \
+#define beammp_assert_not_reachable()                                                                                                                           \
+    do {                                                                                                                                                        \
         beammp_errorf("Assertion failed in '{}:{}': Unreachable code reached. This may result in a crash or undefined state of the program.", __func__, _line); \
-        Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__);          \
+        Sentry.LogAssert("code is unreachable", _file_basename, _line, __func__);                                                                               \
     } while (false)
 #endif // DEBUG

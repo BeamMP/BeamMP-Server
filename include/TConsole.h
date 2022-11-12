@@ -67,7 +67,7 @@ private:
         { "lua", [this](const auto& a, auto& b) { Autocomplete_Lua(a, b); } },
         { "kick", [this](const auto& a, auto& b) { Autocomplete_Kick(a, b); } },
         { "settings", [this](const auto& a, auto& b) { Autocomplete_Settings(a, b); } },
-	};
+    };
 
     Commandline mCommandline;
     std::vector<std::string> mCachedLuaHistory;
