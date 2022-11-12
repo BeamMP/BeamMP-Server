@@ -31,3 +31,6 @@
 [submodule "deps/doctest"]
 	path = deps/doctest
 	url = https://github.com/doctest/doctest
+[submodule "deps/lk-result"]
+	path = deps/lk-result
+	url = https://gitlab.com/lionkor/lk-result.git
