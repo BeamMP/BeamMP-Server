@@ -191,7 +191,7 @@ void TConfig::ParseFromFile(std::string_view name) {
 void TConfig::PrintDebug() {
     for (const auto& [k, v] : Application::mSettings) {
         if (k == StrAuthKey) {
-            beammp_debugf("AuthKey: length {}", boost::get<std::string>(v).size());
+            beammp_debugf("AuthKey: length {}", std::get<std::string>(v).size());
             continue;
         }
         beammp_debugf("{}: {}", k, Application::SettingToString(v));

@@ -28,6 +28,7 @@ namespace fs = std::filesystem;
 #include <boost/variant.hpp>
 
 #include <chrono>
+#include <variant>
 
 using TimeType = std::chrono::system_clock;
 
@@ -84,7 +85,7 @@ class Application final {
 public:
     // types
 
-    using SettingValue = variant<std::string, bool, int>;
+    using SettingValue = std::variant<std::string, bool, int>;
     using SettingsMap = flat_map<std::string_view, SettingValue>;
 
     static SettingsMap mSettings;
