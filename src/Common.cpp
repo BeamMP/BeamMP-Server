@@ -41,13 +41,13 @@ Application::SettingsMap Application::mSettings = {
 TSentry Sentry {};
 
 std::string Application::SettingToString(const Application::SettingValue& Value) {
-    switch (Value.which()) {
+    switch (Value.index()) {
     case 0:
-        return fmt::format("{}", boost::get<std::string>(Value));
+        return fmt::format("{}", std::get<std::string>(Value));
     case 1:
-        return fmt::format("{}", boost::get<bool>(Value));
+        return fmt::format("{}", std::get<bool>(Value));
     case 2:
-        return fmt::format("{}", boost::get<int>(Value));
+        return fmt::format("{}", std::get<int>(Value));
     default:
         return "<unknown type>";
     }
@@ -55,7 +55,7 @@ std::string Application::SettingToString(const Application::SettingValue& Value)
 
 std::string Application::GetSettingString(std::string_view Name) {
     try {
-        return boost::get<std::string>(Application::mSettings.at(Name));
+        return std::get<std::string>(Application::mSettings.at(Name));
     } catch (const std::exception& e) {
         beammp_errorf("Failed to get string setting '{}': {}", Name, e.what());
         return "";
@@ -64,7 +64,7 @@ std::string Application::GetSettingString(std::string_view Name) {
 
 int Application::GetSettingInt(std::string_view Name) {
     try {
-        return boost::get<int>(Application::mSettings.at(Name));
+        return std::get<int>(Application::mSettings.at(Name));
     } catch (const std::exception& e) {
         beammp_errorf("Failed to get int setting '{}': {}", Name, e.what());
         return 0;
@@ -73,7 +73,7 @@ int Application::GetSettingInt(std::string_view Name) {
 
 bool Application::GetSettingBool(std::string_view Name) {
     try {
-        return boost::get<bool>(Application::mSettings.at(Name));
+        return std::get<bool>(Application::mSettings.at(Name));
     } catch (const std::exception& e) {
         beammp_errorf("Failed to get bool setting '{}': {}", Name, e.what());
         return false;
@@ -82,7 +82,7 @@ bool Application::GetSettingBool(std::string_view Name) {
 
 void Application::SetSetting(std::string_view Name, const Application::SettingValue& Value) {
     if (mSettings.contains(Name)) {
-        if (mSettings[Name].type() == Value.type()) {
+        if (mSettings[Name].index() == Value.index()) {
             mSettings[Name] = Value;
         } else {
             beammp_errorf("Could not change value of setting '{}', because it has a different type.", Name);
