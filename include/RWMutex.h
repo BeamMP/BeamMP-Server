@@ -6,8 +6,8 @@
  * and write locks and read locks are mutually exclusive.
  */
 
-#include <shared_mutex>
 #include <mutex>
+#include <shared_mutex>
 
 // Use ReadLock(m) and WriteLock(m) to lock it.
 using RWMutex = std::shared_mutex;

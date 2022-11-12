@@ -101,8 +101,7 @@ public:
     // bytes sent on TCP
     std::atomic_size_t TcpSent = 0;
 
-    TimeType::time_point ConnectionTime{};
-
+    TimeType::time_point ConnectionTime {};
 
 private:
     void InsertVehicle(int ID, const std::string& Data);

@@ -7,4 +7,3 @@ namespace uuid {
 std::string GenerateUuid();
 
 }
-
