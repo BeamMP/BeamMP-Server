@@ -150,6 +150,7 @@ set(BeamMP_Includes
     "${CMAKE_CURRENT_SOURCE_DIR}/deps/sol2/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/deps/lk-result/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/deps"
     "${CMAKE_CURRENT_SOURCE_DIR}/deps/fmt/include"
 )
