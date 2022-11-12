@@ -46,20 +46,20 @@ constexpr std::string_view StrAuthKey = "AuthKey";
 constexpr std::string_view StrLogChat = "LogChat";
 
 // Misc
-constexpr std::string_view StrSendErrors = "SendErrors";
-constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
-constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
+constexpr std::string_view StrSendErrors = "Misc.SendErrors";
+constexpr std::string_view StrSendErrorsMessageEnabled = "Misc.SendErrorsShowMessage";
+constexpr std::string_view StrHideUpdateMessages = "Misc.ImScaredOfUpdates";
 
 // HTTP
-constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
-constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
-constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
-constexpr std::string_view StrSSLCertPath = "SSLCertPath";
-constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
-constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
+constexpr std::string_view StrHTTPServerEnabled = "HTTP.HTTPServerEnabled";
+constexpr std::string_view StrHTTPServerUseSSL = "HTTP.UseSSL";
+constexpr std::string_view StrSSLKeyPath = "HTTP.SSLKeyPath";
+constexpr std::string_view StrSSLCertPath = "HTTP.SSLCertPath";
+constexpr std::string_view StrHTTPServerPort = "HTTP.HTTPServerPort";
+constexpr std::string_view StrHTTPServerIP = "HTTP.HTTPServerIP";
 
 // Unused
-constexpr std::string_view StrCustomIP = "CustomIP";
+constexpr std::string_view StrCustomIP = "Unused.CustomIP";
 
 struct Version {
     uint8_t major;
