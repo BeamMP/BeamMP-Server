@@ -46,7 +46,7 @@ private:
     void Looper(const std::weak_ptr<TClient>& c);
     int OpenID();
     void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr);
-    void Parse(TClient& c, const std::vector<uint8_t>& Packet);
+    void HandleResourcePackets(TClient& c, const std::vector<uint8_t>& Packet);
     void SendFile(TClient& c, const std::string& Name);
     static bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);
     static void SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name);
