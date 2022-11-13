@@ -7,9 +7,8 @@
 #include <TLuaPlugin.h>
 #include <algorithm>
 #include <any>
-#include <sstream>
-
 #include <nlohmann/json.hpp>
+#include <sstream>
 
 #include "LuaAPI.h"
 
@@ -23,11 +22,10 @@ struct VehiclePacket {
     int Vid;
 };
 
-static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
+static Result<std::pair<int, int>> GetPidVid(const std::string& str) {
     auto IDSep = str.find('-');
     if (IDSep == std::string::npos) {
-        beammp_debugf("Invalid packet: Could not parse pid/vid from packet, as there is no '-' separator: '{}'", str);
-        return std::nullopt;
+        return Error("Invalid packet: Could not parse pid/vid from packet, as there is no '-' separator: '{}'", str);
     }
     std::string pid = str.substr(0, IDSep);
     std::string vid = str.substr(IDSep + 1);
@@ -38,12 +36,10 @@ static std::optional<std::pair<int, int>> GetPidVid(const std::string& str) {
             int VID = std::stoi(vid);
             return { { PID, VID } };
         } catch (const std::exception&) {
-            beammp_debugf("Invalid packet: Could not parse pid/vid from packet, as one or both are not valid numbers: '{}'", str);
-            return std::nullopt;
+            return Error("Invalid packet: Could not parse pid/vid from packet, as one or both are not valid numbers: '{}'", str);
         }
     }
-    beammp_debugf("Invalid packet: Could not parse pid/vid from packet: '{}'", str);
-    return std::nullopt;
+    return Error("Invalid packet: Could not parse pid/vid from packet: '{}'", str);
 }
 
 static std::optional<VehiclePacket> ParseVehiclePacket(const std::string& Packet, const int playerID) {
