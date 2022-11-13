@@ -617,7 +617,7 @@ void TNetwork::SyncResources(TClient& c) {
 ModMap TNetwork::GetClientMods(TClient& Client) {
     auto AllMods = mResourceManager.FileMap();
 
-    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerRequestMods", "", Client.GetName(), Client.GetRoles(), Client.IsGuest(), Client.GetIdentifiers(), AllMods);
+    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerRequestMods", "", Client.GetName(), Client.GetRoles(), Client.IsGuest(), Client.GetIdentifiers(), Client.GetID(), AllMods);
     TLuaEngine::WaitForAll(Futures);
 
     ModMap AllowedMods = AllMods;
