@@ -32,6 +32,12 @@ namespace fs = std::filesystem;
 
 using TimeType = std::chrono::system_clock;
 
+#include <lk/Result.h>
+
+template <typename T>
+using Result = lk::Result<T>;
+using Error = lk::Error;
+
 // General
 constexpr std::string_view StrDebug = "Debug";
 constexpr std::string_view StrPrivate = "Private";

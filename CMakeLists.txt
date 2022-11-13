@@ -158,6 +158,7 @@ set(BeamMP_Includes
 set(BeamMP_Definitions
     SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
     BEAMMP_GIT_HASH="${GIT_HASH}"
+    LK_RESULT_USE_FMT
 )
 
 if (WIN32)
