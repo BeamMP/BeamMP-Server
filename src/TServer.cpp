@@ -2,6 +2,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "IterationDecision.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include <TLuaPlugin.h>
@@ -189,7 +190,7 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     mClients.erase(WeakClientPtr.lock());
 }
 
-void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
+void TServer::ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
     decltype(mClients) Clients;
     {
         ReadLock lock(mClientsMutex);
@@ -197,6 +198,20 @@ void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& F
     }
     for (auto& Client : Clients) {
         if (!Fn(Client)) {
+            break;
+        }
+    }
+}
+
+void TServer::ForEachClient(const std::function<IterationDecision(const std::shared_ptr<TClient>&)>& Fn) {
+    decltype(mClients) Clients;
+    {
+        ReadLock lock(mClientsMutex);
+        Clients = mClients;
+    }
+    for (auto& Client : Clients) {
+        auto Decision = Fn(Client);
+        if (Decision == IterationDecision::Break) {
             break;
         }
     }

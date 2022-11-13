@@ -138,7 +138,7 @@ int TClient::SecondsSinceLastPing() {
 
 std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
     std::optional<std::weak_ptr<TClient>> MaybeClient { std::nullopt };
-    Server.ForEachClient([&](std::weak_ptr<TClient> CPtr) -> bool {
+    Server.ForEachClientWeak([&](std::weak_ptr<TClient> CPtr) -> bool {
         ReadLock Lock(Server.GetClientMutex());
         try {
             auto C = CPtr.lock();

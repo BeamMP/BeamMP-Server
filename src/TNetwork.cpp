@@ -52,7 +52,7 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
         TLuaEngine::WaitForAll(Futures, std::chrono::seconds(60));
         beammp_debug("Kicking all players due to shutdown");
-        Server.ForEachClient([&](std::weak_ptr<TClient> client) -> bool {
+        Server.ForEachClientWeak([&](std::weak_ptr<TClient> client) -> bool {
             if (!client.expired()) {
                 ClientKick(*client.lock(), "Server shutdown");
             }
@@ -213,7 +213,7 @@ void TNetwork::HandleDownload(TConnection&& Conn) {
         return;
     }
     auto ID = uint8_t(D);
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+    mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         ReadLock Lock(mServer.GetClientMutex());
         if (!ClientPtr.expired()) {
             auto c = ClientPtr.lock();
@@ -298,7 +298,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+    mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> Cl;
         {
             ReadLock Lock(mServer.GetClientMutex());
@@ -534,7 +534,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
 
 void TNetwork::UpdatePlayer(TClient& Client) {
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::GetSettingInt(StrMaxPlayers)) + ":";
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+    mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         ReadLock Lock(mServer.GetClientMutex());
         if (!ClientPtr.expired()) {
             auto c = ClientPtr.lock();
@@ -582,7 +582,7 @@ int TNetwork::OpenID() {
     bool found;
     do {
         found = true;
-        mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+        mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
             ReadLock Lock(mServer.GetClientMutex());
             if (!ClientPtr.expired()) {
                 auto c = ClientPtr.lock();
@@ -852,7 +852,7 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
     LockedClient->SetIsSyncing(true);
     bool Return = false;
     bool res = true;
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+    mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> client;
         {
             ReadLock Lock(mServer.GetClientMutex());
@@ -893,7 +893,7 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
         beammp_assert(c);
     char C = Data.at(0);
     bool ret = true;
-    mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+    mServer.ForEachClientWeak([&](std::weak_ptr<TClient> ClientPtr) -> bool {
         std::shared_ptr<TClient> Client;
         try {
             ReadLock Lock(mServer.GetClientMutex());
