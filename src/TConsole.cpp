@@ -298,7 +298,7 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
               connection and do not necessarily reflect the *current* data rate
               of that client.
 )"));
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto Locked = Client.lock();
             std::string State = "";
@@ -390,7 +390,7 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
     beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
     bool Kicked = false;
 
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         auto Locked = Client.lock();
         if (Locked) {
             if (StringStartsWithLower(Locked->GetName(), Name)) {
@@ -552,7 +552,7 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
     } else {
         std::stringstream ss;
         ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::endl;
-        mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
             if (!Client.expired()) {
                 auto locked = Client.lock();
                 ss << std::left << std::setw(25) << locked->GetName()
@@ -579,7 +579,7 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
     size_t SyncingCount = 0;
     size_t MissedPacketQueueSum = 0;
     int LargestSecondsSinceLastPing = 0;
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto Locked = Client.lock();
             CarCount += Locked->GetCarCount();
@@ -680,7 +680,7 @@ void TConsole::Autocomplete_Lua(const std::string& stub, std::vector<std::string
 void TConsole::Autocomplete_Kick(const std::string& stub, std::vector<std::string>& suggestions) {
     std::string stub_lower = boost::algorithm::to_lower_copy(stub);
 
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         auto Locked = Client.lock();
         if (Locked) {
             if (StringStartsWithLower(Locked->GetName(), stub_lower)) {

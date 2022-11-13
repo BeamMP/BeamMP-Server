@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IThreaded.h"
+#include "IterationDecision.h"
 #include "RWMutex.h"
 #include "TScopedTimer.h"
 #include <functional>
@@ -23,7 +24,9 @@ public:
     void InsertClient(const std::shared_ptr<TClient>& Ptr);
     void RemoveClient(const std::weak_ptr<TClient>&);
     // in Fn, return true to continue, return false to break
-    void ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
+    [[deprecated("use ForEachClient instead")]] void ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
+    // in Fn, return Break or Continue
+    void ForEachClient(const std::function<IterationDecision(const std::shared_ptr<TClient>&)>& Fn);
     size_t ClientCount() const;
 
     static void GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TNetwork& Network);

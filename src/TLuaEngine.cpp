@@ -546,7 +546,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
     sol::table Result = mStateView.create_table();
-    mEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto locked = Client.lock();
             Result[locked->GetID()] = locked->GetName();
@@ -558,7 +558,7 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
 
 int TLuaEngine::StateThreadData::Lua_GetPlayerIDByName(const std::string& Name) {
     int Id = -1;
-    mEngine->mServer->ForEachClient([&Id, &Name](std::weak_ptr<TClient> Client) -> bool {
+    mEngine->mServer->ForEachClientWeak([&Id, &Name](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto locked = Client.lock();
             if (locked->GetName() == Name) {
