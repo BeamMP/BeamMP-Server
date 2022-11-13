@@ -51,9 +51,13 @@ public:
             Clients = mClients;
         }
         for (auto& Client : Clients) {
-            IterationDecision Decision = std::invoke(Fn, Client);
-            if (Decision == IterationDecision::Break) {
-                break;
+            if (Client) [[likely]] {
+                IterationDecision Decision = std::invoke(Fn, Client);
+                if (Decision == IterationDecision::Break) {
+                    break;
+                }
+            } else {
+                beammp_assert_not_reachable();
             }
         }
     }
@@ -65,7 +69,11 @@ public:
             Clients = mClients;
         }
         for (auto& Client : Clients) {
-            std::invoke(Fn, Client);
+            if (Client) [[likely]] {
+                std::invoke(Fn, Client);
+            } else {
+                beammp_assert_not_reachable();
+            }
         }
     }
     size_t ClientCount() const;
