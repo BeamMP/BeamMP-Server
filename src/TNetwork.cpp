@@ -577,6 +577,10 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
 }
 
 int TNetwork::OpenID() {
+    // This lock ensures that each call to OpenID is exclusive.
+    // If we didn't have this, two concurrent calls to this function may result
+    // in the same ID.
+    std::unique_lock Lock(mOpenIDMutex);
     int ID = 0;
     bool found;
     do {
