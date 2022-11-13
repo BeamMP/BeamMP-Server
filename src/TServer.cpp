@@ -203,20 +203,6 @@ void TServer::ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)
     }
 }
 
-void TServer::ForEachClient(const std::function<IterationDecision(const std::shared_ptr<TClient>&)>& Fn) {
-    decltype(mClients) Clients;
-    {
-        ReadLock lock(mClientsMutex);
-        Clients = mClients;
-    }
-    for (auto& Client : Clients) {
-        auto Decision = Fn(Client);
-        if (Decision == IterationDecision::Break) {
-            break;
-        }
-    }
-}
-
 size_t TServer::ClientCount() const {
     ReadLock Lock(mClientsMutex);
     return mClients.size();

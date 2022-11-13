@@ -4,9 +4,11 @@
 #include "IterationDecision.h"
 #include "RWMutex.h"
 #include "TScopedTimer.h"
+#include <concepts>
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <type_traits>
 #include <unordered_set>
 
 #include "BoostAliases.h"
@@ -14,6 +16,21 @@
 class TClient;
 class TNetwork;
 class TPPSMonitor;
+
+// clang-format doesn't know how to deal with concepts
+// clang-format off
+template <typename FnT>
+concept ForEachHandlerWithDecision = requires(FnT Fn, const std::shared_ptr<TClient>& Ptr) {
+    requires std::invocable<FnT, const std::shared_ptr<TClient>&> ;
+    { std::invoke(Fn, Ptr) } -> std::convertible_to<IterationDecision>;
+};
+
+template <typename FnT>
+concept ForEachHandler = requires(FnT Fn, const std::shared_ptr<TClient>& Ptr) {
+    requires std::invocable <FnT, const std::shared_ptr<TClient>&> ;
+    { std::invoke(Fn, Ptr) } -> std::same_as<void>;
+};
+// clang-format on
 
 class TServer final {
 public:
@@ -26,7 +43,31 @@ public:
     // in Fn, return true to continue, return false to break
     [[deprecated("use ForEachClient instead")]] void ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     // in Fn, return Break or Continue
-    void ForEachClient(const std::function<IterationDecision(const std::shared_ptr<TClient>&)>& Fn);
+    template <ForEachHandlerWithDecision FnT>
+    void ForEachClient(FnT Fn) {
+        decltype(mClients) Clients;
+        {
+            ReadLock lock(mClientsMutex);
+            Clients = mClients;
+        }
+        for (auto& Client : Clients) {
+            IterationDecision Decision = std::invoke(Fn, Client);
+            if (Decision == IterationDecision::Break) {
+                break;
+            }
+        }
+    }
+    template <ForEachHandler FnT>
+    void ForEachClient(FnT Fn) {
+        decltype(mClients) Clients;
+        {
+            ReadLock lock(mClientsMutex);
+            Clients = mClients;
+        }
+        for (auto& Client : Clients) {
+            std::invoke(Fn, Client);
+        }
+    }
     size_t ClientCount() const;
 
     static void GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TNetwork& Network);
