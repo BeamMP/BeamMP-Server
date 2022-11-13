@@ -528,9 +528,9 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
-    auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        auto IDs = MaybeClient.value().lock()->GetIdentifiers();
+    auto Client = GetClient(mEngine->Server(), ID);
+    if (Client) {
+        auto IDs = Client->GetIdentifiers();
         if (IDs.empty()) {
             return sol::lua_nil;
         }
@@ -591,18 +591,17 @@ sol::table TLuaEngine::StateThreadData::Lua_FS_ListDirectories(const std::string
 }
 
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
-    auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        return MaybeClient.value().lock()->GetName();
+    auto Client = GetClient(mEngine->Server(), ID);
+    if (Client) {
+        return Client->GetName();
     } else {
         return "";
     }
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
-    auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        auto Client = MaybeClient.value().lock();
+    auto Client = GetClient(mEngine->Server(), ID);
+    if (Client) {
         TClient::TSetOfVehicleData VehicleData;
         { // Vehicle Data Lock Scope
             auto LockedData = Client->GetAllCars();
@@ -623,9 +622,8 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
 
 std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionRaw(int PID, int VID) {
     std::pair<sol::table, std::string> Result;
-    auto MaybeClient = GetClient(mEngine->Server(), PID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        auto Client = MaybeClient.value().lock();
+    auto Client = GetClient(mEngine->Server(), PID);
+    if (Client) {
         std::string VehiclePos = Client->GetCarPositionRaw(VID);
 
         if (VehiclePos.empty()) {

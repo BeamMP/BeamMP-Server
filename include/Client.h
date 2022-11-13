@@ -129,4 +129,5 @@ private:
     std::chrono::time_point<TimeType> mLastPingTime;
 };
 
-std::optional<std::weak_ptr<TClient>> GetClient(class TServer& Server, int ID);
+// Returns a valid client, or nullptr if no such client exists
+std::shared_ptr<TClient> GetClient(class TServer& Server, int ID);
