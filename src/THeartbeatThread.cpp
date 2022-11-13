@@ -145,9 +145,9 @@ std::string THeartbeatThread::GenerateCall() {
         << "&version=" << Application::ServerVersionString()
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
         << "&name=" << Application::GetSettingString(StrName)
-        << "&modlist=" << mResourceManager.TrimmedList()
-        << "&modstotalsize=" << mResourceManager.MaxModSize()
-        << "&modstotal=" << mResourceManager.ModsLoaded()
+        << "&modlist=" << TResourceManager::FormatForBackend(mResourceManager.FileMap())
+        << "&modstotalsize=" << mResourceManager.TotalModsSize()
+        << "&modstotal=" << mResourceManager.LoadedModCount()
         << "&playerslist=" << GetPlayers()
         << "&desc=" << Application::GetSettingString(StrDescription);
     return Ret.str();
