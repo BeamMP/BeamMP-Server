@@ -35,14 +35,15 @@ namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaValue = std::variant<std::string, int, JsonString, bool, std::unordered_map<std::string, std::string>, float>;
+using TLuaValue = std::variant<std::string, int, JsonString, bool, std::unordered_map<std::string, std::string>, std::unordered_map<std::string, size_t>, float>;
 enum TLuaType {
     String = 0,
     Int = 1,
     Json = 2,
     Bool = 3,
     StringStringMap = 4,
-    Float = 5,
+    StringSizeTMap = 5,
+    Float = 6,
 };
 
 class TLuaPlugin;

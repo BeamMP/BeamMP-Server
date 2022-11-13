@@ -55,6 +55,7 @@ constexpr std::string_view StrLogChat = "LogChat";
 constexpr std::string_view StrSendErrors = "Misc.SendErrors";
 constexpr std::string_view StrSendErrorsMessageEnabled = "Misc.SendErrorsShowMessage";
 constexpr std::string_view StrHideUpdateMessages = "Misc.ImScaredOfUpdates";
+constexpr std::string_view StrIncludeSubdirectories = "Misc.IncludeSubdirectories";
 
 // HTTP
 constexpr std::string_view StrHTTPServerEnabled = "HTTP.HTTPServerEnabled";
@@ -78,6 +79,9 @@ struct Version {
 
 template <typename T>
 using SparseArray = std::unordered_map<size_t, T>;
+
+template <typename K, typename V>
+using HashMap = std::unordered_map<K, V>;
 
 using boost::variant;
 using boost::container::flat_map;

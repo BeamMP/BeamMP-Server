@@ -46,6 +46,7 @@ private:
     void Looper(const std::weak_ptr<TClient>& c);
     int OpenID();
     void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr);
+    ModMap GetClientMods(TClient& Client);
     void HandleResourcePackets(TClient& c, const std::vector<uint8_t>& Packet);
     void SendFile(TClient& c, const std::string& Name);
     static bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);

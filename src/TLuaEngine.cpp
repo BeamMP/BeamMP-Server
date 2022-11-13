@@ -1054,6 +1054,15 @@ void TLuaEngine::StateThreadData::operator()() {
                             LuaArgs.push_back(sol::make_object(StateView, Table));
                             break;
                         }
+                        case TLuaType::StringSizeTMap: {
+                            auto Map = std::get<std::unordered_map<std::string, size_t>>(Arg);
+                            auto Table = StateView.create_table();
+                            for (const auto& [k, v] : Map) {
+                                Table[k] = v;
+                            }
+                            LuaArgs.push_back(sol::make_object(StateView, Table));
+                            break;
+                        }
                         default:
                             beammp_error("Unknown argument type, passed as nil");
                             break;

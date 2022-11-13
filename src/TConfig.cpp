@@ -87,6 +87,8 @@ void TConfig::FlushToFile() {
     SetComment(data["Misc"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::GetSettingBool(StrSendErrorsMessageEnabled.data());
     SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    data["Misc"][StrIncludeSubdirectories.data()] = Application::GetSettingBool(StrIncludeSubdirectories.data());
+    SetComment(data["Misc"][StrIncludeSubdirectories.data()].comments(), " Whether or not to include subdirectories in General.ResourceFolder/Client when searching for `.zip`s");
     // HTTP
     data["HTTP"][StrSSLKeyPath.data()] = Application::GetSettingString(StrSSLKeyPath.data());
     data["HTTP"][StrSSLCertPath.data()] = Application::GetSettingString(StrSSLCertPath.data());

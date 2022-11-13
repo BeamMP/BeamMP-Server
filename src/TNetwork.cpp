@@ -614,6 +614,34 @@ void TNetwork::SyncResources(TClient& c) {
     }
 }
 
+ModMap TNetwork::GetClientMods(TClient& Client) {
+    auto AllMods = mResourceManager.FileMap();
+
+    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerRequestMods", "", Client.GetName(), Client.GetRoles(), Client.IsGuest(), Client.GetIdentifiers(), AllMods);
+    TLuaEngine::WaitForAll(Futures);
+
+    ModMap AllowedMods = AllMods;
+
+    for (const std::shared_ptr<TLuaResult>& Future : Futures) {
+        sol::table Result;
+        if (!Future->Error && Future->Result.is<sol::table>()) {
+            Result = Future->Result.as<sol::table>();
+
+            for (const auto& [name, size] : AllMods) {
+                auto val = Result.get<sol::optional<int>>(name);
+                if (!val.has_value()) {
+                    AllowedMods.erase(name);
+                    beammp_debugf("Not sending mod '{}' to player '{}' (from state '{}')", name, Client.GetName(), Future->StateId);
+                }
+            }
+        }
+    }
+
+    Client.AllowedMods = AllowedMods;
+
+    return AllowedMods;
+}
+
 void TNetwork::HandleResourcePackets(TClient& c, const std::vector<uint8_t>& Packet) {
     if (Packet.empty())
         return;
@@ -627,7 +655,7 @@ void TNetwork::HandleResourcePackets(TClient& c, const std::vector<uint8_t>& Pac
     case 'S':
         if (SubCode == 'R') {
             beammp_debug("Sending Mod Info");
-            std::string ToSend = mResourceManager.FileList() + mResourceManager.FileSizes();
+            std::string ToSend = TResourceManager::FormatForClient(GetClientMods(c));
             if (ToSend.empty())
                 ToSend = "-";
             if (!TCPSend(c, StringToVector(ToSend))) {
@@ -641,24 +669,16 @@ void TNetwork::HandleResourcePackets(TClient& c, const std::vector<uint8_t>& Pac
 }
 
 void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
-    beammp_infof("{} ({}) requesting : '{}'", c.GetName(), c.GetID(), UnsafeName);
+    beammp_infof("{} ({}) requesting mod: '{}'", c.GetName(), c.GetID(), UnsafeName);
 
-    if (!fs::path(UnsafeName).has_filename()) {
-        if (!TCPSend(c, StringToVector("CO"))) {
-            c.Disconnect("TCP send failed in SendFile, when trying to cancel file transfer because the requested file doesn't contain a valid filename");
-            return;
-        }
-        beammp_warn("File " + UnsafeName + " is not a file!");
-        return;
-    }
-    auto FileName = fs::path(UnsafeName).filename().string();
-    FileName = Application::GetSettingString(StrResourceFolder) + "/Client/" + FileName;
+    auto FileName = UnsafeName;
 
-    if (!std::filesystem::exists(FileName)) {
+    auto res = TResourceManager::IsModValid(FileName, c.AllowedMods);
+
+    if (res.has_value()) {
         if (!TCPSend(c, StringToVector("CO"))) {
-            c.Disconnect("TCP send failed in SendFile, when trying to cancel file transfer because the requested file doesn't exist or couldn't be accessed");
+            c.Disconnect("TCP send failed in SendFile, when trying to cancel file transfer because " + res.value());
         }
-        beammp_warn("File " + UnsafeName + " could not be accessed!");
         return;
     }
 
