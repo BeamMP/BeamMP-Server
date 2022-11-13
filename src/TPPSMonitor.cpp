@@ -33,26 +33,16 @@ void TPPSMonitor::operator()() {
             Application::SetPPS("-");
             continue;
         }
-        mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-            std::shared_ptr<TClient> c;
-            {
-                ReadLock Lock(mServer.GetClientMutex());
-                if (!ClientPtr.expired()) {
-                    c = ClientPtr.lock();
-                } else
-                    return true;
-            }
-            if (c->GetCarCount() > 0) {
+        mServer.ForEachClient([&](const auto& Client) {
+            if (Client->GetCarCount() > 0) {
                 C++;
-                V += c->GetCarCount();
+                V += Client->GetCarCount();
             }
             // kick on "no ping"
-            if (c->SecondsSinceLastPing() > (20 * 60)) {
-                beammp_debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
-                TimedOutClients.push_back(c);
+            if (Client->SecondsSinceLastPing() > (20 * 60)) {
+                beammp_debugf("Client {} ({}) timing out: {}s since last contact", Client->GetName(), Client->GetID(), Client->SecondsSinceLastPing());
+                TimedOutClients.push_back(Client);
             }
-
-            return true;
         });
         for (auto& ClientToKick : TimedOutClients) {
             Network().ClientKick(*ClientToKick, "Timeout (no ping for way too long)");

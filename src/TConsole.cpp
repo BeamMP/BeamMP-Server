@@ -298,39 +298,37 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
               connection and do not necessarily reflect the *current* data rate
               of that client.
 )"));
-    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-        if (!Client.expired()) {
-            auto Locked = Client.lock();
-            std::string State = "";
-            if (Locked->IsSyncing()) {
-                State += "Syncing";
+    mLuaEngine->Server().ForEachClient([&](const auto& Client) {
+        std::string State = "";
+        if (Client->IsSyncing()) {
+            State += "Syncing";
+        }
+        if (Client->IsSynced()) {
+            if (!State.empty()) {
+                State += " & ";
             }
-            if (Locked->IsSynced()) {
-                if (!State.empty()) {
-                    State += " & ";
-                }
-                State += "Synced";
+            State += "Synced";
+        }
+        if (Client->IsConnected()) {
+            if (!State.empty()) {
+                State += " & ";
             }
-            if (Locked->IsConnected()) {
-                if (!State.empty()) {
-                    State += " & ";
-                }
-                State += "Connected";
+            State += "Connected";
+        }
+        if (Client->IsDisconnected()) {
+            if (!State.empty()) {
+                State += " & ";
             }
-            if (Locked->IsDisconnected()) {
-                if (!State.empty()) {
-                    State += " & ";
-                }
-                State += "Disconnected";
-            }
-            auto Now = TimeType::now();
-            auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Now - Locked->ConnectionTime);
-            std::string ConnectedSince = fmt::format("{:%Y/%m/%d %H:%M:%S}, {:%H:%M:%S} ago ({} seconds)",
-                fmt::localtime(TimeType::to_time_t(Locked->ConnectionTime)),
-                Seconds,
-                Seconds.count());
-            Application::Console().WriteRaw(fmt::format(
-                R"(        {} ('{}'):
+            State += "Disconnected";
+        }
+        auto Now = TimeType::now();
+        auto Seconds = std::chrono::duration_cast<std::chrono::seconds>(Now - Client->ConnectionTime);
+        std::string ConnectedSince = fmt::format("{:%Y/%m/%d %H:%M:%S}, {:%H:%M:%S} ago ({} seconds)",
+            fmt::localtime(TimeType::to_time_t(Client->ConnectionTime)),
+            Seconds,
+            Seconds.count());
+        Application::Console().WriteRaw(fmt::format(
+            R"(        {} ('{}'):
             Roles:              {}
             Cars:               {}
             Is guest:           {}
@@ -347,27 +345,23 @@ void TConsole::Command_Debug(const std::string&, const std::vector<std::string>&
             Connected since:    {}
             Average send:       {}/s
             Average receive:    {}/s)",
-                Locked->GetID(), Locked->GetName(),
-                Locked->GetRoles(),
-                Locked->GetCarCount(),
-                Locked->IsGuest() ? "yes" : "no",
-                Locked->GetUnicycleID() == -1 ? "no" : "yes",
-                Locked->GetTCPSock().remote_endpoint().address() == ip::address::from_string("0.0.0.0") ? "not connected" : "connected", Locked->GetTCPSock().remote_endpoint().port(),
-                Locked->GetUDPAddr().address() == ip::address::from_string("0.0.0.0") ? "NOT connected" : "connected", Locked->GetUDPAddr().port(),
-                ToHumanReadableSize(Locked->TcpSent),
-                ToHumanReadableSize(Locked->TcpReceived),
-                ToHumanReadableSize(Locked->UdpSent), Locked->UdpPacketsSent,
-                ToHumanReadableSize(Locked->UdpReceived), Locked->UdpPacketsReceived,
-                State.empty() ? "None (likely pre-sync)" : State,
-                Locked->MissedPacketQueueSize(),
-                Locked->SecondsSinceLastPing(),
-                ConnectedSince,
-                ToHumanReadableSize((Locked->TcpSent + Locked->UdpSent) / Seconds.count()),
-                ToHumanReadableSize((Locked->TcpReceived + Locked->UdpReceived) / Seconds.count())));
-        } else {
-            Application::Console().WriteRaw(fmt::format(R"(        <expired client>)"));
-        }
-        return true;
+            Client->GetID(), Client->GetName(),
+            Client->GetRoles(),
+            Client->GetCarCount(),
+            Client->IsGuest() ? "yes" : "no",
+            Client->GetUnicycleID() == -1 ? "no" : "yes",
+            Client->GetTCPSock().remote_endpoint().address() == ip::address::from_string("0.0.0.0") ? "not connected" : "connected", Client->GetTCPSock().remote_endpoint().port(),
+            Client->GetUDPAddr().address() == ip::address::from_string("0.0.0.0") ? "NOT connected" : "connected", Client->GetUDPAddr().port(),
+            ToHumanReadableSize(Client->TcpSent),
+            ToHumanReadableSize(Client->TcpReceived),
+            ToHumanReadableSize(Client->UdpSent), Client->UdpPacketsSent,
+            ToHumanReadableSize(Client->UdpReceived), Client->UdpPacketsReceived,
+            State.empty() ? "None (likely pre-sync)" : State,
+            Client->MissedPacketQueueSize(),
+            Client->SecondsSinceLastPing(),
+            ConnectedSince,
+            ToHumanReadableSize((Client->TcpSent + Client->UdpSent) / Seconds.count()),
+            ToHumanReadableSize((Client->TcpReceived + Client->UdpReceived) / Seconds.count())));
     });
 }
 
@@ -390,16 +384,13 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
     beammp_trace("attempt to kick '" + Name + "' for '" + Reason + "'");
     bool Kicked = false;
 
-    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-        auto Locked = Client.lock();
-        if (Locked) {
-            if (StringStartsWithLower(Locked->GetName(), Name)) {
-                mLuaEngine->Network().ClientKick(*Locked, Reason);
-                Kicked = true;
-                return false;
-            }
+    mLuaEngine->Server().ForEachClient([&](const auto& Client) -> IterationDecision {
+        if (StringStartsWithLower(Client->GetName(), Name)) {
+            mLuaEngine->Network().ClientKick(*Client, Reason);
+            Kicked = true;
+            return Break;
         }
-        return true;
+        return Continue;
     });
     if (!Kicked) {
         Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
@@ -552,14 +543,10 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
     } else {
         std::stringstream ss;
         ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::endl;
-        mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-            if (!Client.expired()) {
-                auto locked = Client.lock();
-                ss << std::left << std::setw(25) << locked->GetName()
-                   << std::setw(6) << locked->GetID()
-                   << std::setw(6) << locked->GetCarCount() << "\n";
-            }
-            return true;
+        mLuaEngine->Server().ForEachClient([&](const auto& Client) {
+            ss << std::left << std::setw(25) << Client->GetName()
+               << std::setw(6) << Client->GetID()
+               << std::setw(6) << Client->GetCarCount() << "\n";
         });
         auto Str = ss.str();
         Application::Console().WriteRaw(Str.substr(0, Str.size() - 1));
@@ -579,20 +566,16 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
     size_t SyncingCount = 0;
     size_t MissedPacketQueueSum = 0;
     int LargestSecondsSinceLastPing = 0;
-    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-        if (!Client.expired()) {
-            auto Locked = Client.lock();
-            CarCount += Locked->GetCarCount();
-            ConnectedCount += Locked->IsConnected() ? 1 : 0;
-            GuestCount += Locked->IsGuest() ? 1 : 0;
-            SyncedCount += Locked->IsSynced() ? 1 : 0;
-            SyncingCount += Locked->IsSyncing() ? 1 : 0;
-            MissedPacketQueueSum += Locked->MissedPacketQueueSize();
-            if (Locked->SecondsSinceLastPing() < LargestSecondsSinceLastPing) {
-                LargestSecondsSinceLastPing = Locked->SecondsSinceLastPing();
-            }
+    mLuaEngine->Server().ForEachClient([&](const auto& Client) {
+        CarCount += Client->GetCarCount();
+        ConnectedCount += Client->IsConnected() ? 1 : 0;
+        GuestCount += Client->IsGuest() ? 1 : 0;
+        SyncedCount += Client->IsSynced() ? 1 : 0;
+        SyncingCount += Client->IsSyncing() ? 1 : 0;
+        MissedPacketQueueSum += Client->MissedPacketQueueSize();
+        if (Client->SecondsSinceLastPing() < LargestSecondsSinceLastPing) {
+            LargestSecondsSinceLastPing = Client->SecondsSinceLastPing();
         }
-        return true;
     });
 
     size_t SystemsStarting = 0;
@@ -680,14 +663,10 @@ void TConsole::Autocomplete_Lua(const std::string& stub, std::vector<std::string
 void TConsole::Autocomplete_Kick(const std::string& stub, std::vector<std::string>& suggestions) {
     std::string stub_lower = boost::algorithm::to_lower_copy(stub);
 
-    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-        auto Locked = Client.lock();
-        if (Locked) {
-            if (StringStartsWithLower(Locked->GetName(), stub_lower)) {
-                suggestions.push_back("kick " + Locked->GetName());
-            }
+    mLuaEngine->Server().ForEachClient([&](const auto& Client) {
+        if (StringStartsWithLower(Client->GetName(), stub_lower)) {
+            suggestions.push_back("kick " + Client->GetName());
         }
-        return true;
     });
 }
 
