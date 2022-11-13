@@ -97,22 +97,21 @@ void TNetwork::UDPServerMain() {
             // to represent packets. This would mean that player 0 would
             // cause empty packets.
             uint8_t ID = uint8_t(Data.at(0)) - 1;
-            auto MaybeClient = GetClient(mServer, ID);
-            if (MaybeClient) {
+            auto Client = GetClient(mServer, ID);
+            if (Client) {
                 try {
-                    auto Locked = MaybeClient.value().lock();
-                    if (Locked->IsConnected() && Locked->GetUDPAddr() != client) {
-                        beammp_debugf("Client at {}:{} tried to send UDP for client {}", client.address().to_string(), client.port(), Locked->GetID());
+                    if (Client->IsConnected() && Client->GetUDPAddr() != client) {
+                        beammp_debugf("Client at {}:{} tried to send UDP for client {}", client.address().to_string(), client.port(), Client->GetID());
                         ++Application::InvalidUdpPackets;
                         continue;
                     } else {
-                        Locked->SetUDPAddr(client);
-                        Locked->SetIsConnected(true);
+                        Client->SetUDPAddr(client);
+                        Client->SetIsConnected(true);
                     }
-                    Locked->UdpReceived += Data.size();
-                    ++Locked->UdpPacketsReceived;
+                    Client->UdpReceived += Data.size();
+                    ++Client->UdpPacketsReceived;
                     Data.erase(Data.begin() + 0, Data.begin() + 2);
-                    TServer::GlobalParser(Locked, std::move(Data), *this);
+                    TServer::GlobalParser(Client, std::move(Data), *this);
                 } catch (const std::exception&) {
                     ++Application::InvalidUdpPackets;
                 }

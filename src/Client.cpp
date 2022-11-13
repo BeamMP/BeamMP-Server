@@ -136,20 +136,14 @@ int TClient::SecondsSinceLastPing() {
     return int(seconds);
 }
 
-std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
-    std::optional<std::weak_ptr<TClient>> MaybeClient { std::nullopt };
-    Server.ForEachClientWeak([&](std::weak_ptr<TClient> CPtr) -> bool {
-        ReadLock Lock(Server.GetClientMutex());
-        try {
-            auto C = CPtr.lock();
-            if (C->GetID() == ID) {
-                MaybeClient = CPtr;
-                return false;
-            }
-        } catch (const std::exception&) {
-            // ignore
+std::shared_ptr<TClient> GetClient(TServer& Server, int ID) {
+    std::shared_ptr<TClient> Result {};
+    Server.ForEachClient([&](const auto& Client) {
+        if (Client->GetID() == ID) {
+            Result = Client;
+            return Break;
         }
-        return true;
+        return Continue;
     });
-    return MaybeClient;
+    return Result;
 }
