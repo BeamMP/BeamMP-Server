@@ -160,6 +160,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "Misc", StrSendErrors);
         TryReadValue(data, "Misc", StrHideUpdateMessages);
         TryReadValue(data, "Misc", StrSendErrorsMessageEnabled);
+        TryReadValue(data, "Misc", StrIncludeSubdirectories);
         // HTTP
         TryReadValue(data, "HTTP", StrSSLKeyPath);
         TryReadValue(data, "HTTP", StrSSLCertPath);

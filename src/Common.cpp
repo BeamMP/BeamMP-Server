@@ -35,6 +35,7 @@ Application::SettingsMap Application::mSettings = {
     { StrHTTPServerUseSSL, false },
     { StrHideUpdateMessages, false },
     { StrAuthKey, std::string("") },
+    { StrIncludeSubdirectories, false },
 };
 
 // global, yes, this is ugly, no, it cant be done another way
