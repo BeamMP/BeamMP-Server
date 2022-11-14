@@ -70,7 +70,6 @@ TResourceManager::TResourceManager() {
             continue;
         if ((entry.is_regular_file() || entry.is_symlink()) && entry.path().extension() == ".zip") {
             auto relativePath = fs::relative(entry.path(), BasePath);
-            beammp_infof("mod entry: {}", relativePath.string());
 
             mMods[relativePath.string()] = entry.file_size();
             mTotalModSize += entry.file_size();
