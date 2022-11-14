@@ -127,6 +127,7 @@ private:
     std::string mDID;
     int mID = -1;
     std::chrono::time_point<TimeType> mLastPingTime;
+    std::mutex mDisconnectMtx;
 };
 
 // Returns a valid client, or nullptr if no such client exists

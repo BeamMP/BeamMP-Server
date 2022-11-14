@@ -59,7 +59,13 @@ std::string TClient::GetCarPositionRaw(int Ident) {
 }
 
 void TClient::Disconnect(std::string_view Reason) {
+    // we need exclusivity here in case we can't
+    std::unique_lock Lock(mDisconnectMtx);
     beammp_debugf("Disconnecting client {} for reason: {}", GetID(), Reason);
+    if (mSocket.is_open()) {
+        beammp_debug("Somehow Disconnect() was called twice, ignoring");
+        return;
+    }
     boost::system::error_code ec;
     mSocket.shutdown(socket_base::shutdown_both, ec);
     if (ec) {
