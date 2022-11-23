@@ -63,8 +63,7 @@ void TClient::Disconnect(std::string_view Reason) {
     std::unique_lock Lock(mDisconnectMtx);
     beammp_debugf("Disconnecting client {} for reason: {}", GetID(), Reason);
     if (mSocket.is_open()) {
-        beammp_debug("Somehow Disconnect() was called twice, ignoring");
-        return;
+        beammp_debugf("Socket for client {} already closed", GetID());
     }
     boost::system::error_code ec;
     mSocket.shutdown(socket_base::shutdown_both, ec);
