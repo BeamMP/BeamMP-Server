@@ -71,9 +71,8 @@ void TLuaEngine::operator()() {
                     }
                     return false;
                 });
-            } else {
-                mResultsToCheckCond.wait_for(Lock, std::chrono::milliseconds(20));
             }
+            mResultsToCheckCond.wait_for(Lock, std::chrono::milliseconds(10));
         }
     });
     // event loop
