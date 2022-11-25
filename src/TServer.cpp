@@ -190,6 +190,15 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     mClients.erase(WeakClientPtr.lock());
 }
 
+void TServer::RemoveClientById(int Id) {
+    auto Client = GetClient(*this, Id);
+    WriteLock Lock(mClientsMutex);
+    if (Client) {
+        Client->ClearCars();
+        mClients.erase(Client);
+    }
+}
+
 void TServer::ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
     decltype(mClients) Clients;
     {

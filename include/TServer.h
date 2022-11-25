@@ -40,6 +40,7 @@ public:
 
     void InsertClient(const std::shared_ptr<TClient>& Ptr);
     void RemoveClient(const std::weak_ptr<TClient>&);
+    void RemoveClientById(int Id);
     // in Fn, return true to continue, return false to break
     [[deprecated("use ForEachClient instead")]] void ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     // in Fn, return Break or Continue

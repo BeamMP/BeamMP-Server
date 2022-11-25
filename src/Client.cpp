@@ -74,6 +74,7 @@ void TClient::Disconnect(std::string_view Reason) {
     if (ec) {
         beammp_debugf("Failed to close client socket: {}", ec.message());
     }
+    mServer.RemoveClientById(GetID());
 }
 
 void TClient::SetCarPosition(int Ident, const std::string& Data) {
