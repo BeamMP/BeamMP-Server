@@ -89,7 +89,7 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
         return 0;
     }
-
+    
     std::string ConfigPath = "ServerConfig.toml";
     if (Parser.FoundArgument({ "config" })) {
         auto MaybeConfigPath = Parser.GetValueOfArgument({ "config" });
