@@ -5,6 +5,7 @@
 #include "LuaAPI.h"
 #include "TLuaPlugin.h"
 #include "Uuid.h"
+#include "sol/types.hpp"
 
 #include <chrono>
 #include <condition_variable>
@@ -514,17 +515,21 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
 
 sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
     // TODO: make asynchronous?
-    sol::table Result = mStateView.create_table();
+    auto Result = mStateView.create_table();
     for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
         auto Fn = mStateView[Handler];
         if (Fn.valid() && Fn.get_type() == sol::type::function) {
             auto FnRet = Fn(EventArgs);
             if (FnRet.valid()) {
-                Result.add(FnRet);
+                for (const auto& Res : FnRet) {
+                    Result.add(Res);
+                }
             } else {
                 sol::error Err = FnRet;
                 beammp_lua_error(std::string("TriggerLocalEvent: ") + Err.what());
             }
+        } else {
+            beammp_lua_errorf("Handler '{}' for event '{}' in state '{}' is NOT a function, and will be ignored.", Handler, EventName, mStateId);
         }
     }
     return Result;
@@ -790,9 +795,10 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("TriggerGlobalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
         return Lua_TriggerGlobalEvent(EventName, EventArgs);
     });
-    MPTable.set_function("TriggerLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
-        return Lua_TriggerLocalEvent(EventName, EventArgs);
-    });
+    MPTable.set_function(
+        "TriggerLocalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> auto{
+            return Lua_TriggerLocalEvent(EventName, EventArgs);
+        });
     MPTable.set_function("TriggerClientEvent", &LuaAPI::MP::TriggerClientEvent);
     MPTable.set_function("TriggerClientEventJson", &LuaAPI::MP::TriggerClientEventJson);
     MPTable.set_function("GetPlayerCount", &LuaAPI::MP::GetPlayerCount);
