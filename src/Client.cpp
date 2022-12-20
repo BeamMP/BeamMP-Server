@@ -1,6 +1,7 @@
 #include "Client.h"
 
 #include "CustomAssert.h"
+#include "LuaAPI.h"
 #include "TServer.h"
 #include <memory>
 #include <optional>
@@ -12,6 +13,8 @@ void TClient::DeleteCar(int Ident) {
         return Ident == elem.ID();
     });
     if (iter != mVehicleData.end()) {
+        std::string Destroy = "Od:" + std::to_string(GetID()) + "-" + std::to_string(iter->ID());
+        LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
         mVehicleData.erase(iter);
     } else {
         beammp_debug("tried to erase a vehicle that doesn't exist (not an error)");
@@ -20,6 +23,10 @@ void TClient::DeleteCar(int Ident) {
 
 void TClient::ClearCars() {
     std::unique_lock lock(mVehicleDataMutex);
+    for (const auto& Car : mVehicleData) {
+        std::string Destroy = "Od:" + std::to_string(GetID()) + "-" + std::to_string(Car.ID());
+        LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
+    }
     mVehicleData.clear();
 }
 
