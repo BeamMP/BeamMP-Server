@@ -967,7 +967,7 @@ std::string TNetwork::Hash(const std::string& str) {
     std::stringstream ret;
     unsigned char* hash = SHA256(reinterpret_cast<const unsigned char*>(str.c_str()), str.length(), nullptr);
     for (int i = 0; i < 32; i++) {
-        ret << std::hex << (int)hash[i];
+        ret << std::hex << static_cast<int>(hash[i]);
     }
     return ret.str();
 }
