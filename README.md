@@ -117,7 +117,7 @@ Ubuntu 22.04
 git
 libz-dev
 rapidjson-dev
-liblua5.3
+liblua5.3-dev
 libssl-dev
 libwebsocketpp-dev
 libcurl4-openssl-dev
