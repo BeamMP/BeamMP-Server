@@ -18,6 +18,7 @@ static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrLogChat = "LogChat";
+static constexpr std::string_view StrPassword = "Password";
 
 // Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
@@ -106,6 +107,7 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.MapName;
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrPassword.data()] = Application::Settings.Password;
     // Misc
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
@@ -189,6 +191,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
         TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
+        TryReadValue(data, "General", StrPassword, Application::Settings.Password);
         // Misc
         TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
         TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
@@ -240,6 +243,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrHTTPServerIP) + ": \"" + Application::Settings.HTTPServerIP + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
+    beammp_debug("Password Protected: " + std::string(Application::Settings.Password.empty() ? "false" : "true"));
 }
 
 void TConfig::ParseOldFormat() {
