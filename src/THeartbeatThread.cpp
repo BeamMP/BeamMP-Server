@@ -149,7 +149,8 @@ std::string THeartbeatThread::GenerateCall() {
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()
         << "&playerslist=" << GetPlayers()
-        << "&desc=" << Application::Settings.ServerDesc;
+        << "&desc=" << Application::Settings.ServerDesc
+        << "&pass=" << (Application::Settings.Password.empty() ? "false" : "true");
     return Ret.str();
 }
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
