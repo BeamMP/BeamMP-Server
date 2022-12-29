@@ -215,6 +215,15 @@ void TNetwork::HandleDownload(TConnection&& Conn) {
     });
 }
 
+std::string HashPassword(const std::string& str) {
+    std::stringstream ret;
+    unsigned char* hash = SHA256(reinterpret_cast<const unsigned char*>(str.c_str()), str.length(), nullptr);
+    for (int i = 0; i < 32; i++) {
+        ret << std::hex << static_cast<int>(hash[i]);
+    }
+    return ret.str();
+}
+
 std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     auto Client = CreateClient(std::move(RawConnection.Socket));
     Client->SetIdentifier("ip", RawConnection.SockAddr.address().to_string());
@@ -283,6 +292,22 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
+    if(!Application::Settings.Password.empty()) { // ask password
+        if(!TCPSend(*Client, StringToVector("S"))) {
+            // TODO: handle
+        }
+        beammp_info("Waiting for password");
+        Data = TCPRcv(*Client);
+        std::string Pass = std::string(reinterpret_cast<const char*>(Data.data()), Data.size());
+        if(Pass != HashPassword(Application::Settings.Password)) {
+            beammp_debug(Client->GetName() + " attempted to connect with a wrong password");
+            ClientKick(*Client, "Wrong password!");
+            return {};
+        } else {
+            beammp_debug(Client->GetName() + " used the correct password");
+        }
+    }
+
     beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> Cl;
@@ -326,23 +351,6 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
-
-        if(!Application::Settings.Password.empty()) { // ask password
-            if(!TCPSend(*Client, StringToVector("S"))) {
-                // TODO: handle
-            }
-            beammp_info("Waiting for password");
-            Data = TCPRcv(*Client);
-            std::string Pass = std::string(reinterpret_cast<const char*>(Data.data()), Data.size());
-            if(Pass != Hash(Application::Settings.Password)) {
-                beammp_debug(Client->GetName() + " attempted to connect with a wrong password");
-                ClientKick(*Client, "Wrong password!");
-                return {};
-            } else {
-                beammp_debug(Client->GetName() + " used the correct password");
-            }
-        }
-
         beammp_info("Identification success");
         mServer.InsertClient(Client);
         TCPClient(Client);
@@ -964,13 +972,4 @@ std::vector<uint8_t> TNetwork::UDPRcvFromClient(ip::udp::endpoint& ClientEndpoin
     }
     beammp_assert(Rcv <= Ret.size());
     return std::vector<uint8_t>(Ret.begin(), Ret.begin() + Rcv);
-}
-
-std::string TNetwork::Hash(const std::string& str) {
-    std::stringstream ret;
-    unsigned char* hash = SHA256(reinterpret_cast<const unsigned char*>(str.c_str()), str.length(), nullptr);
-    for (int i = 0; i < 32; i++) {
-        ret << std::hex << static_cast<int>(hash[i]);
-    }
-    return ret.str();
 }

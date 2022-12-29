@@ -38,7 +38,6 @@ private:
     std::thread mUDPThread;
     std::thread mTCPThread;
 
-    static std::string Hash(const std::string& str);
     std::vector<uint8_t> UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint);
     void HandleDownload(TConnection&& TCPSock);
     void OnConnect(const std::weak_ptr<TClient>& c);
