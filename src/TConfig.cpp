@@ -108,6 +108,7 @@ void TConfig::FlushToFile() {
     data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
     data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
     data["General"][StrPassword.data()] = Application::Settings.Password;
+    SetComment(data["General"][StrPassword.data()].comments(), " Sets a password on this server, which restricts people from joining. To join, a player must enter this exact password. Leave empty ("") to disable the password.");
     // Misc
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
