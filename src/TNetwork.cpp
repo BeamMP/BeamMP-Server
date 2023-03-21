@@ -11,6 +11,8 @@
 #include <boost/asio/ip/address_v4.hpp>
 #include <cstring>
 
+typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
+
 std::vector<uint8_t> StringToVector(const std::string& Str) {
     return std::vector<uint8_t>(Str.data(), Str.data() + Str.size());
 }
@@ -151,6 +153,7 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.message());
             }
+            ClientSocket.set_option(rcv_timeout_option{ 120000 }); //timeout of 120seconds
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
@@ -212,6 +215,15 @@ void TNetwork::HandleDownload(TConnection&& Conn) {
     });
 }
 
+std::string HashPassword(const std::string& str) {
+    std::stringstream ret;
+    unsigned char* hash = SHA256(reinterpret_cast<const unsigned char*>(str.c_str()), str.length(), nullptr);
+    for (int i = 0; i < 32; i++) {
+        ret << std::hex << static_cast<int>(hash[i]);
+    }
+    return ret.str();
+}
+
 std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     auto Client = CreateClient(std::move(RawConnection.Socket));
     Client->SetIdentifier("ip", RawConnection.SockAddr.address().to_string());
@@ -235,7 +247,8 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         ClientKick(*Client, fmt::format("Invalid version header: '{}' ({})", std::string(reinterpret_cast<const char*>(Data.data()), Data.size()), Data.size()));
         return nullptr;
     }
-    if (!TCPSend(*Client, StringToVector("S"))) {
+
+    if (!TCPSend(*Client, StringToVector("A"))) { //changed to A for Accepted version
         // TODO: handle
     }
 
@@ -277,6 +290,22 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         // TODO: we should really clarify that this was a backend response or parsing error
         ClientKick(*Client, "Invalid key! Please restart your game.");
         return nullptr;
+    }
+
+    if(!Application::Settings.Password.empty()) { // ask password
+        if(!TCPSend(*Client, StringToVector("S"))) {
+            // TODO: handle
+        }
+        beammp_info("Waiting for password");
+        Data = TCPRcv(*Client);
+        std::string Pass = std::string(reinterpret_cast<const char*>(Data.data()), Data.size());
+        if(Pass != HashPassword(Application::Settings.Password)) {
+            beammp_debug(Client->GetName() + " attempted to connect with a wrong password");
+            ClientKick(*Client, "Wrong password!");
+            return {};
+        } else {
+            beammp_debug(Client->GetName() + " used the correct password");
+        }
     }
 
     beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
@@ -328,6 +357,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     } else {
         ClientKick(*Client, "Server full!");
     }
+
     return Client;
 }
 
