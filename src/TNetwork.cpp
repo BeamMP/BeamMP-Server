@@ -10,8 +10,20 @@
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 #include <cstring>
+#include <boost/asio.hpp>
 
-typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
+using boost::asio::ip::tcp;
+
+struct rcv_timeout_custom_option {
+    rcv_timeout_custom_option(int timeout) : timeout_(timeout) {}
+    template <typename Protocol>
+    void set_option(tcp::socket& socket, boost::system::error_code& ec) const {
+        boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_KEEPIDLE> option(timeout_ / 1000);
+        socket.set_option(option, ec);
+    }
+private:
+    int timeout_;
+};
 
 std::vector<uint8_t> StringToVector(const std::string& Str) {
     return std::vector<uint8_t>(Str.data(), Str.data() + Str.size());
@@ -153,10 +165,14 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.message());
             }
-            ClientSocket.set_option(rcv_timeout_option{ 120000 }); //timeout of 120seconds
+            // Wait for 2 minutes for the client to send us the first packet
+            rcv_timeout_custom_option option(120000);
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
-            ID.detach(); // TODO: Add to a queue and attempt to join periodically
+            /**
+             * TODO: Add to a queue & attempt to join periodically.
+            */
+            ID.detach();
         } catch (const std::exception& e) {
             beammp_error("fatal: " + std::string(e.what()));
         }
