@@ -167,6 +167,7 @@ void TNetwork::TCPServerMain() {
             }
             // Wait for 2 minutes for the client to send us the first packet
             rcv_timeout_custom_option option(120000);
+            option.set_option(ClientSocket, ec);
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             /**
