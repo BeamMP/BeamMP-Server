@@ -25,7 +25,7 @@ void TClient::ClearCars() {
     std::unique_lock lock(mVehicleDataMutex);
     for (const auto& Car : mVehicleData) {
         std::string Destroy = "Od:" + std::to_string(GetID()) + "-" + std::to_string(Car.ID());
-        LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
+        LuaAPI::MP::Engine->Network().SendToAll(this, StringToVector(Destroy), false, true);
     }
     mVehicleData.clear();
 }
