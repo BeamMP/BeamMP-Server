@@ -105,6 +105,7 @@ void TNetwork::UDPServerMain() {
                     } else {
                         Client->SetUDPAddr(client);
                         Client->SetIsConnected(true);
+                        Client->mUDPCONNECTED = true;
                     }
                     Client->UdpReceived += Data.size();
                     ++Client->UdpPacketsReceived;
@@ -387,7 +388,7 @@ bool TNetwork::TCPSend(TClient& c, const std::vector<uint8_t>& Data, bool IsSync
 }
 
 std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
-    if (c.IsDisconnected()) {
+    if (c.IsDisconnected() || (c.mUDPCONNECTED && !c.IsConnected())) {
         beammp_error("Client disconnected, cancelling TCPRcv");
         return {};
     }

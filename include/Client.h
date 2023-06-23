@@ -71,6 +71,7 @@ public:
     void ClearCars();
     [[nodiscard]] int GetID() const { return mID; }
     [[nodiscard]] int GetUnicycleID() const { return mUnicycleID; }
+    bool mUDPCONNECTED = false;
     [[nodiscard]] bool IsConnected() const { return mIsConnected; }
     [[nodiscard]] bool IsSynced() const { return mIsSynced; }
     [[nodiscard]] bool IsSyncing() const { return mIsSyncing; }
