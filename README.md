@@ -104,6 +104,20 @@ curl
 ```
 </details>
 
+<details>
+<summary>
+Fedora
+</summary>
+
+`dnf install` the following libraries:
+```
+lua-libs
+lua-devel
+openssl-devel
+libcurl-devel
+```
+</details>
+
 ##### Build Dependencies
 These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
 
@@ -145,6 +159,28 @@ g++
 zlib
 boost
 websocketpp
+```
+</details>
+
+<details>
+<summary>
+Fedora
+</summary>
+
+`dnf install` the following libraries and programs:
+```
+lua
+lua-libs
+lua-devel
+openssl-devel
+curl
+libcurl-devel
+git
+cmake
+gcc-g++
+zlib
+boost-devel
+websocketpp-devel
 ```
 </details>
 
