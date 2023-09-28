@@ -43,6 +43,7 @@ public:
     struct TSettings {
         std::string ServerName { "BeamMP Server" };
         std::string ServerDesc { "BeamMP Default Description" };
+        std::string ServerTags { "BeamMP,Server" };
         std::string Resource { "Resources" };
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};

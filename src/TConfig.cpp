@@ -15,6 +15,7 @@ static constexpr std::string_view StrMaxPlayers = "MaxPlayers";
 static constexpr std::string_view StrMap = "Map";
 static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view StrDescription = "Description";
+static constexpr std::string_view StrTags = "Tags";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view StrLogChat = "LogChat";
@@ -102,6 +103,8 @@ void TConfig::FlushToFile() {
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
     data["General"][StrName.data()] = Application::Settings.ServerName;
+    SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
+    data["General"][StrTags.data()] = Application::Settings.ServerTags;
     data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
     data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
     data["General"][StrMap.data()] = Application::Settings.MapName;
@@ -129,7 +132,7 @@ void TConfig::FlushToFile() {
     std::stringstream Ss;
     Ss << "# This is the BeamMP-Server config file.\n"
           "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://keymaster.beammp.com/` on the left under \"Keys\"\n"
        << data;
     auto File = std::fopen(mConfigFileName.c_str(), "w+");
     if (!File) {
@@ -189,6 +192,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrMap, Application::Settings.MapName);
         TryReadValue(data, "General", StrName, Application::Settings.ServerName);
         TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrTags, Application::Settings.ServerTags);
         TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
         TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
@@ -236,6 +240,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrTags) + ": \"" + Application::Settings.ServerTags + "\"");
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
