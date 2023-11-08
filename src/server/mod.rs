@@ -72,8 +72,10 @@ impl Server {
         let connect_runtime_handle = tokio::spawn(async move {
             loop {
                 match tcp_listener_ref.accept().await {
-                    Ok((socket, addr)) => {
+                    Ok((mut socket, addr)) => {
                         info!("New client connected: {:?}", addr);
+
+                        socket.set_nodelay(true);
 
                         let mut client = Client::new(socket);
                         match client.authenticate(&config_ref).await {
@@ -182,8 +184,9 @@ impl Server {
                 }
             }
         }
+
         for (i, packet) in packets {
-            self.parse_packet(i, packet).await?
+            self.parse_packet(i, packet).await?;
         }
 
         // I'm sorry for this code :(
