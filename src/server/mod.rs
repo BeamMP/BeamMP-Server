@@ -454,10 +454,11 @@ impl Server {
                         for client in &self.clients {
                             let pid = client.id as usize;
                             if pid != client_idx {
+                                let role = client.get_roles();
                                 for (vid, car) in &client.cars {
                                     self.clients[client_idx]
                                         .queue_packet(Packet::Raw(RawPacket::from_str(&format!(
-                                            "Os:{}:{pid}-{vid}:{}",
+                                            "Os:{role}:{}:{pid}-{vid}:{}",
                                             client.get_name(),
                                             car.car_json,
                                         ))))
