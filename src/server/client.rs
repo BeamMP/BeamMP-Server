@@ -24,6 +24,10 @@ use super::packet::*;
 
 static ATOMIC_ID_COUNTER: AtomicU8 = AtomicU8::new(0);
 
+lazy_static! {
+    static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<usize, usize>> = Mutex::new(HashMap::new());
+}
+
 #[derive(PartialEq)]
 pub enum ClientState {
     None,
@@ -114,7 +118,7 @@ impl Client {
         }
     }
 
-    pub async fn authenticate(&mut self, config: &super::Config) -> anyhow::Result<()> {
+    pub async fn authenticate(&mut self, config: &super::Config) -> anyhow::Result<bool> {
         debug!("Authenticating client {}...", self.id);
 
         'waiting_for_c: loop {
@@ -128,6 +132,11 @@ impl Client {
             debug!("code: '{}' / {}", code as char, code);
             match code as char {
                 'C' => {
+                    // We now delete existing data for this client ID, just in case.
+                    // TODO: This seems like a recipe for disaster
+                    let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+                    lock.remove(&(self.id as usize));
+
                     // TODO: Check client version
                     trace!("Client version packet");
                     self.socket.readable().await?;
@@ -136,10 +145,54 @@ impl Client {
                     break 'waiting_for_c;
                 }
                 'D' => {
-                    let id = self.read_raw(1).await?[0];
+                    // The download sequence is so awful
+                    // It currently requires us to track what the next file is that
+                    // we need to provide, which is hard to do with the current
+                    // server design.
+                    // I think I will simply keep a counter around that will
+                    // track what the next mod is per client.
+                    // TODO: Clean this up. It also needs to be moved out of the client code IMO
+                    let id = self.read_raw(1).await?[0] as usize;
                     debug!("HandleDownload connection for client id: {}", id);
-                    debug!("Not handling this for now!");
-                    return Err(ClientError::IsDownloader.into());
+
+                    self.write_packet(Packet::Raw(RawPacket::from_str("AG"))).await?;
+
+                    // TODO: How does this work???
+
+                    let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+                    if lock.get(&id).is_none() { lock.insert(id, 0); }
+                    let next_id = lock.get_mut(&id).unwrap();
+
+                    let bmod = &config.mods[*next_id]; // TODO: This is a bit uhh yeah
+
+                    *next_id += 1;
+
+                    debug!("Mod name: {}", bmod.0);
+
+                    let mut mod_name = bmod.0.clone();
+                    if mod_name.starts_with("/") == false {
+                        mod_name = format!("/{mod_name}");
+                    }
+
+                    let mod_path = format!("Resources/Client{mod_name}");
+                    let file_data = std::fs::read(mod_path)?;
+
+                    let packet = RawPacket::from_data(file_data);
+                    // self.write_packet(Packet::Raw(packet)).await?;
+
+                    {
+                        let mut lock = self.write_half.lock().await;
+                        lock.writable().await?;
+                        trace!("Sending packet!");
+                        if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
+                            error!("{:?}", e);
+                        }
+                        trace!("Packet sent!");
+                        drop(lock);
+                    }
+
+                    // return Err(ClientError::IsDownloader.into());
+                    return Ok(false);
                 }
                 _ => {
                     return Err(ClientError::AuthenticateError.into());
@@ -186,7 +239,7 @@ impl Client {
         );
         self.sync(config).await?;
 
-        Ok(())
+        Ok(true)
     }
 
     // TODO: https://github.com/BeamMP/BeamMP-Server/blob/master/src/TNetwork.cpp#L619
@@ -205,9 +258,20 @@ impl Client {
                 match packet.data[0] as char {
                     'S' if packet.data.len() > 1 => match packet.data[1] as char {
                         'R' => {
-                            let file_packet = RawPacket::from_code('-');
+                            // let file_packet = RawPacket::from_code('-');
                             // let file_data = "/bepis_dysoon_uu201_v3.zip;/bepis_laudi_v8_revolution.zip;/simraceclubclient.zip;48353220;50283849;1937;";
-                            // let file_packet = RawPacket::from_str(file_data);
+                            let mut file_data = String::new();
+                            for (name, size) in &config.mods {
+                                let mut mod_name = name.clone();
+                                if mod_name.starts_with("/") == false {
+                                    mod_name = format!("/{mod_name}");
+                                }
+                                file_data.push_str(&format!("{mod_name};"));
+                            }
+                            for (name, size) in &config.mods {
+                                file_data.push_str(&format!("{size};"));
+                            }
+                            let file_packet = RawPacket::from_str(&file_data);
                             self.write_packet(Packet::Raw(file_packet))
                                 .await?
                         }
@@ -218,13 +282,6 @@ impl Client {
                         let mut file_name = packet.data_as_string().clone();
                         file_name.remove(0); // Remove f
                         debug!("Client requested file {}", file_name);
-                        self.kick(&format!("You have not yet downloaded {}!", file_name)).await;
-                        // let mut lock = self.write_half.lock().await;
-                        // lock.writable().await?;
-                        // trace!("Sending packet!");
-                        // if let Err(e) = tcp_send_file(lock.deref_mut(), file_name).await {
-                        //     error!("{:?}", e);
-                        // }
                     }
                     _ => error!("Unknown packet! {:?}", packet),
                 }

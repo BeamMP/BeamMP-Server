@@ -80,17 +80,20 @@ impl Server {
                         let ci_ref = clients_incoming_ref.clone();
 
                         set.spawn(async move {
-                            socket.set_nodelay(true);
+                            socket.set_nodelay(true); // TODO: Is this good?
 
                             let mut client = Client::new(socket);
                             match client.authenticate(&cfg_ref).await {
-                                Ok(_) => {
+                                Ok(b) if b => {
                                     let mut lock = ci_ref
                                         .lock()
                                         .map_err(|e| error!("{:?}", e))
                                         .expect("Failed to acquire lock on mutex!");
                                     lock.push(client);
                                     drop(lock);
+                                },
+                                Ok(b) => {
+                                    debug!("Downloader?");
                                 },
                                 Err(e) => {
                                     error!("Authentication error occured, kicking player...");

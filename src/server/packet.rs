@@ -73,6 +73,13 @@ impl RawPacket {
         }
     }
 
+    pub fn from_data(data: Vec<u8>) -> Self {
+        Self {
+            header: data.len() as u32,
+            data,
+        }
+    }
+
     pub fn from_str(str_data: &str) -> Self {
         let data = str_data.as_bytes().to_vec();
         Self {

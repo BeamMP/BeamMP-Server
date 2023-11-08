@@ -2,6 +2,9 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Config {
+    #[serde(skip)] // Skipping uses Default::default, which makes a new vector for us :)
+    pub mods: Vec<(String, usize)>,
+
     #[serde(rename = "General")]
     pub general: GeneralSettings,
 }

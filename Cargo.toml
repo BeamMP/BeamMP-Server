@@ -9,6 +9,8 @@ edition = "2021"
 log = "0.4"
 pretty_env_logger = "0.4.0"
 
+lazy_static = "1"
+
 anyhow = "1.0.66"
 nalgebra = "0.31"
 num_enum = "0.5.7"

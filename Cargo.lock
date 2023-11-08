@@ -97,6 +97,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "flate2",
+ "lazy_static",
  "log",
  "nalgebra",
  "num_enum",
