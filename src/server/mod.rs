@@ -161,13 +161,12 @@ impl Server {
         }
 
         // Process all the clients (TCP)
-        let mut packets: Vec<(usize, RawPacket)> = Vec::new();
         for i in 0..self.clients.len() {
             if let Some(client) = self.clients.get_mut(i) {
                 match client.process().await {
                     Ok(packet_opt) => {
                         if let Some(raw_packet) = packet_opt {
-                            packets.push((i, raw_packet.clone()));
+                            self.parse_packet(i, raw_packet.clone()).await?;;
                         }
                     }
                     Err(e) => client.kick(&format!("Kicked: {:?}", e)).await,
@@ -183,10 +182,6 @@ impl Server {
                         .await;
                 }
             }
-        }
-
-        for (i, packet) in packets {
-            self.parse_packet(i, packet).await?;
         }
 
         // I'm sorry for this code :(
