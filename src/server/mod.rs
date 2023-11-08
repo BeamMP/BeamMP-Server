@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 use std::time::Instant;
 
 use tokio::net::{TcpListener, UdpSocket};
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, JoinSet};
 
 use num_enum::IntoPrimitive;
 
@@ -70,31 +70,44 @@ impl Server {
         let clients_incoming_ref = Arc::clone(&clients_incoming);
         debug!("Client acception runtime starting...");
         let connect_runtime_handle = tokio::spawn(async move {
+            let mut set = JoinSet::new();
             loop {
                 match tcp_listener_ref.accept().await {
                     Ok((mut socket, addr)) => {
                         info!("New client connected: {:?}", addr);
 
-                        socket.set_nodelay(true);
+                        let cfg_ref = config_ref.clone();
+                        let ci_ref = clients_incoming_ref.clone();
 
-                        let mut client = Client::new(socket);
-                        match client.authenticate(&config_ref).await {
-                            Ok(_) => {
-                                let mut lock = clients_incoming_ref
-                                    .lock()
-                                    .map_err(|e| error!("{:?}", e))
-                                    .expect("Failed to acquire lock on mutex!");
-                                lock.push(client);
-                                drop(lock);
-                            },
-                            Err(e) => {
-                                error!("Authentication error occured, kicking player...");
-                                error!("{:?}", e);
-                                client.kick("Failed to authenticate player!").await;
+                        set.spawn(async move {
+                            socket.set_nodelay(true);
+
+                            let mut client = Client::new(socket);
+                            match client.authenticate(&cfg_ref).await {
+                                Ok(_) => {
+                                    let mut lock = ci_ref
+                                        .lock()
+                                        .map_err(|e| error!("{:?}", e))
+                                        .expect("Failed to acquire lock on mutex!");
+                                    lock.push(client);
+                                    drop(lock);
+                                },
+                                Err(e) => {
+                                    error!("Authentication error occured, kicking player...");
+                                    error!("{:?}", e);
+                                    client.kick("Failed to authenticate player!").await;
+                                }
                             }
-                        }
+                        });
                     }
                     Err(e) => error!("Failed to accept incoming connection: {:?}", e),
+                }
+
+                if set.is_empty() == false {
+                    tokio::select!(
+                        _ = set.join_next() => {},
+                        _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {},
+                    )
                 }
             }
         });
