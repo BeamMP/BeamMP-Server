@@ -457,7 +457,8 @@ impl Server {
                                 for (vid, car) in &client.cars {
                                     self.clients[client_idx]
                                         .queue_packet(Packet::Raw(RawPacket::from_str(&format!(
-                                            "Os:{vid}:{}",
+                                            "Os:{}:{pid}-{vid}:{}",
+                                            client.get_name(),
                                             car.car_json,
                                         ))))
                                         .await;
