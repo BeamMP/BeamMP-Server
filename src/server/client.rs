@@ -57,13 +57,6 @@ pub struct Client {
     pub state: ClientState,
     pub info: Option<UserData>,
     pub cars: Vec<(u8, Car)>,
-
-    pub ready: bool,
-    pub grid_spot: usize,
-    pub finished: bool,
-
-    pub incidents: usize,
-    pub last_physics_update: Instant,
 }
 
 impl Drop for Client {
@@ -108,13 +101,6 @@ impl Client {
             state: ClientState::Connecting,
             info: None,
             cars: Vec::new(),
-
-            ready: false,
-            grid_spot: 0,
-            finished: false,
-
-            incidents: 0,
-            last_physics_update: Instant::now(),
         }
     }
 
@@ -155,19 +141,19 @@ impl Client {
                     let id = self.read_raw(1).await?[0] as usize;
                     debug!("HandleDownload connection for client id: {}", id);
 
-                    // TODO: How does this work???
+                    let mut mod_name = {
+                        let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+                        if lock.get(&id).is_none() { lock.insert(id, 0); }
+                        let next_id = lock.get_mut(&id).unwrap();
 
-                    let mut lock = CLIENT_MOD_PROGRESS.lock().await;
-                    if lock.get(&id).is_none() { lock.insert(id, 0); }
-                    let next_id = lock.get_mut(&id).unwrap();
+                        let bmod = &config.mods[*next_id]; // TODO: This is a bit uhh yeah
+                        debug!("Mod name: {}", bmod.0);
 
-                    let bmod = &config.mods[*next_id]; // TODO: This is a bit uhh yeah
+                        *next_id += 1;
 
-                    *next_id += 1;
+                        bmod.0.clone()
+                    };
 
-                    debug!("Mod name: {}", bmod.0);
-
-                    let mut mod_name = bmod.0.clone();
                     if mod_name.starts_with("/") == false {
                         mod_name = format!("/{mod_name}");
                     }
@@ -175,9 +161,7 @@ impl Client {
                     let mod_path = format!("Resources/Client{mod_name}");
                     let file_data = std::fs::read(mod_path)?;
 
-                    let packet = RawPacket::from_data(file_data);
-                    // let packet1 = RawPacket::from_data(file_data[..(file_data.len()/2)].to_vec());
-                    // let packet2 = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
+                    let packet = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
 
                     {
                         let mut lock = self.write_half.lock().await;
@@ -186,12 +170,6 @@ impl Client {
                         if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
                             error!("{:?}", e);
                         }
-                        // if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet1)).await {
-                        //     error!("{:?}", e);
-                        // }
-                        // if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet2)).await {
-                        //     error!("{:?}", e);
-                        // }
                         trace!("Packets sent!");
                         drop(lock);
                     }
@@ -200,6 +178,7 @@ impl Client {
                     return Ok(false);
                 }
                 _ => {
+                    error!("Unknown code: {}", code);
                     return Err(ClientError::AuthenticateError.into());
                 }
             }
@@ -286,11 +265,32 @@ impl Client {
                     }
                     'f' => {
                         // Handle file download
-                        let mut file_name = packet.data_as_string().clone();
-                        file_name.remove(0); // Remove f
-                        debug!("Client requested file {}", file_name);
+                        let mut mod_name = packet.data_as_string().clone();
+                        mod_name.remove(0); // Remove f
+                        debug!("Client requested file {}", mod_name);
 
                         self.write_packet(Packet::Raw(RawPacket::from_str("AG"))).await?;
+
+                        // Send the first half of the file
+                        if mod_name.starts_with("/") == false {
+                            mod_name = format!("/{mod_name}");
+                        }
+
+                        let mod_path = format!("Resources/Client{mod_name}");
+                        let file_data = std::fs::read(mod_path)?;
+
+                        let packet = RawPacket::from_data(file_data[..(file_data.len()/2)].to_vec());
+
+                        {
+                            let mut lock = self.write_half.lock().await;
+                            lock.writable().await?;
+                            trace!("Sending packets!");
+                            if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
+                                error!("{:?}", e);
+                            }
+                            trace!("Packets sent!");
+                            drop(lock);
+                        }
                     }
                     _ => error!("Unknown packet! {:?}", packet),
                 }

@@ -86,7 +86,7 @@ impl Server {
 
                             let mut client = Client::new(socket);
                             match client.authenticate(&cfg_ref).await {
-                                Ok(b) if b => {
+                                Ok(isClient) if isClient => {
                                     let mut lock = ci_ref
                                         .lock()
                                         .map_err(|e| error!("{:?}", e))
@@ -94,13 +94,14 @@ impl Server {
                                     lock.push(client);
                                     drop(lock);
                                 },
-                                Ok(b) => {
+                                Ok(isClient) => {
                                     debug!("Downloader?");
                                 },
                                 Err(e) => {
                                     error!("Authentication error occured, kicking player...");
                                     error!("{:?}", e);
                                     client.kick("Failed to authenticate player!").await;
+                                    // client.disconnect();
                                 }
                             }
                         });
@@ -247,7 +248,7 @@ impl Server {
         Ok(())
     }
 
-    // NOTE: Skips all clients that are currently connecting!
+    // NOTE: Skips all clients that are currently connecting or syncing resources!
     async fn broadcast(&self, packet: Packet, owner: Option<u8>) {
         for client in &self.clients {
             if let Some(id) = owner {
@@ -255,7 +256,7 @@ impl Server {
                     continue;
                 }
             }
-            if client.state == ClientState::Connecting {
+            if client.state == ClientState::Connecting || client.state == ClientState::SyncingResources {
                 continue;
             }
             client.queue_packet(packet.clone()).await;
@@ -505,22 +506,10 @@ impl Server {
                     'O' => self.parse_vehicle_packet(client_idx, packet).await?,
                     'C' => {
                         // TODO: Chat filtering?
-                        let packet_data = packet.data_as_string();
-                        let message = packet_data.split(":").collect::<Vec<&str>>().get(2).map(|s| s.to_string()).unwrap_or(String::new());
-                        let message = message.trim();
-                        if message.starts_with("!") {
-                            if message == "!ready" {
-                                self.clients[client_idx].ready = true;
-                                self.clients[client_idx].queue_packet(Packet::Raw(RawPacket::from_str("C:Server:You are now ready!"))).await;
-                            } else if message == "!pos" {
-                                let car = &self.clients[client_idx].cars.get(0).ok_or(ServerError::CarDoesntExist)?.1;
-                                trace!("car transform (pos/rot/vel/rvel): {:?}", (car.pos, car.rot, car.vel, car.rvel));
-                            } else {
-                                self.clients[client_idx].queue_packet(Packet::Raw(RawPacket::from_str("C:Server:Unknown command!"))).await;
-                            }
-                        } else {
-                            self.broadcast(Packet::Raw(packet), None).await;
-                        }
+                        // let packet_data = packet.data_as_string();
+                        // let message = packet_data.split(":").collect::<Vec<&str>>().get(2).map(|s| s.to_string()).unwrap_or(String::new());
+                        // let message = message.trim();
+                        self.broadcast(Packet::Raw(packet), None).await;
                     }
                     _ => {
                         let string_data = String::from_utf8_lossy(&packet.data[..]);
