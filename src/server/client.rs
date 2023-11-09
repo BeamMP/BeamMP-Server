@@ -155,8 +155,6 @@ impl Client {
                     let id = self.read_raw(1).await?[0] as usize;
                     debug!("HandleDownload connection for client id: {}", id);
 
-                    self.write_packet(Packet::Raw(RawPacket::from_str("AG"))).await?;
-
                     // TODO: How does this work???
 
                     let mut lock = CLIENT_MOD_PROGRESS.lock().await;
@@ -178,16 +176,23 @@ impl Client {
                     let file_data = std::fs::read(mod_path)?;
 
                     let packet = RawPacket::from_data(file_data);
-                    // self.write_packet(Packet::Raw(packet)).await?;
+                    // let packet1 = RawPacket::from_data(file_data[..(file_data.len()/2)].to_vec());
+                    // let packet2 = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
 
                     {
                         let mut lock = self.write_half.lock().await;
                         lock.writable().await?;
-                        trace!("Sending packet!");
+                        trace!("Sending packets!");
                         if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
                             error!("{:?}", e);
                         }
-                        trace!("Packet sent!");
+                        // if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet1)).await {
+                        //     error!("{:?}", e);
+                        // }
+                        // if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet2)).await {
+                        //     error!("{:?}", e);
+                        // }
+                        trace!("Packets sent!");
                         drop(lock);
                     }
 
@@ -258,22 +263,24 @@ impl Client {
                 match packet.data[0] as char {
                     'S' if packet.data.len() > 1 => match packet.data[1] as char {
                         'R' => {
-                            // let file_packet = RawPacket::from_code('-');
-                            // let file_data = "/bepis_dysoon_uu201_v3.zip;/bepis_laudi_v8_revolution.zip;/simraceclubclient.zip;48353220;50283849;1937;";
-                            let mut file_data = String::new();
-                            for (name, size) in &config.mods {
-                                let mut mod_name = name.clone();
-                                if mod_name.starts_with("/") == false {
-                                    mod_name = format!("/{mod_name}");
+                            let file_packet = if config.mods.len() == 0 {
+                                RawPacket::from_code('-')
+                            } else {
+                                let mut file_data = String::new();
+                                for (name, size) in &config.mods {
+                                    let mut mod_name = name.clone();
+                                    if mod_name.starts_with("/") == false {
+                                        mod_name = format!("/{mod_name}");
+                                    }
+                                    file_data.push_str(&format!("{mod_name};"));
                                 }
-                                file_data.push_str(&format!("{mod_name};"));
-                            }
-                            for (name, size) in &config.mods {
-                                file_data.push_str(&format!("{size};"));
-                            }
-                            let file_packet = RawPacket::from_str(&file_data);
+                                for (name, size) in &config.mods {
+                                    file_data.push_str(&format!("{size};"));
+                                }
+                                RawPacket::from_str(&file_data)
+                            };
                             self.write_packet(Packet::Raw(file_packet))
-                                .await?
+                                .await?;
                         }
                         _ => error!("Unknown packet! {:?}", packet),
                     }
@@ -282,6 +289,8 @@ impl Client {
                         let mut file_name = packet.data_as_string().clone();
                         file_name.remove(0); // Remove f
                         debug!("Client requested file {}", file_name);
+
+                        self.write_packet(Packet::Raw(RawPacket::from_str("AG"))).await?;
                     }
                     _ => error!("Unknown packet! {:?}", packet),
                 }
