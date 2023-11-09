@@ -138,6 +138,7 @@ impl Client {
                     // I think I will simply keep a counter around that will
                     // track what the next mod is per client.
                     // TODO: Clean this up. It also needs to be moved out of the client code IMO
+
                     let id = self.read_raw(1).await?[0] as usize;
                     debug!("HandleDownload connection for client id: {}", id);
 
@@ -150,6 +151,11 @@ impl Client {
                         debug!("Mod name: {}", bmod.0);
 
                         *next_id += 1;
+
+                        if *next_id >= config.mods.len() {
+                            // I think this is where the connection should be closed, instead of after
+                            // just 1 mod.
+                        }
 
                         bmod.0.clone()
                     };
