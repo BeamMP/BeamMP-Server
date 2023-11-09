@@ -248,22 +248,23 @@ impl Client {
                 match packet.data[0] as char {
                     'S' if packet.data.len() > 1 => match packet.data[1] as char {
                         'R' => {
-                            let file_packet = if config.mods.len() == 0 {
-                                RawPacket::from_code('-')
-                            } else {
-                                let mut file_data = String::new();
-                                for (name, size) in &config.mods {
-                                    let mut mod_name = name.clone();
-                                    if mod_name.starts_with("/") == false {
-                                        mod_name = format!("/{mod_name}");
-                                    }
-                                    file_data.push_str(&format!("{mod_name};"));
-                                }
-                                for (name, size) in &config.mods {
-                                    file_data.push_str(&format!("{size};"));
-                                }
-                                RawPacket::from_str(&file_data)
-                            };
+                            // let file_packet = if config.mods.len() == 0 {
+                            //     RawPacket::from_code('-')
+                            // } else {
+                            //     let mut file_data = String::new();
+                            //     for (name, size) in &config.mods {
+                            //         let mut mod_name = name.clone();
+                            //         if mod_name.starts_with("/") == false {
+                            //             mod_name = format!("/{mod_name}");
+                            //         }
+                            //         file_data.push_str(&format!("{mod_name};"));
+                            //     }
+                            //     for (name, size) in &config.mods {
+                            //         file_data.push_str(&format!("{size};"));
+                            //     }
+                            //     RawPacket::from_str(&file_data)
+                            // };
+                            let file_packet = RawPacket::from_code('-');
                             self.write_packet(Packet::Raw(file_packet))
                                 .await?;
                         }
