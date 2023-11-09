@@ -322,6 +322,7 @@ impl Client {
         self.disconnect();
     }
 
+    // Panics when userdata is not set!
     pub fn get_name(&self) -> &str {
         &self.info.as_ref().unwrap().username
     }
@@ -330,6 +331,7 @@ impl Client {
         self.id
     }
 
+    // Panics when userdata is not set!
     pub fn get_roles(&self) -> &str {
         &self.info.as_ref().unwrap().roles
     }

@@ -47,6 +47,8 @@ pub struct Server {
     connect_runtime_handle: JoinHandle<()>,
 
     config: Arc<Config>,
+
+    last_plist_update: Instant,
 }
 
 impl Server {
@@ -107,6 +109,8 @@ impl Server {
                 }
 
                 if set.is_empty() == false {
+                    // Because join_next() is cancel safe, we can simply cancel it after N duration
+                    // so at worst this client acceptance loop blocks for N duration
                     tokio::select!(
                         _ = set.join_next() => {},
                         _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {},
@@ -127,6 +131,8 @@ impl Server {
             connect_runtime_handle: connect_runtime_handle,
 
             config: config,
+
+            last_plist_update: Instant::now(),
         })
     }
 
@@ -216,15 +222,41 @@ impl Server {
             }
         }
 
+        // Update the player list
+        if self.last_plist_update.elapsed().as_secs() >= 1 {
+            self.last_plist_update = Instant::now();
+
+            let mut players = String::new();
+
+            for client in &self.clients {
+                players.push_str(&format!("{},", client.get_name()));
+            }
+
+            if players.ends_with(",") {
+                players.remove(players.len() - 1);
+            }
+
+            let player_count = self.clients.len();
+            let max_players = self.config.general.max_players;
+
+            let data = format!("Ss{player_count}/{max_players}:{players}");
+
+            self.broadcast(Packet::Raw(RawPacket::from_str(&data)), None).await;
+        }
+
         Ok(())
     }
 
+    // NOTE: Skips all clients that are currently connecting!
     async fn broadcast(&self, packet: Packet, owner: Option<u8>) {
         for client in &self.clients {
             if let Some(id) = owner {
                 if id == client.id {
                     continue;
                 }
+            }
+            if client.state == ClientState::Connecting {
+                continue;
             }
             client.queue_packet(packet.clone()).await;
         }
