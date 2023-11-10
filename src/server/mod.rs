@@ -149,14 +149,14 @@ impl Server {
                     clients_incoming_lock.len()
                 );
                 for i in 0..clients_incoming_lock.len() {
-                    joined_names.push(
-                        clients_incoming_lock[i]
-                            .info
-                            .as_ref()
-                            .unwrap()
-                            .username
-                            .clone(),
-                    );
+                    let name = clients_incoming_lock[i]
+                        .info
+                        .as_ref()
+                        .unwrap()
+                        .username
+                        .clone();
+                    info!("Welcome {name}!");
+                    joined_names.push(name);
                     self.clients.push(clients_incoming_lock.swap_remove(i));
                 }
                 trace!("Accepted incoming clients!");
