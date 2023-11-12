@@ -48,6 +48,10 @@ impl UserData for Context {
             Ok(())
         });
 
+        methods.add_function("GetServerVersion", |_lua, ()| {
+            Ok((1, 0, 0))
+        });
+
         methods.add_function("GetPlayerCount", |lua, ()| {
             let me: Context = lua.globals().get("MP")?;
             let (tx, rx) = oneshot::channel();
@@ -65,6 +69,24 @@ impl UserData for Context {
                 todo!("Receiving a response from the server failed! How?")
             }
         });
+
+        // methods.add_function("GetPlayers", |lua, ()| {
+        //     let me: Context = lua.globals().get("MP")?;
+        //     let (tx, rx) = oneshot::channel();
+        //     if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::RequestPlayerCount(tx)) {
+        //         error!("Failed to send packet: {:?}", e);
+        //     }
+        //     let message = rx.blocking_recv();
+        //     if let Ok(message) = message {
+        //         if let PluginBoundPluginEvent::PlayerCount(player_count) = message {
+        //             Ok(player_count)
+        //         } else {
+        //             unreachable!() // This really should never be reachable
+        //         }
+        //     } else {
+        //         todo!("Receiving a response from the server failed! How?")
+        //     }
+        // });
     }
 }
 
@@ -94,14 +116,7 @@ impl Backend for BackendLua {
             Ok(())
         })?;
 
-        // let register_event_handler_fn = self.lua.create_function(|_lua, (name, handler_name): (String, String)| {
-        //     tx.blocking_send(ServerBoundPluginEvent::RegisterEventHandler((name, handler_name)));
-        //     Ok(())
-        // })?;
-
-        // let api = self.lua.create_table()?;
         let api = Context::new(tx);
-        // api.set("", thing)?;
 
         let globals = self.lua.globals();
         globals.set("MP", api)?;
