@@ -300,6 +300,19 @@ impl Server {
             self.broadcast(Packet::Raw(RawPacket::from_str(&data)), None).await;
         }
 
+        // Receive plugin events and process them
+        for plugin in &mut self.plugins {
+            for event in plugin.get_events() {
+                debug!("event: {:?}", event);
+                // TODO: Error handling (?)
+                match event {
+                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new()))).await,
+                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len())); }
+                    _ => {},
+                }
+            }
+        }
+
         Ok(())
     }
 
