@@ -2,8 +2,9 @@ use super::{Backend, ServerBoundPluginEvent};
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 use mlua::prelude::*;
-use mlua::{UserData, UserDataMethods};
+use mlua::{UserData, UserDataMethods, Value};
 
+#[derive(Clone)]
 struct Context {
     tx: Arc<Sender<ServerBoundPluginEvent>>,
 }
@@ -16,10 +17,20 @@ impl Context {
     }
 }
 
+impl<'lua> FromLua<'lua> for Context {
+    fn from_lua(value: Value<'lua>, _: &'lua Lua) -> LuaResult<Self> {
+        match value {
+            Value::UserData(ud) => Ok(ud.borrow::<Self>()?.clone()),
+            _ => unreachable!()
+        }
+    }
+}
+
 impl UserData for Context {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
-        methods.add_method("RegisterEventHandler", |_, me, (event_name, handler_name): (String, String)| {
+        methods.add_method("RegisterEventHandler", |lua, _, (event_name, handler_name): (String, String)| {
             debug!("Event handler registered: {} (EVENT) = {} (LUA)", event_name, handler_name);
+            let me: Context = lua.globals().get("MP")?;
             // TODO: Figure out how to handle these errors (?)
             let _ = me.tx.blocking_send(ServerBoundPluginEvent::RegisterEventHandler((event_name, handler_name)));
             Ok(())
