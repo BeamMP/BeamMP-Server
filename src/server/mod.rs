@@ -38,23 +38,19 @@ fn load_plugins() -> Vec<Plugin> {
                         if let Ok(entry) = entry {
                             let path = entry.path();
                             if path.is_file() {
-                                trace!("Found a file! Path: {:?}", path);
                                 if let Some(filename) = path.file_name() {
                                     let filename = filename.to_string_lossy().to_string();
                                     let filename = filename.split(".").next().unwrap();
                                     if filename == "main" {
-                                        debug!("Found a potential plugin!");
                                         if let Ok(src) = std::fs::read_to_string(&path) {
                                             let extension = path.extension().map(|s| s.to_string_lossy().to_string()).unwrap_or(String::new());
-                                            if let Some(mut backend) = match extension.as_str() {
+                                            if let Some(backend) = match extension.as_str() {
                                                 "lua" => Some(Box::new(backend_lua::BackendLua::new())),
                                                 _ => None,
                                             } {
                                                 debug!("Loading plugin: {:?}", res_path);
-                                                if backend.load_api().is_ok() {
-                                                    if backend.load(src).is_ok() {
-                                                        plugins.push(Plugin::new(backend));
-                                                    }
+                                                if let Ok(plugin) = Plugin::new(backend, src) {
+                                                    plugins.push(plugin);
                                                 }
                                             }
                                         }
