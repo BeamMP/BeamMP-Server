@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 use std::time::Instant;
+use std::collections::HashMap;
 
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::task::{JoinHandle, JoinSet};
@@ -13,13 +14,63 @@ mod backend;
 mod car;
 mod client;
 mod packet;
+mod plugins;
 
 pub use backend::*;
 pub use car::*;
 pub use client::*;
 pub use packet::*;
+pub use plugins::*;
 
 pub use crate::config::Config;
+
+fn load_plugins() -> Vec<Plugin> {
+    let mut plugins = Vec::new();
+
+    for res_entry in std::fs::read_dir("Resources/Server").expect("Failed to read Resources/Server!") {
+        if let Ok(res_entry) = res_entry {
+            let res_path = res_entry.path();
+            if res_path.is_dir() {
+
+                // TODO: Fix this (split into different functions)
+                if let Ok(read_dir) = std::fs::read_dir(&res_path) {
+                    for entry in read_dir {
+                        if let Ok(entry) = entry {
+                            let path = entry.path();
+                            if path.is_file() {
+                                trace!("Found a file! Path: {:?}", path);
+                                if let Some(filename) = path.file_name() {
+                                    let filename = filename.to_string_lossy().to_string();
+                                    let filename = filename.split(".").next().unwrap();
+                                    if filename == "main" {
+                                        debug!("Found a potential plugin!");
+                                        if let Ok(src) = std::fs::read_to_string(&path) {
+                                            let extension = path.extension().map(|s| s.to_string_lossy().to_string()).unwrap_or(String::new());
+                                            if let Some(mut backend) = match extension.as_str() {
+                                                "lua" => Some(Box::new(backend_lua::BackendLua::new())),
+                                                _ => None,
+                                            } {
+                                                debug!("Loading plugin: {:?}", res_path);
+                                                if backend.load_api().is_ok() {
+                                                    if backend.load(src).is_ok() {
+                                                        plugins.push(Plugin::new(backend));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    plugins
+}
 
 #[derive(PartialEq, IntoPrimitive, Copy, Clone, Debug)]
 #[repr(u8)]
@@ -49,6 +100,8 @@ pub struct Server {
     config: Arc<Config>,
 
     last_plist_update: Instant,
+
+    plugins: Vec<Plugin>,
 }
 
 impl Server {
@@ -68,6 +121,10 @@ impl Server {
             Arc::new(UdpSocket::bind(bind_addr).await?)
         };
 
+        // Load existing plugins
+        let plugins = load_plugins();
+
+        // Start client runtime
         let clients_incoming = Arc::new(Mutex::new(Vec::new()));
         let clients_incoming_ref = Arc::clone(&clients_incoming);
         debug!("Client acception runtime starting...");
@@ -86,7 +143,7 @@ impl Server {
 
                             let mut client = Client::new(socket);
                             match client.authenticate(&cfg_ref).await {
-                                Ok(isClient) if isClient => {
+                                Ok(is_client) if is_client => {
                                     let mut lock = ci_ref
                                         .lock()
                                         .map_err(|e| error!("{:?}", e))
@@ -94,7 +151,7 @@ impl Server {
                                     lock.push(client);
                                     drop(lock);
                                 },
-                                Ok(isClient) => {
+                                Ok(_is_client) => {
                                     debug!("Downloader?");
                                 },
                                 Err(e) => {
@@ -134,6 +191,8 @@ impl Server {
             config: config,
 
             last_plist_update: Instant::now(),
+
+            plugins,
         })
     }
 

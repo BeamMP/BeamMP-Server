@@ -24,3 +24,5 @@ serde_json = "*"
 
 toml = "0.5"
 flate2 = "1.0"
+
+mlua = { version = "0.9.1", features = ["lua54", "vendored"] }
