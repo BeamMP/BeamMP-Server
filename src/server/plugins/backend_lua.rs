@@ -51,8 +51,9 @@ impl UserData for Context {
         methods.add_function("GetPlayerCount", |lua, ()| {
             let me: Context = lua.globals().get("MP")?;
             let (tx, rx) = oneshot::channel();
-            let r = me.tx.blocking_send(ServerBoundPluginEvent::RequestPlayerCount(tx));
-            debug!("{:?}", r);
+            if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::RequestPlayerCount(tx)) {
+                error!("Failed to send packet: {:?}", e);
+            }
             let message = rx.blocking_recv();
             if let Ok(message) = message {
                 if let PluginBoundPluginEvent::PlayerCount(player_count) = message {
