@@ -128,7 +128,7 @@ impl Server {
             let mut set = JoinSet::new();
             loop {
                 match tcp_listener_ref.accept().await {
-                    Ok((mut socket, addr)) => {
+                    Ok((socket, addr)) => {
                         info!("New client connected: {:?}", addr);
 
                         let cfg_ref = config_ref.clone();
@@ -192,7 +192,7 @@ impl Server {
         })
     }
 
-    async fn process_tcp(&mut self, joined_names: Vec<String>) -> anyhow::Result<()> {
+    async fn process_tcp(&mut self) -> anyhow::Result<()> {
         // 'packet_wait: loop {
         //     // Process all the clients (TCP)
         //     let mut packets = Vec::new();
@@ -256,9 +256,9 @@ impl Server {
     async fn process_udp(&mut self) -> anyhow::Result<()> {
         // Process UDP packets
         // TODO: Use a UDP addr -> client ID look up table
-        for (addr, packet) in self.read_udp_packets().await {
+        if let Some((addr, packet)) = self.read_udp_packets_blocking().await {
             if packet.data.len() == 0 {
-                continue;
+                return Ok(()); // what!
             }
             let id = packet.data[0] - 1; // Offset by 1
             let data = packet.data[2..].to_vec();
@@ -303,10 +303,18 @@ impl Server {
             }
         }
 
-        self.process_udp().await;
+        // In the future, we should find a way to race process_tcp and process_udp
+        // because this introduces some latency and isn't great!
+        // But technically it works, and keeping the latency low should really make
+        // it a non-issue I think.
         tokio::select! {
-            _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {},
-            _ = self.process_tcp(joined_names) => {},
+            _ = self.process_udp() => {},
+            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1)) => {},
+        };
+
+        tokio::select! {
+            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1)) => {},
+            _ = self.process_tcp() => {},
         };
 
         // I'm sorry for this code :(
@@ -441,6 +449,28 @@ impl Server {
             packets.push((data_addr, packet));
         }
         packets
+    }
+
+    async fn read_udp_packets_blocking(&self) -> Option<(SocketAddr, RawPacket)> {
+        let mut data = vec![0u8; 4096];
+        let data_size;
+        let data_addr;
+
+        match self.udp_socket.recv_from(&mut data).await {
+            Ok((0, _)) => {
+                error!("UDP socket is readable, yet has 0 bytes to read!");
+                return None;
+            }
+            Ok((n, addr)) => (data_size, data_addr) = (n, addr),
+            Err(_) => return None,
+        }
+
+        let packet = RawPacket {
+            header: data_size as u32,
+            data: data[..data_size].to_vec(),
+        };
+
+        Some((data_addr, packet))
     }
 
     async fn parse_packet_udp(
