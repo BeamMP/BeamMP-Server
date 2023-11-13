@@ -324,6 +324,13 @@ impl Client {
         Ok(None)
     }
 
+    pub async fn process_blocking(&mut self) -> anyhow::Result<Option<RawPacket>> {
+        if let Some(packet) = self.read_packet_waiting().await? {
+            return Ok(Some(packet));
+        }
+        Ok(None)
+    }
+
     pub fn disconnect(&mut self) {
         self.state = ClientState::Disconnect;
     }

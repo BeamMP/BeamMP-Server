@@ -192,6 +192,91 @@ impl Server {
         })
     }
 
+    async fn process_tcp(&mut self, joined_names: Vec<String>) -> anyhow::Result<()> {
+        // 'packet_wait: loop {
+        //     // Process all the clients (TCP)
+        //     let mut packets = Vec::new();
+        //     for i in 0..self.clients.len() {
+        //         if let Some(client) = self.clients.get_mut(i) {
+        //             match client.process().await {
+        //                 Ok(packet_opt) => {
+        //                     if let Some(raw_packet) = packet_opt {
+        //                         packets.push((i, raw_packet));
+        //                     }
+        //                 }
+        //                 Err(e) => client.kick(&format!("Kicked: {:?}", e)).await,
+        //             }
+        //
+        //             // More efficient than broadcasting as we are already looping
+        //             for name in joined_names.iter() {
+        //                 self.clients[i]
+        //                     .queue_packet(Packet::Notification(NotificationPacket::new(format!(
+        //                         "Welcome {}!",
+        //                         name.to_string()
+        //                     ))))
+        //                     .await;
+        //             }
+        //         }
+        //     }
+        //
+        //     if packets.len() > 0 {
+        //         for (i, raw_packet) in packets {
+        //             self.parse_packet(i, raw_packet).await?;
+        //         }
+        //
+        //         break 'packet_wait;
+        //     }
+        // }
+
+        if self.clients.len() > 0 {
+            let (result, index, _) = futures::future::select_all(
+                self.clients.iter_mut().map(|client| Box::pin(client.process_blocking()))
+            ).await;
+
+            match result {
+                Ok(packet_opt) => {
+                    if let Some(raw_packet) = packet_opt {
+                        self.parse_packet(index, raw_packet).await?;
+                    }
+                },
+                Err(e) => {
+                    if let Some(client) = self.clients.get_mut(index) {
+                        client.kick(&format!("Kicked: {:?}", e)).await;
+                    }
+                }
+            }
+        } else {
+            // TODO: Find a better solution than this lol
+            tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+        }
+
+        Ok(())
+    }
+
+    async fn process_udp(&mut self) -> anyhow::Result<()> {
+        // Process UDP packets
+        // TODO: Use a UDP addr -> client ID look up table
+        for (addr, packet) in self.read_udp_packets().await {
+            if packet.data.len() == 0 {
+                continue;
+            }
+            let id = packet.data[0] - 1; // Offset by 1
+            let data = packet.data[2..].to_vec();
+            let packet_processed = RawPacket {
+                header: data.len() as u32,
+                data,
+            };
+            'search: for i in 0..self.clients.len() {
+                if self.clients[i].id == id {
+                    self.parse_packet_udp(i, addr, packet_processed).await?;
+                    break 'search;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn process(&mut self) -> anyhow::Result<()> {
         // Bit weird, but this is all to avoid deadlocking the server if anything goes wrong
         // with the client acception runtime. If that one locks, the server won't accept
@@ -218,49 +303,11 @@ impl Server {
             }
         }
 
-        // Process UDP packets
-        // TODO: Use a UDP addr -> client ID look up table
-        for (addr, packet) in self.read_udp_packets().await {
-            if packet.data.len() == 0 {
-                continue;
-            }
-            let id = packet.data[0] - 1; // Offset by 1
-            let data = packet.data[2..].to_vec();
-            let packet_processed = RawPacket {
-                header: data.len() as u32,
-                data,
-            };
-            'search: for i in 0..self.clients.len() {
-                if self.clients[i].id == id {
-                    self.parse_packet_udp(i, addr, packet_processed).await?;
-                    break 'search;
-                }
-            }
-        }
-
-        // Process all the clients (TCP)
-        for i in 0..self.clients.len() {
-            if let Some(client) = self.clients.get_mut(i) {
-                match client.process().await {
-                    Ok(packet_opt) => {
-                        if let Some(raw_packet) = packet_opt {
-                            self.parse_packet(i, raw_packet.clone()).await?;;
-                        }
-                    }
-                    Err(e) => client.kick(&format!("Kicked: {:?}", e)).await,
-                }
-
-                // More efficient than broadcasting as we are already looping
-                for name in joined_names.iter() {
-                    self.clients[i]
-                        .queue_packet(Packet::Notification(NotificationPacket::new(format!(
-                            "Welcome {}!",
-                            name.to_string()
-                        ))))
-                        .await;
-                }
-            }
-        }
+        self.process_udp().await;
+        tokio::select! {
+            _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {},
+            _ = self.process_tcp(joined_names) => {},
+        };
 
         // I'm sorry for this code :(
         for i in 0..self.clients.len() {

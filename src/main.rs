@@ -40,14 +40,9 @@ async fn main() {
         .map_err(|e| error!("{:?}", e))
         .expect("Failed to start server!");
 
-    // TODO: It'd be nicer if we didn't have to rely on this interval to limit the amount of times
-    //       the loop can run per second. It'd be much better if it idled until one of the connections
-    //       had a packet ready.
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_nanos(1000)); // 5 ms = max 200 ticks per second
     loop {
         if let Err(e) = server.process().await {
             error!("{:?}", e);
         }
-        interval.tick().await;
     }
 }
