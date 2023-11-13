@@ -363,6 +363,13 @@ impl Server {
                 match event {
                     ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new()))).await,
                     ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len())); }
+                    ServerBoundPluginEvent::RequestPlayers(responder) => {
+                        let mut players = HashMap::new();
+                        for client in &self.clients {
+                            players.insert(client.id, client.get_name().to_string());
+                        }
+                        let _ = responder.send(PluginBoundPluginEvent::Players(players));
+                    }
                     _ => {},
                 }
             }

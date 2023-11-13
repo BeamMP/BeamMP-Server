@@ -1,8 +1,13 @@
 print("test from lua")
 print("Player count: " .. MP.GetPlayerCount())
 
-function onPluginLoaded()
+function onPluginLoaded2()
     print("HI!")
 end
 
-MP.RegisterEventHandler("onPluginLoaded", "onPluginLoaded")
+function onPlayerAuthenticated2(name)
+    print("hi welcome mista " .. name)
+end
+
+MP.RegisterEventHandler("onPluginLoaded", "onPluginLoaded2")
+MP.RegisterEventHandler("onPlayerAuthenticated", "onPlayerAuthenticated2")

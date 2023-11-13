@@ -1,8 +1,8 @@
 pub mod backend_lua;
 
 use std::sync::Arc;
+use std::collections::HashMap;
 use tokio::runtime::Runtime;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc::{self, Sender, Receiver};
 use tokio::sync::oneshot;
 
@@ -28,21 +28,23 @@ pub enum Argument {
 #[derive(Debug)]
 pub enum ScriptEvent {
     OnPluginLoaded,
+    OnPlayerAuthenticated,
 }
 
 #[derive(Debug)]
 pub enum PluginBoundPluginEvent {
     CallEventHandler((ScriptEvent, Vec<Argument>)),
+
     PlayerCount(usize),
+    Players(HashMap<u8, String>),
 }
 
 #[derive(Debug)]
 pub enum ServerBoundPluginEvent {
     PluginLoaded,
 
-    /// Arguments: (event name, handler function name)
-    RegisterEventHandler((String, String)),
     RequestPlayerCount(oneshot::Sender<PluginBoundPluginEvent>),
+    RequestPlayers(oneshot::Sender<PluginBoundPluginEvent>),
 }
 
 pub struct Plugin {
