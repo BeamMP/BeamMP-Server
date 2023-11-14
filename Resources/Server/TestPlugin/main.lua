@@ -5,13 +5,16 @@ function onPluginLoaded()
     print("HI!")
 end
 
-function onPlayerAuthenticated(name)
-    print("hi welcome mista " .. name)
+function onPlayerAuthenticated(joined_name)
+    print("hi welcome mista " .. joined_name)
 
     print("current players:")
     for id, name in pairs(MP.GetPlayers()) do
         print("- [" .. id .. "]" .. name)
     end
+    print("yipee")
+
+    return 0 -- 0 = do not block
 end
 
 MP.RegisterEventHandler("onPluginLoaded", "onPluginLoaded")

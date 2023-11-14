@@ -107,88 +107,88 @@ impl Client {
     pub async fn authenticate(&mut self, config: &super::Config) -> anyhow::Result<bool> {
         debug!("Authenticating client {}...", self.id);
 
-        'waiting_for_c: loop {
-            self.socket.readable().await?;
-            let mut tmp = vec![0u8; 1];
-            while self.socket.peek(&mut tmp).await? == 0 {}
-            // Authentication works a little differently than normal
-            // Not sure why, but the BeamMP source code shows they
-            // also only read a single byte during authentication
-            let code = self.read_raw(1).await?[0];
-            debug!("code: '{}' / {}", code as char, code);
-            match code as char {
-                'C' => {
-                    // We now delete existing data for this client ID, just in case.
-                    // TODO: This seems like a recipe for disaster
-                    let mut lock = CLIENT_MOD_PROGRESS.lock().await;
-                    lock.remove(&(self.id as usize));
+        self.socket.readable().await?;
+        // let mut tmp = vec![0u8; 1];
+        // while self.socket.peek(&mut tmp).await? == 0 {}
+        // // Authentication works a little differently than normal
+        // // Not sure why, but the BeamMP source code shows they
+        // // also only read a single byte during authentication
+        // let code = self.read_raw(1).await?[0];
+        // debug!("code: '{}' / {}", code as char, code);
+        // match code as char {
+        //     'C' => {
+        //
+        //         break 'waiting_for_c;
+        //     }
+        //     'D' => {
+        //         // The download sequence is so awful
+        //         // It currently requires us to track what the next file is that
+        //         // we need to provide, which is hard to do with the current
+        //         // server design.
+        //         // I think I will simply keep a counter around that will
+        //         // track what the next mod is per client.
+        //         // TODO: Clean this up. It also needs to be moved out of the client code IMO
+        //
+        //         let id = self.read_raw(1).await?[0] as usize;
+        //         debug!("HandleDownload connection for client id: {}", id);
+        //
+        //         let mut mod_name = {
+        //             let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+        //             if lock.get(&id).is_none() { lock.insert(id, 0); }
+        //             let next_id = lock.get_mut(&id).unwrap();
+        //
+        //             let bmod = &config.mods[*next_id]; // TODO: This is a bit uhh yeah
+        //             debug!("Mod name: {}", bmod.0);
+        //
+        //             *next_id += 1;
+        //
+        //             if *next_id >= config.mods.len() {
+        //                 // I think this is where the connection should be closed, instead of after
+        //                 // just 1 mod.
+        //             }
+        //
+        //             bmod.0.clone()
+        //         };
+        //
+        //         if mod_name.starts_with("/") == false {
+        //             mod_name = format!("/{mod_name}");
+        //         }
+        //
+        //         let mod_path = format!("Resources/Client{mod_name}");
+        //         let file_data = std::fs::read(mod_path)?;
+        //
+        //         let packet = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
+        //
+        //         {
+        //             let mut lock = self.write_half.lock().await;
+        //             lock.writable().await?;
+        //             trace!("Sending packets!");
+        //             if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
+        //                 error!("{:?}", e);
+        //             }
+        //             trace!("Packets sent!");
+        //             drop(lock);
+        //         }
+        //
+        //         // return Err(ClientError::IsDownloader.into());
+        //         return Ok(false);
+        //     }
+        //     _ => {
+        //         error!("Unknown code: {}", code);
+        //         return Err(ClientError::AuthenticateError.into());
+        //     }
+        // }
 
-                    // TODO: Check client version
-                    trace!("Client version packet");
-                    self.socket.readable().await?;
-                    let packet = self.read_packet_waiting().await?;
-                    debug!("{:?}", packet);
-                    break 'waiting_for_c;
-                }
-                'D' => {
-                    // The download sequence is so awful
-                    // It currently requires us to track what the next file is that
-                    // we need to provide, which is hard to do with the current
-                    // server design.
-                    // I think I will simply keep a counter around that will
-                    // track what the next mod is per client.
-                    // TODO: Clean this up. It also needs to be moved out of the client code IMO
+        // We now delete existing data for this client ID, just in case.
+        // TODO: This seems like a recipe for disaster
+        let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+        lock.remove(&(self.id as usize));
 
-                    let id = self.read_raw(1).await?[0] as usize;
-                    debug!("HandleDownload connection for client id: {}", id);
-
-                    let mut mod_name = {
-                        let mut lock = CLIENT_MOD_PROGRESS.lock().await;
-                        if lock.get(&id).is_none() { lock.insert(id, 0); }
-                        let next_id = lock.get_mut(&id).unwrap();
-
-                        let bmod = &config.mods[*next_id]; // TODO: This is a bit uhh yeah
-                        debug!("Mod name: {}", bmod.0);
-
-                        *next_id += 1;
-
-                        if *next_id >= config.mods.len() {
-                            // I think this is where the connection should be closed, instead of after
-                            // just 1 mod.
-                        }
-
-                        bmod.0.clone()
-                    };
-
-                    if mod_name.starts_with("/") == false {
-                        mod_name = format!("/{mod_name}");
-                    }
-
-                    let mod_path = format!("Resources/Client{mod_name}");
-                    let file_data = std::fs::read(mod_path)?;
-
-                    let packet = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
-
-                    {
-                        let mut lock = self.write_half.lock().await;
-                        lock.writable().await?;
-                        trace!("Sending packets!");
-                        if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
-                            error!("{:?}", e);
-                        }
-                        trace!("Packets sent!");
-                        drop(lock);
-                    }
-
-                    // return Err(ClientError::IsDownloader.into());
-                    return Ok(false);
-                }
-                _ => {
-                    error!("Unknown code: {}", code);
-                    return Err(ClientError::AuthenticateError.into());
-                }
-            }
-        }
+        // TODO: Check client version
+        trace!("Client version packet");
+        self.socket.readable().await?;
+        let packet = self.read_packet_waiting().await?;
+        debug!("{:?}", packet);
 
         self.write_packet(Packet::Raw(RawPacket::from_code('S')))
             .await?;

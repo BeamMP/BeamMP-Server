@@ -81,6 +81,7 @@ impl UserData for Context {
                 error!("Failed to send packet: {:?}", e);
             }
             let message = rx.blocking_recv();
+            trace!("received player info");
             if let Ok(message) = message {
                 if let PluginBoundPluginEvent::Players(players) = message {
                     let table = lua.create_table()?;
@@ -139,27 +140,34 @@ impl Backend for BackendLua {
             ScriptEvent::OnPlayerAuthenticated => "onPlayerAuthenticated",
         };
 
+        let mut ret = -1f32;
         // TODO: Error handling
-        let ctx: Context = self.lua.globals().get("MP").expect("MP is missing!");
-        let lock = ctx.handlers.lock().expect("Mutex is poisoned!");
-        if let Some(handler_name) = lock.get(event_name) {
-            let func: LuaResult<Function> = self.lua.globals().get(handler_name.clone());
-            if let Ok(func) = func {
-                let mapped_args = args.into_iter().map(|arg| {
-                    match arg {
-                        Argument::String(s) => if let Ok(lua_str) = self.lua.create_string(&s) { Some(Value::String(lua_str)) } else { None },
-                        Argument::Boolean(b) => Some(Value::Boolean(b)),
-                        Argument::Number(f) => Some(Value::Number(f as f64)),
+        {
+            let ctx: Context = self.lua.globals().get("MP").expect("MP is missing!");
+            let lock = ctx.handlers.lock().expect("Mutex is poisoned!");
+            if let Some(handler_name) = lock.get(event_name) {
+                let func: LuaResult<Function> = self.lua.globals().get(handler_name.clone());
+                if let Ok(func) = func {
+                    let mapped_args = args.into_iter().map(|arg| {
+                        match arg {
+                            Argument::String(s) => if let Ok(lua_str) = self.lua.create_string(&s) { Some(Value::String(lua_str)) } else { None },
+                            Argument::Boolean(b) => Some(Value::Boolean(b)),
+                            Argument::Number(f) => Some(Value::Number(f as f64)),
+                        }
+                    }).filter(|v| v.is_some());
+                    match func.call::<_, Option<f32>>(Variadic::from_iter(mapped_args)) {
+                        Ok(res) => { trace!("fn ret: {:?}", ret); ret = res.unwrap_or(-1f32); }
+                        Err(e) => {
+                            error!("[LUA] {}", e);
+                            ret = -1f32;
+                        },
                     }
-                }).filter(|v| v.is_some());
-                match func.call::<_, Option<f32>>(Variadic::from_iter(mapped_args)) {
-                    Ok(res) => if let Some(resp) = resp { resp.send(Argument::Number(res.unwrap_or(-1f32))).expect("Failed to send!"); } else {}
-                    Err(e) => {
-                        error!("[LUA] {}", e);
-                        if let Some(resp) = resp { resp.send(Argument::Number(-1f32)).expect("Failed to send!"); } else {}
-                    },
                 }
             }
         }
+
+        debug!("sending result...");
+        if let Some(resp) = resp { resp.send(Argument::Number(ret)).expect("Failed to send!"); }
+        debug!("call_event_handler done");
     }
 }

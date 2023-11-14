@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
 use std::time::Instant;
 use std::collections::HashMap;
 
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::task::{JoinHandle, JoinSet};
 
@@ -88,6 +89,7 @@ pub struct Server {
     udp_socket: Arc<UdpSocket>,
 
     clients_incoming: Arc<Mutex<Vec<Client>>>,
+    clients_queue: Vec<(Client, Vec<tokio::sync::oneshot::Receiver<Argument>>, Vec<Argument>)>,
 
     pub clients: Vec<Client>,
 
@@ -128,7 +130,7 @@ impl Server {
             let mut set = JoinSet::new();
             loop {
                 match tcp_listener_ref.accept().await {
-                    Ok((socket, addr)) => {
+                    Ok((mut socket, addr)) => {
                         info!("New client connected: {:?}", addr);
 
                         let cfg_ref = config_ref.clone();
@@ -137,26 +139,40 @@ impl Server {
                         set.spawn(async move {
                             socket.set_nodelay(true); // TODO: Is this good?
 
-                            let mut client = Client::new(socket);
-                            match client.authenticate(&cfg_ref).await {
-                                Ok(is_client) if is_client => {
-                                    let mut lock = ci_ref
-                                        .lock()
-                                        .map_err(|e| error!("{:?}", e))
-                                        .expect("Failed to acquire lock on mutex!");
-                                    lock.push(client);
-                                    drop(lock);
+                            socket.readable().await.expect("Failed to wait for socket to become readable!");
+                            let mut tmp = vec![0u8; 1];
+                            while socket.peek(&mut tmp).await.expect("Failed to peek socket!") == 0 {}
+                            // Authentication works a little differently than normal
+                            // Not sure why, but the BeamMP source code shows they
+                            // also only read a single byte during authentication
+                            socket.read_exact(&mut tmp).await.expect("Failed to read from socket!");
+                            let code = tmp[0];
+
+                            match code as char {
+                                'C' => {
+                                    let mut client = Client::new(socket);
+                                    match client.authenticate(&cfg_ref).await {
+                                        Ok(is_client) if is_client => {
+                                            let mut lock = ci_ref
+                                                .lock()
+                                                .map_err(|e| error!("{:?}", e))
+                                                .expect("Failed to acquire lock on mutex!");
+                                            lock.push(client);
+                                            drop(lock);
+                                        },
+                                        Ok(_is_client) => {
+                                            debug!("Downloader?");
+                                        },
+                                        Err(e) => {
+                                            error!("Authentication error occured, kicking player...");
+                                            error!("{:?}", e);
+                                            client.kick("Failed to authenticate player!").await;
+                                            // client.disconnect();
+                                        }
+                                    }
                                 },
-                                Ok(_is_client) => {
-                                    debug!("Downloader?");
-                                },
-                                Err(e) => {
-                                    error!("Authentication error occured, kicking player...");
-                                    error!("{:?}", e);
-                                    client.kick("Failed to authenticate player!").await;
-                                    // client.disconnect();
-                                }
-                            }
+                                _ => {},
+                            };
                         });
                     }
                     Err(e) => error!("Failed to accept incoming connection: {:?}", e),
@@ -179,6 +195,7 @@ impl Server {
             udp_socket: udp_socket,
 
             clients_incoming: clients_incoming,
+            clients_queue: Vec::new(),
 
             clients: Vec::new(),
 
@@ -277,7 +294,7 @@ impl Server {
         Ok(())
     }
 
-    pub async fn process(&mut self) -> anyhow::Result<()> {
+    async fn process_authenticated_clients(&mut self) -> anyhow::Result<()> {
         // Bit weird, but this is all to avoid deadlocking the server if anything goes wrong
         // with the client acception runtime. If that one locks, the server won't accept
         // more clients, but it will at least still process all other clients
@@ -298,23 +315,96 @@ impl Server {
                     info!("Welcome {name}!");
                     joined_names.push(name.clone());
                     let arg = Argument::String(name);
+                    let mut vrx = Vec::new();
                     for plugin in &self.plugins {
                         let (tx, rx) = tokio::sync::oneshot::channel();
                         plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated, vec![arg.clone()], Some(tx)))).await;
-                        // TODO: This never returns??
-                        let res = rx.await.unwrap_or(Argument::Number(-1f32));
-                        println!("res: {:?}", res);
+                        // TODO: This never returns, because it blocks the entire process function
+                        //       from running, so it never manages to run the function correctly.
+                        // let res = rx.await.unwrap_or(Argument::Number(-1f32));
+                        // debug!("res: {:?}", res);
+                        vrx.push(rx);
                     }
-                    self.clients.push(clients_incoming_lock.swap_remove(i));
+                    self.clients_queue.push((clients_incoming_lock.swap_remove(i), vrx, Vec::new()));
                 }
                 trace!("Accepted incoming clients!");
             }
         }
 
+        // Bit scuffed but it just polls the return values until all lua plugins have returned
+        // If this blocks, the server is stuck!
+        // TODO: Reduce allocations needed here (use swap_remove)
+        let mut not_done_clients = Vec::new();
+        for (mut client, mut vrx, mut res) in self.clients_queue.drain(..) {
+            let mut not_done = Vec::new();
+            for mut rx in vrx.drain(..) {
+                match rx.try_recv() {
+                    Ok(v) => { debug!("hi: {:?}", v); res.push(v); },
+                    Err(tokio::sync::oneshot::error::TryRecvError::Empty) => not_done.push(rx),
+                    Err(tokio::sync::oneshot::error::TryRecvError::Closed) => {},
+                }
+            }
+            vrx = not_done;
+
+            if vrx.len() == 0 {
+                let mut allowed = true;
+                for v in res {
+                    match v {
+                        Argument::Number(n) => if n == 1f32 || n == -1f32 { allowed = false; },
+                        Argument::Boolean(b) => if b { allowed = false; },
+                        _ => {}, // TODO: Handle this somehow?
+                    }
+                }
+                if allowed {
+                    self.clients.push(client);
+                } else {
+                    // TODO: Custom kick message defined from within lua somehow?
+                    // TODO: Kicking the client and then immediately dropping them results in the
+                    //       kick message not showing up, instead displaying that the socket closed.
+                    client.kick("You are not allowed to join this server!").await;
+                }
+            } else {
+                not_done_clients.push((client, vrx, res));
+            }
+        }
+        self.clients_queue = not_done_clients;
+
+        Ok(())
+    }
+
+    async fn process_lua_events(&mut self) -> anyhow::Result<()> {
+        // Receive plugin events and process them
+        for plugin in &mut self.plugins {
+            for event in plugin.get_events() {
+                debug!("event: {:?}", event);
+                // TODO: Error handling (?)
+                match event {
+                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new(), None))).await,
+                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len())); }
+                    ServerBoundPluginEvent::RequestPlayers(responder) => {
+                        trace!("request players received");
+                        let mut players = HashMap::new();
+                        for client in &self.clients {
+                            players.insert(client.id, client.get_name().to_string());
+                        }
+                        trace!("sending player list...");
+                        let _ = responder.send(PluginBoundPluginEvent::Players(players));
+                        trace!("player list sent");
+                    }
+                    _ => {},
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn process(&mut self) -> anyhow::Result<()> {
         // In the future, we should find a way to race process_tcp and process_udp
         // because this introduces some latency and isn't great!
         // But technically it works, and keeping the latency low should really make
         // it a non-issue I think.
+        // TODO: Handle result
         tokio::select! {
             _ = self.process_udp() => {},
             _ = tokio::time::sleep(tokio::time::Duration::from_nanos(1_000)) => {},
@@ -324,6 +414,9 @@ impl Server {
             _ = tokio::time::sleep(tokio::time::Duration::from_nanos(1_000)) => {},
             _ = self.process_tcp() => {},
         };
+
+        self.process_authenticated_clients().await?;
+        self.process_lua_events().await?;
 
         // I'm sorry for this code :(
         for i in 0..self.clients.len() {
@@ -361,26 +454,6 @@ impl Server {
             let data = format!("Ss{player_count}/{max_players}:{players}");
 
             self.broadcast(Packet::Raw(RawPacket::from_str(&data)), None).await;
-        }
-
-        // Receive plugin events and process them
-        for plugin in &mut self.plugins {
-            for event in plugin.get_events() {
-                debug!("event: {:?}", event);
-                // TODO: Error handling (?)
-                match event {
-                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new(), None))).await,
-                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len())); }
-                    ServerBoundPluginEvent::RequestPlayers(responder) => {
-                        let mut players = HashMap::new();
-                        for client in &self.clients {
-                            players.insert(client.id, client.get_name().to_string());
-                        }
-                        let _ = responder.send(PluginBoundPluginEvent::Players(players));
-                    }
-                    _ => {},
-                }
-            }
         }
 
         Ok(())
