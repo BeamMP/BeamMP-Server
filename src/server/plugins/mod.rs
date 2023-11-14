@@ -13,12 +13,12 @@ pub trait Backend: Send {
     fn load(&mut self, code: String) -> anyhow::Result<()>;
     fn load_api(&mut self, tx: Arc<Sender<ServerBoundPluginEvent>>) -> anyhow::Result<()>;
 
-    fn call_event_handler(&mut self, event: ScriptEvent, args: Vec<Argument>);
+    fn call_event_handler(&mut self, event: ScriptEvent, args: Vec<Argument>, resp: Option<oneshot::Sender<Argument>>);
 }
 
 // TODO: This is quite focused on Lua right now, perhaps in the future we want to modify this list
 //       to be more versatile?
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Argument {
     String(String),
     Boolean(bool),
@@ -33,7 +33,7 @@ pub enum ScriptEvent {
 
 #[derive(Debug)]
 pub enum PluginBoundPluginEvent {
-    CallEventHandler((ScriptEvent, Vec<Argument>)),
+    CallEventHandler((ScriptEvent, Vec<Argument>, Option<oneshot::Sender<Argument>>)),
 
     PlayerCount(usize),
     Players(HashMap<u8, String>),
@@ -72,8 +72,8 @@ impl Plugin {
             loop {
                 if let Some(message) = pb_rx.blocking_recv() {
                     match message {
-                        PluginBoundPluginEvent::CallEventHandler((event, args)) => {
-                            backend.call_event_handler(event, args);
+                        PluginBoundPluginEvent::CallEventHandler((event, args, resp)) => {
+                            backend.call_event_handler(event, args, resp);
                         },
                         _ => {},
                     }

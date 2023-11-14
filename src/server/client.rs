@@ -211,6 +211,9 @@ impl Client {
                     })?;
             debug!("user_data: {:?}", user_data);
             self.info = Some(user_data);
+
+            // self.write_packet(Packet::Raw(RawPacket::from_code('S')))
+            //     .await?;
         } else {
             self.kick(
                 "Client never sent public key! If this error persists, try restarting your game.",

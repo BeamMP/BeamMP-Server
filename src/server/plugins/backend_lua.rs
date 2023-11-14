@@ -133,7 +133,7 @@ impl Backend for BackendLua {
         Ok(())
     }
 
-    fn call_event_handler(&mut self, event: ScriptEvent, args: Vec<Argument>) {
+    fn call_event_handler(&mut self, event: ScriptEvent, args: Vec<Argument>, resp: Option<oneshot::Sender<Argument>>) {
         let event_name = match event {
             ScriptEvent::OnPluginLoaded => "onPluginLoaded",
             ScriptEvent::OnPlayerAuthenticated => "onPlayerAuthenticated",
@@ -152,8 +152,12 @@ impl Backend for BackendLua {
                         Argument::Number(f) => Some(Value::Number(f as f64)),
                     }
                 }).filter(|v| v.is_some());
-                if let Err(e) = func.call::<_, ()>(Variadic::from_iter(mapped_args)) {
-                    error!("[LUA] {}", e);
+                match func.call::<_, Option<f32>>(Variadic::from_iter(mapped_args)) {
+                    Ok(res) => if let Some(resp) = resp { resp.send(Argument::Number(res.unwrap_or(-1f32))).expect("Failed to send!"); } else {}
+                    Err(e) => {
+                        error!("[LUA] {}", e);
+                        if let Some(resp) = resp { resp.send(Argument::Number(-1f32)).expect("Failed to send!"); } else {}
+                    },
                 }
             }
         }

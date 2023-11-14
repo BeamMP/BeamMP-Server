@@ -296,7 +296,15 @@ impl Server {
                         .username
                         .clone();
                     info!("Welcome {name}!");
-                    joined_names.push(name);
+                    joined_names.push(name.clone());
+                    let arg = Argument::String(name);
+                    for plugin in &self.plugins {
+                        let (tx, rx) = tokio::sync::oneshot::channel();
+                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated, vec![arg.clone()], Some(tx)))).await;
+                        // TODO: This never returns??
+                        let res = rx.await.unwrap_or(Argument::Number(-1f32));
+                        println!("res: {:?}", res);
+                    }
                     self.clients.push(clients_incoming_lock.swap_remove(i));
                 }
                 trace!("Accepted incoming clients!");
@@ -309,11 +317,11 @@ impl Server {
         // it a non-issue I think.
         tokio::select! {
             _ = self.process_udp() => {},
-            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1)) => {},
+            _ = tokio::time::sleep(tokio::time::Duration::from_nanos(1_000)) => {},
         };
 
         tokio::select! {
-            _ = tokio::time::sleep(tokio::time::Duration::from_millis(1)) => {},
+            _ = tokio::time::sleep(tokio::time::Duration::from_nanos(1_000)) => {},
             _ = self.process_tcp() => {},
         };
 
@@ -361,7 +369,7 @@ impl Server {
                 debug!("event: {:?}", event);
                 // TODO: Error handling (?)
                 match event {
-                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new()))).await,
+                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new(), None))).await,
                     ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len())); }
                     ServerBoundPluginEvent::RequestPlayers(responder) => {
                         let mut players = HashMap::new();
