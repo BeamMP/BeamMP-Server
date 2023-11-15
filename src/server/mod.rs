@@ -16,12 +16,14 @@ mod car;
 mod client;
 mod packet;
 mod plugins;
+mod http;
 
 pub use backend::*;
 pub use car::*;
 pub use client::*;
 pub use packet::*;
 pub use plugins::*;
+pub use http::*;
 
 pub use crate::config::Config;
 
@@ -169,6 +171,22 @@ impl Server {
                                             client.kick("Failed to authenticate player!").await;
                                             // client.disconnect();
                                         }
+                                    }
+                                },
+                                'D' => {
+                                    // Download connection (for old protocol)
+                                    // New protocol should use HTTP for downloads, so
+                                    // I will leave this unimplemented for now.
+                                },
+                                'G' => {
+                                    // This is probably an HTTP GET request!
+                                    let mut tmp = [0u8; 3];
+                                    socket.read_exact(&mut tmp).await.expect("Failed to read from socket!");
+                                    if tmp[0] as char == 'E' && tmp[1] as char == 'T' && tmp[2] as char == ' ' {
+                                        trace!("HTTP GET request found!");
+                                        handle_http_get(socket).await;
+                                    } else {
+                                        trace!("Unknown G packet received, not sure what to do!");
                                     }
                                 },
                                 _ => {},
