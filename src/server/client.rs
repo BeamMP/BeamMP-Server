@@ -24,10 +24,6 @@ use super::packet::*;
 
 static ATOMIC_ID_COUNTER: AtomicU8 = AtomicU8::new(0);
 
-lazy_static! {
-    static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<usize, usize>> = Mutex::new(HashMap::new());
-}
-
 #[derive(PartialEq)]
 pub enum ClientState {
     None,
@@ -179,11 +175,6 @@ impl Client {
         //     }
         // }
 
-        // We now delete existing data for this client ID, just in case.
-        // TODO: This seems like a recipe for disaster
-        let mut lock = CLIENT_MOD_PROGRESS.lock().await;
-        lock.remove(&(self.id as usize));
-
         // TODO: Check client version
         trace!("Client version packet");
         self.socket.readable().await?;
@@ -251,23 +242,23 @@ impl Client {
                 match packet.data[0] as char {
                     'S' if packet.data.len() > 1 => match packet.data[1] as char {
                         'R' => {
-                            // let file_packet = if config.mods.len() == 0 {
-                            //     RawPacket::from_code('-')
-                            // } else {
-                            //     let mut file_data = String::new();
-                            //     for (name, size) in &config.mods {
-                            //         let mut mod_name = name.clone();
-                            //         if mod_name.starts_with("/") == false {
-                            //             mod_name = format!("/{mod_name}");
-                            //         }
-                            //         file_data.push_str(&format!("{mod_name};"));
-                            //     }
-                            //     for (name, size) in &config.mods {
-                            //         file_data.push_str(&format!("{size};"));
-                            //     }
-                            //     RawPacket::from_str(&file_data)
-                            // };
-                            let file_packet = RawPacket::from_code('-');
+                            let file_packet = if config.mods.len() == 0 {
+                                RawPacket::from_code('-')
+                            } else {
+                                let mut file_data = String::new();
+                                for (name, size) in &config.mods {
+                                    let mut mod_name = name.clone();
+                                    if mod_name.starts_with("/") == false {
+                                        mod_name = format!("/{mod_name}");
+                                    }
+                                    file_data.push_str(&format!("{mod_name};"));
+                                }
+                                for (name, size) in &config.mods {
+                                    file_data.push_str(&format!("{size};"));
+                                }
+                                RawPacket::from_str(&file_data)
+                            };
+                            // let file_packet = RawPacket::from_code('-');
                             self.write_packet(Packet::Raw(file_packet))
                                 .await?;
                         }

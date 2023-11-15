@@ -175,8 +175,53 @@ impl Server {
                                 },
                                 'D' => {
                                     // Download connection (for old protocol)
-                                    // New protocol should use HTTP for downloads, so
-                                    // I will leave this unimplemented for now.
+                                    // This crashes the client after sending over all mods
+                                    // Probably related to it not waiting until a new mod is requested!
+
+                                    socket.readable().await;
+                                    let mut tmp = [0u8; 1];
+                                    socket.read_exact(&mut tmp).await;
+                                    let id = tmp[0] as usize;
+                                    debug!("[D] HandleDownload connection for client id: {}", id);
+                                    let mut mod_id = 0;
+                                    'download: while let Ok(_) = socket.writable().await {
+                                        debug!("[D] Starting download!");
+                                        let mut mod_name = {
+                                            if mod_id >= cfg_ref.mods.len() {
+                                                break 'download;
+                                            }
+
+                                            let bmod = &cfg_ref.mods[mod_id]; // TODO: This is a bit uhh yeah
+                                            debug!("[D] Mod name: {}", bmod.0);
+
+                                            mod_id += 1;
+
+                                            bmod.0.clone()
+                                        };
+
+                                        if mod_name.starts_with("/") == false {
+                                            mod_name = format!("/{mod_name}");
+                                        }
+
+                                        debug!("[D] Starting transfer of mod {mod_name}!");
+
+                                        let mod_path = format!("Resources/Client{mod_name}");
+                                        if let Ok(file_data) = std::fs::read(mod_path) {
+                                            let packet = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
+
+                                            {
+                                                trace!("[D] Sending packets!");
+                                                let real_packet = Packet::Raw(packet);
+                                                let mut raw_data: Vec<u8> = real_packet.get_header().to_le_bytes().to_vec();
+                                                raw_data.extend_from_slice(real_packet.get_data());
+                                                if let Err(e) = socket.write(&raw_data).await {
+                                                    error!("{:?}", e);
+                                                }
+                                                trace!("[D] Packets sent!");
+                                            }
+                                        }
+                                    }
+                                    debug!("[D] Done!");
                                 },
                                 'G' => {
                                     // This is probably an HTTP GET request!
@@ -201,7 +246,7 @@ impl Server {
                     // so at worst this client acceptance loop blocks for N duration
                     tokio::select!(
                         _ = set.join_next() => {},
-                        _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {},
+                        _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {},
                     )
                 }
             }
