@@ -382,11 +382,10 @@ impl Server {
                         .clone();
                     info!("Welcome {name}!");
                     joined_names.push(name.clone());
-                    let arg = Argument::String(name);
                     let mut vrx = Vec::new();
                     for plugin in &self.plugins {
                         let (tx, rx) = tokio::sync::oneshot::channel();
-                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated, vec![arg.clone()], Some(tx)))).await;
+                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated { name: name.clone() }, Some(tx)))).await;
                         // TODO: This never returns, because it blocks the entire process function
                         //       from running, so it never manages to run the function correctly.
                         // let res = rx.await.unwrap_or(Argument::Number(-1f32));
@@ -447,8 +446,8 @@ impl Server {
                 debug!("event: {:?}", event);
                 // TODO: Error handling (?)
                 match event {
-                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, Vec::new(), None))).await,
-                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len())); }
+                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, None))).await,
+                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len() + self.clients_queue.len())); }
                     ServerBoundPluginEvent::RequestPlayers(responder) => {
                         trace!("request players received");
                         let mut players = HashMap::new();
@@ -487,6 +486,7 @@ impl Server {
         self.process_lua_events().await?;
 
         // I'm sorry for this code :(
+        // TODO: Clean this up. We should just grab the client once with `if let Some() = expr {}`
         for i in 0..self.clients.len() {
             if self.clients.get(i).ok_or(ServerError::ClientDoesntExist)?.state == ClientState::Disconnect {
                 let id = self.clients.get(i).ok_or(ServerError::ClientDoesntExist)?.id;
@@ -496,6 +496,12 @@ impl Server {
                     self.broadcast(Packet::Raw(RawPacket::from_str(&delete_packet)), None)
                         .await;
                 }
+
+                let id = self.clients[i].id;
+                for plugin in &mut self.plugins {
+                    plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerDisconnect { pid: id }, None))).await;
+                }
+
                 info!("Disconnecting client {}...", id);
                 self.clients.remove(i);
                 info!("Client {} disconnected!", id);

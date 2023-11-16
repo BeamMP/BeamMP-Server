@@ -5,7 +5,7 @@ function onPluginLoaded()
     print("HI!")
 end
 
-function onPlayerAuthenticated(joined_name)
+function onPlayerAuthenticated(joined_name, role, is_guest, identifiers)
     print("hi welcome mista " .. joined_name)
 
     print("current players:")
@@ -14,8 +14,15 @@ function onPlayerAuthenticated(joined_name)
     end
     print("yipee")
 
+    print("Player count: " .. MP.GetPlayerCount())
+
     return 0 -- 0 = do not block
 end
 
-MP.RegisterEventHandler("onPluginLoaded", "onPluginLoaded")
-MP.RegisterEventHandler("onPlayerAuthenticated", "onPlayerAuthenticated")
+function onPlayerDisconnect(pid)
+    print("Player with PID " .. pid .. " has left!")
+end
+
+MP.RegisterEventHandler("onInit", "onPluginLoaded")
+MP.RegisterEventHandler("onPlayerAuth", "onPlayerAuthenticated")
+MP.RegisterEventHandler("onPlayerDisconnect", "onPlayerDisconnect")

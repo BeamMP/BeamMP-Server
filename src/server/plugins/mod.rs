@@ -13,7 +13,7 @@ pub trait Backend: Send {
     fn load(&mut self, code: String) -> anyhow::Result<()>;
     fn load_api(&mut self, tx: Arc<Sender<ServerBoundPluginEvent>>) -> anyhow::Result<()>;
 
-    fn call_event_handler(&mut self, event: ScriptEvent, args: Vec<Argument>, resp: Option<oneshot::Sender<Argument>>);
+    fn call_event_handler(&mut self, event: ScriptEvent, resp: Option<oneshot::Sender<Argument>>);
 }
 
 // TODO: This is quite focused on Lua right now, perhaps in the future we want to modify this list
@@ -28,12 +28,15 @@ pub enum Argument {
 #[derive(Debug)]
 pub enum ScriptEvent {
     OnPluginLoaded,
-    OnPlayerAuthenticated,
+
+    OnPlayerAuthenticated { name: String },
+
+    OnPlayerDisconnect { pid: u8 },
 }
 
 #[derive(Debug)]
 pub enum PluginBoundPluginEvent {
-    CallEventHandler((ScriptEvent, Vec<Argument>, Option<oneshot::Sender<Argument>>)),
+    CallEventHandler((ScriptEvent, Option<oneshot::Sender<Argument>>)),
 
     PlayerCount(usize),
     Players(HashMap<u8, String>),
@@ -72,8 +75,8 @@ impl Plugin {
             loop {
                 if let Some(message) = pb_rx.blocking_recv() {
                     match message {
-                        PluginBoundPluginEvent::CallEventHandler((event, args, resp)) => {
-                            backend.call_event_handler(event, args, resp);
+                        PluginBoundPluginEvent::CallEventHandler((event, resp)) => {
+                            backend.call_event_handler(event, resp);
                         },
                         _ => {},
                     }

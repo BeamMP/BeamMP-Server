@@ -134,10 +134,11 @@ impl Backend for BackendLua {
         Ok(())
     }
 
-    fn call_event_handler(&mut self, event: ScriptEvent, args: Vec<Argument>, resp: Option<oneshot::Sender<Argument>>) {
-        let event_name = match event {
-            ScriptEvent::OnPluginLoaded => "onPluginLoaded",
-            ScriptEvent::OnPlayerAuthenticated => "onPlayerAuthenticated",
+    fn call_event_handler(&mut self, event: ScriptEvent, resp: Option<oneshot::Sender<Argument>>) {
+        let (event_name, args) = match event {
+            ScriptEvent::OnPluginLoaded => ("onInit", vec![]),
+            ScriptEvent::OnPlayerAuthenticated { name } => ("onPlayerAuth", vec![Argument::String(name)]),
+            ScriptEvent::OnPlayerDisconnect { pid } => ("onPlayerDisconnect", vec![Argument::Number(pid as f32)]),
         };
 
         let mut ret = -1f32;
