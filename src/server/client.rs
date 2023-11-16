@@ -24,6 +24,10 @@ use super::packet::*;
 
 static ATOMIC_ID_COUNTER: AtomicU8 = AtomicU8::new(0);
 
+lazy_static! {
+    pub static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<u8, usize>> = Mutex::new(HashMap::new());
+}
+
 #[derive(PartialEq)]
 pub enum ClientState {
     None,
@@ -246,14 +250,15 @@ impl Client {
                                 RawPacket::from_code('-')
                             } else {
                                 let mut file_data = String::new();
-                                for (name, size) in &config.mods {
+                                // TODO: Collapse these 2 loops into 1
+                                for (name, _size) in &config.mods {
                                     let mut mod_name = name.clone();
                                     if mod_name.starts_with("/") == false {
                                         mod_name = format!("/{mod_name}");
                                     }
                                     file_data.push_str(&format!("{mod_name};"));
                                 }
-                                for (name, size) in &config.mods {
+                                for (_name, size) in &config.mods {
                                     file_data.push_str(&format!("{size};"));
                                 }
                                 RawPacket::from_str(&file_data)
@@ -277,20 +282,30 @@ impl Client {
                             mod_name = format!("/{mod_name}");
                         }
 
+                        let mut mod_id = 0;
+                        for (i, (bmod_name, _bmod_size)) in config.mods.iter().enumerate() {
+                            if bmod_name == &mod_name {
+                                mod_id = i;
+                            }
+                        }
+
                         let mod_path = format!("Resources/Client{mod_name}");
                         let file_data = std::fs::read(mod_path)?;
-
-                        let packet = RawPacket::from_data(file_data[..(file_data.len()/2)].to_vec());
 
                         {
                             let mut lock = self.write_half.lock().await;
                             lock.writable().await?;
                             trace!("Sending packets!");
-                            if let Err(e) = tcp_write_raw(lock.deref_mut(), Packet::Raw(packet)).await {
+                            if let Err(e) = lock.write(&file_data[..(file_data.len()/2)]).await {
                                 error!("{:?}", e);
                             }
                             trace!("Packets sent!");
                             drop(lock);
+                        }
+
+                        {
+                            let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+                            lock.insert(self.id, mod_id);
                         }
                     }
                     _ => error!("Unknown packet! {:?}", packet),

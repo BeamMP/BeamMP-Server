@@ -24,7 +24,11 @@ async fn main() {
             if entry.path().is_file() {
                 if let Ok(metadata) = entry.metadata() {
                     if let Some(filename) = entry.path().file_name().map(|s| s.to_string_lossy()) {
-                        user_config.mods.push((filename.to_string(), metadata.len() as usize));
+                        let mut name = filename.to_string();
+                        if !name.starts_with("/") {
+                            name = format!("/{name}");
+                        }
+                        user_config.mods.push((name, metadata.len() as usize));
                     }
                 }
             }

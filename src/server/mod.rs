@@ -175,16 +175,26 @@ impl Server {
                                 },
                                 'D' => {
                                     // Download connection (for old protocol)
-                                    // This crashes the client after sending over all mods
-                                    // Probably related to it not waiting until a new mod is requested!
+                                    // This crashes the client after sending over 1 mod.
+                                    // I have no idea why, perhaps I'm missing something that I'm supposed to send it.
+                                    // TODO: Implement this: https://github.com/BeamMP/BeamMP-Server/blob/master/src/TNetwork.cpp#L775
 
                                     socket.readable().await;
                                     let mut tmp = [0u8; 1];
                                     socket.read_exact(&mut tmp).await;
                                     let id = tmp[0] as usize;
                                     debug!("[D] HandleDownload connection for client id: {}", id);
-                                    let mut mod_id = 0;
+                                    let mut sent_mods = Vec::new();
                                     'download: while let Ok(_) = socket.writable().await {
+                                        {
+                                            let lock = CLIENT_MOD_PROGRESS.lock().await;
+                                            if lock.get(&(id as u8)).is_none() { continue; }
+                                        }
+                                        let mod_id = {
+                                            let lock = CLIENT_MOD_PROGRESS.lock().await;
+                                            *lock.get(&(id as u8)).unwrap()
+                                        };
+                                        if sent_mods.contains(&mod_id) { continue; }
                                         debug!("[D] Starting download!");
                                         let mut mod_name = {
                                             if mod_id >= cfg_ref.mods.len() {
@@ -193,8 +203,6 @@ impl Server {
 
                                             let bmod = &cfg_ref.mods[mod_id]; // TODO: This is a bit uhh yeah
                                             debug!("[D] Mod name: {}", bmod.0);
-
-                                            mod_id += 1;
 
                                             bmod.0.clone()
                                         };
@@ -207,19 +215,16 @@ impl Server {
 
                                         let mod_path = format!("Resources/Client{mod_name}");
                                         if let Ok(file_data) = std::fs::read(mod_path) {
-                                            let packet = RawPacket::from_data(file_data[(file_data.len()/2)..].to_vec());
-
                                             {
                                                 trace!("[D] Sending packets!");
-                                                let real_packet = Packet::Raw(packet);
-                                                let mut raw_data: Vec<u8> = real_packet.get_header().to_le_bytes().to_vec();
-                                                raw_data.extend_from_slice(real_packet.get_data());
-                                                if let Err(e) = socket.write(&raw_data).await {
+                                                if let Err(e) = socket.write(&file_data[(file_data.len()/2)..]).await {
                                                     error!("{:?}", e);
                                                 }
                                                 trace!("[D] Packets sent!");
                                             }
                                         }
+
+                                        sent_mods.push(mod_id);
                                     }
                                     debug!("[D] Done!");
                                 },
