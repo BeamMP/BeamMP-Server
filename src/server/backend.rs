@@ -14,5 +14,6 @@ pub async fn authentication_request<R: DeserializeOwned>(
         .json(&map)
         .send()
         .await?;
+    // panic!("json: {:?}", resp.text().await);
     Ok(resp.json().await?)
 }

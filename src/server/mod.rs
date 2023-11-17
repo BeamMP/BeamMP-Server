@@ -367,25 +367,29 @@ impl Server {
         // with the client acception runtime. If that one locks, the server won't accept
         // more clients, but it will at least still process all other clients
         let mut joined_names = Vec::new();
-        if let Ok(mut clients_incoming_lock) = self.clients_incoming.try_lock() {
+        if let Ok(mut clients_incoming_lock) = self.clients_incoming.try_lock() { // TODO: Why do I use try_lock here?
             if clients_incoming_lock.len() > 0 {
                 trace!(
                     "Accepting {} incoming clients...",
                     clients_incoming_lock.len()
                 );
                 for i in 0..clients_incoming_lock.len() {
-                    let name = clients_incoming_lock[i]
-                        .info
-                        .as_ref()
-                        .unwrap()
-                        .username
-                        .clone();
+                    let (name, role, is_guest, beammp_id) = {
+                        let client = clients_incoming_lock[i]
+                            .info
+                            .as_ref()
+                            .unwrap();
+                        (client.username.clone(), client.roles.clone(), client.guest, client.uid)
+                    };
                     info!("Welcome {name}!");
                     joined_names.push(name.clone());
                     let mut vrx = Vec::new();
                     for plugin in &self.plugins {
                         let (tx, rx) = tokio::sync::oneshot::channel();
-                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated { name: name.clone() }, Some(tx)))).await;
+                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated { name: name.clone(), role: role.clone(), is_guest, identifiers: PlayerIdentifiers {
+                            ip: String::from("not yet implemented"),
+                            beammp_id,
+                        } }, Some(tx)))).await;
                         // TODO: This never returns, because it blocks the entire process function
                         //       from running, so it never manages to run the function correctly.
                         // let res = rx.await.unwrap_or(Argument::Number(-1f32));
@@ -447,7 +451,7 @@ impl Server {
                 // TODO: Error handling (?)
                 match event {
                     ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, None))).await,
-                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len() + self.clients_queue.len())); }
+                    ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len() + self.clients_queue.len())); },
                     ServerBoundPluginEvent::RequestPlayers(responder) => {
                         trace!("request players received");
                         let mut players = HashMap::new();
@@ -457,7 +461,17 @@ impl Server {
                         trace!("sending player list...");
                         let _ = responder.send(PluginBoundPluginEvent::Players(players));
                         trace!("player list sent");
-                    }
+                    },
+                    ServerBoundPluginEvent::RequestPlayerIdentifiers((pid, responder)) => {
+                        if let Some(client) = self.clients.iter().find(|client| client.id == pid) {
+                            let _ = responder.send(PluginBoundPluginEvent::PlayerIdentifiers(PlayerIdentifiers {
+                                ip: String::from("not yet implemented"),
+                                beammp_id: client.get_userdata().uid,
+                            }));
+                        } else {
+                            let _ = responder.send(PluginBoundPluginEvent::None);
+                        }
+                    },
                     _ => {},
                 }
             }
@@ -498,8 +512,9 @@ impl Server {
                 }
 
                 let id = self.clients[i].id;
+                let name = self.clients[i].get_name().to_string();
                 for plugin in &mut self.plugins {
-                    plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerDisconnect { pid: id }, None))).await;
+                    plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerDisconnect { pid: id, name: name.clone() }, None))).await;
                 }
 
                 info!("Disconnecting client {}...", id);

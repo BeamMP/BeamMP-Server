@@ -7,6 +7,7 @@ end
 
 function onPlayerAuthenticated(joined_name, role, is_guest, identifiers)
     print("hi welcome mista " .. joined_name)
+    print("u a guest? " .. tostring(is_guest))
 
     print("current players:")
     for id, name in pairs(MP.GetPlayers()) do
@@ -16,11 +17,22 @@ function onPlayerAuthenticated(joined_name, role, is_guest, identifiers)
 
     print("Player count: " .. MP.GetPlayerCount())
 
-    return 0 -- 0 = do not block
+    for key, value in pairs(identifiers) do
+        print(key .. ": " .. value)
+    end
+
+    -- print("now trying with getting it ourself")
+    -- for key, value in pairs(MP.GetPlayerIdentifiers(pid)) do
+    --     print(key .. ": " .. value)
+    -- end
+
+    return 0 -- 0 = do not cancel
 end
 
-function onPlayerDisconnect(pid)
-    print("Player with PID " .. pid .. " has left!")
+function onPlayerDisconnect(pid, name, identifiers)
+    -- Player is already gone here, so for now, player data is no longer
+    -- requestable for player with the id `pid`
+    print("Player " .. name .. " (" .. pid .. ") has left!")
 end
 
 MP.RegisterEventHandler("onInit", "onPluginLoaded")

@@ -137,8 +137,8 @@ impl Backend for BackendLua {
     fn call_event_handler(&mut self, event: ScriptEvent, resp: Option<oneshot::Sender<Argument>>) {
         let (event_name, args) = match event {
             ScriptEvent::OnPluginLoaded => ("onInit", vec![]),
-            ScriptEvent::OnPlayerAuthenticated { name } => ("onPlayerAuth", vec![Argument::String(name)]),
-            ScriptEvent::OnPlayerDisconnect { pid } => ("onPlayerDisconnect", vec![Argument::Number(pid as f32)]),
+            ScriptEvent::OnPlayerAuthenticated { name, role, is_guest, identifiers } => ("onPlayerAuth", vec![Argument::String(name), Argument::String(role), Argument::Boolean(is_guest), Argument::Table(identifiers.to_map())]),
+            ScriptEvent::OnPlayerDisconnect { pid, name } => ("onPlayerDisconnect", vec![Argument::Number(pid as f32), Argument::String(name)]),
         };
 
         let mut ret = -1f32;
@@ -150,11 +150,7 @@ impl Backend for BackendLua {
                 let func: LuaResult<Function> = self.lua.globals().get(handler_name.clone());
                 if let Ok(func) = func {
                     let mapped_args = args.into_iter().map(|arg| {
-                        match arg {
-                            Argument::String(s) => if let Ok(lua_str) = self.lua.create_string(&s) { Some(Value::String(lua_str)) } else { None },
-                            Argument::Boolean(b) => Some(Value::Boolean(b)),
-                            Argument::Number(f) => Some(Value::Number(f as f64)),
-                        }
+                        arg_to_value(&self.lua, arg)
                     }).filter(|v| v.is_some());
                     match func.call::<_, Option<f32>>(Variadic::from_iter(mapped_args)) {
                         Ok(res) => { trace!("fn ret: {:?}", ret); ret = res.unwrap_or(-1f32); }
@@ -170,5 +166,28 @@ impl Backend for BackendLua {
         debug!("sending result...");
         if let Some(resp) = resp { resp.send(Argument::Number(ret)).expect("Failed to send!"); }
         debug!("call_event_handler done");
+    }
+}
+
+fn arg_to_value(lua: &Lua, arg: Argument) -> Option<Value> {
+    match arg {
+        Argument::String(s) => if let Ok(lua_str) = lua.create_string(&s) { Some(Value::String(lua_str)) } else { None },
+        Argument::Boolean(b) => Some(Value::Boolean(b)),
+        Argument::Number(f) => Some(Value::Number(f as f64)),
+        Argument::Integer(i) => Some(Value::Integer(i as i64)),
+        Argument::Table(t) => {
+            if let Ok(table) = lua.create_table() {
+                for (key, value) in t {
+                    if let Some(v) = arg_to_value(lua, value) {
+                        if let Err(e) = table.set(key, v) {
+                            error!("[LUA] Error occured trying to put data into table: {:?}", e);
+                        }
+                    }
+                }
+                Some(Value::Table(table))
+            } else {
+                None
+            }
+        }
     }
 }

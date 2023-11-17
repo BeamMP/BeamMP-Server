@@ -23,23 +23,43 @@ pub enum Argument {
     String(String),
     Boolean(bool),
     Number(f32),
+    Integer(i64),
+    Table(HashMap<String, Argument>),
+}
+
+#[derive(Debug)]
+pub struct PlayerIdentifiers {
+    pub ip: String,
+    pub beammp_id: u64,
+}
+
+impl PlayerIdentifiers {
+    pub fn to_map(&self) -> HashMap<String, Argument> {
+        let mut m = HashMap::new();
+        m.insert(String::from("ip"), Argument::String(self.ip.clone()));
+        m.insert(String::from("beammp"), Argument::Integer(self.beammp_id as i64)); // TODO: Uhh we could lose data here
+        m
+    }
 }
 
 #[derive(Debug)]
 pub enum ScriptEvent {
     OnPluginLoaded,
 
-    OnPlayerAuthenticated { name: String },
+    OnPlayerAuthenticated { name: String, role: String, is_guest: bool, identifiers: PlayerIdentifiers },
 
-    OnPlayerDisconnect { pid: u8 },
+    OnPlayerDisconnect { pid: u8, name: String },
 }
 
 #[derive(Debug)]
 pub enum PluginBoundPluginEvent {
+    None,
+
     CallEventHandler((ScriptEvent, Option<oneshot::Sender<Argument>>)),
 
     PlayerCount(usize),
     Players(HashMap<u8, String>),
+    PlayerIdentifiers(PlayerIdentifiers),
 }
 
 #[derive(Debug)]
@@ -48,6 +68,7 @@ pub enum ServerBoundPluginEvent {
 
     RequestPlayerCount(oneshot::Sender<PluginBoundPluginEvent>),
     RequestPlayers(oneshot::Sender<PluginBoundPluginEvent>),
+    RequestPlayerIdentifiers((u8, oneshot::Sender<PluginBoundPluginEvent>)),
 }
 
 pub struct Plugin {
