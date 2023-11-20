@@ -86,7 +86,6 @@ pub async fn read_tcp(clients: &mut Vec<Client>) -> anyhow::Result<Option<(usize
     Ok(match result {
         Ok(packet_opt) => {
             if let Some(raw_packet) = packet_opt {
-                // self.parse_packet(index, raw_packet).await?;
                 Some((index, raw_packet))
             } else {
                 None
@@ -720,6 +719,9 @@ impl Server {
                             return Err(ServerError::BrokenPacket.into());
                         } else {
                             // Sent as text so removing 48 brings it from [48-57] to [0-9]
+                            if packet.data[3] < 48 || packet.data[5] < 48 {
+                                return Err(ServerError::BrokenPacket.into());
+                            }
                             let client_id = packet.data[3] - 48;
                             let car_id = packet.data[5] - 48;
 

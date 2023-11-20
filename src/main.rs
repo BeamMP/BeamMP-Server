@@ -52,6 +52,7 @@ async fn main() {
         .expect("Failed to start server!");
 
     let mut status = server.get_server_status();
+    hb_tx.send(status.clone()).await;
     loop {
         // TODO: Error handling
         if server.clients.len() > 0 {
@@ -63,16 +64,18 @@ async fn main() {
                         },
                         Err(e) => error!("Error: {e}"),
                     }
-                },
+                }
                 ret = server::read_udp(&mut server.udp_socket) => {
                     if let Some((addr, packet)) = ret {
                         server.process_udp(addr, packet).await;
                     }
-                },
+                }
+                _ = tokio::time::sleep(tokio::time::Duration::from_millis(50)) => {}
             }
         } else {
+            trace!("eepy mode");
             // TODO: Scuffed?
-            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
         }
 
         if let Err(e) = server.process().await {
