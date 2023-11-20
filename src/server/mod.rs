@@ -71,19 +71,11 @@ fn load_plugins() -> Vec<Plugin> {
     plugins
 }
 
-#[derive(PartialEq, IntoPrimitive, Copy, Clone, Debug)]
-#[repr(u8)]
-enum ServerState {
-    Unknown = 0,
-
-    WaitingForClients,
-    WaitingForReady,
-    WaitingForSpawns,
-    Qualifying,
-    LiningUp,
-    Countdown,
-    Race,
-    Finish,
+#[derive(PartialEq, Clone, Debug)]
+pub struct ServerStatus {
+    pub player_count: usize,
+    pub player_list: String,
+    pub max_players: usize,
 }
 
 pub struct Server {
@@ -336,6 +328,17 @@ impl Server {
         }
 
         Ok(())
+    }
+
+    pub fn get_server_status(&self) -> ServerStatus {
+        ServerStatus {
+            player_count: self.clients.len(),
+            player_list: self.clients.iter().map(|client| {
+                format!("{};", &client.get_name())
+            }).collect(),
+            // max_players: self.max_players, // TODO: Support this
+            max_players: self.config.general.max_players,
+        }
     }
 
     async fn process_udp(&mut self) -> anyhow::Result<()> {

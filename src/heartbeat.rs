@@ -1,4 +1,5 @@
 use serde::Serialize;
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Serialize)]
 struct HeartbeatInfo {
@@ -18,10 +19,10 @@ struct HeartbeatInfo {
     desc: String,
 }
 
-pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>) {
-    let info = HeartbeatInfo {
+pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>, mut hb_rx: Receiver<crate::server::ServerStatus>) {
+    let mut info = HeartbeatInfo {
         uuid: config.general.auth_key.clone().unwrap_or(String::from("Unknown name!")),
-        players: 0, // TODO: Implement this. Easiest would probably be to have the server send updates every so often
+        players: 0,
         maxplayers: config.general.max_players,
         port: config.general.port.unwrap_or(30814),
         map: config.general.map.clone(),
@@ -32,7 +33,7 @@ pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>) {
         modlist: String::from("-"), // TODO: Implement this
         modstotalsize: 0, // TODO: Implement this
         modstotal: 0, // TODO: Implement this
-        playerslist: String::from("luuk-bepis;"), // TODO: Implement this
+        playerslist: String::new(),
         desc: config.general.description.clone(),
     };
 
@@ -41,6 +42,12 @@ pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>) {
         interval.tick().await;
 
         heartbeat_post(&info).await;
+
+        if let Ok(status) = hb_rx.try_recv() {
+            trace!("status update: {:?}", status);
+            info.players = status.player_count;
+            info.playerslist = status.player_list.clone();
+        }
     }
 }
 

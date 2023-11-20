@@ -2,6 +2,8 @@
 #[macro_use] extern crate async_trait;
 #[macro_use] extern crate lazy_static;
 
+use tokio::sync::mpsc;
+
 mod server;
 mod config;
 mod heartbeat;
@@ -40,16 +42,26 @@ async fn main() {
 
     let user_config = std::sync::Arc::new(user_config);
 
-    tokio::spawn(heartbeat::backend_heartbeat(user_config.clone()));
+    let (hb_tx, hb_rx) = mpsc::channel(100);
+
+    tokio::spawn(heartbeat::backend_heartbeat(user_config.clone(), hb_rx));
 
     let mut server = server::Server::new(user_config)
         .await
         .map_err(|e| error!("{:?}", e))
         .expect("Failed to start server!");
 
+    let mut status = server.get_server_status();
     loop {
         if let Err(e) = server.process().await {
             error!("{:?}", e);
+        }
+
+        let new_status = server.get_server_status();
+
+        if status != new_status {
+            status = new_status;
+            hb_tx.send(status.clone());
         }
     }
 }
