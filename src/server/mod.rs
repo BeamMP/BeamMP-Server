@@ -878,7 +878,6 @@ impl Server {
                 let car_id = client.register_car(Car::new(car_json_str.to_string()));
                 let client_id = client.get_id();
                 if allowed {
-                    client.trigger_client_event("GetSize", client_id.to_string()).await;
                     let packet_data = format!(
                         "Os:{}:{}:{}-{}:{}",
                         client.get_roles(),
