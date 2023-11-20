@@ -233,11 +233,14 @@ impl Server {
                                         if sent_mods.contains(&mod_id) { continue; }
                                         debug!("[D] Starting download!");
                                         let mut mod_name = {
-                                            if mod_id >= cfg_ref.mods.len() {
+                                            if mod_id < 0 {
+                                                break 'download;
+                                            }
+                                            if mod_id as usize >= cfg_ref.mods.len() {
                                                 break 'download;
                                             }
 
-                                            let bmod = &cfg_ref.mods[mod_id]; // TODO: This is a bit uhh yeah
+                                            let bmod = &cfg_ref.mods[mod_id as usize]; // TODO: This is a bit uhh yeah
                                             debug!("[D] Mod name: {}", bmod.0);
 
                                             bmod.0.clone()
@@ -526,6 +529,11 @@ impl Server {
                 let name = self.clients.get(i).ok_or(ServerError::ClientDoesntExist)?.get_name().to_string();
                 for plugin in &mut self.plugins {
                     plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerDisconnect { pid: id, name: name.clone() }, None))).await;
+                }
+
+                {
+                    let mut lock = CLIENT_MOD_PROGRESS.lock().await;
+                    lock.insert(id, -1);
                 }
 
                 info!("Disconnecting client {}...", id);

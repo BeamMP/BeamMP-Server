@@ -10,8 +10,8 @@ mod heartbeat;
 
 #[tokio::main]
 async fn main() {
-    pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
-    // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Info).init();
+    // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
+    pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Debug).init();
 
     let mut user_config: config::Config = toml::from_str(
         &std::fs::read_to_string("ServerConfig.toml")
