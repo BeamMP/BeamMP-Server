@@ -81,7 +81,7 @@ async fn backend_heartbeat(config: std::sync::Arc<config::Config>) {
         port: config.general.port.unwrap_or(30814),
         map: config.general.map.clone(),
         private: if config.general.private { String::from("true") } else { String::from("false") },
-        version: String::from("1.0"),
+        version: String::from("3.3.0"),
         clientversion: String::from("2.0"), // TODO: What? I think for now I can fill in 2.0
         name: config.general.name.clone(),
         modlist: String::from("-"), // TODO: Implement this.
