@@ -73,7 +73,6 @@ async fn main() {
                 _ = tokio::time::sleep(tokio::time::Duration::from_millis(50)) => {}
             }
         } else {
-            trace!("eepy mode");
             // TODO: Scuffed?
             tokio::time::sleep(tokio::time::Duration::from_millis(150)).await;
         }
