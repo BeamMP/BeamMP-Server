@@ -60,8 +60,9 @@ async fn main() {
         let new_status = server.get_server_status();
 
         if status != new_status {
+            trace!("WHAT");
             status = new_status;
-            hb_tx.send(status.clone());
+            hb_tx.send(status.clone()).await;
         }
     }
 }

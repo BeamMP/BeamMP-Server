@@ -71,7 +71,7 @@ fn load_plugins() -> Vec<Plugin> {
     plugins
 }
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct ServerStatus {
     pub player_count: usize,
     pub player_list: String,
@@ -382,7 +382,7 @@ impl Server {
                             .info
                             .as_ref()
                             .unwrap();
-                        (client.username.clone(), client.roles.clone(), client.guest, client.uid)
+                        (client.username.clone(), client.roles.clone(), client.guest, client.uid.clone())
                     };
                     info!("Welcome {name}!");
                     joined_names.push(name.clone());
@@ -391,7 +391,7 @@ impl Server {
                         let (tx, rx) = tokio::sync::oneshot::channel();
                         plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated { name: name.clone(), role: role.clone(), is_guest, identifiers: PlayerIdentifiers {
                             ip: String::from("not yet implemented"),
-                            beammp_id,
+                            beammp_id: beammp_id.clone(),
                         } }, Some(tx)))).await;
                         // TODO: This never returns, because it blocks the entire process function
                         //       from running, so it never manages to run the function correctly.

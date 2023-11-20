@@ -30,14 +30,14 @@ pub enum Argument {
 #[derive(Debug)]
 pub struct PlayerIdentifiers {
     pub ip: String,
-    pub beammp_id: u64,
+    pub beammp_id: String,
 }
 
 impl PlayerIdentifiers {
     pub fn to_map(&self) -> HashMap<String, Argument> {
         let mut m = HashMap::new();
         m.insert(String::from("ip"), Argument::String(self.ip.clone()));
-        m.insert(String::from("beammp"), Argument::Integer(self.beammp_id as i64)); // TODO: Uhh we could lose data here
+        m.insert(String::from("beammp"), Argument::String(self.beammp_id.clone()));
         m
     }
 }

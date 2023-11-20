@@ -40,8 +40,7 @@ pub enum ClientState {
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 pub struct UserData {
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub uid: u64,
+    pub uid: String,
     pub createdAt: String,
     pub guest: bool,
     pub roles: String,
@@ -127,12 +126,14 @@ impl Client {
                 return Err(ClientError::AuthenticateError.into());
             }
             let mut json = HashMap::new();
-            json.insert("key".to_string(), packet.data_as_string());
+            let key = packet.data_as_string();
+            debug!("[AUTH] key: {}", key);
+            json.insert("key".to_string(), key);
             let user_data: UserData =
                 authentication_request("pkToUser", json)
                     .await
                     .map_err(|e| {
-                        error!("{:?}", e);
+                        error!("[AUTH] {:?}", e);
                         e
                     })?;
             debug!("user_data: {:?}", user_data);
