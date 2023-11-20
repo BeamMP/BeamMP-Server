@@ -834,6 +834,7 @@ impl Server {
                         // let packet_data = packet.data_as_string();
                         // let message = packet_data.split(":").collect::<Vec<&str>>().get(2).map(|s| s.to_string()).unwrap_or(String::new());
                         // let message = message.trim();
+                        info!("[CHAT] {}", packet.data_as_string());
                         self.broadcast(Packet::Raw(packet), None).await;
                     }
                     _ => {
