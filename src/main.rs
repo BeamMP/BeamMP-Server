@@ -100,12 +100,15 @@ async fn backend_heartbeat(config: std::sync::Arc<config::Config>) {
 }
 
 async fn heartbeat_post(heartbeat_info: &HeartbeatInfo) {
-    if let Err(e) = reqwest::Client::new()
+    match reqwest::Client::new()
         .post("https://backend.beammp.com/heartbeat")
         .form(heartbeat_info)
         .send()
         .await
     {
-        error!("Heartbeat error occured: {e}");
+        Ok(resp) => {
+            debug!("heartbeat response:\n{:?}", resp.text().await);
+        },
+        Err(e) => error!("Heartbeat error occured: {e}"),
     }
 }
