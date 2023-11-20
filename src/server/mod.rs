@@ -269,42 +269,18 @@ impl Server {
         })
     }
 
-    async fn process_tcp(&mut self) -> anyhow::Result<()> {
-        // 'packet_wait: loop {
-        //     // Process all the clients (TCP)
-        //     let mut packets = Vec::new();
-        //     for i in 0..self.clients.len() {
-        //         if let Some(client) = self.clients.get_mut(i) {
-        //             match client.process().await {
-        //                 Ok(packet_opt) => {
-        //                     if let Some(raw_packet) = packet_opt {
-        //                         packets.push((i, raw_packet));
-        //                     }
-        //                 }
-        //                 Err(e) => client.kick(&format!("Kicked: {:?}", e)).await,
-        //             }
-        //
-        //             // More efficient than broadcasting as we are already looping
-        //             for name in joined_names.iter() {
-        //                 self.clients[i]
-        //                     .queue_packet(Packet::Notification(NotificationPacket::new(format!(
-        //                         "Welcome {}!",
-        //                         name.to_string()
-        //                     ))))
-        //                     .await;
-        //             }
-        //         }
-        //     }
-        //
-        //     if packets.len() > 0 {
-        //         for (i, raw_packet) in packets {
-        //             self.parse_packet(i, raw_packet).await?;
-        //         }
-        //
-        //         break 'packet_wait;
-        //     }
-        // }
+    pub fn get_server_status(&self) -> ServerStatus {
+        ServerStatus {
+            player_count: self.clients.len(),
+            player_list: self.clients.iter().map(|client| {
+                format!("{};", &client.get_name())
+            }).collect(),
+            // max_players: self.max_players, // TODO: Support this
+            max_players: self.config.general.max_players,
+        }
+    }
 
+    async fn process_tcp(&mut self) -> anyhow::Result<()> {
         if self.clients.len() > 0 {
             let (result, index, _) = futures::future::select_all(
                 self.clients.iter_mut().map(|client| Box::pin(client.process_blocking()))
@@ -328,17 +304,6 @@ impl Server {
         }
 
         Ok(())
-    }
-
-    pub fn get_server_status(&self) -> ServerStatus {
-        ServerStatus {
-            player_count: self.clients.len(),
-            player_list: self.clients.iter().map(|client| {
-                format!("{};", &client.get_name())
-            }).collect(),
-            // max_players: self.max_players, // TODO: Support this
-            max_players: self.config.general.max_players,
-        }
     }
 
     async fn process_udp(&mut self) -> anyhow::Result<()> {
