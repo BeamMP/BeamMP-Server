@@ -53,6 +53,28 @@ async fn main() {
 
     let mut status = server.get_server_status();
     loop {
+        // TODO: Error handling
+        if server.clients.len() > 0 {
+            tokio::select! {
+                ret = server::read_tcp(&mut server.clients) => {
+                    match ret {
+                        Ok(ret) => if let Some((index, packet)) = ret {
+                            server.process_tcp(index, packet).await;
+                        },
+                        Err(e) => error!("Error: {e}"),
+                    }
+                },
+                ret = server::read_udp(&mut server.udp_socket) => {
+                    if let Some((addr, packet)) = ret {
+                        server.process_udp(addr, packet).await;
+                    }
+                },
+            }
+        } else {
+            // TODO: Scuffed?
+            tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        }
+
         if let Err(e) = server.process().await {
             error!("{:?}", e);
         }
