@@ -41,12 +41,15 @@ pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>, mu
     loop {
         interval.tick().await;
 
-        heartbeat_post(&info).await;
-
-        if let Ok(status) = hb_rx.try_recv() {
-            trace!("status update: {:?}", status);
-            info.players = status.player_count;
-            info.playerslist = status.player_list.clone();
+        tokio::select! {
+            _ = heartbeat_post(&info) => {}
+            status = hb_rx.recv() => {
+                if let Some(status) = status {
+                    trace!("status update: {:?}", status);
+                    info.players = status.player_count;
+                    info.playerslist = status.player_list.clone();
+                }
+            }
         }
     }
 }
