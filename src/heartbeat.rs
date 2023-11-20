@@ -45,7 +45,9 @@ pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>) {
 }
 
 async fn heartbeat_post(heartbeat_info: &HeartbeatInfo) {
-    match reqwest::Client::new()
+    match reqwest::Client::builder()
+        .local_address("0.0.0.0".parse::<std::net::IpAddr>().unwrap())
+        .build().unwrap()
         .post("https://backend.beammp.com/heartbeat")
         .form(heartbeat_info)
         .send()
