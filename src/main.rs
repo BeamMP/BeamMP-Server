@@ -5,6 +5,8 @@
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
+mod logger;
+mod tui;
 mod server;
 mod config;
 mod heartbeat;
@@ -12,12 +14,13 @@ mod heartbeat;
 #[tokio::main]
 async fn main() {
     // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
-    pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Debug).init();
+    // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Debug).init();
+    logger::init(log::LevelFilter::max()).expect("Failed to enable logger!");
 
     let mut user_config: config::Config = toml::from_str(
-        &std::fs::read_to_string("ServerConfig.toml")
-            .map_err(|_| error!("Failed to read config file!"))
-            .expect("Failed to read config file!")
+            &std::fs::read_to_string("ServerConfig.toml")
+                .map_err(|_| error!("Failed to read config file!"))
+                .expect("Failed to read config file!")
         )
         .map_err(|_| error!("Failed to parse config file!"))
         .expect("Failed to parse config file!");
@@ -43,10 +46,14 @@ async fn main() {
 
     let user_config = Arc::new(user_config);
 
-    server_main(user_config).await;
+    let (cmd_tx, cmd_rx) = mpsc::channel(100);
+
+    tokio::spawn(tui::tui_main(user_config.clone(), cmd_tx));
+
+    server_main(user_config, cmd_rx).await;
 }
 
-async fn server_main(user_config: Arc<config::Config>) {
+async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receiver<Vec<String>>) {
     let (hb_tx, hb_rx) = mpsc::channel(100);
 
     tokio::spawn(heartbeat::backend_heartbeat(user_config.clone(), hb_rx));
@@ -89,9 +96,25 @@ async fn server_main(user_config: Arc<config::Config>) {
         let new_status = server.get_server_status();
 
         if status != new_status {
-            trace!("WHAT");
             status = new_status;
             hb_tx.send(status.clone()).await;
+        }
+
+        // Process commands
+        match cmd_rx.try_recv() {
+            Ok(cmd) => if cmd.len() > 0 {
+                match cmd[0].as_str() {
+                    "exit" => break,
+                    _ => info!("Unknown command!"),
+                }
+            } else {
+                // what!
+            },
+            Err(mpsc::error::TryRecvError::Empty) => {},
+            Err(e) => {
+                error!("Error: {e}");
+                break;
+            },
         }
     }
 }

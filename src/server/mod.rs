@@ -74,7 +74,7 @@ fn load_plugins() -> Vec<Plugin> {
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct ServerStatus {
     pub player_count: usize,
-    pub player_list: String,
+    pub player_list: Vec<(u8, String)>,
     pub max_players: usize,
 }
 
@@ -320,7 +320,7 @@ impl Server {
         ServerStatus {
             player_count: self.clients.len(),
             player_list: self.clients.iter().map(|client| {
-                format!("{};", &client.get_name())
+                (client.id, client.get_name().to_string())
             }).collect(),
             // max_players: self.max_players, // TODO: Support this
             max_players: self.config.general.max_players,

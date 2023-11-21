@@ -47,7 +47,7 @@ pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>, mu
                 if let Some(status) = status {
                     trace!("status update: {:?}", status);
                     info.players = status.player_count;
-                    info.playerslist = status.player_list.clone();
+                    info.playerslist = status.player_list.iter().map(|(_id, name)| format!("{};", name)).collect();
                 }
             }
         }
@@ -64,7 +64,7 @@ async fn heartbeat_post(heartbeat_info: &HeartbeatInfo) {
         .await
     {
         Ok(resp) => {
-            debug!("heartbeat response:\n{:?}", resp.text().await);
+            trace!("heartbeat response:\n{:?}", resp.text().await);
         },
         Err(e) => error!("Heartbeat error occured: {e}"),
     }
