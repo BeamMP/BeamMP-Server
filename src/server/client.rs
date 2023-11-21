@@ -167,9 +167,6 @@ impl Client {
         'syncing: while self.state == ClientState::SyncingResources {
             self.socket.readable().await?;
             if let Some(packet) = self.read_packet().await? {
-                if packet.data.len() == 0 {
-                    continue;
-                }
                 if (packet.data.len() == 4 && packet.data == [68, 111, 110, 101]) || packet.data.len() == 0 {
                     {
                         let mut lock = CLIENT_MOD_PROGRESS.lock().await;

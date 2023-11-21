@@ -2,6 +2,7 @@
 #[macro_use] extern crate async_trait;
 #[macro_use] extern crate lazy_static;
 
+use std::sync::Arc;
 use tokio::sync::mpsc;
 
 mod server;
@@ -40,8 +41,10 @@ async fn main() {
 
     debug!("Mods: {:?}", user_config.mods);
 
-    let user_config = std::sync::Arc::new(user_config);
+    let user_config = Arc::new(user_config);
+}
 
+async fn server_main(user_config: Arc<config::Config>) {
     let (hb_tx, hb_rx) = mpsc::channel(100);
 
     tokio::spawn(heartbeat::backend_heartbeat(user_config.clone(), hb_rx));
