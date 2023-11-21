@@ -42,6 +42,8 @@ async fn main() {
     debug!("Mods: {:?}", user_config.mods);
 
     let user_config = Arc::new(user_config);
+
+    server_main(user_config).await;
 }
 
 async fn server_main(user_config: Arc<config::Config>) {
