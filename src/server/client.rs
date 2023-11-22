@@ -206,12 +206,24 @@ impl Client {
                         mod_name.remove(0); // Remove f
                         debug!("Client requested file {}", mod_name);
 
-                        self.write_packet(Packet::Raw(RawPacket::from_str("AG"))).await?;
-
-                        // Send the first half of the file
-                        if mod_name.starts_with("/") == false {
-                            mod_name = format!("/{mod_name}");
+                        // making sure that the requested file cant point to files outside of Resources/Client/*
+                        let path = std::path::Path::new(&mod_name);
+                        let mod_name = match path.file_name() {
+                            Some(v) => "/".to_string() + v.to_str().unwrap(),
+                            None => {
+                                error!("Client requests invalid mod. Disconnecting");
+                                self.kick("Invalid mod request");
+                                return Ok(());
+                            }, // client requested path (fResources/Client/) or nothing at all (f) - invalid
+                        };
+                        let mod_path = format!("Resources/Client{mod_name}");
+                        if !std::path::Path::new(&mod_path).exists() {
+                            error!("Client requests inexistent mod. Disconnecting");
+                            self.kick("Invalid mod request");
+                            return Ok(()) // client requested mod that doesnt exists within "Resources/Client/*"
                         }
+
+                        self.write_packet(Packet::Raw(RawPacket::from_str("AG"))).await?;
 
                         let mut mod_id = 0;
                         for (i, (bmod_name, _bmod_size)) in config.mods.iter().enumerate() {
@@ -220,9 +232,8 @@ impl Client {
                             }
                         }
 
-                        let mod_path = format!("Resources/Client{mod_name}");
+                        // Send the first half of the file over this socket and the other over the DSocket
                         let file_data = std::fs::read(mod_path)?;
-
                         {
                             let mut lock = self.write_half.lock().await;
                             lock.writable().await?;
