@@ -20,6 +20,10 @@ struct HeartbeatInfo {
 }
 
 pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>, mut hb_rx: Receiver<crate::server::ServerStatus>) {
+    if !config.general.is_auth_key_valid() {
+        debug!{"auth_key has invalid format. canceling hearbeat init"};
+        return;
+    }
     let mut info = HeartbeatInfo {
         uuid: config.general.auth_key.clone().unwrap_or(String::from("Unknown name!")),
         players: 0,

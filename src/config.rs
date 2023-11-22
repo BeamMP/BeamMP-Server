@@ -43,3 +43,21 @@ pub struct GeneralSettings {
     #[serde(rename = "ResourceFolder")]
     pub resource_folder: String,
 }
+
+impl GeneralSettings {
+    pub fn is_auth_key_valid(&self) -> bool {
+        // Valid key format
+        // xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        // -8--------4----4----4----12---------
+        if self.auth_key.is_none() {return false}
+        let key = self.auth_key.clone().unwrap();
+        let key_check: Vec<&str> = key.split("-").collect();
+        if key_check.len() != 5 {return false}
+        else if key_check[0].len() != 8 {return false}
+        else if key_check[1].len() != 4 {return false}
+        else if key_check[2].len() != 4 {return false}
+        else if key_check[3].len() != 4 {return false}
+        else if key_check[4].len() != 12 {return false}
+        true
+    }
+}

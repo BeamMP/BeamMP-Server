@@ -1,2 +1,4 @@
 /target
+/.idea
 ServerConfig.toml
+beammp_rust_server.iml
