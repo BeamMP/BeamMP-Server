@@ -512,11 +512,19 @@ impl Server {
                 }
 
                 info!("Disconnecting client {}...", id);
+                for client in &self.clients {
+                    if client.id == i as u8 {continue}
+                    client.queue_packet(Packet::Notification(NotificationPacket::left(
+                        self.clients[i].info.as_ref().unwrap().username.clone()
+                    ))).await;
+                }
+
                 if i == self.clients.len() - 1 {
                     self.clients.remove(i);
                 } else {
                     self.clients.swap_remove(i);
                 }
+
                 info!("Client {} disconnected!", id);
             }
         }
@@ -795,9 +803,8 @@ impl Server {
             } else {
                 let packet_identifier = packet.data[0] as char;
                 match packet_identifier {
-                    'H' => {
-                        // Full sync with server
-                        self.clients[client_idx]
+                    'H' => { // Player Full sync with server
+                        self.clients[client_idx] // tell the new player their playername
                             .queue_packet(Packet::Raw(RawPacket::from_str(&format!(
                                 "Sn{}",
                                 self.clients[client_idx]
@@ -808,6 +815,13 @@ impl Server {
                                     .clone()
                             ))))
                             .await;
+
+                        for client in &self.clients { // welcome the player
+                            if client.id == client_idx as u8 {continue}
+                            client.queue_packet(Packet::Notification(NotificationPacket::welcome(
+                                self.clients[client_idx].info.as_ref().unwrap().username.clone()
+                            ))).await;
+                        }
 
                         // TODO: Sync all existing cars on server (this code is broken)
                         for client in &self.clients {
