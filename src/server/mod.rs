@@ -377,14 +377,9 @@ impl Server {
                     "Accepting {} incoming clients...",
                     clients_incoming_lock.len()
                 );
-                for i in 0..clients_incoming_lock.len() {
-                    let (name, role, is_guest, beammp_id) = {
-                        let client = clients_incoming_lock[i]
-                            .info
-                            .as_ref()
-                            .unwrap();
-                        (client.username.clone(), client.roles.clone(), client.guest, client.uid.clone())
-                    };
+                for client in clients_incoming_lock.drain(..) {
+                    let userdata = client.get_userdata();
+                    let (name, role, is_guest, beammp_id) = (userdata.username.clone(), userdata.roles.clone(), userdata.guest, userdata.uid.clone());
                     info!("Welcome {name}!");
                     joined_names.push(name.clone());
                     let mut vrx = Vec::new();
@@ -400,7 +395,7 @@ impl Server {
                         // debug!("res: {:?}", res);
                         vrx.push(rx);
                     }
-                    self.clients_queue.push((clients_incoming_lock.swap_remove(i), vrx, Vec::new()));
+                    self.clients_queue.push((client, vrx, Vec::new()));
                 }
                 trace!("Accepted incoming clients!");
             }
