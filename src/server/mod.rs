@@ -920,6 +920,9 @@ impl Server {
             'c' => {
                 // let split_data = packet.data_as_string().splitn(3, ':').map(|s| s.to_string()).collect::<Vec<String>>();
                 // let car_json_str = &split_data.get(2).ok_or(std::fmt::Error)?;
+                if packet.data[3] < 48 || packet.data[5] < 48 {
+                    return Err(ServerError::BrokenPacket.into());
+                }
                 let client_id = packet.data[3] - 48;
                 let car_id = packet.data[5] - 48;
                 let car_json = String::from_utf8_lossy(&packet.data[7..]).to_string();
