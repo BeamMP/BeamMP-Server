@@ -72,7 +72,7 @@ async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receive
 
     let mut status = server.get_server_status();
     hb_tx.send(status.clone()).await;
-    loop {
+    'server: loop {
         // TODO: Error handling
         if server.clients.len() > 0 {
             tokio::select! {
@@ -111,7 +111,10 @@ async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receive
         match cmd_rx.try_recv() {
             Ok(cmd) => if cmd.len() > 0 {
                 match cmd[0].as_str() {
-                    "exit" => break,
+                    "exit" => {
+                        server.close().await;
+                        break 'server;
+                    },
                     _ => info!("Unknown command!"),
                 }
             } else {

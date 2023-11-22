@@ -45,6 +45,7 @@ impl PlayerIdentifiers {
 #[derive(Debug)]
 pub enum ScriptEvent {
     OnPluginLoaded,
+    OnShutdown,
 
     OnPlayerAuthenticated { name: String, role: String, is_guest: bool, identifiers: PlayerIdentifiers },
 
@@ -112,6 +113,13 @@ impl Plugin {
             tx: pb_tx,
             rx: sb_rx,
         })
+    }
+
+    pub async fn close(mut self) {
+        let (tx, mut rx) = oneshot::channel();
+        self.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnShutdown, Some(tx)))).await;
+        let _ = rx.await; // We just wait for it to finish shutting down
+        self.runtime.shutdown_background();
     }
 
     // TODO: For performance I think we can turn this into an iterator instead of first allocating

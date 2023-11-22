@@ -5,6 +5,10 @@ function onPluginLoaded()
     print("HI!")
 end
 
+function onShutdown()
+    print("BYE!")
+end
+
 function onPlayerAuthenticated(joined_name, role, is_guest, identifiers)
     print("hi welcome mista " .. joined_name)
     print("u a guest? " .. tostring(is_guest))
@@ -36,5 +40,6 @@ function onPlayerDisconnect(pid, name, identifiers)
 end
 
 MP.RegisterEventHandler("onInit", "onPluginLoaded")
+MP.RegisterEventHandler("onShutdown", "onShutdown")
 MP.RegisterEventHandler("onPlayerAuth", "onPlayerAuthenticated")
 MP.RegisterEventHandler("onPlayerDisconnect", "onPlayerDisconnect")

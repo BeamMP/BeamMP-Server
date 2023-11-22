@@ -327,29 +327,18 @@ impl Server {
         }
     }
 
-    pub async fn process_tcp(&mut self, index: usize, raw_packet: RawPacket) -> anyhow::Result<()> {
-        // if self.clients.len() > 0 {
-        //     let (result, index, _) = futures::future::select_all(
-        //         self.clients.iter_mut().map(|client| Box::pin(client.process_blocking()))
-        //     ).await;
-        //
-        //     match result {
-        //         Ok(packet_opt) => {
-        //             if let Some(raw_packet) = packet_opt {
-        //                 self.parse_packet(index, raw_packet).await?;
-        //             }
-        //         },
-        //         Err(e) => {
-        //             if let Some(client) = self.clients.get_mut(index) {
-        //                 client.kick(&format!("Kicked: {:?}", e)).await;
-        //             }
-        //         }
-        //     }
-        // } else {
-        //     // TODO: Find a better solution than this lol
-        //     tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
-        // }
+    pub async fn close(mut self) {
+        self.connect_runtime_handle.abort();
+        for mut client in self.clients.drain(..) {
+            client.kick("Server is closing!").await;
+        }
+        // TODO: We can probably race these with futures::future::select_all?
+        for plugin in self.plugins.drain(..) {
+            plugin.close().await;
+        }
+    }
 
+    pub async fn process_tcp(&mut self, index: usize, raw_packet: RawPacket) -> anyhow::Result<()> {
         self.parse_packet(index, raw_packet).await?;
 
         Ok(())

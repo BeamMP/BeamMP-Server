@@ -212,14 +212,14 @@ impl Client {
                             Some(v) => "/".to_string() + v.to_str().unwrap(),
                             None => {
                                 error!("Client requests invalid mod. Disconnecting");
-                                self.kick("Invalid mod request");
+                                self.kick("Invalid mod request").await;
                                 return Ok(());
                             }, // client requested path (fResources/Client/) or nothing at all (f) - invalid
                         };
                         let mod_path = format!("Resources/Client{mod_name}");
                         if !std::path::Path::new(&mod_path).exists() {
                             error!("Client requests inexistent mod. Disconnecting");
-                            self.kick("Invalid mod request");
+                            self.kick("Invalid mod request").await;
                             return Ok(()) // client requested mod that doesnt exists within "Resources/Client/*"
                         }
 

@@ -109,17 +109,17 @@ impl Tui {
             let mut lines = Vec::new();
             for (i, (level, msg)) in self.log_buffer.iter().enumerate() {
                 if i >= (area.height as usize - 5) { break; }
-                let level_style = match level {
-                    Level::Info => Style::default().green(),
-                    Level::Warn => Style::default().yellow(),
-                    Level::Error => Style::default().red(),
-                    Level::Debug => Style::default().gray(),
-                    Level::Trace => Style::default().cyan(),
+                let (level_style, spacer) = match level {
+                    Level::Info => (Style::default().green(), " "),
+                    Level::Warn => (Style::default().yellow(), " "),
+                    Level::Error => (Style::default().red(), ""),
+                    Level::Debug => (Style::default().gray(), ""),
+                    Level::Trace => (Style::default().cyan(), ""),
                 };
                 lines.push(Line::from(vec![
                     Span::styled("[", Style::default()),
                     Span::styled(format!("{}", level), level_style),
-                    Span::styled(format!("] {}", msg), Style::default()),
+                    Span::styled(format!("]{} {}", spacer, msg), Style::default()),
                 ]));
             }
             lines.reverse();
