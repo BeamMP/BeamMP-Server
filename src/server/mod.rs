@@ -841,6 +841,8 @@ impl Server {
                     }
                     'O' => self.parse_vehicle_packet(client_idx, packet).await?,
                     'C' => {
+                        // TODO: Separate into another runtime to avoid blocking the main one
+                        //       while we wait for a response from all the plugins
                         let playername = &self.clients[client_idx].info.as_ref().unwrap().username;
                         let packet_data = packet.data_as_string();
                         let contents: Vec<&str> = packet_data.split(":").collect();
