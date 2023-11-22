@@ -2,6 +2,8 @@
 #[macro_use] extern crate async_trait;
 #[macro_use] extern crate lazy_static;
 
+use argh::FromArgs;
+
 use std::sync::Arc;
 use tokio::sync::mpsc;
 
@@ -11,11 +13,19 @@ mod server;
 mod config;
 mod heartbeat;
 
-const USE_TUI_CONSOLE_UI: bool = true; // true = uses tui.rs. false = uses pretty_env_logger (useful when developing)
+#[derive(FromArgs)]
+/// BeamMP Server v3.3.0
+struct Args {
+    /// disables the TUI and shows a simple console log instead
+    #[argh(switch)]
+    disable_tui: bool,
+}
 
 #[tokio::main]
 async fn main() {
-    if USE_TUI_CONSOLE_UI {
+    let args: Args = argh::from_env();
+
+    if !args.disable_tui {
         logger::init(log::LevelFilter::max()).expect("Failed to enable logger!");
     } else {
         // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
@@ -53,7 +63,7 @@ async fn main() {
 
     let (cmd_tx, cmd_rx) = mpsc::channel(100);
 
-    if USE_TUI_CONSOLE_UI {
+    if !args.disable_tui {
         tokio::spawn(tui::tui_main(user_config.clone(), cmd_tx));
     }
 
