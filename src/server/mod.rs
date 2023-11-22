@@ -188,7 +188,7 @@ impl Server {
 
                             match code as char {
                                 'C' => {
-                                    let mut client = Client::new(socket);
+                                    let mut client = Client::new(socket).await;
                                     match client.authenticate(&cfg_ref).await {
                                         Ok(is_client) if is_client => {
                                             let mut lock = ci_ref

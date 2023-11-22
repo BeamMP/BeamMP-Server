@@ -23,10 +23,19 @@ use super::backend::*;
 use super::car::*;
 use super::packet::*;
 
-static ATOMIC_ID_COUNTER: AtomicU8 = AtomicU8::new(0);
-
 lazy_static! {
+    pub static ref FREE_IDS: Mutex<Vec<u8>> = Mutex::new((0..=255).collect());
     pub static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<u8, isize>> = Mutex::new(HashMap::new());
+}
+
+async fn claim_id() -> u8 {
+    let mut lock = FREE_IDS.lock().await;
+    lock.remove(0) // This can panic when we run out of IDs!
+}
+
+async fn free_id(id: u8) {
+    let mut lock = FREE_IDS.lock().await;
+    lock.push(id);
 }
 
 #[derive(PartialEq)]
@@ -63,13 +72,14 @@ pub struct Client {
 
 impl Drop for Client {
     fn drop(&mut self) {
+        tokio::spawn(free_id(self.id));
         self.write_runtime.abort();
     }
 }
 
 impl Client {
-    pub fn new(socket: TcpStream) -> Self {
-        let id = ATOMIC_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+    pub async fn new(socket: TcpStream) -> Self {
+        let id = claim_id().await;
         trace!("Client with ID #{} created!", id);
 
         let (read_half, write_half) = socket.into_split();
