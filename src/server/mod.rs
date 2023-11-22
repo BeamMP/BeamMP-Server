@@ -486,21 +486,6 @@ impl Server {
     }
 
     pub async fn process(&mut self) -> anyhow::Result<()> {
-        // In the future, we should find a way to race process_tcp and process_udp
-        // because this introduces some latency and isn't great!
-        // But technically it works, and keeping the latency low should really make
-        // it a non-issue I think.
-        // TODO: Handle result
-        // tokio::select! {
-        //     _ = self.process_udp() => {},
-        //     _ = tokio::time::sleep(tokio::time::Duration::from_nanos(1_000)) => {},
-        // };
-        //
-        // tokio::select! {
-        //     _ = tokio::time::sleep(tokio::time::Duration::from_nanos(1_000)) => {},
-        //     _ = self.process_tcp() => {},
-        // };
-
         self.process_authenticated_clients().await?;
         self.process_lua_events().await?;
 
