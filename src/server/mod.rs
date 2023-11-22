@@ -524,7 +524,6 @@ impl Server {
                 } else {
                     self.clients.swap_remove(i);
                 }
-
                 info!("Client {} disconnected!", id);
             }
         }
