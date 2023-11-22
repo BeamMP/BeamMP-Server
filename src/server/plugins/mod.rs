@@ -50,6 +50,8 @@ pub enum ScriptEvent {
     OnPlayerAuthenticated { name: String, role: String, is_guest: bool, identifiers: PlayerIdentifiers },
 
     OnPlayerDisconnect { pid: u8, name: String },
+
+    OnChatMessage { pid: u8, name: String, message: String },
 }
 
 #[derive(Debug)]

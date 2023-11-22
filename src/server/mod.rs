@@ -425,6 +425,7 @@ impl Server {
                 let mut allowed = true;
                 for v in res {
                     match v {
+                        Argument::Integer(i) => if i == 1 { allowed = false; },
                         Argument::Number(n) => if n == 1f32 { allowed = false; },
                         Argument::Boolean(b) => if b { allowed = false; },
                         _ => {}, // TODO: Handle this somehow?
