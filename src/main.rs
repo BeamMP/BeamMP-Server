@@ -11,11 +11,16 @@ mod server;
 mod config;
 mod heartbeat;
 
+const USE_TUI_CONSOLE_UI: bool = true; // true = uses tui.rs. false = uses pretty_env_logger (useful when developing)
+
 #[tokio::main]
 async fn main() {
-    // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
-    // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Debug).init();
-    logger::init(log::LevelFilter::max()).expect("Failed to enable logger!");
+    if USE_TUI_CONSOLE_UI {
+        logger::init(log::LevelFilter::max()).expect("Failed to enable logger!");
+    } else {
+        // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
+        pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Debug).init();
+    }
 
     let mut user_config: config::Config = toml::from_str(
             &std::fs::read_to_string("ServerConfig.toml")
@@ -48,7 +53,9 @@ async fn main() {
 
     let (cmd_tx, cmd_rx) = mpsc::channel(100);
 
-    tokio::spawn(tui::tui_main(user_config.clone(), cmd_tx));
+    if USE_TUI_CONSOLE_UI {
+        tokio::spawn(tui::tui_main(user_config.clone(), cmd_tx));
+    }
 
     server_main(user_config, cmd_rx).await;
 }
