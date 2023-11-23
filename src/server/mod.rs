@@ -161,7 +161,7 @@ impl Server {
 
         let server_resource_folder = config.general
             .get_server_resource_folder()
-            .expect("Failed to create the client resource folder");
+            .expect("Failed to create the server resource folder");
 
         // Load existing plugins
         let plugins = load_plugins(server_resource_folder);
