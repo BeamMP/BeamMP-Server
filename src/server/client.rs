@@ -28,7 +28,8 @@ lazy_static! {
     pub static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<u8, isize>> = Mutex::new(HashMap::new());
 }
 
-async fn claim_id() -> std::result::Result<u8, ()> {
+// TODO: Return a proper error?
+async fn claim_id() -> Result<u8, ()> {
     let mut lock = TAKEN_PLAYER_IDS.lock().await;
     for index in 0..255 {
         if !lock[index] {
