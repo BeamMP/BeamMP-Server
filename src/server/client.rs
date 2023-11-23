@@ -24,18 +24,25 @@ use super::car::*;
 use super::packet::*;
 
 lazy_static! {
-    pub static ref FREE_IDS: Mutex<Vec<u8>> = Mutex::new((0..=255).collect());
+    pub static ref TAKEN_PLAYER_IDS: Mutex<[bool;256]> = Mutex::new([false; 256]);
     pub static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<u8, isize>> = Mutex::new(HashMap::new());
 }
 
-async fn claim_id() -> u8 {
-    let mut lock = FREE_IDS.lock().await;
-    lock.remove(0) // This can panic when we run out of IDs!
+async fn claim_id() -> std::result::Result<u8, ()> {
+    let mut lock = TAKEN_PLAYER_IDS.lock().await;
+    for index in 0..255 {
+        if !lock[index] {
+            lock[index] = true;
+            return Ok(index as u8);
+        }
+    }
+    // requires more then 255 players on the server to error
+    Err(())
 }
 
 async fn free_id(id: u8) {
-    let mut lock = FREE_IDS.lock().await;
-    lock.push(id);
+    let mut lock = TAKEN_PLAYER_IDS.lock().await;
+    lock[id as usize] = false;
 }
 
 #[derive(PartialEq)]
@@ -79,7 +86,10 @@ impl Drop for Client {
 
 impl Client {
     pub async fn new(socket: TcpStream) -> Self {
-        let id = claim_id().await;
+        let id = match claim_id().await {
+            Ok(v) => v,
+            Err(_) => panic!("CRITICAL: Saturated Player ID's"),
+        };
         trace!("Client with ID #{} created!", id);
 
         let (read_half, write_half) = socket.into_split();
