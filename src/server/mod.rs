@@ -181,117 +181,113 @@ impl Server {
 
                                     socket.readable().await.expect("Failed to wait for socket to become readable!");
                                     let mut tmp = vec![0u8; 1];
-                                    while socket.peek(&mut tmp).await.expect("Failed to peek socket!") == 0 {
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                                    }
                                     // Authentication works a little differently than normal
                                     // Not sure why, but the BeamMP source code shows they
                                     // also only read a single byte during authentication
-                                    socket.read_exact(&mut tmp).await.expect("Failed to read from socket!");
-                                    let code = tmp[0];
+                                    if socket.read_exact(&mut tmp).await.is_ok() {
+                                        let code = tmp[0];
 
-                                    match code as char {
-                                        'C' => {
-                                            info!("hi");
-                                            let mut client = Client::new(socket).await;
-                                            match client.authenticate(&cfg_ref).await {
-                                                Ok(is_client) if is_client => {
-                                                    info!("bye");
-                                                    ci_ref.send(client).await;
-                                                },
-                                                Ok(_is_client) => {
-                                                    debug!("Downloader?");
-                                                },
-                                                Err(e) => {
-                                                    error!("Authentication error occured, kicking player...");
-                                                    error!("{:?}", e);
-                                                    client.kick("Failed to authenticate player!").await;
-                                                    // client.disconnect();
-                                                }
-                                            }
-                                        },
-                                        'D' => {
-                                            // Download connection (for old protocol)
-                                            // This crashes the client after sending over 1 mod.
-                                            // I have no idea why, perhaps I'm missing something that I'm supposed to send it.
-                                            // TODO: Implement this: https://github.com/BeamMP/BeamMP-Server/blob/master/src/TNetwork.cpp#L775
-
-                                            socket.readable().await;
-                                            let mut tmp = [0u8; 1];
-                                            socket.read_exact(&mut tmp).await;
-                                            let id = tmp[0] as usize;
-                                            debug!("[D] HandleDownload connection for client id: {}", id);
-                                            let mut sent_mods = Vec::new();
-                                            'download: while let Ok(_) = socket.writable().await {
-                                                {
-                                                    let lock = CLIENT_MOD_PROGRESS.lock().await;
-                                                    if lock.get(&(id as u8)).is_none() { continue; }
-                                                }
-                                                let mod_id = {
-                                                    let lock = CLIENT_MOD_PROGRESS.lock().await;
-                                                    *lock.get(&(id as u8)).unwrap()
-                                                };
-                                                if sent_mods.contains(&mod_id) { continue; }
-                                                debug!("[D] Starting download!");
-                                                let mut mod_name = {
-                                                    if mod_id < 0 {
-                                                        break 'download;
+                                        match code as char {
+                                            'C' => {
+                                                info!("hi");
+                                                let mut client = Client::new(socket).await;
+                                                match client.authenticate(&cfg_ref).await {
+                                                    Ok(is_client) if is_client => {
+                                                        info!("bye");
+                                                        ci_ref.send(client).await;
+                                                    },
+                                                    Ok(_is_client) => {
+                                                        debug!("Downloader?");
+                                                    },
+                                                    Err(e) => {
+                                                        error!("Authentication error occured, kicking player...");
+                                                        error!("{:?}", e);
+                                                        client.kick("Failed to authenticate player!").await;
+                                                        // client.disconnect();
                                                     }
-                                                    if mod_id as usize >= cfg_ref.mods.len() {
-                                                        break 'download;
-                                                    }
-
-                                                    let bmod = &cfg_ref.mods[mod_id as usize]; // TODO: This is a bit uhh yeah
-                                                    debug!("[D] Mod name: {}", bmod.0);
-
-                                                    bmod.0.clone()
-                                                };
-
-                                                if mod_name.starts_with("/") == false {
-                                                    mod_name = format!("/{mod_name}");
                                                 }
+                                            },
+                                            'D' => {
+                                                // Download connection (for old protocol)
+                                                // This crashes the client after sending over 1 mod.
+                                                // I have no idea why, perhaps I'm missing something that I'm supposed to send it.
+                                                // TODO: Implement this: https://github.com/BeamMP/BeamMP-Server/blob/master/src/TNetwork.cpp#L775
 
-                                                debug!("[D] Starting transfer of mod {mod_name}!");
-
-                                                let mod_path = format!("Resources/Client{mod_name}");
-                                                if let Ok(file_data) = std::fs::read(mod_path) {
+                                                socket.readable().await;
+                                                let mut tmp = [0u8; 1];
+                                                socket.read_exact(&mut tmp).await;
+                                                let id = tmp[0] as usize;
+                                                debug!("[D] HandleDownload connection for client id: {}", id);
+                                                let mut sent_mods = Vec::new();
+                                                'download: while let Ok(_) = socket.writable().await {
                                                     {
-                                                        trace!("[D] Sending packets!");
-                                                        if let Err(e) = socket.write(&file_data[(file_data.len()/2)..]).await {
-                                                            error!("{:?}", e);
-                                                        }
-                                                        trace!("[D] Packets sent!");
+                                                        let lock = CLIENT_MOD_PROGRESS.lock().await;
+                                                        if lock.get(&(id as u8)).is_none() { continue; }
                                                     }
-                                                }
+                                                    let mod_id = {
+                                                        let lock = CLIENT_MOD_PROGRESS.lock().await;
+                                                        *lock.get(&(id as u8)).unwrap()
+                                                    };
+                                                    if sent_mods.contains(&mod_id) { continue; }
+                                                    debug!("[D] Starting download!");
+                                                    let mut mod_name = {
+                                                        if mod_id < 0 {
+                                                            break 'download;
+                                                        }
+                                                        if mod_id as usize >= cfg_ref.mods.len() {
+                                                            break 'download;
+                                                        }
 
-                                                sent_mods.push(mod_id);
-                                            }
-                                            debug!("[D] Done!");
-                                        },
-                                        'G' => {
-                                            // This is probably an HTTP GET request!
-                                            let mut tmp = [0u8; 3];
-                                            socket.read_exact(&mut tmp).await.expect("Failed to read from socket!");
-                                            if tmp[0] as char == 'E' && tmp[1] as char == 'T' && tmp[2] as char == ' ' {
-                                                trace!("HTTP GET request found!");
-                                                handle_http_get(socket).await;
-                                            } else {
-                                                trace!("Unknown G packet received, not sure what to do!");
-                                            }
-                                        },
-                                        _ => {
-                                            tokio::task::yield_now().await;
-                                        },
-                                    };
+                                                        let bmod = &cfg_ref.mods[mod_id as usize]; // TODO: This is a bit uhh yeah
+                                                        debug!("[D] Mod name: {}", bmod.0);
+
+                                                        bmod.0.clone()
+                                                    };
+
+                                                    if mod_name.starts_with("/") == false {
+                                                        mod_name = format!("/{mod_name}");
+                                                    }
+
+                                                    debug!("[D] Starting transfer of mod {mod_name}!");
+
+                                                    let mod_path = format!("Resources/Client{mod_name}");
+                                                    if let Ok(file_data) = std::fs::read(mod_path) {
+                                                        {
+                                                            trace!("[D] Sending packets!");
+                                                            if let Err(e) = socket.write(&file_data[(file_data.len()/2)..]).await {
+                                                                error!("{:?}", e);
+                                                            }
+                                                            trace!("[D] Packets sent!");
+                                                        }
+                                                    }
+
+                                                    sent_mods.push(mod_id);
+                                                }
+                                                debug!("[D] Done!");
+                                            },
+                                            'G' => {
+                                                // This is probably an HTTP GET request!
+                                                let mut tmp = [0u8; 3];
+                                                socket.read_exact(&mut tmp).await.expect("Failed to read from socket!");
+                                                if tmp[0] as char == 'E' && tmp[1] as char == 'T' && tmp[2] as char == ' ' {
+                                                    trace!("HTTP GET request found!");
+                                                    handle_http_get(socket).await;
+                                                } else {
+                                                    trace!("Unknown G packet received, not sure what to do!");
+                                                }
+                                            },
+                                            _ => {
+                                                tokio::task::yield_now().await;
+                                            },
+                                        };
+                                    }
                                 });
                                 info!("Client pushed to joinset!");
                             }
                             Err(e) => error!("Failed to accept incoming connection: {:?}", e),
                         }
                     },
-                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(50)) => {
-                        error!("time out!");
-                    },
+                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(50)) => {},
                 }
 
                 if set.is_empty() == false {
@@ -299,12 +295,8 @@ impl Server {
                     // Because join_next() is cancel safe, we can simply cancel it after N duration
                     // so at worst this client acceptance loop blocks for N duration
                     tokio::select! {
-                        _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {
-                            error!("join_next timed out!");
-                        },
-                        _ = set.join_next() => {
-                            info!("join_next ran!");
-                        },
+                        _ = set.join_next() => {},
+                        _ = tokio::time::sleep(tokio::time::Duration::from_millis(10)) => {},
                     }
                 }
             }
