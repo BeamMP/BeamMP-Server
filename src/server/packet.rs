@@ -54,6 +54,12 @@ impl NotificationPacket {
     pub fn new<S: Into<String>>(msg: S) -> Self {
         Self(format!("J{}", msg.into()))
     }
+    pub fn player_welcome<S: Into<String>>(msg: S) -> Self {
+        Self(format!("JWelcome {}!", msg.into()))
+    }
+    pub fn player_left<S: Into<String>>(msg: S) -> Self {
+        Self(format!("L{} left the server!", msg.into()))
+    }
 }
 
 /// Protocol:
