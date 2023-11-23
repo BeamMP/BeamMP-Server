@@ -21,7 +21,12 @@ struct HeartbeatInfo {
 
 pub async fn backend_heartbeat(config: std::sync::Arc<crate::config::Config>, mut hb_rx: Receiver<crate::server::ServerStatus>) {
     if !config.general.is_auth_key_valid() {
-        debug!{"auth_key has invalid format. canceling hearbeat init"};
+        if config.general.private {
+            warn!("AuthKey has invalid format. This is not an error, since your server is private.");
+        } else {
+            error!("AuthKey has invalid format. The server will not appear on the server list.");
+        }
+        // FIXME: The heartbeat should be started if the config is ever changed/reloaded.
         return;
     }
     let mut info = HeartbeatInfo {
