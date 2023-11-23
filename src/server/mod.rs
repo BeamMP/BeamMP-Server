@@ -507,12 +507,9 @@ impl Server {
                 }
 
                 info!("Disconnecting client {}...", id);
-                for client in &self.clients {
-                    if client.id == i as u8 {continue}
-                    client.queue_packet(Packet::Notification(NotificationPacket::left(
-                        self.clients[i].info.as_ref().unwrap().username.clone()
-                    ))).await;
-                }
+                self.broadcast(Packet::Notification(NotificationPacket::player_left( // broadcast left message
+                    self.clients[i].info.as_ref().unwrap().username.clone()
+                )), Some(i as u8)).await;
 
                 if i == self.clients.len() - 1 {
                     self.clients.remove(i);
@@ -810,12 +807,9 @@ impl Server {
                             ))))
                             .await;
 
-                        for client in &self.clients { // welcome the player
-                            if client.id == client_idx as u8 {continue}
-                            client.queue_packet(Packet::Notification(NotificationPacket::welcome(
-                                self.clients[client_idx].info.as_ref().unwrap().username.clone()
-                            ))).await;
-                        }
+                        self.broadcast(Packet::Notification(NotificationPacket::player_welcome( // welcome the player
+                            self.clients[client_idx].info.as_ref().unwrap().username.clone()
+                        )), Some(client_idx as u8)).await;
 
                         // TODO: Sync all existing cars on server (this code is broken)
                         for client in &self.clients {
