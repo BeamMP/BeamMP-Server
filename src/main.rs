@@ -125,6 +125,16 @@ async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receive
                         server.close().await;
                         break 'server;
                     },
+                    "players" => {
+                        let mut pl = "Players:\n".to_string();
+                        for (i, (id, player)) in status.player_list.iter().enumerate() {
+                            pl.push_str(&format!("\t[{: >2}] - {player}", id));
+                            if i + 1 < status.player_list.len() {
+                                pl.push('\n');
+                            }
+                        }
+                        info!("{}", pl);
+                    },
                     _ => info!("Unknown command!"),
                 }
             } else {

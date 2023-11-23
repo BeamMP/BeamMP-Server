@@ -24,17 +24,17 @@ use super::car::*;
 use super::packet::*;
 
 lazy_static! {
-    pub static ref TAKEN_PLAYER_IDS: Mutex<[bool;256]> = Mutex::new([false; 256]);
+    pub static ref TAKEN_PLAYER_IDS: Mutex<Vec<u8>> = Mutex::new(Vec::new());
     pub static ref CLIENT_MOD_PROGRESS: Mutex<HashMap<u8, isize>> = Mutex::new(HashMap::new());
 }
 
 // TODO: Return a proper error?
 async fn claim_id() -> Result<u8, ()> {
     let mut lock = TAKEN_PLAYER_IDS.lock().await;
-    for index in 0..255 {
-        if !lock[index] {
-            lock[index] = true;
-            return Ok(index as u8);
+    for index in 0..=255 {
+        if !lock.contains(&index) {
+            lock.push(index);
+            return Ok(index);
         }
     }
     // requires more then 255 players on the server to error
@@ -43,7 +43,7 @@ async fn claim_id() -> Result<u8, ()> {
 
 async fn free_id(id: u8) {
     let mut lock = TAKEN_PLAYER_IDS.lock().await;
-    lock[id as usize] = false;
+    *lock = lock.drain(..).filter(|i| *i != id).collect::<Vec<u8>>();
 }
 
 #[derive(PartialEq)]

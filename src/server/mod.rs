@@ -288,7 +288,6 @@ impl Server {
                 }
 
                 if set.is_empty() == false {
-                    info!("what!");
                     // Because join_next() is cancel safe, we can simply cancel it after N duration
                     // so at worst this client acceptance loop blocks for N duration
                     tokio::select! {
