@@ -1,5 +1,7 @@
+use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use uuid::Uuid;
+use crate::fs_util;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -51,6 +53,22 @@ impl GeneralSettings {
             Uuid::parse_str(auth_key.as_str()).is_ok()
         } else {
             false
-        }
+        };
+    }
+
+    /// Returns the client resource path, and ensures it exists.
+    /// Default is Resources/Client.
+    pub fn get_client_resource_folder(&self) -> anyhow::Result<String> {
+        let res_client_path = Path::new(self.resource_folder.as_str()).join("Client");
+        fs_util::ensure_path_exists(&res_client_path)?;
+        Ok(fs_util::path_to_string(res_client_path))
+    }
+
+    /// Returns the server resource path, and ensures it exists.
+    /// Default is Resources/Server.
+    pub fn get_server_resource_folder(&self) -> anyhow::Result<String> {
+        let res_server_path = Path::new(self.resource_folder.as_str()).join("Server");
+        fs_util::ensure_path_exists(&res_server_path)?;
+        Ok(fs_util::path_to_string(res_server_path))
     }
 }

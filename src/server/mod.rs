@@ -27,11 +27,12 @@ pub use plugins::*;
 pub use http::*;
 
 pub use crate::config::Config;
+use crate::config::GeneralSettings;
 
-fn load_plugins() -> Vec<Plugin> {
+fn load_plugins(server_resource_folder: String) -> Vec<Plugin> {
     let mut plugins = Vec::new();
 
-    for res_entry in std::fs::read_dir("Resources/Server").expect("Failed to read Resources/Server!") {
+    for res_entry in std::fs::read_dir(server_resource_folder).expect("Failed to read server resource folder!") {
         if let Ok(res_entry) = res_entry {
             let res_path = res_entry.path();
             if res_path.is_dir() {
@@ -158,8 +159,12 @@ impl Server {
             Arc::new(UdpSocket::bind(bind_addr).await?)
         };
 
+        let server_resource_folder = config.general
+            .get_server_resource_folder()
+            .expect("Failed to create the client resource folder");
+
         // Load existing plugins
-        let plugins = load_plugins();
+        let plugins = load_plugins(server_resource_folder);
 
         // Start client runtime
         let (clients_incoming_tx, clients_incoming_rx) = mpsc::channel(100);

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::ops::DerefMut;
+use std::path::Path;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::Instant;
@@ -18,6 +19,7 @@ use nalgebra::*;
 
 use serde::Deserialize;
 use serde_aux::prelude::*;
+use crate::fs_util;
 
 use super::backend::*;
 use super::car::*;
@@ -225,21 +227,13 @@ impl Client {
                         // Handle file download
                         let mut mod_name = packet.data_as_string().clone();
                         mod_name.remove(0); // Remove f
-                        debug!("Client requested file {}", mod_name);
+                        debug!("Client is requesting file {}", mod_name);
 
-                        // making sure that the requested file cant point to files outside of Resources/Client/*
-                        let path = std::path::Path::new(&mod_name);
-                        let mod_name = match path.file_name() {
-                            Some(v) => "/".to_string() + v.to_str().unwrap(),
-                            None => {
-                                error!("Client requests invalid mod. Disconnecting");
-                                self.kick("Invalid mod request").await;
-                                return Ok(());
-                            }, // client requested path (fResources/Client/) or nothing at all (f) - invalid
-                        };
-                        let mod_path = format!("Resources/Client{mod_name}");
-                        if !std::path::Path::new(&mod_path).exists() {
-                            error!("Client requests inexistent mod. Disconnecting");
+                        let client_resources = config.general.get_server_resource_folder()?;
+                        let mod_path = fs_util::join_path_secure(Path::new(&client_resources), Path::new(&mod_name))?;
+
+                        if !mod_path.exists() || !mod_path.is_file() {
+                            error!("Client requested mod which doesn't exist: {:?}. Disconnecting", mod_path);
                             self.kick("Invalid mod request").await;
                             return Ok(()) // client requested mod that doesnt exists within "Resources/Client/*"
                         }
