@@ -350,6 +350,10 @@ impl Server {
         if packet.data.len() == 0 {
             return Ok(()); // what!
         }
+        if packet.data[0] < 1 {
+            // return Err(ServerError::BrokenPacket.into());
+            return Ok(()); // Ignore for now?
+        }
         let id = packet.data[0] - 1; // Offset by 1
         let data = packet.data[2..].to_vec();
         let packet_processed = RawPacket {
