@@ -189,11 +189,9 @@ impl Server {
 
                                         match code as char {
                                             'C' => {
-                                                info!("hi");
                                                 let mut client = Client::new(socket).await;
                                                 match client.authenticate(&cfg_ref).await {
                                                     Ok(is_client) if is_client => {
-                                                        info!("bye");
                                                         ci_ref.send(client).await;
                                                     },
                                                     Ok(_is_client) => {
@@ -282,7 +280,6 @@ impl Server {
                                         };
                                     }
                                 });
-                                info!("Client pushed to joinset!");
                             }
                             Err(e) => error!("Failed to accept incoming connection: {:?}", e),
                         }
