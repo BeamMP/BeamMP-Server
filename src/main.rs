@@ -68,15 +68,16 @@ async fn main() {
     let user_config = Arc::new(user_config);
 
     let (cmd_tx, cmd_rx) = mpsc::channel(100);
+    let (status_tx, status_rx) = mpsc::channel(100);
 
     if !args.disable_tui {
-        tokio::spawn(tui::tui_main(user_config.clone(), cmd_tx));
+        tokio::spawn(tui::tui_main(user_config.clone(), cmd_tx, status_rx));
     }
 
-    server_main(user_config, cmd_rx).await;
+    server_main(user_config, cmd_rx, status_tx).await;
 }
 
-async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receiver<Vec<String>>) {
+async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receiver<Vec<String>>, status_tx: mpsc::Sender<server::ServerStatus>) {
     let (hb_tx, hb_rx) = mpsc::channel(100);
 
     tokio::spawn(heartbeat::backend_heartbeat(user_config.clone(), hb_rx));
@@ -88,6 +89,7 @@ async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receive
 
     let mut status = server.get_server_status();
     hb_tx.send(status.clone()).await;
+    status_tx.send(status.clone()).await;
     'server: loop {
         // TODO: Error handling
         if server.clients.len() > 0 {
@@ -121,6 +123,7 @@ async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receive
         if status != new_status {
             status = new_status;
             hb_tx.send(status.clone()).await;
+            status_tx.send(status.clone()).await;
         }
 
         // Process commands
@@ -140,6 +143,10 @@ async fn server_main(user_config: Arc<config::Config>, mut cmd_rx: mpsc::Receive
                             }
                         }
                         info!("{}", pl);
+                    },
+                    "say" => {
+                        let msg = cmd[1..].iter().map(|s| s.as_str()).collect::<Vec<&str>>().join(" ");
+                        server.send_chat_message(&msg, None).await;
                     },
                     _ => info!("Unknown command!"),
                 }

@@ -16,12 +16,13 @@ use ratatui::{
 use tokio::sync::mpsc;
 
 use crate::config::Config;
+use crate::server::ServerStatus;
 
-pub async fn tui_main(config: Arc<Config>, cmd_tx: mpsc::Sender<Vec<String>>) {
+pub async fn tui_main(config: Arc<Config>, cmd_tx: mpsc::Sender<Vec<String>>, mut info_rx: mpsc::Receiver<ServerStatus>) {
     let mut tui = Tui::new().expect("Failed to initialize tui!");
 
     'app: loop {
-        if tui.update(&cmd_tx).await.expect("Failed to run tui.update!") {
+        if tui.update(&cmd_tx, &mut info_rx).await.expect("Failed to run tui.update!") {
             cmd_tx.send(vec!["exit".to_string()]).await.unwrap();
             break 'app;
         }
@@ -37,6 +38,8 @@ struct Tui {
     history_scroll: usize,
     input_history: Vec<String>,
     input: String,
+
+    server_status: ServerStatus,
 }
 
 impl Drop for Tui {
@@ -62,6 +65,8 @@ impl Tui {
             history_scroll: 0,
             input_history: Vec::new(),
             input: String::new(),
+
+            server_status: ServerStatus::default(),
         })
     }
 
@@ -71,12 +76,18 @@ impl Tui {
         Ok(())
     }
 
-    async fn update(&mut self, cmd_tx: &mpsc::Sender<Vec<String>>) -> Result<bool> {
+    async fn update(&mut self, cmd_tx: &mpsc::Sender<Vec<String>>, info_rx: &mut mpsc::Receiver<ServerStatus>) -> Result<bool> {
         for (level, msg) in crate::logger::drain_log_buffer().await {
             self.log_buffer.push_front((level, msg));
             if self.log_buffer.len() > 100 {
                 self.log_buffer.pop_back();
             }
+        }
+
+        match info_rx.try_recv() {
+            Ok(status) => self.server_status = status,
+            Err(mpsc::error::TryRecvError::Empty) => {},
+            Err(e) => return Ok(true),
         }
 
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -166,8 +177,12 @@ impl Tui {
                 horiz_layout[0],
             );
 
+            let mut lines = Vec::new();
+            for (id, name) in &self.server_status.player_list {
+                lines.push(Line::from(format!("{id} - {name}")));
+            }
             frame.render_widget(
-                Paragraph::new("0 - luuk-bepis\n1 - lion guy\n2 - the_racc").block(Block::new().borders(Borders::ALL).title("Player List")),
+                Paragraph::new(lines).block(Block::new().borders(Borders::ALL).title("Player List")),
                 horiz_layout[1],
             );
 

@@ -38,13 +38,14 @@ pub struct GeneralSettings {
     #[serde(rename = "Map")]
     pub map: String,
 
+    #[serde(rename = "ResourceFolder")]
+    pub resource_folder: String,
+
     // Options below are not yet supported
     #[serde(rename = "LogChat")]
     pub log_chat: bool,
     #[serde(rename = "Debug")]
     pub debug: bool,
-    #[serde(rename = "ResourceFolder")]
-    pub resource_folder: String,
 }
 
 impl GeneralSettings {

@@ -73,7 +73,7 @@ fn load_plugins(server_resource_folder: String) -> Vec<Plugin> {
     plugins
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Default)]
 pub struct ServerStatus {
     pub player_count: usize,
     pub player_list: Vec<(u8, String)>,
@@ -549,6 +549,18 @@ impl Server {
         }
 
         Ok(())
+    }
+
+    pub async fn send_chat_message(&self, message: &str, target: Option<u8>) {
+        let packet = Packet::Raw(RawPacket::from_str(&format!("C:Server: {message}")));
+        if let Some(_id) = target {
+            // TODO: Implement this!
+            todo!("Sending server chat messages to specific player is not supported yet!");
+            // info!("[CHAT] Server @ {id}: {message}");
+        } else {
+            info!("[CHAT] Server: {message}");
+            self.broadcast(packet, None).await;
+        }
     }
 
     // NOTE: Skips all clients that are currently connecting or syncing resources!
