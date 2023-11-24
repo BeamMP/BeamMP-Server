@@ -49,11 +49,11 @@ pub struct GeneralSettings {
 
 impl GeneralSettings {
     pub fn is_auth_key_valid(&self) -> bool {
-        return if let Some(auth_key) = &self.auth_key {
+        if let Some(auth_key) = &self.auth_key {
             Uuid::parse_str(auth_key.as_str()).is_ok()
         } else {
             false
-        };
+        }
     }
 
     /// Returns the client resource path, and ensures it exists.
