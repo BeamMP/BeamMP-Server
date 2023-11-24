@@ -2,6 +2,7 @@
 #[macro_use] extern crate async_trait;
 #[macro_use] extern crate lazy_static;
 
+use std::path::Path;
 use argh::FromArgs;
 
 use std::sync::Arc;
@@ -12,6 +13,7 @@ mod tui;
 mod server;
 mod config;
 mod heartbeat;
+mod fs_util;
 
 #[derive(FromArgs)]
 /// BeamMP Server v3.3.0
@@ -40,8 +42,12 @@ async fn main() {
         .map_err(|_| error!("Failed to parse config file!"))
         .expect("Failed to parse config file!");
 
-    // TODO: This should not error lol
-    for entry in std::fs::read_dir("Resources/Client").expect("Failed to read Resources/Client!") {
+
+    let client_resources = user_config.general
+        .get_client_resource_folder()
+        .expect("Failed to create the client resource folder");
+
+    for entry in std::fs::read_dir(client_resources).expect("Failed to read client resource folder!") {
         if let Ok(entry) = entry {
             if entry.path().is_file() {
                 if let Ok(metadata) = entry.metadata() {
