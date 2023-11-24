@@ -39,7 +39,13 @@ function onPlayerDisconnect(pid, name, identifiers)
     print("Player " .. name .. " (" .. pid .. ") has left!")
 end
 
+function onChatMessage(pid, name, message)
+    print("" .. name .. " (" .. pid .. "): " .. message)
+    return message .. " (edited by lua!!!)"
+end
+
 MP.RegisterEventHandler("onInit", "onPluginLoaded")
 MP.RegisterEventHandler("onShutdown", "onShutdown")
 MP.RegisterEventHandler("onPlayerAuth", "onPlayerAuthenticated")
 MP.RegisterEventHandler("onPlayerDisconnect", "onPlayerDisconnect")
+MP.RegisterEventHandler("onChatMessage", "onChatMessage")

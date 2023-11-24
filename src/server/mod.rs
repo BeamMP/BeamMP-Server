@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::task::{JoinHandle, JoinSet};
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{Mutex, mpsc, oneshot};
 
 use num_enum::IntoPrimitive;
 
@@ -129,11 +129,13 @@ pub struct Server {
     pub udp_socket: Arc<UdpSocket>,
 
     clients_incoming_rx: mpsc::Receiver<Client>,
-    clients_queue: Vec<(Client, Vec<tokio::sync::oneshot::Receiver<Argument>>, Vec<Argument>)>,
+    clients_queue: Vec<(Client, Vec<oneshot::Receiver<Argument>>, Vec<Argument>)>,
 
     pub clients: Vec<Client>,
 
     connect_runtime_handle: JoinHandle<()>,
+
+    chat_queue: Vec<(u8, String, String, Option<oneshot::Receiver<Argument>>, usize)>,
 
     config: Arc<Config>,
 
@@ -315,6 +317,8 @@ impl Server {
 
             connect_runtime_handle: connect_runtime_handle,
 
+            chat_queue: Vec::new(),
+
             config: config,
 
             last_plist_update: Instant::now(),
@@ -390,7 +394,7 @@ impl Server {
                 joined_names.push(name.clone());
                 let mut vrx = Vec::new();
                 for plugin in &self.plugins {
-                    let (tx, rx) = tokio::sync::oneshot::channel();
+                    let (tx, rx) = oneshot::channel();
                     plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerAuthenticated { name: name.clone(), role: role.clone(), is_guest, identifiers: PlayerIdentifiers {
                         ip: String::from("not yet implemented"),
                         beammp_id: beammp_id.clone(),
@@ -416,8 +420,8 @@ impl Server {
             for mut rx in vrx.drain(..) {
                 match rx.try_recv() {
                     Ok(v) => { debug!("hi: {:?}", v); res.push(v); },
-                    Err(tokio::sync::oneshot::error::TryRecvError::Empty) => not_done.push(rx),
-                    Err(tokio::sync::oneshot::error::TryRecvError::Closed) => {},
+                    Err(oneshot::error::TryRecvError::Empty) => not_done.push(rx),
+                    Err(oneshot::error::TryRecvError::Closed) => {},
                 }
             }
             vrx = not_done;
@@ -445,6 +449,58 @@ impl Server {
             }
         }
         self.clients_queue = not_done_clients;
+
+        Ok(())
+    }
+
+    // TODO: I don't think this can return an error lol
+    async fn process_chat_messages(&mut self) -> anyhow::Result<()> {
+        let mut new_queue = Vec::new();
+        let mut to_send = Vec::new();
+        for (pid, pname, mut message, resp, mut next_plugin_id) in self.chat_queue.drain(..) {
+            if next_plugin_id <= self.plugins.len() {
+                let mut cancel_message = false;
+                let next_resp = if let Some(mut resp) = resp {
+                    match resp.try_recv() {
+                        Ok(arg) => {
+                            trace!("arg: {:?}", arg);
+                            match arg {
+                                Argument::Number(f) => if f == 1.0 { cancel_message = true; },
+                                Argument::Integer(i) => if i == 1 { cancel_message = true; },
+                                Argument::String(s) => message = s,
+                                _ => {},
+                            }
+                            trace!("message: {message}");
+                            next_plugin_id += 1;
+                            None
+                        },
+                        Err(oneshot::error::TryRecvError::Empty) => Some(resp),
+                        Err(_) => {
+                            next_plugin_id += 1;
+                            None
+                        }
+                    }
+                } else {
+                    let (tx, rx) = oneshot::channel();
+                    self.plugins[next_plugin_id].send_event(PluginBoundPluginEvent::CallEventHandler((
+                        ScriptEvent::OnChatMessage { pid, name: pname.clone(), message: message.clone() },
+                        Some(tx),
+                    ))).await;
+                    next_plugin_id += 1;
+                    Some(rx)
+                };
+
+                if !cancel_message { new_queue.push((pid, pname, message, next_resp, next_plugin_id)); }
+            } else {
+                let packet = RawPacket::from_str(&format!("C:{pname}:{message}"));
+                to_send.push(packet);
+            }
+        }
+        self.chat_queue = new_queue;
+
+        for packet in to_send {
+            self.broadcast(Packet::Raw(packet), None).await;
+        }
 
         Ok(())
     }
@@ -488,6 +544,7 @@ impl Server {
 
     pub async fn process(&mut self) -> anyhow::Result<()> {
         self.process_authenticated_clients().await?;
+        self.process_chat_messages().await?;
         self.process_lua_events().await?;
 
         // I'm sorry for this code :(
@@ -863,7 +920,8 @@ impl Server {
                         }
 
                         info!("[CHAT] {}", packet.data_as_string());
-                        self.broadcast(Packet::Raw(packet), None).await;
+                        // self.broadcast(Packet::Raw(packet), None).await;
+                        self.chat_queue.push((client_id, playername.clone(), contents[2].to_string(), None, 0));
                     }
                     _ => {
                         let string_data = String::from_utf8_lossy(&packet.data[..]);

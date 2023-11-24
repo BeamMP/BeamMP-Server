@@ -154,8 +154,8 @@ impl Backend for BackendLua {
                     let mapped_args = args.into_iter().map(|arg| {
                         arg_to_value(&self.lua, arg)
                     }).filter(|v| v.is_some());
-                    match func.call::<_, Option<Value>>(Variadic::from_iter(mapped_args)) {
-                        Ok(res) => { trace!("fn ret: {:?}", ret); ret = res.unwrap_or(Value::Number(-1f64)); }
+                    match func.call::<_, Value>(Variadic::from_iter(mapped_args)) {
+                        Ok(res) => { trace!("fn ret: {:?}", res); ret = res; }
                         Err(e) => {
                             error!("[LUA] {}", e);
                             ret = Value::Number(-1f64);
