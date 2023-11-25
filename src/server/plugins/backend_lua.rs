@@ -167,8 +167,13 @@ impl Backend for BackendLua {
         let (event_name, args) = match event {
             ScriptEvent::OnPluginLoaded => ("onInit", vec![]),
             ScriptEvent::OnShutdown => ("onShutdown", vec![]),
+
             ScriptEvent::OnPlayerAuthenticated { name, role, is_guest, identifiers } => ("onPlayerAuth", vec![Argument::String(name), Argument::String(role), Argument::Boolean(is_guest), Argument::Table(identifiers.to_map())]),
+            ScriptEvent::OnPlayerConnecting { pid } => ("onPlayerConnecting", vec![Argument::Integer(pid as i64)]),
+            ScriptEvent::OnPlayerJoining { pid } => ("onPlayerJoining", vec![Argument::Integer(pid as i64)]),
+
             ScriptEvent::OnPlayerDisconnect { pid, name } => ("onPlayerDisconnect", vec![Argument::Integer(pid as i64), Argument::String(name)]),
+
             ScriptEvent::OnChatMessage { pid, name, message } => ("onChatMessage", vec![Argument::Integer(pid as i64), Argument::String(name), Argument::String(message)]),
         };
 
@@ -196,16 +201,20 @@ impl Backend for BackendLua {
 
         debug!("sending result...");
         if let Some(resp) = resp {
-            let arg = match ret {
-                Value::Boolean(b) => Argument::Boolean(b),
-                Value::Integer(i) => Argument::Integer(i),
-                Value::Number(f) => Argument::Number(f as f32),
-                Value::String(s) => Argument::String(s.to_string_lossy().to_string()),
-                _ => Argument::Number(-1f32),
-            };
+            let arg = value_to_arg(ret);
             resp.send(arg).expect("Failed to send!");
         }
         debug!("call_event_handler done");
+    }
+}
+
+fn value_to_arg(value: Value) -> Argument {
+    match value {
+        Value::Boolean(b) => Argument::Boolean(b),
+        Value::Integer(i) => Argument::Integer(i),
+        Value::Number(f) => Argument::Number(f as f32),
+        Value::String(s) => Argument::String(s.to_string_lossy().to_string()),
+        _ => Argument::Number(-1f32),
     }
 }
 

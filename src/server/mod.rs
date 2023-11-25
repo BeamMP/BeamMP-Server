@@ -399,10 +399,6 @@ impl Server {
                         ip: String::from("not yet implemented"),
                         beammp_id: beammp_id.clone(),
                     } }, Some(tx)))).await;
-                    // TODO: This never returns, because it blocks the entire process function
-                    //       from running, so it never manages to run the function correctly.
-                    // let res = rx.await.unwrap_or(Argument::Number(-1f32));
-                    // debug!("res: {:?}", res);
                     vrx.push(rx);
                 }
                 self.clients_queue.push((client, vrx, Vec::new()));
@@ -437,7 +433,13 @@ impl Server {
                     }
                 }
                 if allowed {
+                    let pid = client.id;
                     self.clients.push(client);
+
+                    for plugin in &mut self.plugins {
+                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerConnecting { pid }, None))).await;
+                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPlayerJoining { pid }, None))).await;
+                    }
                 } else {
                     // TODO: Custom kick message defined from within lua somehow?
                     // TODO: Kicking the client and then immediately dropping them results in the

@@ -47,7 +47,15 @@ pub enum ScriptEvent {
     OnPluginLoaded,
     OnShutdown,
 
+    // TODO: Because of limitations in how we accept clients, onPlayerAuth runs after mod downloading and syncing
+    //       has already happened. With some reworking, this can be avoided, but it's not easy.
+    //       This is quite important however, because otherwise mod downloads will get triggered
+    //       constantly even when someone isn't allowed to join!
     OnPlayerAuthenticated { name: String, role: String, is_guest: bool, identifiers: PlayerIdentifiers },
+    // TODO: See the comment above, this results in these 2 events being useless for now.
+    //       I've simply left them in for backwards compatibility for now!
+    OnPlayerConnecting { pid: u8 },
+    OnPlayerJoining { pid: u8 },
 
     OnPlayerDisconnect { pid: u8, name: String },
 
