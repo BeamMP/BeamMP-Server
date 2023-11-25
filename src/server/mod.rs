@@ -507,12 +507,15 @@ impl Server {
 
     async fn process_lua_events(&mut self) -> anyhow::Result<()> {
         // Receive plugin events and process them
-        for plugin in &mut self.plugins {
-            for event in plugin.get_events() {
+        // TODO: Any methods called in this for loop cannot modify the list of plugins.
+        //       If any plugin disappears during this call, it will panic trying to index out of bounds!
+        for i in 0..self.plugins.len() {
+            for event in self.plugins[i].get_events() {
                 debug!("event: {:?}", event);
                 // TODO: Error handling (?)
                 match event {
-                    ServerBoundPluginEvent::PluginLoaded => plugin.send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, None))).await,
+                    ServerBoundPluginEvent::PluginLoaded => self.plugins[i].send_event(PluginBoundPluginEvent::CallEventHandler((ScriptEvent::OnPluginLoaded, None))).await,
+
                     ServerBoundPluginEvent::RequestPlayerCount(responder) => { let _ = responder.send(PluginBoundPluginEvent::PlayerCount(self.clients.len() + self.clients_queue.len())); },
                     ServerBoundPluginEvent::RequestPlayers(responder) => {
                         trace!("request players received");
@@ -534,6 +537,12 @@ impl Server {
                             let _ = responder.send(PluginBoundPluginEvent::None);
                         }
                     },
+
+                    ServerBoundPluginEvent::SendChatMessage((pid, msg)) => {
+                        let pid = if pid >= 0 { Some(pid as u8) } else { None };
+                        self.send_chat_message(&msg, pid).await;
+                    },
+
                     _ => {},
                 }
             }
@@ -609,12 +618,17 @@ impl Server {
     }
 
     pub async fn send_chat_message(&self, message: &str, target: Option<u8>) {
-        let packet = Packet::Raw(RawPacket::from_str(&format!("C:Server: {message}")));
-        if let Some(_id) = target {
-            // TODO: Implement this!
-            todo!("Sending server chat messages to specific player is not supported yet!");
-            // info!("[CHAT] Server @ {id}: {message}");
+        if let Some(id) = target {
+            let packet = Packet::Raw(RawPacket::from_str(&format!("C:Server @ {id}: {message}")));
+            info!("[CHAT] Server @ {id}: {message}");
+            for client in &self.clients {
+                if id == client.id {
+                    client.queue_packet(packet).await;
+                    break;
+                }
+            }
         } else {
+            let packet = Packet::Raw(RawPacket::from_str(&format!("C:Server: {message}")));
             info!("[CHAT] Server: {message}");
             self.broadcast(packet, None).await;
         }

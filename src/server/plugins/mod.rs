@@ -72,6 +72,8 @@ pub enum ServerBoundPluginEvent {
     RequestPlayerCount(oneshot::Sender<PluginBoundPluginEvent>),
     RequestPlayers(oneshot::Sender<PluginBoundPluginEvent>),
     RequestPlayerIdentifiers((u8, oneshot::Sender<PluginBoundPluginEvent>)),
+
+    SendChatMessage((isize, String)),
 }
 
 pub struct Plugin {

@@ -40,6 +40,8 @@ function onPlayerDisconnect(pid, name, identifiers)
 end
 
 function onChatMessage(pid, name, message)
+    MP.SendChatMessage(-1, "i hate this " .. name .. " guy!")
+    MP.SendChatMessage(pid, "hiii babe i didnt mean it :3")
     print("" .. name .. " (" .. pid .. "): " .. message)
     return message .. " (edited by lua!!!)"
 end

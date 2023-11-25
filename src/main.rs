@@ -27,21 +27,20 @@ struct Args {
 async fn main() {
     let args: Args = argh::from_env();
 
-    if !args.disable_tui {
-        logger::init(log::LevelFilter::max()).expect("Failed to enable logger!");
-    } else {
-        // pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::max()).init();
-        pretty_env_logger::formatted_timed_builder().filter_level(log::LevelFilter::Debug).init();
-    }
-
     let mut user_config: config::Config = toml::from_str(
             &std::fs::read_to_string("ServerConfig.toml")
                 .map_err(|_| error!("Failed to read config file!"))
                 .expect("Failed to read config file!")
         )
-        .map_err(|_| error!("Failed to parse config file!"))
+        .map_err(|_| eprintln!("Failed to parse config file!"))
         .expect("Failed to parse config file!");
 
+    let level_filter = if user_config.general.debug { log::LevelFilter::max() } else { log::LevelFilter::Info };
+    if !args.disable_tui {
+        logger::init(level_filter).expect("Failed to enable logger!");
+    } else {
+        pretty_env_logger::formatted_timed_builder().filter_level(level_filter).init();
+    }
 
     let client_resources = user_config.general
         .get_client_resource_folder()

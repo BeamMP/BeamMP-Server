@@ -41,11 +41,12 @@ pub struct GeneralSettings {
     #[serde(rename = "ResourceFolder")]
     pub resource_folder: String,
 
+    #[serde(rename = "Debug")]
+    pub debug: bool,
+
     // Options below are not yet supported
     #[serde(rename = "LogChat")]
     pub log_chat: bool,
-    #[serde(rename = "Debug")]
-    pub debug: bool,
 }
 
 impl GeneralSettings {

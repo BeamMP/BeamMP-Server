@@ -53,7 +53,7 @@ impl UserData for Context {
         });
 
         methods.add_function("GetServerVersion", |_lua, ()| {
-            Ok((1, 0, 0))
+            Ok((3, 3, 0))
         });
 
         methods.add_function("GetPlayerCount", |lua, ()| {
@@ -95,6 +95,35 @@ impl UserData for Context {
             } else {
                 todo!("Receiving a response from the server failed! How?")
             }
+        });
+
+        methods.add_function("GetPlayerIdentifiers", |lua, (id,): (u8,)| {
+            let me: Context = lua.globals().get("MP")?;
+            let (tx, rx) = oneshot::channel();
+            if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::RequestPlayerIdentifiers((id, tx))) {
+                error!("Failed to send packet: {:?}", e);
+            }
+            let message = rx.blocking_recv();
+            if let Ok(message) = message {
+                if let PluginBoundPluginEvent::PlayerIdentifiers(identifiers) = message {
+                    let table = lua.create_table()?;
+                    table.set("id", identifiers.ip)?;
+                    table.set("beammp_id", identifiers.beammp_id)?;
+                    Ok(table)
+                } else {
+                    unreachable!() // This should really never be reachable
+                }
+            } else {
+                todo!("Receiving a response from the server failed! How?")
+            }
+        });
+
+        methods.add_function("SendChatMessage", |lua, (id, msg): (isize, String)| {
+            let me: Context = lua.globals().get("MP")?;
+            if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::SendChatMessage((id, msg))) {
+                error!("Failed to send packet: {:?}", e);
+            }
+            Ok(())
         });
     }
 }
