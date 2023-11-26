@@ -25,7 +25,7 @@ namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>>;
+using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>, sol::nil_t>;
 static constexpr size_t TLuaArgTypes_String = 0;
 static constexpr size_t TLuaArgTypes_Int = 1;
 static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
@@ -80,6 +80,7 @@ public:
         std::shared_ptr<TLuaResult> Result;
         std::vector<TLuaArgTypes> Args;
         std::string EventName; // optional, may be empty
+        sol::function Function;
     };
 
     TLuaEngine();
@@ -200,6 +201,7 @@ private:
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
     void FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config);
     size_t CalculateMemoryUsage();
+    boost::asio::thread_pool http_pool;
 
     class StateThreadData : IThreaded {
     public:
@@ -208,6 +210,7 @@ private:
         virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(sol::function Function, const std::vector<TLuaArgTypes>& Args);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
@@ -229,7 +232,7 @@ private:
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
         std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
-        sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
+        sol::table Lua_HttpCreateConnection(const std::string& host);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
         sol::table Lua_FS_ListFiles(const std::string& Path);
