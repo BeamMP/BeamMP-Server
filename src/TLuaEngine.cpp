@@ -606,24 +606,40 @@ std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionR
     }
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
+sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host) {
     auto table = mStateView.create_table();
-    constexpr const char* InternalClient = "__InternalClient";
     table["host"] = host;
-    table["port"] = port;
-    auto client = std::make_shared<httplib::Client>(host, port);
-    table[InternalClient] = client;
-    table.set_function("Get", [&InternalClient](const sol::table& table, const std::string& path, const sol::table& headers) {
-        httplib::Headers GetHeaders;
+
+    table.set_function("Get", [this](const sol::table& table, const std::string& path, const sol::table& headers, sol::function cb) {
+        auto host = table["host"].get<std::string>();
+
+        auto get_headers = httplib::Headers();
         for (const auto& pair : headers) {
             if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
-                GetHeaders.insert(std::pair(pair.first.as<std::string>(), pair.second.as<std::string>()));
+                get_headers.insert(std::pair(pair.first.as<std::string>(), pair.second.as<std::string>()));
             } else {
                 beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
             }
         }
-        auto client = table[InternalClient].get<std::shared_ptr<httplib::Client>>();
-        client->Get(path.c_str(), GetHeaders);
+
+        boost::asio::post(this->mEngine->http_pool, [this, host = std::move(host), path = std::move(path), get_headers = std::move(get_headers), cb]() {
+            auto client = std::make_shared<httplib::Client>(host);
+            client->set_follow_location(true);
+            auto response = client->Get(path, get_headers);
+            auto args = std::vector<TLuaArgTypes>();
+            if (response) {
+                args.push_back(sol::nil);
+                args.push_back(response->status);
+                args.push_back(response->body);
+            } else {
+                auto err = response.error();
+                args.push_back(httplib::to_string(err));
+            }
+            auto res = this->EnqueueFunctionCall(cb, args);
+
+            // This doesn't seem strictly necessary, and will make threads in the http pool wait until the lua callbacks are executed
+            res->WaitUntilReady();
+        });
     });
     return table;
 }
@@ -831,8 +847,8 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     });
 
     auto HttpTable = StateView.create_named_table("Http");
-    HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
-        return Lua_HttpCreateConnection(host, port);
+    HttpTable.set_function("CreateConnection", [this](const std::string& host) {
+        return Lua_HttpCreateConnection(host);
     });
 
     MPTable.create_named("Settings",
@@ -890,7 +906,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFrom
         Result->StateId = mStateId;
         Result->Function = FunctionName;
         std::unique_lock Lock(mStateFunctionQueueMutex);
-        mStateFunctionQueue.push_back({ FunctionName, Result, Args, EventName });
+        mStateFunctionQueue.push_back({ FunctionName, Result, Args, EventName, sol::nil });
         mStateFunctionQueueCond.notify_all();
         return Result;
     } else {
@@ -903,7 +919,17 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(con
     Result->StateId = mStateId;
     Result->Function = FunctionName;
     std::unique_lock Lock(mStateFunctionQueueMutex);
-    mStateFunctionQueue.push_back({ FunctionName, Result, Args, "" });
+    mStateFunctionQueue.push_back({ FunctionName, Result, Args, "", sol::nil});
+    mStateFunctionQueueCond.notify_all();
+    return Result;
+}
+
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(sol::function function, const std::vector<TLuaArgTypes>& Args) {
+    auto Result = std::make_shared<TLuaResult>();
+    Result->StateId = mStateId;
+    Result->Function = "anonymous";
+    std::unique_lock Lock(mStateFunctionQueueMutex);
+    mStateFunctionQueue.push_back({ "anonymous", Result, Args, "", function});
     mStateFunctionQueueCond.notify_all();
     return Result;
 }
@@ -975,7 +1001,7 @@ void TLuaEngine::StateThreadData::operator()() {
                 // TODO: Use TheQueuedFunction.EventName for errors, warnings, etc
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
-                auto Fn = StateView[FnName];
+                auto Fn =  TheQueuedFunction.Function != sol::nil ? TheQueuedFunction.Function : StateView[FnName];
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
