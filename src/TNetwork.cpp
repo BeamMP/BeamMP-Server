@@ -11,8 +11,6 @@
 #include <boost/asio/ip/address_v4.hpp>
 #include <cstring>
 
-typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
-
 std::vector<uint8_t> StringToVector(const std::string& Str) {
     return std::vector<uint8_t>(Str.data(), Str.data() + Str.size());
 }
@@ -153,7 +151,8 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.message());
             }
-            ClientSocket.set_option(rcv_timeout_option{ 120000 }); //timeout of 120seconds
+            const int timeout = 120000; //timeout of 120seconds
+            ::setsockopt(ClientSocket.native_handle(), SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof timeout);
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
