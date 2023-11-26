@@ -626,6 +626,12 @@ void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response
         args.push_back(sol::nil);
         args.push_back(response->status);
         args.push_back(response->body);
+
+        auto headers = std::unordered_map<std::string, std::string>();
+        for (auto &pair : response->headers) {
+            headers.emplace(pair.first, pair.second);
+        }
+        args.push_back(headers);
     } else {
         auto err = response.error();
         args.push_back(httplib::to_string(err));
@@ -638,10 +644,10 @@ void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response
 
 sol::table TLuaEngine::StateThreadData::Lua_HttpGet(std::string host, std::string path, sol::table headers, sol::function cb) {
     auto http_headers = table_to_headers(headers);
-    boost::asio::post(this->mEngine->http_pool, [this, host, http_headers, cb]() {
-        auto client = std::make_shared<httplib::Client>(host);
-        client->set_follow_location(true);
-        auto response = client->Get("/", http_headers);
+    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb]() {
+        auto client = httplib::Client(host);
+        client.set_follow_location(true);
+        auto response = client.Get(path, http_headers);
         this->Lua_HttpCallCallback(response, cb);
     });
 
@@ -659,10 +665,10 @@ sol::table TLuaEngine::StateThreadData::Lua_HttpPost(std::string host, std::stri
         }
     }
 
-    boost::asio::post(this->mEngine->http_pool, [this, host, http_headers, cb, params]() {
-        auto client = std::make_shared<httplib::Client>(host);
-        client->set_follow_location(true);
-        auto response = client->Post("", http_headers, params);
+    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb, params]() {
+        auto client = httplib::Client(host);
+        client.set_follow_location(true);
+        auto response = client.Post(path, http_headers, params);
         this->Lua_HttpCallCallback(response, cb);
     });
 
