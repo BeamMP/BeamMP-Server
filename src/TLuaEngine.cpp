@@ -1,7 +1,6 @@
 #include "TLuaEngine.h"
 #include "Client.h"
 #include "CustomAssert.h"
-#include "Http.h"
 #include "LuaAPI.h"
 #include "TLuaPlugin.h"
 #include "sol/object.hpp"
@@ -606,40 +605,81 @@ std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionR
     }
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host) {
-    auto table = mStateView.create_table();
-    table["host"] = host;
-
-    table.set_function("Get", [this](const sol::table& table, const std::string& path, const sol::table& headers, sol::function cb) {
-        auto host = table["host"].get<std::string>();
-
-        auto get_headers = httplib::Headers();
+httplib::Headers table_to_headers(const sol::table& headers) {
+    auto http_headers = httplib::Headers();
+    if (!headers.empty()) {
         for (const auto& pair : headers) {
             if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
-                get_headers.insert(std::pair(pair.first.as<std::string>(), pair.second.as<std::string>()));
+                http_headers.insert(std::pair(pair.first.as<std::string>(), pair.second.as<std::string>()));
             } else {
                 beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
             }
         }
+    }
 
-        boost::asio::post(this->mEngine->http_pool, [this, host = std::move(host), path = std::move(path), get_headers = std::move(get_headers), cb]() {
-            auto client = std::make_shared<httplib::Client>(host);
-            client->set_follow_location(true);
-            auto response = client->Get(path, get_headers);
-            auto args = std::vector<TLuaArgTypes>();
-            if (response) {
-                args.push_back(sol::nil);
-                args.push_back(response->status);
-                args.push_back(response->body);
-            } else {
-                auto err = response.error();
-                args.push_back(httplib::to_string(err));
-            }
-            auto res = this->EnqueueFunctionCall(cb, args);
+    return http_headers;
+}
 
-            // This doesn't seem strictly necessary, and will make threads in the http pool wait until the lua callbacks are executed
-            res->WaitUntilReady();
-        });
+void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response, sol::function cb) {
+    auto args = std::vector<TLuaArgTypes>();
+    if (response) {
+        args.push_back(sol::nil);
+        args.push_back(response->status);
+        args.push_back(response->body);
+    } else {
+        auto err = response.error();
+        args.push_back(httplib::to_string(err));
+    }
+    auto res = this->EnqueueFunctionCall(cb, args);
+
+    // This doesn't seem strictly necessary, and will make threads in the http pool wait until the lua callbacks are executed
+    res->WaitUntilReady();
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_HttpGet(std::string host, std::string path, sol::table headers, sol::function cb) {
+    auto http_headers = table_to_headers(headers);
+    boost::asio::post(this->mEngine->http_pool, [this, host, http_headers, cb]() {
+        auto client = std::make_shared<httplib::Client>(host);
+        client->set_follow_location(true);
+        auto response = client->Get("/", http_headers);
+        this->Lua_HttpCallCallback(response, cb);
+    });
+
+    return sol::table();
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_HttpPost(std::string host, std::string path, sol::table body, sol::table headers, sol::function cb) {
+    auto http_headers = table_to_headers(headers);
+    httplib::Params params;
+    for (const auto& pair : body) {
+        if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
+            params.emplace(pair.first.as<std::string>(), pair.second.as<std::string>());
+        } else {
+            beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
+        }
+    }
+
+    boost::asio::post(this->mEngine->http_pool, [this, host, http_headers, cb, params]() {
+        auto client = std::make_shared<httplib::Client>(host);
+        client->set_follow_location(true);
+        auto response = client->Post("", http_headers, params);
+        this->Lua_HttpCallCallback(response, cb);
+    });
+
+    return sol::table();
+}
+
+sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
+    auto table = mStateView.create_table();
+    table["host"] = host;
+    table["port"] = port;
+
+    table.set_function("Get", [this](sol::table table, std::string path, sol::table headers, sol::function cb) {
+        auto host = table["host"].get<std::string>();
+        auto port = table["port"].get<uint16_t>();
+        char buff[2000];
+        std::snprintf(buff, sizeof(buff), "%s:%i", host.c_str(), port);
+        return Lua_HttpGet(std::string(buff), path, headers, cb);
     });
     return table;
 }
@@ -847,9 +887,25 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     });
 
     auto HttpTable = StateView.create_named_table("Http");
-    HttpTable.set_function("CreateConnection", [this](const std::string& host) {
-        return Lua_HttpCreateConnection(host);
+    HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
+        return Lua_HttpCreateConnection(host, port);
     });
+    HttpTable.set_function("Get", sol::overload(
+        [this](std::string url, std::string path, sol::function cb) {
+            return Lua_HttpGet(url, path, this->mStateView.create_table(), cb);
+        },
+        [this](std::string url, std::string path, sol::table headers, sol::function cb) {
+            return Lua_HttpGet(url, path, headers, cb);
+        }
+    ));
+    HttpTable.set_function("Post", sol::overload(
+        [this](std::string url, std::string path, sol::table body, sol::function cb) {
+            return Lua_HttpPost(url, path, body, this->mStateView.create_table(), cb);
+        },
+        [this](std::string url, std::string path, sol::table body, sol::table headers,  sol::function cb) {
+            return Lua_HttpPost(url, path, body, headers, cb);
+        }
+    ));
 
     MPTable.create_named("Settings",
         "Debug", 0,
@@ -1028,6 +1084,10 @@ void TLuaEngine::StateThreadData::operator()() {
                                 Table[k] = v;
                             }
                             LuaArgs.push_back(sol::make_object(StateView, Table));
+                            break;
+                        }
+                        case TLuaArgTypes_Nil: {
+                            LuaArgs.push_back(sol::lua_nil);
                             break;
                         }
                         default:

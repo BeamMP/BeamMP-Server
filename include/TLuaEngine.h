@@ -2,6 +2,7 @@
 
 #include "TNetwork.h"
 #include "TServer.h"
+#include "Http.h"
 #include <any>
 #include <condition_variable>
 #include <filesystem>
@@ -31,6 +32,7 @@ static constexpr size_t TLuaArgTypes_Int = 1;
 static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
 static constexpr size_t TLuaArgTypes_Bool = 3;
 static constexpr size_t TLuaArgTypes_StringStringMap = 4;
+static constexpr size_t TLuaArgTypes_Nil = 5;
 
 class TLuaPlugin;
 
@@ -201,7 +203,6 @@ private:
     void InitializePlugin(const fs::path& Folder, const TLuaPluginConfig& Config);
     void FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config);
     size_t CalculateMemoryUsage();
-    boost::asio::thread_pool http_pool;
 
     class StateThreadData : IThreaded {
     public:
@@ -232,7 +233,10 @@ private:
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
         std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
-        sol::table Lua_HttpCreateConnection(const std::string& host);
+        sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
+        sol::table Lua_HttpGet(std::string url, std::string path, sol::table headers, sol::function cb);
+        sol::table Lua_HttpPost(std::string url, std::string path, sol::table body, sol::table headers, sol::function cb);
+        void Lua_HttpCallCallback(httplib::Result& response, sol::function cb);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
         sol::table Lua_FS_ListFiles(const std::string& Path);
@@ -278,6 +282,7 @@ private:
     std::list<std::shared_ptr<TLuaResult>> mResultsToCheck;
     std::mutex mResultsToCheckMutex;
     std::condition_variable mResultsToCheckCond;
+    boost::asio::thread_pool http_pool;
 };
 
 // std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);
