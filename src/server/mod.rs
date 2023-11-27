@@ -964,9 +964,10 @@ impl Server {
         let code = packet.data[1] as char;
         match code {
             's' => {
+                let client = &mut self.clients[client_idx];
                 let mut allowed = true;
                 if let Some(max_cars) = self.config.general.max_cars {
-                    if self.clients[client_idx].cars.len() >= max_cars as usize { allowed = false; }
+                    if client.cars.len() >= max_cars as usize { allowed = false; }
                 }
                 // trace!("Packet string: `{}`", packet.data_as_string());
                 let split_data = packet
@@ -974,55 +975,41 @@ impl Server {
                     .splitn(3, ':')
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
-                let mut car_json_str = (&split_data.get(2).ok_or(std::fmt::Error)?).to_string();
-                let car_id = self.clients[client_idx].register_car(Car::new(car_json_str.clone()));
-                let client_id = self.clients[client_idx].get_id();
-                if let Ok(mut car_json) = serde_json::from_str::<serde_json::Value>(&car_json_str) {
-                    if let Some(map) = car_json.as_object_mut() {
-                        if allowed {
-                            map.insert("vid".to_string(), serde_json::Value::Number(serde_json::value::Number::from_f64(car_id as f64).unwrap()));
-                            car_json_str = serde_json::to_string(&car_json).unwrap();
-                            if let Some(car) = self.clients[client_idx].get_car_mut(car_id) {
-                                car.car_json = car_json_str.clone();
-                            }
-                            let packet_data = format!(
-                                "Os:{}:{}:{}-{}:{}",
-                                self.clients[client_idx].get_roles(),
-                                self.clients[client_idx].get_name(),
-                                client_id,
-                                car_id,
-                                car_json_str
-                            );
-                            let response = RawPacket::from_str(&packet_data);
-                            self.broadcast(Packet::Raw(response), None).await;
-                            info!("Spawned car for client #{}!", client_id);
-                        }
-                    } else {
-                        allowed = false;
-                    }
-                } else {
-                    allowed = false;
-                }
-
-                if !allowed {
+                let car_json_str = &split_data.get(2).ok_or(std::fmt::Error)?;
+                // let car_json: serde_json::Value = serde_json::from_str(&car_json_str)?;
+                let car_id = client.register_car(Car::new(car_json_str.to_string()));
+                let client_id = client.get_id();
+                if allowed {
                     let packet_data = format!(
                         "Os:{}:{}:{}-{}:{}",
-                        self.clients[client_idx].get_roles(),
-                        self.clients[client_idx].get_name(),
+                        client.get_roles(),
+                        client.get_name(),
                         client_id,
                         car_id,
                         car_json_str
                     );
                     let response = RawPacket::from_str(&packet_data);
-                    self.clients[client_idx].write_packet(Packet::Raw(response)).await;
+                    self.broadcast(Packet::Raw(response), None).await;
+                    info!("Spawned car for client #{}!", client_id);
+                } else {
+                    let packet_data = format!(
+                        "Os:{}:{}:{}-{}:{}",
+                        client.get_roles(),
+                        client.get_name(),
+                        client_id,
+                        car_id,
+                        car_json_str
+                    );
+                    let response = RawPacket::from_str(&packet_data);
+                    client.write_packet(Packet::Raw(response)).await;
                     let packet_data = format!(
                         "Od:{}-{}",
                         client_id,
                         car_id,
                     );
                     let response = RawPacket::from_str(&packet_data);
-                    self.clients[client_idx].write_packet(Packet::Raw(response)).await;
-                    self.clients[client_idx].unregister_car(car_id);
+                    client.write_packet(Packet::Raw(response)).await;
+                    client.unregister_car(car_id);
                     info!("Blocked spawn for client #{}!", client_id);
                 }
             }
