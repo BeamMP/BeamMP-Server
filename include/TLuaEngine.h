@@ -236,6 +236,7 @@ private:
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
         void Lua_HttpGet(const std::string& host, const std::string& path, const sol::table& headers, const sol::function& cb);
         void Lua_HttpPost(const std::string& host, const std::string& path, const sol::table& body, const sol::table& headers, const sol::function& cb);
+        void Lua_HttpPost(const std::string& host, const std::string& path, const std::string& body, const std::string& content_type, const sol::table& headers, const sol::function& cb);
         void Lua_HttpCallCallback(httplib::Result& response, std::shared_ptr<sol::reference> cb);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);

@@ -628,7 +628,7 @@ void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response
         args.push_back(response->body);
 
         auto headers = std::unordered_map<std::string, std::string>();
-        for (auto &pair : response->headers) {
+        for (auto& pair : response->headers) {
             headers.emplace(pair.first, pair.second);
         }
         args.push_back(headers);
@@ -636,16 +636,17 @@ void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response
         auto err = response.error();
         args.push_back(httplib::to_string(err));
     }
+    // AS FAR AS I CAN TELL this shared_ptr MUST be dropped immediately, because this function runs in the context of the http thread pool.
+    // If we hang on to this pointer by using res.WaitUntilReady() this thread will be the last one to drop the pointer and will corrupt
+    // the lua stack by destructing the sol::object owned by TLuaResult.
+    // There is still likely a small chance of that, ideally EnqueueFunctionCall wouldn't return any references to sol objects.
     auto res = this->EnqueueFunctionCall(cb_ref, args);
-
-    // This doesn't seem strictly necessary, and will make threads in the http pool wait until the lua callbacks are executed
-    res->WaitUntilReady();
 }
 
 void TLuaEngine::StateThreadData::Lua_HttpGet(const std::string& host, const std::string& path, const sol::table& headers, const sol::function& cb) {
     auto http_headers = table_to_headers(headers);
     // This method and Lua_HttpPost create a sol::reference to save the callback function in the lua registry, and then
-    // wrap it in a shared_ptr because passing any sol object by-value involves accessing the lua state. It is NOT safe 
+    // wrap it in a shared_ptr because passing any sol object by-value involves accessing the lua state. It is NOT safe
     // to derefence this pointer inside the http thread pool
     auto cb_ref = std::make_shared<sol::reference>(cb);
     boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref]() {
@@ -666,11 +667,24 @@ void TLuaEngine::StateThreadData::Lua_HttpPost(const std::string& host, const st
             beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
         }
     }
+
     auto cb_ref = std::make_shared<sol::reference>(cb);
     boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref, params]() {
         auto client = httplib::Client(host);
         client.set_follow_location(true);
         auto response = client.Post(path, http_headers, params);
+        this->Lua_HttpCallCallback(response, cb_ref);
+    });
+}
+
+void TLuaEngine::StateThreadData::Lua_HttpPost(const std::string& host, const std::string& path, const std::string& body, const std::string& content_type, const sol::table& headers, const sol::function& cb) {
+    auto http_headers = table_to_headers(headers);
+
+    auto cb_ref = std::make_shared<sol::reference>(cb);
+    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref, body = std::move(body), content_type = std::move(content_type)]() {
+        auto client = httplib::Client(host);
+        client.set_follow_location(true);
+        auto response = client.Post(path, http_headers, body.c_str(), body.length(), content_type);
         this->Lua_HttpCallCallback(response, cb_ref);
     });
 }
@@ -905,11 +919,17 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         }
     ));
     HttpTable.set_function("Post", sol::overload(
-        [this](const std::string& url, const std::string& path, const sol::table& body, const sol::function&  cb) {
+        [this](const std::string& url, const std::string& path, const sol::table& body, const sol::function& cb) {
             return Lua_HttpPost(url, path, body, this->mStateView.create_table(), cb);
         },
-        [this](const std::string& url, const std::string& path, const sol::table& body, const sol::table& headers,  const sol::function&  cb) {
+        [this](const std::string& url, const std::string& path, const sol::table& body, const sol::table& headers, const sol::function& cb) {
             return Lua_HttpPost(url, path, body, headers, cb);
+        },
+        [this](const std::string& url, const std::string& path, const std::string& body, const std::string& content_type, const sol::function& cb) {
+            return Lua_HttpPost(url, path, body, content_type, this->mStateView.create_table(), cb);
+        },
+        [this](const std::string& url, const std::string& path, const std::string& body, const std::string& content_type, const sol::table& headers, const sol::function& cb) {
+            return Lua_HttpPost(url, path, body, content_type, headers, cb);
         }
     ));
 
