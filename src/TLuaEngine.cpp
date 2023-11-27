@@ -620,7 +620,7 @@ httplib::Headers table_to_headers(const sol::table& headers) {
     return http_headers;
 }
 
-void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response, sol::function cb) {
+void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response, std::shared_ptr<sol::reference> cb_ref) {
     auto args = std::vector<TLuaArgTypes>();
     if (response) {
         args.push_back(sol::nil);
@@ -636,25 +636,27 @@ void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response
         auto err = response.error();
         args.push_back(httplib::to_string(err));
     }
-    auto res = this->EnqueueFunctionCall(cb, args);
+    auto res = this->EnqueueFunctionCall(cb_ref, args);
 
     // This doesn't seem strictly necessary, and will make threads in the http pool wait until the lua callbacks are executed
     res->WaitUntilReady();
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_HttpGet(std::string host, std::string path, sol::table headers, sol::function cb) {
+void TLuaEngine::StateThreadData::Lua_HttpGet(const std::string& host, const std::string& path, const sol::table& headers, const sol::function& cb) {
     auto http_headers = table_to_headers(headers);
-    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb]() {
+    // This method and Lua_HttpPost create a sol::reference to save the callback function in the lua registry, and then
+    // wrap it in a shared_ptr because passing any sol object by-value involves accessing the lua state. It is NOT safe 
+    // to derefence this pointer inside the http thread pool
+    auto cb_ref = std::make_shared<sol::reference>(cb);
+    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref]() {
         auto client = httplib::Client(host);
         client.set_follow_location(true);
         auto response = client.Get(path, http_headers);
-        this->Lua_HttpCallCallback(response, cb);
+        this->Lua_HttpCallCallback(response, cb_ref);
     });
-
-    return sol::table();
 }
 
-sol::table TLuaEngine::StateThreadData::Lua_HttpPost(std::string host, std::string path, sol::table body, sol::table headers, sol::function cb) {
+void TLuaEngine::StateThreadData::Lua_HttpPost(const std::string& host, const std::string& path, const sol::table& body, const sol::table& headers, const sol::function& cb) {
     auto http_headers = table_to_headers(headers);
     httplib::Params params;
     for (const auto& pair : body) {
@@ -664,15 +666,13 @@ sol::table TLuaEngine::StateThreadData::Lua_HttpPost(std::string host, std::stri
             beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
         }
     }
-
-    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb, params]() {
+    auto cb_ref = std::make_shared<sol::reference>(cb);
+    boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref, params]() {
         auto client = httplib::Client(host);
         client.set_follow_location(true);
         auto response = client.Post(path, http_headers, params);
-        this->Lua_HttpCallCallback(response, cb);
+        this->Lua_HttpCallCallback(response, cb_ref);
     });
-
-    return sol::table();
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
@@ -897,18 +897,18 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         return Lua_HttpCreateConnection(host, port);
     });
     HttpTable.set_function("Get", sol::overload(
-        [this](std::string url, std::string path, sol::function cb) {
+        [this](const std::string& url, const std::string& path, const sol::function& cb) {
             return Lua_HttpGet(url, path, this->mStateView.create_table(), cb);
         },
-        [this](std::string url, std::string path, sol::table headers, sol::function cb) {
+        [this](const std::string& url, const std::string& path, const sol::table& headers, const sol::function& cb) {
             return Lua_HttpGet(url, path, headers, cb);
         }
     ));
     HttpTable.set_function("Post", sol::overload(
-        [this](std::string url, std::string path, sol::table body, sol::function cb) {
+        [this](const std::string& url, const std::string& path, const sol::table& body, const sol::function&  cb) {
             return Lua_HttpPost(url, path, body, this->mStateView.create_table(), cb);
         },
-        [this](std::string url, std::string path, sol::table body, sol::table headers,  sol::function cb) {
+        [this](const std::string& url, const std::string& path, const sol::table& body, const sol::table& headers,  const sol::function&  cb) {
             return Lua_HttpPost(url, path, body, headers, cb);
         }
     ));
@@ -956,6 +956,8 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLu
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy) {
     // TODO: Document all this
+    // mStateFunctionQueue needs to be locked here. Calls modifying mStateFunctionQueue from other threads can invalidate this iterator mid-execution
+    std::unique_lock Lock(mStateFunctionQueueMutex);
     decltype(mStateFunctionQueue)::iterator Iter = mStateFunctionQueue.end();
     if (Strategy == CallStrategy::BestEffort) {
         Iter = std::find_if(mStateFunctionQueue.begin(), mStateFunctionQueue.end(),
@@ -967,8 +969,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFrom
         auto Result = std::make_shared<TLuaResult>();
         Result->StateId = mStateId;
         Result->Function = FunctionName;
-        std::unique_lock Lock(mStateFunctionQueueMutex);
-        mStateFunctionQueue.push_back({ FunctionName, Result, Args, EventName, sol::nil });
+        mStateFunctionQueue.push_back({ FunctionName, Result, Args, EventName, NULL });
         mStateFunctionQueueCond.notify_all();
         return Result;
     } else {
@@ -981,17 +982,17 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(con
     Result->StateId = mStateId;
     Result->Function = FunctionName;
     std::unique_lock Lock(mStateFunctionQueueMutex);
-    mStateFunctionQueue.push_back({ FunctionName, Result, Args, "", sol::nil});
+    mStateFunctionQueue.push_back({ FunctionName, Result, Args, "", NULL });
     mStateFunctionQueueCond.notify_all();
     return Result;
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(sol::function function, const std::vector<TLuaArgTypes>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(std::shared_ptr<sol::reference> FunctionRef, const std::vector<TLuaArgTypes>& Args) {
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
     Result->Function = "anonymous";
     std::unique_lock Lock(mStateFunctionQueueMutex);
-    mStateFunctionQueue.push_back({ "anonymous", Result, Args, "", function});
+    mStateFunctionQueue.push_back({ "anonymous", Result, Args, "", FunctionRef });
     mStateFunctionQueueCond.notify_all();
     return Result;
 }
@@ -1063,8 +1064,9 @@ void TLuaEngine::StateThreadData::operator()() {
                 // TODO: Use TheQueuedFunction.EventName for errors, warnings, etc
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
-                auto Fn =  TheQueuedFunction.Function != sol::nil ? TheQueuedFunction.Function : StateView[FnName];
-                if (Fn.valid() && Fn.get_type() == sol::type::function) {
+                auto FnRef = TheQueuedFunction.FunctionRef ? *TheQueuedFunction.FunctionRef : StateView[FnName];
+                if (FnRef.valid() && FnRef.get_type() == sol::type::function) {
+                    sol::function Fn = FnRef;
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
                         if (Arg.valueless_by_exception()) {
