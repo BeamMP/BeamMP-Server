@@ -82,7 +82,7 @@ public:
         std::shared_ptr<TLuaResult> Result;
         std::vector<TLuaArgTypes> Args;
         std::string EventName; // optional, may be empty
-        sol::function Function;
+        std::shared_ptr<sol::reference> FunctionRef;
     };
 
     TLuaEngine();
@@ -211,7 +211,7 @@ private:
         virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(sol::function Function, const std::vector<TLuaArgTypes>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(std::shared_ptr<sol::reference> FunctionRef, const std::vector<TLuaArgTypes>& Args);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
@@ -234,9 +234,9 @@ private:
         sol::table Lua_GetPlayerVehicles(int ID);
         std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
-        sol::table Lua_HttpGet(std::string url, std::string path, sol::table headers, sol::function cb);
-        sol::table Lua_HttpPost(std::string url, std::string path, sol::table body, sol::table headers, sol::function cb);
-        void Lua_HttpCallCallback(httplib::Result& response, sol::function cb);
+        void Lua_HttpGet(const std::string& host, const std::string& path, const sol::table& headers, const sol::function& cb);
+        void Lua_HttpPost(const std::string& host, const std::string& path, const sol::table& body, const sol::table& headers, const sol::function& cb);
+        void Lua_HttpCallCallback(httplib::Result& response, std::shared_ptr<sol::reference> cb);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
         sol::table Lua_FS_ListFiles(const std::string& Path);
