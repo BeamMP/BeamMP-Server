@@ -151,7 +151,12 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.message());
             }
+#ifdef BEAMMP_WINDOWS
             const int timeout = 120000; //timeout of 120seconds
+#else
+            struct timeval timeout = {};
+            timeout.tv_sec = 120;
+#endif
             ::setsockopt(ClientSocket.native_handle(), SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof timeout);
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
