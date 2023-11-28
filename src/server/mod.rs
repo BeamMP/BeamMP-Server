@@ -136,6 +136,7 @@ pub struct Server {
     connect_runtime_handle: JoinHandle<()>,
 
     chat_queue: Vec<(u8, String, String, Option<oneshot::Receiver<Argument>>, usize)>,
+    veh_spawn_queue: Vec<(RawPacket, u8, u8, String, Vec<oneshot::Receiver<Argument>>, Vec<Argument>)>,
 
     config: Arc<Config>,
 
@@ -307,8 +308,8 @@ impl Server {
         debug!("Client acception runtime started!");
 
         Ok(Self {
-            tcp_listener: tcp_listener,
-            udp_socket: udp_socket,
+            tcp_listener,
+            udp_socket,
 
             clients_incoming_rx,
             clients_queue: Vec::new(),
@@ -318,6 +319,7 @@ impl Server {
             connect_runtime_handle: connect_runtime_handle,
 
             chat_queue: Vec::new(),
+            veh_spawn_queue: Vec::new(),
 
             config: config,
 
@@ -455,8 +457,7 @@ impl Server {
         Ok(())
     }
 
-    // TODO: I don't think this can return an error lol
-    async fn process_chat_messages(&mut self) -> anyhow::Result<()> {
+    async fn process_chat_messages(&mut self) {
         let mut new_queue = Vec::new();
         let mut to_send = Vec::new();
         for (pid, pname, mut message, resp, mut next_plugin_id) in self.chat_queue.drain(..) {
@@ -503,8 +504,70 @@ impl Server {
         for packet in to_send {
             self.broadcast(Packet::Raw(packet), None).await;
         }
+    }
 
-        Ok(())
+    async fn process_veh_spawns(&mut self) {
+        let mut new_queue = Vec::new();
+        let mut to_send = Vec::new();
+
+        for (packet, pid, vid, car_json, mut receivers, mut results) in self.veh_spawn_queue.drain(..) {
+            let mut new_receivers = Vec::new();
+            for mut receiver in receivers.drain(..) {
+                match receiver.try_recv() {
+                    Ok(arg) => results.push(arg),
+                    Err(oneshot::error::TryRecvError::Empty) => new_receivers.push(receiver),
+                    Err(_) => error!("Failed to receive response from a plugin!"),
+                }
+            }
+
+            if new_receivers.len() > 0 {
+                new_queue.push((packet, pid, vid, car_json, new_receivers, results));
+            } else {
+                let mut allowed = true;
+                for arg in results {
+                    match arg {
+                        Argument::Integer(i) => if i == 1 { allowed = false; },
+                        Argument::Number(f) => if f == 1f32 { allowed = false; },
+                        Argument::Boolean(b) => if b == true { allowed = false; },
+                        _ => {},
+                    }
+                }
+                if allowed {
+                    to_send.push((packet, pid));
+                } else {
+                    if let Some(client_idx) = self.clients.iter().enumerate().find(|(i, client)| client.id == pid).map(|(i, _)| i) {
+                        let packet_data = format!(
+                            "Os:{}:{}:{}-{}:{}",
+                            self.clients[client_idx].get_roles(),
+                            self.clients[client_idx].get_name(),
+                            pid,
+                            vid,
+                            car_json.clone(),
+                        );
+                        let response = RawPacket::from_str(&packet_data);
+                        self.clients[client_idx].write_packet(Packet::Raw(response)).await;
+                        let packet_data = format!(
+                            "Od:{}-{}",
+                            pid,
+                            vid,
+                        );
+                        let response = RawPacket::from_str(&packet_data);
+                        self.clients[client_idx].write_packet(Packet::Raw(response)).await;
+                        self.clients[client_idx].unregister_car(vid);
+                        info!("Blocked spawn for client #{}!", pid);
+                    } else {
+                        error!("Could not find client with pid {pid}!");
+                    }
+                }
+            }
+        }
+
+        for (packet, pid) in to_send {
+            self.broadcast(Packet::Raw(packet), None).await;
+            info!("Spawned car for client #{}!", pid);
+        }
+
+        self.veh_spawn_queue = new_queue;
     }
 
     async fn process_lua_events(&mut self) -> anyhow::Result<()> {
@@ -540,6 +603,15 @@ impl Server {
                         }
                     },
 
+                    ServerBoundPluginEvent::RequestPlayerVehicles((pid, responder)) => {
+                        if let Some(client) = self.clients.iter().find(|client| client.id == pid) {
+                            let vehicles = client.cars.iter().map(|(id, car)| (*id, car.car_json.clone())).collect();
+                            let _ = responder.send(PluginBoundPluginEvent::PlayerVehicles(vehicles));
+                        } else {
+                            let _ = responder.send(PluginBoundPluginEvent::None);
+                        }
+                    },
+
                     ServerBoundPluginEvent::SendChatMessage((pid, msg)) => {
                         let pid = if pid >= 0 { Some(pid as u8) } else { None };
                         self.send_chat_message(&msg, pid).await;
@@ -555,7 +627,8 @@ impl Server {
 
     pub async fn process(&mut self) -> anyhow::Result<()> {
         self.process_authenticated_clients().await?;
-        self.process_chat_messages().await?;
+        self.process_chat_messages().await;
+        self.process_veh_spawns().await;
         self.process_lua_events().await?;
 
         // I'm sorry for this code :(
@@ -989,8 +1062,25 @@ impl Server {
                         car_json_str
                     );
                     let response = RawPacket::from_str(&packet_data);
-                    self.broadcast(Packet::Raw(response), None).await;
-                    info!("Spawned car for client #{}!", client_id);
+                    // self.broadcast(Packet::Raw(response), None).await;
+                    // info!("Spawned car for client #{}!", client_id);
+                    let mut receivers = Vec::new();
+                    for plugin in &self.plugins {
+                        let (tx, rx) = oneshot::channel();
+                        plugin.send_event(PluginBoundPluginEvent::CallEventHandler((
+                            ScriptEvent::OnVehicleSpawn { pid: client_id, vid: car_id, car_data: car_json_str.to_string() },
+                            Some(tx),
+                        ))).await;
+                        receivers.push(rx);
+                    }
+                    self.veh_spawn_queue.push((
+                        response,
+                        client_id,
+                        car_id,
+                        car_json_str.to_string(),
+                        receivers,
+                        Vec::new(),
+                    ));
                 } else {
                     let packet_data = format!(
                         "Os:{}:{}:{}-{}:{}",

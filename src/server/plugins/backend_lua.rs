@@ -81,7 +81,6 @@ impl UserData for Context {
                 error!("Failed to send packet: {:?}", e);
             }
             let message = rx.blocking_recv();
-            trace!("received player info");
             if let Ok(message) = message {
                 if let PluginBoundPluginEvent::Players(players) = message {
                     let table = lua.create_table()?;
@@ -126,7 +125,6 @@ impl UserData for Context {
                 error!("Failed to send packet: {:?}", e);
             }
             let message = rx.blocking_recv();
-            trace!("received player info");
             if let Ok(message) = message {
                 if let PluginBoundPluginEvent::Players(players) = message {
                     let mut name = None;
@@ -137,6 +135,28 @@ impl UserData for Context {
                         }
                     }
                     Ok(name)
+                } else {
+                    unreachable!() // This really should never be reachable
+                }
+            } else {
+                todo!("Receiving a response from the server failed! How?")
+            }
+        });
+
+        methods.add_function("GetPlayerVehicles", |lua, (id,): (u8,)| {
+            let me: Context = lua.globals().get("MP")?;
+            let (tx, rx) = oneshot::channel();
+            if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::RequestPlayerVehicles((id, tx))) {
+                error!("Failed to send packet: {:?}", e);
+            }
+            let message = rx.blocking_recv();
+            if let Ok(message) = message {
+                if let PluginBoundPluginEvent::PlayerVehicles(vehicles) = message {
+                    let table = lua.create_table()?;
+                    for (vid, veh_json) in vehicles {
+                        table.set(vid, veh_json)?;
+                    }
+                    Ok(table)
                 } else {
                     unreachable!() // This really should never be reachable
                 }
@@ -200,6 +220,10 @@ impl Backend for BackendLua {
             ScriptEvent::OnPlayerJoining { pid } => ("onPlayerJoining", vec![Argument::Integer(pid as i64)]),
 
             ScriptEvent::OnPlayerDisconnect { pid, name } => ("onPlayerDisconnect", vec![Argument::Integer(pid as i64), Argument::String(name)]),
+
+            ScriptEvent::OnVehicleSpawn { pid, vid, car_data } => ("onVehicleSpawn", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64), Argument::String(car_data)]),
+            ScriptEvent::OnVehicleEdited { pid, vid, car_data } => ("onVehicleEdited", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64), Argument::String(car_data)]),
+            ScriptEvent::OnVehicleDeleted { pid, vid } => ("onVehicleDeleted", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64)]),
 
             ScriptEvent::OnChatMessage { pid, name, message } => ("onChatMessage", vec![Argument::Integer(pid as i64), Argument::String(name), Argument::String(message)]),
         };

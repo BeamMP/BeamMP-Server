@@ -59,6 +59,10 @@ pub enum ScriptEvent {
 
     OnPlayerDisconnect { pid: u8, name: String },
 
+    OnVehicleSpawn { pid: u8, vid: u8, car_data: String },
+    OnVehicleEdited { pid: u8, vid: u8, car_data: String },
+    OnVehicleDeleted { pid: u8, vid: u8 },
+
     OnChatMessage { pid: u8, name: String, message: String },
 }
 
@@ -71,8 +75,12 @@ pub enum PluginBoundPluginEvent {
     PlayerCount(usize),
     Players(HashMap<u8, String>),
     PlayerIdentifiers(PlayerIdentifiers),
+
+    PlayerVehicles(HashMap<u8, String>),
 }
 
+// TODO: Perhaps it would be nice to ensure each sender can only sned specifically what it needs to.
+//       Purely to ensure type safety and slightly cleaner code on the backend implementation side.
 #[derive(Debug)]
 pub enum ServerBoundPluginEvent {
     PluginLoaded,
@@ -80,6 +88,8 @@ pub enum ServerBoundPluginEvent {
     RequestPlayerCount(oneshot::Sender<PluginBoundPluginEvent>),
     RequestPlayers(oneshot::Sender<PluginBoundPluginEvent>),
     RequestPlayerIdentifiers((u8, oneshot::Sender<PluginBoundPluginEvent>)),
+
+    RequestPlayerVehicles((u8, oneshot::Sender<PluginBoundPluginEvent>)),
 
     SendChatMessage((isize, String)),
 }
