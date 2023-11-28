@@ -118,6 +118,33 @@ impl UserData for Context {
             }
         });
 
+        methods.add_function("GetPlayerName", |lua, (id,): (u8,)| {
+            let me: Context = lua.globals().get("MP")?;
+            // We can simply request all player names and pick the one we need
+            let (tx, rx) = oneshot::channel();
+            if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::RequestPlayers(tx)) {
+                error!("Failed to send packet: {:?}", e);
+            }
+            let message = rx.blocking_recv();
+            trace!("received player info");
+            if let Ok(message) = message {
+                if let PluginBoundPluginEvent::Players(players) = message {
+                    let mut name = None;
+                    'search: for (pid, pname) in players {
+                        if pid == id {
+                            name = Some(pname);
+                            break 'search;
+                        }
+                    }
+                    Ok(name)
+                } else {
+                    unreachable!() // This really should never be reachable
+                }
+            } else {
+                todo!("Receiving a response from the server failed! How?")
+            }
+        });
+
         methods.add_function("SendChatMessage", |lua, (id, msg): (isize, String)| {
             let me: Context = lua.globals().get("MP")?;
             if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::SendChatMessage((id, msg))) {
