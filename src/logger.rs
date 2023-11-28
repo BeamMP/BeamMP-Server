@@ -8,8 +8,14 @@ lazy_static! {
 struct BufferedLogger;
 
 impl log::Log for BufferedLogger {
-    fn enabled(&self, _metadata: &Metadata) -> bool {
-        true
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        let mut enabled = true;
+        if metadata.level() != Level::Error {
+            if metadata.target().starts_with("rustls") {
+                enabled = false;
+            }
+        }
+        enabled
     }
 
     fn log(&self, record: &Record) {
