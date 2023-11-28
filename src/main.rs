@@ -39,7 +39,10 @@ async fn main() {
     if !args.disable_tui {
         logger::init(level_filter).expect("Failed to enable logger!");
     } else {
-        pretty_env_logger::formatted_timed_builder().filter_level(level_filter).init();
+        pretty_env_logger::formatted_timed_builder()
+            .filter_level(level_filter)
+            .filter_module("rustls", log::LevelFilter::Error)
+            .init();
     }
 
     let client_resources = user_config.general
