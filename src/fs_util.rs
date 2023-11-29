@@ -12,7 +12,7 @@ pub fn ensure_path_exists(path: &PathBuf) -> anyhow::Result<()> {
 /// Joins a parent folder and a sub-path, resolving the subpath beforehand to ensure that
 /// the resulting path is still within the parent folder, regardless of ".." in the sub-path.
 pub fn join_path_secure(parent: &Path, sub: &Path) -> anyhow::Result<PathBuf> {
-    Ok(parent.join(sub.canonicalize()?.as_path()))
+    Ok(parent.join(sub.file_name().unwrap_or("".as_ref())))
 }
 
 /// Converts a PathBuf into a String in a lossy way. This is generally the way we want to do it
