@@ -229,7 +229,7 @@ impl Client {
                         mod_name.remove(0); // Remove f
                         debug!("Client is requesting file {}", mod_name);
 
-                        let client_resources = config.general.get_server_resource_folder()?;
+                        let client_resources = config.general.get_client_resource_folder()?;
                         let mod_path = fs_util::join_path_secure(Path::new(&client_resources), Path::new(&mod_name))?;
 
                         if !mod_path.exists() || !mod_path.is_file() {
