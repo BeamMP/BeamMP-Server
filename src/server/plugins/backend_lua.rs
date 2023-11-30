@@ -174,10 +174,13 @@ impl UserData for Context {
             let message = rx.blocking_recv();
             if let Ok(message) = message {
                 if let PluginBoundPluginEvent::PositionRaw(pos_raw) = message {
+                    let pos_table = lua.create_table()?;
+                    pos_table.set("x", pos_raw.pos[0])?;
+                    pos_table.set("y", pos_raw.pos[1])?;
+                    pos_table.set("z", pos_raw.pos[2])?;
+
                     let table = lua.create_table()?;
-                    // for (vid, veh_json) in vehicles {
-                    //     table.set(vid, veh_json)?;
-                    // }
+                    table.set("pos", pos_table)?;
                     Ok(table)
                 } else {
                     unreachable!() // This really should never be reachable

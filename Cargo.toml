@@ -14,7 +14,7 @@ argh = "0.1.12"
 lazy_static = "1"
 
 anyhow = "1.0.66"
-nalgebra = "0.31"
+glam = "0.24.2"
 num_enum = "0.5.7"
 
 async-trait = "0.1.58"

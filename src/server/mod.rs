@@ -1,16 +1,14 @@
 use std::net::SocketAddr;
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use std::sync::Arc;
 use std::time::Instant;
 use std::collections::HashMap;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, UdpSocket};
 use tokio::task::{JoinHandle, JoinSet};
-use tokio::sync::{Mutex, mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot};
 
-use num_enum::IntoPrimitive;
-
-use nalgebra::*;
+use glam::*;
 
 mod backend;
 mod car;
@@ -27,7 +25,6 @@ pub use plugins::*;
 pub use http::*;
 
 pub use crate::config::Config;
-use crate::config::GeneralSettings;
 
 fn load_plugins(server_resource_folder: String) -> Vec<Plugin> {
     let mut plugins = Vec::new();
@@ -686,11 +683,11 @@ impl Server {
                     ServerBoundPluginEvent::RequestPositionRaw((pid, vid, responder)) => {
                         if let Some(client) = self.clients.iter().find(|client| client.id == pid) {
                             if let Some((_id, vehicle)) = client.cars.iter().find(|(id, _car)| *id == vid) {
-                                // let pos_rot = PositionRaw {
-                                //     pos: vehicle.pos().
-                                // };
-                                todo!()
-                                // let _ = responder.send(PluginBoundPluginEvent::PositionRaw(pos_rot));
+                                let pos_rot = PositionRaw {
+                                    pos: vehicle.position().as_vec3().to_array(),
+                                    rot: vehicle.rotation().as_f32().to_array(),
+                                };
+                                let _ = responder.send(PluginBoundPluginEvent::PositionRaw(pos_rot));
                             } else {
                                 let _ = responder.send(PluginBoundPluginEvent::None);
                             }
@@ -972,11 +969,11 @@ impl Server {
                                         .get_car_mut(car_id)
                                         .ok_or(ServerError::CarDoesntExist)?;
                                     car.pos = pos_data.pos.into();
-                                    car.rot = Quaternion::new(
-                                        pos_data.rot[3],
+                                    car.rot = DQuat::from_xyzw(
                                         pos_data.rot[0],
                                         pos_data.rot[1],
                                         pos_data.rot[2],
+                                        pos_data.rot[3],
                                     );
                                     car.vel = pos_data.vel.into();
                                     car.rvel = pos_data.rvel.into();
