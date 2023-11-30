@@ -137,6 +137,7 @@ pub struct Server {
 
     chat_queue: Vec<(u8, String, String, Option<oneshot::Receiver<Argument>>, usize)>,
     veh_spawn_queue: Vec<(RawPacket, u8, u8, String, Vec<oneshot::Receiver<Argument>>, Vec<Argument>)>,
+    veh_edit_queue: Vec<(RawPacket, u8, u8, String, Vec<oneshot::Receiver<Argument>>, Vec<Argument>)>,
 
     config: Arc<Config>,
 
@@ -320,6 +321,7 @@ impl Server {
 
             chat_queue: Vec::new(),
             veh_spawn_queue: Vec::new(),
+            veh_edit_queue: Vec::new(),
 
             config: config,
 
@@ -570,6 +572,75 @@ impl Server {
         self.veh_spawn_queue = new_queue;
     }
 
+    // TODO: We have all the previous vehicle data, look into just reverting the car or something
+    async fn process_veh_edits(&mut self) {
+        let mut new_queue = Vec::new();
+        let mut to_send = Vec::new();
+
+        for (packet, pid, vid, car_json, mut receivers, mut results) in self.veh_edit_queue.drain(..) {
+            let mut new_receivers = Vec::new();
+            for mut receiver in receivers.drain(..) {
+                match receiver.try_recv() {
+                    Ok(arg) => results.push(arg),
+                    Err(oneshot::error::TryRecvError::Empty) => new_receivers.push(receiver),
+                    Err(_) => error!("Failed to receive response from a plugin!"),
+                }
+            }
+
+            if new_receivers.len() > 0 {
+                new_queue.push((packet, pid, vid, car_json, new_receivers, results));
+            } else {
+                let mut allowed = true;
+                for arg in results {
+                    match arg {
+                        Argument::Integer(i) => if i == 1 { allowed = false; },
+                        Argument::Number(f) => if f == 1f32 { allowed = false; },
+                        Argument::Boolean(b) => if b == true { allowed = false; },
+                        _ => {},
+                    }
+                }
+                if allowed {
+                    to_send.push((packet, pid, vid, car_json));
+                } else {
+                    if let Some(client_idx) = self.clients.iter().enumerate().find(|(i, client)| client.id == pid).map(|(i, _)| i) {
+                        let packet_data = format!(
+                            "Od:{}-{}",
+                            pid,
+                            vid,
+                        );
+                        let response = RawPacket::from_str(&packet_data);
+                        self.clients[client_idx].write_packet(Packet::Raw(response)).await;
+                        self.clients[client_idx].unregister_car(vid);
+                        info!("Blocked edit for client #{}!", pid);
+                    } else {
+                        error!("Could not find client with pid {pid}!");
+                    }
+                }
+            }
+        }
+
+        for (packet, pid, vid, car_json) in to_send {
+            // self.broadcast(Packet::Raw(packet), None).await;
+            let packet = Packet::Raw(packet);
+            for i in 0..self.clients.len() {
+                if self.clients[i].id == pid {
+                    if let Some(car) = self.clients[i].get_car_mut(vid) {
+                        car.car_json = car_json.clone();
+                    }
+                } else {
+                    // Already looping so more efficient to send here
+                    // if let Some(udp_addr) = self.clients[i].udp_addr {
+                    //     self.write_udp(udp_addr, &response).await;
+                    // }
+                    self.clients[i].write_packet(packet.clone()).await;
+                }
+            }
+            info!("Edited car for client #{}!", pid);
+        }
+
+        self.veh_edit_queue = new_queue;
+    }
+
     async fn process_lua_events(&mut self) -> anyhow::Result<()> {
         // Receive plugin events and process them
         // TODO: Any methods called in this for loop cannot modify the list of plugins.
@@ -629,6 +700,7 @@ impl Server {
         self.process_authenticated_clients().await?;
         self.process_chat_messages().await;
         self.process_veh_spawns().await;
+        self.process_veh_edits().await;
         self.process_lua_events().await?;
 
         // I'm sorry for this code :(
@@ -1112,20 +1184,37 @@ impl Server {
                 let client_id = packet.data[3] - 48;
                 let car_id = packet.data[5] - 48;
                 let car_json = String::from_utf8_lossy(&packet.data[7..]).to_string();
-                let response = Packet::Raw(packet.clone());
-                for i in 0..self.clients.len() {
-                    if self.clients[i].id == client_id {
-                        if let Some(car) = self.clients[i].get_car_mut(car_id) {
-                            car.car_json = car_json.clone();
-                        }
-                    } else {
-                        // Already looping so more efficient to send here
-                        // if let Some(udp_addr) = self.clients[i].udp_addr {
-                        //     self.write_udp(udp_addr, &response).await;
-                        // }
-                        self.clients[i].write_packet(response.clone()).await;
-                    }
+                let response = packet.clone();
+                let mut receivers = Vec::new();
+                for plugin in &self.plugins {
+                    let (tx, rx) = oneshot::channel();
+                    plugin.send_event(PluginBoundPluginEvent::CallEventHandler((
+                        ScriptEvent::OnVehicleEdited { pid: client_id, vid: car_id, car_data: car_json.clone() },
+                        Some(tx),
+                    ))).await;
+                    receivers.push(rx);
                 }
+                self.veh_edit_queue.push((
+                    response,
+                    client_id,
+                    car_id,
+                    car_json,
+                    receivers,
+                    Vec::new(),
+                ));
+                // for i in 0..self.clients.len() {
+                //     if self.clients[i].id == client_id {
+                //         if let Some(car) = self.clients[i].get_car_mut(car_id) {
+                //             car.car_json = car_json.clone();
+                //         }
+                //     } else {
+                //         // Already looping so more efficient to send here
+                //         // if let Some(udp_addr) = self.clients[i].udp_addr {
+                //         //     self.write_udp(udp_addr, &response).await;
+                //         // }
+                //         self.clients[i].write_packet(response.clone()).await;
+                //     }
+                // }
             }
             'd' => {
                 debug!("packet: {:?}", packet);
