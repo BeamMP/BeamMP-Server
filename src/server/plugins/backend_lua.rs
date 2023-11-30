@@ -104,13 +104,15 @@ impl UserData for Context {
             }
             let message = rx.blocking_recv();
             if let Ok(message) = message {
-                if let PluginBoundPluginEvent::PlayerIdentifiers(identifiers) = message {
-                    let table = lua.create_table()?;
-                    table.set("id", identifiers.ip)?;
-                    table.set("beammp_id", identifiers.beammp_id)?;
-                    Ok(table)
-                } else {
-                    unreachable!() // This should really never be reachable
+                match message {
+                    PluginBoundPluginEvent::PlayerIdentifiers(identifiers) => {
+                        let table = lua.create_table()?;
+                        table.set("id", identifiers.ip)?;
+                        table.set("beammp_id", identifiers.beammp_id)?;
+                        Ok(Value::Table(table))
+                    },
+                    PluginBoundPluginEvent::None => Ok(Value::Nil),
+                    _ => unreachable!() // This should really never be reachable
                 }
             } else {
                 todo!("Receiving a response from the server failed! How?")
@@ -173,17 +175,26 @@ impl UserData for Context {
             }
             let message = rx.blocking_recv();
             if let Ok(message) = message {
-                if let PluginBoundPluginEvent::PositionRaw(pos_raw) = message {
-                    let pos_table = lua.create_table()?;
-                    pos_table.set("x", pos_raw.pos[0])?;
-                    pos_table.set("y", pos_raw.pos[1])?;
-                    pos_table.set("z", pos_raw.pos[2])?;
+                match message {
+                    PluginBoundPluginEvent::PositionRaw(pos_raw) => {
+                        let pos_table = lua.create_table()?;
+                        pos_table.set("x", pos_raw.pos[0])?;
+                        pos_table.set("y", pos_raw.pos[1])?;
+                        pos_table.set("z", pos_raw.pos[2])?;
 
-                    let table = lua.create_table()?;
-                    table.set("pos", pos_table)?;
-                    Ok(table)
-                } else {
-                    unreachable!() // This really should never be reachable
+                        let rot_table = lua.create_table()?;
+                        pos_table.set("x", pos_raw.rot[0])?;
+                        pos_table.set("y", pos_raw.rot[1])?;
+                        pos_table.set("z", pos_raw.rot[2])?;
+                        pos_table.set("w", pos_raw.rot[3])?;
+
+                        let table = lua.create_table()?;
+                        table.set("pos", pos_table)?;
+                        table.set("rot", rot_table)?;
+                        Ok(Value::Table(table))
+                    },
+                    PluginBoundPluginEvent::None => Ok(Value::Nil),
+                    _ => unreachable!() // This really should never be reachable
                 }
             } else {
                 todo!("Receiving a response from the server failed! How?")

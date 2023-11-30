@@ -684,8 +684,8 @@ impl Server {
                         if let Some(client) = self.clients.iter().find(|client| client.id == pid) {
                             if let Some((_id, vehicle)) = client.cars.iter().find(|(id, _car)| *id == vid) {
                                 let pos_rot = PositionRaw {
-                                    pos: vehicle.position().as_vec3().to_array(),
-                                    rot: vehicle.rotation().as_f32().to_array(),
+                                    pos: vehicle.raw_position().as_vec3().to_array(),
+                                    rot: vehicle.raw_rotation().as_f32().to_array(),
                                 };
                                 let _ = responder.send(PluginBoundPluginEvent::PositionRaw(pos_rot));
                             } else {

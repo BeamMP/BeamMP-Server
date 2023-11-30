@@ -43,6 +43,14 @@ function onChatMessage(pid, name, message)
     MP.SendChatMessage(-1, "i hate this " .. name .. " guy!")
     MP.SendChatMessage(pid, "hiii babe i didnt mean it :3")
     print("" .. name .. " (" .. pid .. "): " .. message)
+
+    print("identifiers:")
+    for key, value in pairs(MP.GetPlayerIdentifiers(pid)) do
+        print(key .. ": " .. value)
+    end
+
+    print("unknown identifiers (nil): " .. tostring(MP.GetPlayerIdentifiers(100)))
+
     return message .. " (edited by lua!!!)"
 end
 

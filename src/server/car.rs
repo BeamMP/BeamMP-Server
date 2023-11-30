@@ -24,6 +24,14 @@ impl Car {
         }
     }
 
+    pub fn raw_position(&self) -> DVec3 {
+        self.pos
+    }
+
+    pub fn raw_rotation(&self) -> DQuat {
+        self.rot
+    }
+
     pub fn position(&self) -> DVec3 {
         self.pos + self.vel * self.last_pos_update.map(|t| t.elapsed().as_secs_f64()).unwrap_or(0.0)
     }
