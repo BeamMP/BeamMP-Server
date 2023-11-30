@@ -165,6 +165,28 @@ impl UserData for Context {
             }
         });
 
+        methods.add_function("GetPositionRaw", |lua, (pid, vid): (u8, u8)| {
+            let me: Context = lua.globals().get("MP")?;
+            let (tx, rx) = oneshot::channel();
+            if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::RequestPositionRaw((pid, vid, tx))) {
+                error!("Failed to send packet: {:?}", e);
+            }
+            let message = rx.blocking_recv();
+            if let Ok(message) = message {
+                if let PluginBoundPluginEvent::PositionRaw(pos_raw) = message {
+                    let table = lua.create_table()?;
+                    // for (vid, veh_json) in vehicles {
+                    //     table.set(vid, veh_json)?;
+                    // }
+                    Ok(table)
+                } else {
+                    unreachable!() // This really should never be reachable
+                }
+            } else {
+                todo!("Receiving a response from the server failed! How?")
+            }
+        });
+
         methods.add_function("SendChatMessage", |lua, (id, msg): (isize, String)| {
             let me: Context = lua.globals().get("MP")?;
             if let Err(e) = me.tx.blocking_send(ServerBoundPluginEvent::SendChatMessage((id, msg))) {

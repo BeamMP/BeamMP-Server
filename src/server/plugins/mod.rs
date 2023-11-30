@@ -43,6 +43,32 @@ impl PlayerIdentifiers {
 }
 
 #[derive(Debug)]
+pub struct PositionRaw {
+    pub pos: [f32; 3],
+    pub rot: [f32; 4],
+}
+
+impl PositionRaw {
+    pub fn to_map(&self) -> HashMap<String, Argument> {
+        let mut pm = HashMap::new();
+        pm.insert(String::from("x"), Argument::Number(self.pos[0]));
+        pm.insert(String::from("y"), Argument::Number(self.pos[1]));
+        pm.insert(String::from("z"), Argument::Number(self.pos[2]));
+
+        let mut rm = HashMap::new();
+        rm.insert(String::from("x"), Argument::Number(self.rot[0]));
+        rm.insert(String::from("y"), Argument::Number(self.rot[1]));
+        rm.insert(String::from("z"), Argument::Number(self.rot[2]));
+        rm.insert(String::from("w"), Argument::Number(self.rot[3]));
+
+        let mut m = HashMap::new();
+        m.insert(String::from("pos"), Argument::Table(pm));
+        m.insert(String::from("rot"), Argument::Table(rm));
+        m
+    }
+}
+
+#[derive(Debug)]
 pub enum ScriptEvent {
     OnPluginLoaded,
     OnShutdown,
@@ -77,6 +103,7 @@ pub enum PluginBoundPluginEvent {
     PlayerIdentifiers(PlayerIdentifiers),
 
     PlayerVehicles(HashMap<u8, String>),
+    PositionRaw(PositionRaw),
 }
 
 // TODO: Perhaps it would be nice to ensure each sender can only sned specifically what it needs to.
@@ -90,6 +117,7 @@ pub enum ServerBoundPluginEvent {
     RequestPlayerIdentifiers((u8, oneshot::Sender<PluginBoundPluginEvent>)),
 
     RequestPlayerVehicles((u8, oneshot::Sender<PluginBoundPluginEvent>)),
+    RequestPositionRaw((u8, u8, oneshot::Sender<PluginBoundPluginEvent>)),
 
     SendChatMessage((isize, String)),
 }

@@ -683,6 +683,22 @@ impl Server {
                         }
                     },
 
+                    ServerBoundPluginEvent::RequestPositionRaw((pid, vid, responder)) => {
+                        if let Some(client) = self.clients.iter().find(|client| client.id == pid) {
+                            if let Some((_id, vehicle)) = client.cars.iter().find(|(id, _car)| *id == vid) {
+                                // let pos_rot = PositionRaw {
+                                //     pos: vehicle.pos().
+                                // };
+                                todo!()
+                                // let _ = responder.send(PluginBoundPluginEvent::PositionRaw(pos_rot));
+                            } else {
+                                let _ = responder.send(PluginBoundPluginEvent::None);
+                            }
+                        } else {
+                            let _ = responder.send(PluginBoundPluginEvent::None);
+                        }
+                    }
+
                     ServerBoundPluginEvent::SendChatMessage((pid, msg)) => {
                         let pid = if pid >= 0 { Some(pid as u8) } else { None };
                         self.send_chat_message(&msg, pid).await;
