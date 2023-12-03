@@ -177,16 +177,29 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         return;
     }
     std::shared_ptr<TClient> Client { nullptr };
-    if (Code == 'C') {
-        Client = Authentication(std::move(RawConnection));
-    } else if (Code == 'D') {
-        HandleDownload(std::move(RawConnection));
-    } else if (Code == 'P') {
+    try {
+        if (Code == 'C') {
+            Client = Authentication(std::move(RawConnection));
+        } else if (Code == 'D') {
+            HandleDownload(std::move(RawConnection));
+        } else if (Code == 'P') {
+            boost::system::error_code ec;
+            write(RawConnection.Socket, buffer("P"), ec);
+            return;
+        } else {
+            beammp_errorf("Invalid code got in Identify: '{}'", Code);
+        }
+    } catch(const std::exception& e) {
+        beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket", Code);
         boost::system::error_code ec;
-        write(RawConnection.Socket, buffer("P"), ec);
-        return;
-    } else {
-        beammp_errorf("Invalid code got in Identify: '{}'", Code);
+        RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
+        if (ec) {
+            beammp_debugf("Failed to shutdown client socket: {}", ec.message());
+        }
+        RawConnection.Socket.close(ec);
+        if (ec) {
+            beammp_debugf("Failed to close client socket: {}", ec.message());
+        }
     }
 }
 
@@ -246,12 +259,24 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    nlohmann::json AuthReq {
-        { "key", std::string(reinterpret_cast<const char*>(Data.data()), Data.size()) }
-    };
-    auto Target = "/pkToUser";
-    unsigned int ResponseCode = 0;
-    const auto AuthResStr = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, AuthReq.dump(), "application/json", &ResponseCode);
+    std::string key(reinterpret_cast<const char*>(Data.data()), Data.size());
+
+    nlohmann::json AuthReq{};
+    std::string AuthResStr{};
+    try {
+        AuthReq = nlohmann::json {
+            { "key", key }
+        };
+
+        auto Target = "/pkToUser";
+        unsigned int ResponseCode = 0;
+        AuthResStr = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, AuthReq.dump(), "application/json", &ResponseCode);
+
+    } catch (const std::exception& e) {
+        beammp_debugf("Invalid json sent by client, kicking: {}", e.what());
+        ClientKick(*Client, "Invalid Key (invalid UTF8 string)!");
+        return nullptr;
+    }
 
     try {
         nlohmann::json AuthRes = nlohmann::json::parse(AuthResStr);
