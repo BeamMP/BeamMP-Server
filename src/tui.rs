@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use log::Level;
 
 use crossterm::{
-    event::{self, KeyCode, KeyEventKind},
+    event::{self, KeyCode, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
@@ -94,7 +94,11 @@ impl Tui {
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
+                        KeyCode::Char(c) if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            
+                        },
                         KeyCode::Char(c) => {
+                            let c = if key.modifiers == KeyModifiers::SHIFT { c.to_ascii_uppercase() } else { c };
                             self.input.push(c);
                             self.history_scroll = 0;
                         },
