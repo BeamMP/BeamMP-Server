@@ -1,8 +1,5 @@
 #pragma once
 
-#include "TSentry.h"
-extern TSentry Sentry;
-
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -192,7 +189,6 @@ void RegisterThread(const std::string& str);
     #define beammp_error(x)                                                               \
         do {                                                                              \
             Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
-            Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
         } while (false)
     #define beammp_lua_error(x)                                                               \
         do {                                                                                  \

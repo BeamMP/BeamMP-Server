@@ -13,9 +13,6 @@
 #include "CustomAssert.h"
 #include "Http.h"
 
-// global, yes, this is ugly, no, it cant be done another way
-TSentry Sentry {};
-
 Application::TSettings Application::Settings = {};
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
@@ -217,9 +214,6 @@ void Application::CheckForUpdates() {
             if (FirstTime) {
                 beammp_debug("Failed to fetch version from: " + url);
                 beammp_trace("got " + Response);
-                auto Lock = Sentry.CreateExclusiveContext();
-                Sentry.SetContext("get-response", { { "response", Response } });
-                Sentry.LogError("failed to get server version", _file_basename, _line);
                 Application::SetSubsystemStatus("UpdateCheck", Application::Status::Bad);
             }
         }

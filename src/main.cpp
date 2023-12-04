@@ -1,5 +1,3 @@
-#include "TSentry.h"
-
 #include "ArgsParser.h"
 #include "Common.h"
 #include "Http.h"
@@ -64,7 +62,6 @@ int main(int argc, char** argv) {
     } catch (const std::exception& e) {
         beammp_error("A fatal exception has occurred and the server is forcefully shutting down.");
         beammp_error(e.what());
-        Sentry.LogException(e, _file_basename, _line);
         MainRet = -1;
     }
     std::exit(MainRet);
@@ -148,8 +145,6 @@ int BeamMPServerMain(MainArguments Arguments) {
     RegisterThread("Main");
 
     beammp_trace("Running in debug mode on a debug build");
-    Sentry.SetupUser();
-    Sentry.PrintWelcome();
     TResourceManager ResourceManager;
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
