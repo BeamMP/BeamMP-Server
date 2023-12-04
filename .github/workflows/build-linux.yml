@@ -18,15 +18,15 @@ jobs:
 
       - name: Create Build Environment
         working-directory: ${{github.workspace}}/build-linux
-        run: bash ./scripts/debian/2-configure.sh
+        run: bash ${{github.workspace}}/scripts/debian/2-configure.sh
 
       - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
-        run: bash ./scripts/debian/3-build.sh
+        run: bash ${{github.workspace}}/scripts/debian/3-build.sh
 
       - name: Build Tests
         working-directory: ${{github.workspace}}/build-linux
-        run: bash ./scripts/debian/3-build-tests.sh
+        run: bash ${{github.workspace}}/scripts/debian/3-build-tests.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
