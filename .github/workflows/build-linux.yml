@@ -51,7 +51,9 @@ jobs:
           path: ${{github.workspace}}
     
       - name: Install Runtime Dependencies
-        run: sudo bash ./scripts/debian/4-install-runtime-deps.sh
+        run: |
+          sudo apt update -y
+          sudo apt install -y liblua5.3-0
 
       - name: Test
         working-directory: ${{github.workspace}}
