@@ -40,15 +40,15 @@ jobs:
           submodules: "recursive"
 
       - name: Install Dependencies
-        run: sudo ./scripts/debian/1-install-deps.sh
+        run: sudo bash ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
         working-directory: ${{github.workspace}}/build-linux
-        run: ./scripts/debian/2-configure.sh
+        run: bash ./scripts/debian/2-configure.sh
 
       - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
-        run: ./scripts/debian/3-build.sh
+        run: bash ./scripts/debian/3-build.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
