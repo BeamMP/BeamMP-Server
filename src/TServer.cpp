@@ -382,23 +382,13 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
     std::string VD = c.GetCarData(VID);
     if (VD.empty()) {
         beammp_error("Tried to apply change to vehicle that does not exist");
-        auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetContext("vehicle-change",
-            { { "packet", Packet },
-                { "vehicle-id", std::to_string(VID) },
-                { "client-car-count", std::to_string(c.GetCarCount()) } });
-        Sentry.LogError("attempt to apply change to nonexistent vehicle", _file_basename, _line);
         return;
     }
     std::string Header = VD.substr(0, VD.find('{'));
 
     FoundPos = VD.find('{');
     if (FoundPos == std::string::npos) {
-        auto Lock = Sentry.CreateExclusiveContext();
-        Sentry.SetContext("vehicle-change-packet",
-            { { "packet", VD } });
-        Sentry.LogError("malformed packet", _file_basename, _line);
-        return;
+       return;
     }
     VD = VD.substr(FoundPos);
     rapidjson::Document Veh, Pack;
