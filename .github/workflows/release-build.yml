@@ -40,7 +40,7 @@ jobs:
           submodules: "recursive"
 
       - name: Install Dependencies
-        run: ./scripts/debian/1-install-deps.sh
+        run: sudo ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
         working-directory: ${{github.workspace}}/build-linux
