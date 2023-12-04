@@ -694,7 +694,7 @@ impl Server {
                         } else {
                             let _ = responder.send(PluginBoundPluginEvent::None);
                         }
-                    }
+                    },
 
                     ServerBoundPluginEvent::SendChatMessage((pid, msg)) => {
                         let pid = if pid >= 0 { Some(pid as u8) } else { None };
