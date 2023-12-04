@@ -2,9 +2,6 @@ name: CMake Linux Build
 
 on: [push]
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
   linux-build:
     runs-on: ubuntu-22.04
@@ -15,32 +12,19 @@ jobs:
           submodules: "recursive"
 
       - name: Install Dependencies
-        env:
-          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-        run: |
-          echo ${#beammp_sentry_url}
-          sudo apt-get update
-          sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev cmake g++-10 libboost1.74-all-dev
+        run: ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build-linux
-
-      - name: Configure CMake
-        shell: bash
         working-directory: ${{github.workspace}}/build-linux
-        env:
-          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
+        run: ./scripts/debian/2-configure.sh
 
       - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
-        shell: bash
-        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server --parallel
+        run: ./scripts/debian/3-build.sh
 
       - name: Build Tests
         working-directory: ${{github.workspace}}/build-linux
-        shell: bash
-        run: cmake --build . --config $BUILD_TYPE -t BeamMP-Server-tests --parallel
+        run: ./scripts/debian/3-build-tests.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
@@ -65,10 +49,7 @@ jobs:
           path: ${{github.workspace}}
     
       - name: Install Runtime Dependencies
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y liblua5.3-0 libssl3 curl
+        run: ./scripts/debian/4-install-runtime-deps.sh
 
       - name: Test
         working-directory: ${{github.workspace}}

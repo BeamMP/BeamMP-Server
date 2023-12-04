@@ -28,7 +28,7 @@ jobs:
           body: |
               Files included in this release:
               - `BeamMP-Server.exe` is the windows build
-              - `BeamMP-Server-linux` is a ubuntu build, so you need the dependencies listed in README.md to run it. For any other distros please build from source as described in README.md.
+              - `BeamMP-Server-linux` is a ubuntu build. You will need to install `liblua5.3-0`.
 
   upload-release-files-linux:
     name: Upload Linux Release Files
@@ -37,27 +37,24 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-            submodules: 'recursive'
+          submodules: "recursive"
 
       - name: Install Dependencies
-        run: |
-            sudo apt-get update
-            sudo apt-get install -y libz-dev rapidjson-dev liblua5.3 libssl-dev libwebsocketpp-dev libcurl4-openssl-dev libboost-dev libboost1.74-all-dev libboost1.74-dev
+        run: ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
-        run: cmake -E make_directory ${{github.workspace}}/build-linux
-
-      - name: Configure CMake
-        shell: bash
         working-directory: ${{github.workspace}}/build-linux
-        env:
-          beammp_sentry_url: ${{ secrets.BEAMMP_SECRET_SENTRY_URL }}
-        run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_CXX_COMPILER=g++-10 -DBEAMMP_SECRET_SENTRY_URL="$beammp_sentry_url"
+        run: ./scripts/debian/2-configure.sh
 
-      - name: Build
+      - name: Build Server
         working-directory: ${{github.workspace}}/build-linux
-        shell: bash
-        run: cmake --build . --config $BUILD_TYPE
+        run: ./scripts/debian/3-build.sh
+
+      - name: Archive server artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-linux
+          path: ${{github.workspace}}/build-linux/BeamMP-Server
 
       - name: Upload Release Asset
         id: upload-release-asset 
