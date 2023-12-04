@@ -12,7 +12,9 @@ jobs:
           submodules: "recursive"
 
       - name: Install Dependencies
-        run: sudo bash ./scripts/debian/1-install-deps.sh
+        run: |
+          sudo bash ./scripts/debian/1-install-deps.sh
+          cmake -E make_directory ${{github.workspace}}/build-linux
 
       - name: Create Build Environment
         working-directory: ${{github.workspace}}/build-linux
