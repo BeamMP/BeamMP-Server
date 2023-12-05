@@ -2,6 +2,9 @@ name: Linux
 
 on: [push]
 
+env: 
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
 jobs:
   debian-11-build:
     runs-on: ubuntu-latest
@@ -24,22 +27,15 @@ jobs:
       - name: Install Dependencies
         run: bash ./scripts/debian-11/1-install-deps.sh
 
-      - name: Restore vcpkg
-        id: cache-vcpkg-restore
-        uses: actions/cache/restore@v3
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
         with:
-          path: ./vcpkg/buildtrees
-          key: ${{ runner.os }}-${{ github.job }}-${{ hashFiles('vcpkg.json') }}-vcpkg
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Create Build Environment
         run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
-
-      - name: Cache vcpkg
-        id: cache-vcpkg
-        uses: actions/cache/save@v3
-        with:
-          path: ./vcpkg/buildtrees
-          key: ${{ steps.cache-vcpkg-restore.outputs.cache-primary-key }}
 
       - name: Build Server
         run: bash ./scripts/debian-11/3-build.sh
