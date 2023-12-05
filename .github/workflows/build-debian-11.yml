@@ -24,11 +24,8 @@ jobs:
       - name: Install Dependencies
         run: bash ./scripts/debian/1-install-deps.sh
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-
       - name: Create Build Environment
-        run: bash ./scripts/debian/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+        run: bash ./scripts/debian/2-configure.sh
 
       - name: Build Server
         run: bash ./scripts/debian/3-build.sh
