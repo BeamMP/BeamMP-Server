@@ -43,7 +43,7 @@ We only allow building unmodified (original) source code for public use. `master
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and sometimes Linux. For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support any big-endian architectures.
+The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support any big-endian architectures.
 
 Recommended compilers: MSVC, GCC, CLANG. 
 
@@ -51,102 +51,36 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 ## Build Instructions
 
+On Linux, you need some dependencies to **build** the server:
+
+For Debian, Ubuntu and others you can find scripts that do this in `scripts/`.
+
+```
+liblua5.3-dev curl zip unzip tar cmake make git g++
+```
+
+The names of each package may change depending on your platform. See in `scripts/` or use a search engine to find out what they're called for you.
+
 **__Do not compile from `master`. Always build from a release tag, i.e. `tags/v3.1.0`!__**
 
-Currently only Linux and Windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
+1. Check out the repository with git: `git clone --recursive https://github.com/BeamMP/BeamMP-Server`.
+2. Go into the directory `cd BeamMP-Server`.
+3. Run CMake `cmake -S . -B bin -DCMAKE_BUILD_TYPE=Release` - this can take a few minutes and may take a lot of disk space and bandwidth.
+4. Build via `cmake --build bin --parallel -t BeamMP-Server`.
+5. Your executable can be found in `bin/`.
 
-### Prerequisites
-
-#### Windows
-
-There are **no runtime libraries** needed for Windows.
-
-Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
-
-Dependencies for **Windows** can be installed with `vcpkg`.
-These are:
-```
-lua zlib rapidjson openssl websocketpp curl
-```
-The triplet we use for releases is `x64-windows-static`.
-
-#### Linux
-
-We recommend Ubuntu 22.04 or Arch Linux. Any Linux distribution will work, but you have to figure out the package names yourself (please feel free to PR in a change to this README with that info).
+When you make changes to the code, you only have to run step 4 again.
 
 ##### Runtime Dependencies
 
 These are needed to *run* the server.
 
-<details>
-<summary>
-Ubuntu 22.04
-</summary>
+Debian, Ubuntu and friends: `liblua5.3-0`
 
-`apt-get install` the following libraries:
-```
-liblua5.3-0
-libssl3
-curl
-```
-</details>
+Other Linux distros: `liblua` of *some kind*.
 
-<details>
-<summary>
-Arch Linux
-</summary>
+Windows: No libraries.
 
-`pacman -Syu` the following libraries:
-```
-lua53
-openssl
-curl
-```
-</details>
-
-##### Build Dependencies
-These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
-
-<details>
-<summary>
-Ubuntu 22.04
-</summary>
-
-`apt-get install` the following libraries and programs:
-```
-git
-libz-dev
-rapidjson-dev
-liblua5.3-dev
-libssl-dev
-libwebsocketpp-dev
-libcurl4-openssl-dev
-cmake
-g++-10
-libboost1.74-all-dev
-libssl3
-curl
-```
-</details>
-
-<details>
-<summary>
-Arch Linux
-</summary>
-
-`pacman -Syu` the following libraries and programs:
-```
-lua53
-openssl
-curl
-git
-cmake
-g++
-zlib
-boost
-websocketpp
-```
-</details>
 
 #### macOS
 
