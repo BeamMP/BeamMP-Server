@@ -1,0 +1,178 @@
+name: Release Create & Build
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+env:
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    name: Create Release
+    outputs: 
+      upload_url: ${{ steps.create_release.outputs.upload_url }} 
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: true
+          body: |
+              Files included in this release:
+              - `BeamMP-Server.exe` is the windows build.
+              - `BeamMP-Server-debian` is a Debian 11 build, requires `liblua5.3-0`.
+              - `BeamMP-Server-ubuntu` is a Ubuntu 22.04 build, requires `liblua5.3-0`.
+
+  upload-release-files-debian-11:
+    name: Build and upload Debian 11 Release Files
+    runs-on: ubuntu-22.04
+    needs: create-release
+    container:
+      image: debian:11
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install git
+        run: |
+          apt-get update -y
+          apt-get install -y git
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Git config safe directory
+        shell: bash
+        run: bash ./scripts/debian-11/1.5-git-safe.sh
+
+      - name: Install Dependencies
+        run: bash ./scripts/debian-11/1-install-deps.sh
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Build Server
+        run: bash ./scripts/debian-11/3-build.sh
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./bin/BeamMP-Server
+          asset_name: BeamMP-Server-debian
+          asset_content_type: application/x-elf
+    
+  upload-release-files-ubuntu-22-04:
+    name: Build and upload Ubuntu 22.04 Release Files
+    runs-on: ubuntu-22.04
+    needs: create-release
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install git
+        run: |
+          apt-get update -y
+          apt-get install -y git
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Git config safe directory
+        shell: bash
+        run: bash ./scripts/ubuntu-22.04/1.5-git-safe.sh
+
+      - name: Install Dependencies
+        run: bash ./scripts/ubuntu-22.04/1-install-deps.sh
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        run: bash ./scripts/ubuntu-22.04/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Build Server
+        run: bash ./scripts/ubuntu-22.04/3-build.sh
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./bin/BeamMP-Server
+          asset_name: BeamMP-Server-ubuntu
+          asset_content_type: application/x-elf
+
+  upload-release-files-windows:
+    name: Upload Windows Release Files
+    runs-on: windows-latest
+    needs: create-release
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        shell: bash
+        run: ./scripts/windows/1-configure.sh
+
+      - name: Build Server
+        shell: bash
+        run: bash ./scripts/windows/2-build.sh
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./bin/Release/BeamMP-Server.exe
+          asset_name: BeamMP-Server.exe
+          asset_content_type: application/vnd.microsoft.portable-executable
