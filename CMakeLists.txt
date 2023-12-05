@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
+if (WIN32)
+    set(VCPKG_TARGET_TRIPLET x64-windows-static)
+endif()
+
 include(cmake/Vcpkg.cmake) # needs to happen before project()
 
 project(

@@ -24,13 +24,22 @@ jobs:
       - name: Install Dependencies
         run: bash ./scripts/debian-11/1-install-deps.sh
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
+      - name: Restore vcpkg
+        id: cache-vcpkg-restore
+        uses: actions/cache/restore@v3
         with:
-          runVcpkgInstall: true
+          path: ./vcpkg/buildtrees
+          key: ${{ runner.os }}-${{ github.job }}-vcpkg
 
       - name: Create Build Environment
         run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Cache vcpkg
+        id: cache-vcpkg
+        uses: actions/cache/save@v3
+        with:
+          path: ./vcpkg/buildtrees
+          key: ${{ steps.cache-vcpkg-restore.outputs.cache-primary-key }}
 
       - name: Build Server
         run: bash ./scripts/debian-11/3-build.sh

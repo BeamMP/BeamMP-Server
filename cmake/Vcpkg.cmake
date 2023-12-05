@@ -1,7 +1,4 @@
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    if (WIN32)
-        set(VCPKG_TARGET_TRIPLET x64-windows-static)
-    endif()
     if(NOT EXISTS ${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
         find_package(Git)
         if(Git_FOUND)
