@@ -9,7 +9,7 @@ jobs:
       image: debian:11
     steps:
       - name: Install Dependencies
-        run: sudo bash ./scripts/debian/1-install-deps.sh
+        run: bash ./scripts/debian/1-install-deps.sh
 
       - uses: actions/checkout@v2
         with:
