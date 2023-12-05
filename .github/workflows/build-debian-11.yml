@@ -26,6 +26,8 @@ jobs:
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
 
       - name: Create Build Environment
         run: bash ./scripts/debian/2-configure.sh
