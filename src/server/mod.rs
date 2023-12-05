@@ -1230,6 +1230,7 @@ impl Server {
                 // }
             }
             'd' => {
+                // TODO: Why does this use different code to split out the data?
                 debug!("packet: {:?}", packet);
                 let split_data = packet
                     .data_as_string()
@@ -1257,7 +1258,19 @@ impl Server {
                 }
             }
             'r' => {
+                if packet.data[3] < 48 || packet.data[5] < 48 {
+                    return Err(ServerError::BrokenPacket.into());
+                }
+                let client_id = packet.data[3] - 48;
+                let car_id = packet.data[5] - 48;
+                let car_json = String::from_utf8_lossy(&packet.data[7..]).to_string();
                 self.broadcast(Packet::Raw(packet), Some(self.clients[client_idx].id)).await;
+                for plugin in &mut self.plugins {
+                    plugin.send_event(PluginBoundPluginEvent::CallEventHandler((
+                        ScriptEvent::OnVehicleReset { pid: client_id, vid: car_id, car_data: car_json.clone() },
+                        None,
+                    ))).await;
+                }
             }
             't' => {
                 self.broadcast(Packet::Raw(packet), Some(self.clients[client_idx].id))

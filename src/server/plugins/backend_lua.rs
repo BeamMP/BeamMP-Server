@@ -260,6 +260,7 @@ impl Backend for BackendLua {
             ScriptEvent::OnVehicleSpawn { pid, vid, car_data } => ("onVehicleSpawn", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64), Argument::String(car_data)]),
             ScriptEvent::OnVehicleEdited { pid, vid, car_data } => ("onVehicleEdited", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64), Argument::String(car_data)]),
             ScriptEvent::OnVehicleDeleted { pid, vid } => ("onVehicleDeleted", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64)]),
+            ScriptEvent::OnVehicleReset { pid, vid, car_data } => ("onVehicleReset", vec![Argument::Integer(pid as i64), Argument::Integer(vid as i64), Argument::String(car_data)]),
 
             ScriptEvent::OnChatMessage { pid, name, message } => ("onChatMessage", vec![Argument::Integer(pid as i64), Argument::String(name), Argument::String(message)]),
         };

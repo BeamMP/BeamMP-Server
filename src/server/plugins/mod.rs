@@ -88,6 +88,7 @@ pub enum ScriptEvent {
     OnVehicleSpawn { pid: u8, vid: u8, car_data: String },
     OnVehicleEdited { pid: u8, vid: u8, car_data: String },
     OnVehicleDeleted { pid: u8, vid: u8 },
+    OnVehicleReset { pid: u8, vid: u8, car_data: String },
 
     OnChatMessage { pid: u8, name: String, message: String },
 }
