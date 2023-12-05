@@ -8,12 +8,12 @@ jobs:
     container:
       image: debian:11
     steps:
+      - name: Install Dependencies
+        run: sudo bash ./scripts/debian/1-install-deps.sh
+
       - uses: actions/checkout@v2
         with:
           submodules: "recursive"
-
-      - name: Install Dependencies
-        run: sudo bash ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
         run: bash ${{github.workspace}}/scripts/debian/2-configure.sh
