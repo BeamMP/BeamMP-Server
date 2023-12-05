@@ -1,12 +1,10 @@
-name: Debian 11 Build
+name: Ubuntu 22.04 Build
 
 on: [push]
 
 jobs:
-  debian-11-build:
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:22.04
+  ubuntu-22-04-build:
+    runs-on: ubuntu-22.04
     steps:
       - name: Install git
         run: |
@@ -38,6 +36,6 @@ jobs:
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
-          name: BeamMP-Server-debian
+          name: BeamMP-Server-ubuntu
           path: ./bin/BeamMP-Server
 
