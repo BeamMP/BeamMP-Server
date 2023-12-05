@@ -10,8 +10,8 @@ jobs:
     steps:
       - name: Install git
         run: |
-          apt update -y
-          apt install -y git
+          apt-get update -y
+          apt-get install -y git
 
       - uses: actions/checkout@v2
         with:
@@ -19,16 +19,13 @@ jobs:
 
       - name: Git config safe directory
         shell: bash
-        run: |
-          git config --global --add safe.directory $(pwd)
-          git config --global --add safe.directory $(pwd)/vcpkg
-          git config --global --add safe.directory $(pwd)/deps/commandline
-
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
+        run: bash ./scripts/debian/1.5-git-safe.sh
 
       - name: Install Dependencies
         run: bash ./scripts/debian/1-install-deps.sh
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
 
       - name: Create Build Environment
         run: bash ./scripts/debian/2-configure.sh
