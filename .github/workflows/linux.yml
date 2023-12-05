@@ -41,6 +41,15 @@ jobs:
           name: BeamMP-Server-debian
           path: ./bin/BeamMP-Server
 
+      - name: Build Tests
+        run: bash ./scripts/debian-11/3-build-tests.sh
+
+      - name: Archive server tests artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-debian-tests
+          path: ./bin/BeamMP-Server-tests
+
   ubuntu-22-04-build:
     runs-on: ubuntu-latest
     container:
@@ -68,7 +77,7 @@ jobs:
           runVcpkgInstall: true
 
       - name: Create Build Environment
-        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+        run: bash ./scripts/ubuntu-22.04/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
 
       - name: Build Server
         run: bash ./scripts/ubuntu-22.04/3-build.sh
@@ -78,3 +87,48 @@ jobs:
         with:
           name: BeamMP-Server-ubuntu
           path: ./bin/BeamMP-Server
+      
+      - name: Build Tests
+        run: bash ./scripts/ubuntu-22.04/3-build-tests.sh
+
+      - name: Archive server tests artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-ubuntu-tests
+          path: ./bin/BeamMP-Server-tests
+
+  run-debian-11-tests:
+    needs: debian-11-build
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: BeamMP-Server-debian-tests
+    
+      - name: Install Runtime Dependencies
+        run: bash ./scripts/debian-11/4-install-runtime-deps.sh
+
+      - name: Test
+        run: |
+            chmod +x ./BeamMP-Server-tests
+            ./BeamMP-Server-tests
+
+  run-ubuntu-22-04-tests:
+    needs: ubuntu-22-04-build
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: BeamMP-Server-ubuntu-tests
+    
+      - name: Install Runtime Dependencies
+        run: bash ./scripts/ubuntu-22.04/4-install-runtime-deps.sh
+
+      - name: Test
+        run: |
+            chmod +x ./BeamMP-Server-tests
+            ./BeamMP-Server-tests
