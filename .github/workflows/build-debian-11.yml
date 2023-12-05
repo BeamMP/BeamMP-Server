@@ -30,7 +30,7 @@ jobs:
           runVcpkgInstall: true
 
       - name: Create Build Environment
-        run: bash ./scripts/debian-11/2-configure.sh
+        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
 
       - name: Build Server
         run: bash ./scripts/debian-11/3-build.sh
