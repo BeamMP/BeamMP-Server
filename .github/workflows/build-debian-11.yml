@@ -11,17 +11,17 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install Dependencies
-        run: bash ${{github.workspace}}/scripts/debian/1-install-deps.sh
+        run: bash ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
-        run: bash ${{github.workspace}}/scripts/debian/2-configure.sh
+        run: bash ./scripts/debian/2-configure.sh
 
       - name: Build Server
-        run: bash ${{github.workspace}}/scripts/debian/3-build.sh
+        run: bash ./scripts/debian/3-build.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-linux
-          path: ${{github.workspace}}/bin/BeamMP-Server
+          path: ./bin/BeamMP-Server
 
