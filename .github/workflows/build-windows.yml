@@ -2,6 +2,9 @@ name: Windows
 
 on: [push]
 
+env:
+  VCPKG_DEFAULT_TRIPLET: x64-windows-static
+
 jobs:
   windows-build:
     runs-on: windows-latest
