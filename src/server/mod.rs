@@ -1249,6 +1249,12 @@ impl Server {
                     self.clients[i].write_packet(Packet::Raw(packet.clone())).await;
                 }
                 info!("Deleted car for client #{}!", client_id);
+                for plugin in &mut self.plugins {
+                    plugin.send_event(PluginBoundPluginEvent::CallEventHandler((
+                        ScriptEvent::OnVehicleDeleted { pid: client_id, vid: car_id },
+                        None,
+                    ))).await;
+                }
             }
             'r' => {
                 self.broadcast(Packet::Raw(packet), Some(self.clients[client_idx].id)).await;
