@@ -1,0 +1,150 @@
+name: Linux
+
+on: [push]
+
+env: 
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  debian-11-build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install git
+        run: |
+          apt-get update -y
+          apt-get install -y git
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Git config safe directory
+        shell: bash
+        run: bash ./scripts/debian-11/1.5-git-safe.sh
+
+      - name: Install Dependencies
+        run: bash ./scripts/debian-11/1-install-deps.sh
+
+      - name: Create Build Environment
+        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Build Server
+        run: bash ./scripts/debian-11/3-build.sh
+
+      - name: Archive server artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-debian
+          path: ./bin/BeamMP-Server
+
+      - name: Build Tests
+        run: bash ./scripts/debian-11/3-build-tests.sh
+
+      - name: Archive server tests artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-debian-tests
+          path: ./bin/BeamMP-Server-tests
+
+  ubuntu-22-04-build:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install git
+        run: |
+          apt-get update -y
+          apt-get install -y git
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Git config safe directory
+        shell: bash
+        run: bash ./scripts/ubuntu-22.04/1.5-git-safe.sh
+
+      - name: Install Dependencies
+        run: bash ./scripts/ubuntu-22.04/1-install-deps.sh
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        run: bash ./scripts/ubuntu-22.04/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Build Server
+        run: bash ./scripts/ubuntu-22.04/3-build.sh
+
+      - name: Archive server artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-ubuntu
+          path: ./bin/BeamMP-Server
+      
+      - name: Build Tests
+        run: bash ./scripts/ubuntu-22.04/3-build-tests.sh
+
+      - name: Archive server tests artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-ubuntu-tests
+          path: ./bin/BeamMP-Server-tests
+
+  run-debian-11-tests:
+    needs: debian-11-build
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: BeamMP-Server-debian-tests
+    
+      - name: Install Runtime Dependencies
+        run: |
+          apt-get update -y
+          apt-get install -y liblua5.3-0
+
+      - name: Test
+        run: |
+            chmod +x ./BeamMP-Server-tests
+            ./BeamMP-Server-tests
+
+  run-ubuntu-22-04-tests:
+    needs: ubuntu-22-04-build
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+    steps:
+      - uses: actions/download-artifact@master
+        with:
+          name: BeamMP-Server-ubuntu-tests
+    
+      - name: Install Runtime Dependencies
+        run: |
+          apt-get update -y
+          apt-get install -y liblua5.3-0
+
+      - name: Test
+        run: |
+            chmod +x ./BeamMP-Server-tests
+            ./BeamMP-Server-tests

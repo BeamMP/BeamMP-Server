@@ -40,16 +40,6 @@ void THeartbeatThread::operator()() {
             Body += "&ip=" + Application::Settings.CustomIP;
         }
 
-        auto SentryReportError = [&](const std::string& transaction, int status) {
-            auto Lock = Sentry.CreateExclusiveContext();
-            Sentry.SetContext("heartbeat",
-                { { "response-body", T },
-                    { "request-body", Body } });
-            Sentry.SetTransaction(transaction);
-            beammp_trace("sending log to sentry: " + std::to_string(status) + " for " + transaction);
-            Sentry.Log(SentryLevel::Error, "default", Http::Status::ToString(status) + " (" + std::to_string(status) + ")");
-        };
-
         auto Target = "/heartbeat";
         unsigned int ResponseCode = 0;
 
@@ -63,10 +53,8 @@ void THeartbeatThread::operator()() {
                     beammp_trace("Backend response failed to parse as valid json");
                     beammp_trace("Response was: `" + T + "`");
                 }
-                Sentry.SetContext("JSON Response", { { "reponse", T } });
-                SentryReportError(Url + Target, ResponseCode);
             } else if (ResponseCode != 200) {
-                SentryReportError(Url + Target, ResponseCode);
+                beammp_errorf("Response code from the heartbeat: {}", ResponseCode);
             } else {
                 // all ok
                 Ok = true;
@@ -85,24 +73,20 @@ void THeartbeatThread::operator()() {
             if (Doc.HasMember(StatusKey) && Doc[StatusKey].IsString()) {
                 Status = Doc[StatusKey].GetString();
             } else {
-                Sentry.SetContext("JSON Response", { { StatusKey, "invalid string / missing" } });
                 Ok = false;
             }
             if (Doc.HasMember(CodeKey) && Doc[CodeKey].IsString()) {
                 Code = Doc[CodeKey].GetString();
             } else {
-                Sentry.SetContext("JSON Response", { { CodeKey, "invalid string / missing" } });
                 Ok = false;
             }
             if (Doc.HasMember(MessageKey) && Doc[MessageKey].IsString()) {
                 Message = Doc[MessageKey].GetString();
             } else {
-                Sentry.SetContext("JSON Response", { { MessageKey, "invalid string / missing" } });
                 Ok = false;
             }
             if (!Ok) {
                 beammp_error("Missing/invalid json members in backend response");
-                Sentry.LogError("Missing/invalid json members in backend response", __FILE__, std::to_string(__LINE__));
             }
         } else {
             if (!Application::Settings.Private) {

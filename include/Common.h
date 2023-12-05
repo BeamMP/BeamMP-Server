@@ -1,8 +1,5 @@
 #pragma once
 
-#include "TSentry.h"
-extern TSentry Sentry;
-
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -138,7 +135,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 1, 1 };
+    static inline Version mVersion { 3, 1, 2 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);
@@ -193,7 +190,6 @@ void RegisterThread(const std::string& str);
     #define beammp_error(x)                                                               \
         do {                                                                              \
             Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
-            Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
         } while (false)
     #define beammp_lua_error(x)                                                               \
         do {                                                                                  \

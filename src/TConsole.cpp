@@ -8,6 +8,7 @@
 #include "TLuaEngine.h"
 
 #include <ctime>
+#include <mutex>
 #include <sstream>
 
 static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
@@ -353,7 +354,6 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
     if (!EnsureArgsCount(args, 1, 2)) {
         return;
     }
-    
 }
 
 void TConsole::Command_Say(const std::string& FullCmd) {

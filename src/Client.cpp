@@ -51,7 +51,7 @@ TClient::TVehicleDataLockPair TClient::GetAllCars() {
 std::string TClient::GetCarPositionRaw(int Ident) {
     std::unique_lock lock(mVehiclePositionMutex);
     try {
-        return mVehiclePosition.at(Ident);
+        return mVehiclePosition.at(size_t(Ident));
     } catch (const std::out_of_range& oor) {
         return "";
     }
@@ -73,7 +73,7 @@ void TClient::Disconnect(std::string_view Reason) {
 
 void TClient::SetCarPosition(int Ident, const std::string& Data) {
     std::unique_lock lock(mVehiclePositionMutex);
-    mVehiclePosition[Ident] = Data;
+    mVehiclePosition[size_t(Ident)] = Data;
 }
 
 std::string TClient::GetCarData(int Ident) {
