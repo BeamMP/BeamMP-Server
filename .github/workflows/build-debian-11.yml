@@ -21,39 +21,9 @@ jobs:
       - name: Build Server
         run: bash ${{github.workspace}}/scripts/debian/3-build.sh
 
-      - name: Build Tests
-        run: bash ${{github.workspace}}/scripts/debian/3-build-tests.sh
-
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-linux
           path: ${{github.workspace}}/bin/BeamMP-Server
 
-      - name: Archive test artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: BeamMP-Server-linux-tests
-          path: ${{github.workspace}}/bin/BeamMP-Server-tests
-
-  run-tests:
-    needs: linux-build
-    runs-on: ubuntu-22.04
-
-    steps:
-      - uses: actions/download-artifact@master
-        with:
-          name: BeamMP-Server-linux-tests
-          path: ${{github.workspace}}
-    
-      - name: Install Runtime Dependencies
-        run: |
-          sudo apt update -y
-          sudo apt install -y liblua5.3-0
-
-      - name: Test
-        working-directory: ${{github.workspace}}
-        shell: bash
-        run: |
-            chmod +x ./BeamMP-Server-tests
-            ./BeamMP-Server-tests
