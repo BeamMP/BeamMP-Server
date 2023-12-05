@@ -6,7 +6,7 @@ jobs:
   debian-11-build:
     runs-on: ubuntu-latest
     container:
-      image: debian:11
+      image: ubuntu:22.04
     steps:
       - name: Install git
         run: |
@@ -19,10 +19,10 @@ jobs:
 
       - name: Git config safe directory
         shell: bash
-        run: bash ./scripts/debian-11/1.5-git-safe.sh
+        run: bash ./scripts/ubuntu-22.04/1.5-git-safe.sh
 
       - name: Install Dependencies
-        run: bash ./scripts/debian-11/1-install-deps.sh
+        run: bash ./scripts/ubuntu-22.04/1-install-deps.sh
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
@@ -30,10 +30,10 @@ jobs:
           runVcpkgInstall: true
 
       - name: Create Build Environment
-        run: bash ./scripts/debian-11/2-configure.sh
+        run: bash ./scripts/ubuntu-22.04/2-configure.sh
 
       - name: Build Server
-        run: bash ./scripts/debian-11/3-build.sh
+        run: bash ./scripts/ubuntu-22.04/3-build.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
