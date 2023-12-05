@@ -8,6 +8,11 @@ jobs:
     container:
       image: debian:11
     steps:
+      - name: Install git
+        run: |
+          apt update -y
+          apt install -y git
+
       - uses: actions/checkout@v2
         with:
           submodules: 'recursive'
