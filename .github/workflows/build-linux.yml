@@ -1,8 +1,46 @@
-name: Ubuntu 22.04 Build
+name: Linux
 
 on: [push]
 
 jobs:
+  debian-11-build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:11
+    steps:
+      - name: Install git
+        run: |
+          apt-get update -y
+          apt-get install -y git
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Git config safe directory
+        shell: bash
+        run: bash ./scripts/debian-11/1.5-git-safe.sh
+
+      - name: Install Dependencies
+        run: bash ./scripts/debian-11/1-install-deps.sh
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Build Server
+        run: bash ./scripts/debian-11/3-build.sh
+
+      - name: Archive server artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-debian
+          path: ./bin/BeamMP-Server
+
   ubuntu-22-04-build:
     runs-on: ubuntu-latest
     container:
@@ -40,4 +78,3 @@ jobs:
         with:
           name: BeamMP-Server-ubuntu
           path: ./bin/BeamMP-Server
-
