@@ -46,6 +46,7 @@ public:
         std::string Resource { "Resources" };
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};
+        std::string Password{};
         std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
         std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
         bool HTTPServerEnabled { false };

@@ -606,9 +606,7 @@ TConsole::TConsole() {
                     HandleLuaInternalCommand(cmd.substr(1));
                 } else {
                     auto Future = mLuaEngine->EnqueueScript(mStateId, { std::make_shared<std::string>(TrimmedCmd), "", "" });
-                    while (!Future->Ready) {
-                        std::this_thread::yield(); // TODO: Add a timeout
-                    }
+                    Future->WaitUntilReady();
                     if (Future->Error) {
                         beammp_lua_error("error in " + mStateId + ": " + Future->ErrorMessage);
                     }

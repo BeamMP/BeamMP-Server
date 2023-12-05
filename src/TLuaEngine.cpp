@@ -286,6 +286,7 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
         bool Cancelled = false;
         size_t ms = 0;
         std::set<std::string> WarnedResults;
+
         while (!Result->Ready && !Cancelled) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             ms += 10;
@@ -300,6 +301,7 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
                 }
             }
         }
+
         if (Cancelled) {
             beammp_lua_warn("'" + Result->Function + "' in '" + Result->StateId + "' failed to execute in time and was not waited for. It may still finish executing at a later time.");
             LuaAPI::MP::Engine->ReportErrors({ Result });
@@ -425,7 +427,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
                 Result->Error = true;
                 Result->ErrorMessage = "Function result in TriggerGlobalEvent was invalid";
             }
-            Result->Ready = true;
+            Result->MarkAsReady();
             Return.push_back(Result);
         }
     }
@@ -955,7 +957,7 @@ void TLuaEngine::StateThreadData::operator()() {
                     sol::error Err = Res;
                     S.second->ErrorMessage = Err.what();
                 }
-                S.second->Ready = true;
+                S.second->MarkAsReady();
             }
         }
         { // StateFunctionQueue Scope
@@ -1016,11 +1018,11 @@ void TLuaEngine::StateThreadData::operator()() {
                         sol::error Err = Res;
                         Result->ErrorMessage = Err.what();
                     }
-                    Result->Ready = true;
+                    Result->MarkAsReady();
                 } else {
                     Result->Error = true;
                     Result->ErrorMessage = BeamMPFnNotFoundError; // special error kind that we can ignore later
-                    Result->Ready = true;
+                    Result->MarkAsReady();
                 }
             }
         }
@@ -1070,11 +1072,19 @@ void TLuaEngine::StateThreadData::AddPath(const fs::path& Path) {
     mPaths.push(Path);
 }
 
-void TLuaResult::WaitUntilReady() {
-    while (!Ready) {
-        std::this_thread::yield();
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+void TLuaResult::MarkAsReady() {
+    {
+        std::lock_guard<std::mutex> readyLock(*this->ReadyMutex);
+        this->Ready = true;
     }
+    this->ReadyCondition->notify_all();
+}
+
+void TLuaResult::WaitUntilReady() {
+    std::unique_lock readyLock(*this->ReadyMutex);
+    // wait if not ready yet
+    if(!this->Ready)
+        this->ReadyCondition->wait(readyLock);
 }
 
 TLuaChunk::TLuaChunk(std::shared_ptr<std::string> Content, std::string FileName, std::string PluginPath)

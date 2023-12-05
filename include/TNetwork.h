@@ -52,4 +52,5 @@ private:
     static const uint8_t* SendSplit(TClient& c, ip::tcp::socket& Socket, const uint8_t* DataPtr, size_t Size);
 };
 
+std::string HashPassword(const std::string& str);
 std::vector<uint8_t> StringToVector(const std::string& Str);

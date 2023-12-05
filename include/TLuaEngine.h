@@ -41,7 +41,14 @@ struct TLuaResult {
     sol::object Result { sol::lua_nil };
     TLuaStateId StateId;
     std::string Function;
-    // TODO: Add condition_variable
+    std::shared_ptr<std::mutex> ReadyMutex {
+        std::make_shared<std::mutex>()
+    };
+    std::shared_ptr<std::condition_variable> ReadyCondition {
+        std::make_shared<std::condition_variable>()
+    };
+
+    void MarkAsReady();
     void WaitUntilReady();
 };
 
@@ -98,8 +105,8 @@ public:
         return mLuaStates.size();
     }
     std::vector<std::string> GetLuaStateNames() {
-        std::vector<std::string> names{};
-        for(auto const& [stateId, _ ] : mLuaStates) {
+        std::vector<std::string> names {};
+        for (auto const& [stateId, _] : mLuaStates) {
             names.push_back(stateId);
         }
         return names;
