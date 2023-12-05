@@ -17,6 +17,9 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+
       - name: Install Dependencies
         run: bash ./scripts/debian/1-install-deps.sh
 
