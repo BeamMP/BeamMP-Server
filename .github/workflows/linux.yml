@@ -108,7 +108,9 @@ jobs:
           name: BeamMP-Server-debian-tests
     
       - name: Install Runtime Dependencies
-        run: bash ./scripts/debian-11/4-install-runtime-deps.sh
+        run: |
+          apt-get update -y
+          apt-get install -y liblua5.3-0
 
       - name: Test
         run: |
@@ -126,7 +128,9 @@ jobs:
           name: BeamMP-Server-ubuntu-tests
     
       - name: Install Runtime Dependencies
-        run: bash ./scripts/ubuntu-22.04/4-install-runtime-deps.sh
+        run: |
+          apt-get update -y
+          apt-get install -y liblua5.3-0
 
       - name: Test
         run: |
