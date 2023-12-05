@@ -5,6 +5,7 @@
 #include <atomic>
 #include <fstream>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <unordered_map>
