@@ -1,0 +1,31 @@
+name: Windows
+
+on: [push]
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        shell: bash
+        run: ./scripts/windows/1-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+
+      - name: Build Server
+        shell: bash
+        run: bash ./scripts/windows/2-build.sh
+
+      - name: Archive server artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-windows
+          path: ./bin/BeamMP-Server.exe
+
