@@ -110,29 +110,6 @@ find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(toml11 CONFIG REQUIRED)
 
-# build commandline manually for funky windows flags to carry over without a custom toolchain file
-add_library(commandline_static 
-    deps/commandline/src/impls.h
-    deps/commandline/src/windows_impl.cpp
-    deps/commandline/src/linux_impl.cpp
-    deps/commandline/src/backends/InteractiveBackend.cpp
-    deps/commandline/src/backends/InteractiveBackend.h
-    deps/commandline/src/backends/Backend.cpp
-    deps/commandline/src/backends/Backend.h
-    deps/commandline/src/commandline.h
-    deps/commandline/src/commandline.cpp
-    deps/commandline/src/backends/BufferedBackend.cpp
-    deps/commandline/src/backends/BufferedBackend.h
-)
-if (WIN32)
-    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
-else ()
-    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_LINUX=1)
-endif ()
-target_include_directories(commandline_static PUBLIC "deps/commandline/src")
-target_link_libraries(commandline_static Threads::Threads)
-# end of commandline custom build
-
 include_directories(include)
 
 # to enable multithreading and the Threads::Threads dependency
@@ -175,6 +152,29 @@ set(PRJ_DEFINITIONS ${PRJ_DEFINITIONS}
     PRJ_VERSION_MINOR=${PROJECT_VERSION_MINOR}
     PRJ_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 )
+
+# build commandline manually for funky windows flags to carry over without a custom toolchain file
+add_library(commandline_static 
+    deps/commandline/src/impls.h
+    deps/commandline/src/windows_impl.cpp
+    deps/commandline/src/linux_impl.cpp
+    deps/commandline/src/backends/InteractiveBackend.cpp
+    deps/commandline/src/backends/InteractiveBackend.h
+    deps/commandline/src/backends/Backend.cpp
+    deps/commandline/src/backends/Backend.h
+    deps/commandline/src/commandline.h
+    deps/commandline/src/commandline.cpp
+    deps/commandline/src/backends/BufferedBackend.cpp
+    deps/commandline/src/backends/BufferedBackend.h
+)
+if (WIN32)
+    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
+else ()
+    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_LINUX=1)
+endif ()
+target_include_directories(commandline_static PUBLIC "deps/commandline/src")
+target_link_libraries(commandline_static Threads::Threads)
+# end of commandline custom build
 
 add_executable(${PROJECT_NAME} ${PRJ_HEADERS} ${PRJ_SOURCES} ${PRJ_MAIN})
 set_target_properties(${PROJECT_NAME} PROPERTIES
