@@ -106,6 +106,7 @@ find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(toml11 CONFIG REQUIRED)
 
+set(COMMANDLINE_LIBTYPE STATIC)
 add_subdirectory(deps/commandline)
 
 include_directories(include)
