@@ -153,7 +153,6 @@ void TNetwork::TCPServerMain() {
             if (ec) {
                 beammp_errorf("failed to accept: {}", ec.message());
             }
-            ClientSocket.set_option(rcv_timeout_option{ 120000 }); //timeout of 120seconds
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
