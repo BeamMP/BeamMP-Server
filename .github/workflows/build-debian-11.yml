@@ -17,6 +17,13 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Git config safe directory
+        shell: bash
+        run: |
+          git config --global --add safe.directory $(pwd)
+          git config --global --add safe.directory $(pwd)/vcpkg
+          git config --global --add safe.directory $(pwd)/deps/commandline
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
 
