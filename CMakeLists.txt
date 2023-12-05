@@ -85,7 +85,7 @@ set(PRJ_LIBRARIES
     fmt::fmt
     doctest::doctest
     Threads::Threads
-    commandline
+    commandline_static
     toml11::toml11
     rapidjson
     sol2
@@ -106,8 +106,28 @@ find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(toml11 CONFIG REQUIRED)
 
-set(COMMANDLINE_LIBTYPE STATIC)
-add_subdirectory(deps/commandline)
+# build commandline manually for funky windows flags to carry over without a custom toolchain file
+add_library(commandline_static 
+    deps/commandline/src/impls.h
+    deps/commandline/src/windows_impl.cpp
+    deps/commandline/src/linux_impl.cpp
+    deps/commandline/src/backends/InteractiveBackend.cpp
+    deps/commandline/src/backends/InteractiveBackend.h
+    deps/commandline/src/backends/Backend.cpp
+    deps/commandline/src/backends/Backend.h
+    deps/commandline/src/commandline.h
+    deps/commandline/src/commandline.cpp
+    deps/commandline/src/backends/BufferedBackend.cpp
+    deps/commandline/src/backends/BufferedBackend.h
+)
+if (WIN32)
+    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
+else ()
+    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_LINUX=1)
+endif ()
+target_include_directories(commandline_static PUBLIC "deps/commandline/src")
+target_link_libraries(commandline_static Threads::Threads)
+# end of commandline custom build
 
 include_directories(include)
 
