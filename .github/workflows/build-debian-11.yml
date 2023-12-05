@@ -1,44 +1,38 @@
-name: CMake Linux Build
+name: Debian 11 Build
 
 on: [push]
 
 jobs:
-  linux-build:
-    runs-on: ubuntu-22.04
-
+  debian-11-build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: "recursive"
 
       - name: Install Dependencies
-        run: |
-          sudo bash ./scripts/debian/1-install-deps.sh
-          cmake -E make_directory ${{github.workspace}}/build-linux
+        run: sudo bash ./scripts/debian/1-install-deps.sh
 
       - name: Create Build Environment
-        working-directory: ${{github.workspace}}/build-linux
-        run: bash ${{github.workspace}}/scripts/debian/2-configure.sh ..
+        run: bash ${{github.workspace}}/scripts/debian/2-configure.sh
 
       - name: Build Server
-        working-directory: ${{github.workspace}}/build-linux
         run: bash ${{github.workspace}}/scripts/debian/3-build.sh
 
       - name: Build Tests
-        working-directory: ${{github.workspace}}/build-linux
         run: bash ${{github.workspace}}/scripts/debian/3-build-tests.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-linux
-          path: ${{github.workspace}}/build-linux/BeamMP-Server
+          path: ${{github.workspace}}/bin/BeamMP-Server
 
       - name: Archive test artifact
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-linux-tests
-          path: ${{github.workspace}}/build-linux/BeamMP-Server-tests
+          path: ${{github.workspace}}/bin/BeamMP-Server-tests
 
   run-tests:
     needs: linux-build
