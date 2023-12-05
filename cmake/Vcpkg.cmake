@@ -1,4 +1,4 @@
-if(NOT CMAKE_TOOLCHAIN_FILE)
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(NOT EXISTS ${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
         find_package(Git)
         if(Git_FOUND)
