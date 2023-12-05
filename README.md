@@ -71,7 +71,7 @@ The names of each package may change depending on your platform. See in `scripts
 
 When you make changes to the code, you only have to run step 4 again.
 
-##### Runtime Dependencies
+### Runtime Dependencies
 
 These are needed to *run* the server.
 
@@ -80,18 +80,6 @@ Debian, Ubuntu and friends: `liblua5.3-0`
 Other Linux distros: `liblua` of *some kind*.
 
 Windows: No libraries.
-
-
-#### macOS
-
-Dependencies for **macOS** can be installed with homebrew.
-```
-brew install lua@5.3 rapidjson websocketpp cmake openssl@1.1
-```
-Some packages are included in **macOS** but you might want to install homebrew versions.
-```
-brew install curl zlib git make
-```
 
 ### How to build
 
