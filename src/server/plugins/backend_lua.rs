@@ -208,6 +208,10 @@ impl UserData for Context {
             }
             Ok(())
         });
+
+        methods.add_function("GetOSName", |lua, ()| {
+            Ok(std::env::consts::OS)
+        });
     }
 }
 
