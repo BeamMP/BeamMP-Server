@@ -51,7 +51,7 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 ## Build Instructions
 
-On Linux, you need some dependencies to **build** the server:
+On Linux, you need some dependencies to **build** the server (on Windows, you don't):
 
 For Debian, Ubuntu and others you can find scripts that do this in `scripts/`.
 
@@ -61,7 +61,7 @@ liblua5.3-dev curl zip unzip tar cmake make git g++
 
 The names of each package may change depending on your platform. See in `scripts/` or use a search engine to find out what they're called for you.
 
-**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v3.1.0`!__**
+You can build on **Windows, Linux** or other platforms by following these steps:
 
 1. Check out the repository with git: `git clone --recursive https://github.com/BeamMP/BeamMP-Server`.
 2. Go into the directory `cd BeamMP-Server`.
@@ -80,20 +80,6 @@ Debian, Ubuntu and friends: `liblua5.3-0`
 Other Linux distros: `liblua` of *some kind*.
 
 Windows: No libraries.
-
-### How to build
-
-On Windows, use git-bash for these commands. On Linux, these should work in your shell.
-
-1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with `git clone https://github.com/BeamMP/BeamMP-Server` . 
-3. Change into the BeamMP-Server directory by running `cd BeamMP-Server`. 
-4. Checkout the branch or tag of the release you want to compile, for example `git checkout tags/v3.0.2` for version 3.0.2. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-6. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`). This may take some time, and will update all submodules and prepare the build.
-7. Run `make -j` . This step will take some time and will use a lot of CPU and RAM. Remove the `-j` if you run out of memory. *If you change something in the source code, you only have to re-run this step.*
-8. You now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (Windows or Linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/server-installation) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
-
-*tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
 
 ## Support
 The BeamMP project is supported by community donations via our [Patreon](https://www.patreon.com/BeamMP). This brings perks such as Patreon-only channels on our Discord, early access to new updates, and more server keys. 
