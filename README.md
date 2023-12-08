@@ -6,7 +6,7 @@
 This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** for the game [BeamNG.drive](https://www.beamng.com/).
 The server is the point through which all clients communicate. You can write Lua mods for the server, there are detailed instructions on the [BeamMP Wiki](https://wiki.beammp.com).
 
-**For Linux, you __need__ the runtime dependencies, listed below under "[prerequisites](#prerequisites)".**
+**For Linux, you __need__ the runtime dependencies, which are listed below under [Runtime Dependencies](#runtime-dependencies)**
 
 ## Support + Contact
 
@@ -43,7 +43,7 @@ We only allow building unmodified (original) source code for public use. `master
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support any big-endian architectures.
+The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
 
 Recommended compilers: MSVC, GCC, CLANG. 
 
