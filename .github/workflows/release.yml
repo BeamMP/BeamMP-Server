@@ -164,6 +164,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./bin/BeamMP-Server.exe
+          asset_path: ./bin/Release/BeamMP-Server.exe
           asset_name: BeamMP-Server.exe
           asset_content_type: application/vnd.microsoft.portable-executable
