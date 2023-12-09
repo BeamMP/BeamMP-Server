@@ -6,7 +6,7 @@
 This is the server for the multiplayer mod **[BeamMP](https://beammp.com/)** for the game [BeamNG.drive](https://www.beamng.com/).
 The server is the point through which all clients communicate. You can write Lua mods for the server, there are detailed instructions on the [BeamMP Wiki](https://wiki.beammp.com).
 
-**For Linux, you __need__ the runtime dependencies, listed below under "[prerequisites](#prerequisites)".**
+**For Linux, you __need__ the runtime dependencies, which are listed below under [Runtime Dependencies](#runtime-dependencies)**
 
 ## Support + Contact
 
@@ -43,7 +43,7 @@ We only allow building unmodified (original) source code for public use. `master
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and sometimes Linux. For any other distro or OS, you just have to find the same libraries listed in the Linux Build [Prerequisites](#prerequisites) further down the page, and it should build fine. We don't currently support any big-endian architectures.
+The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
 
 Recommended compilers: MSVC, GCC, CLANG. 
 
@@ -51,127 +51,35 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 ## Build Instructions
 
-**__Do not compile from `master`. Always build from a release tag, i.e. `tags/v3.1.0`!__**
+On Linux, you need some dependencies to **build** the server (on Windows, you don't):
 
-Currently only Linux and Windows are supported (generally). See [Releases](https://github.com/BeamMP/BeamMP-Server/releases/) for official binary releases. On systems to which we do not provide binaries (so anything but windows), you are allowed to compile the program and use it. Other restrictions, such as not being allowed to distribute those binaries, still apply (see [copyright notice](#copyright)).
+For Debian, Ubuntu and others you can find scripts that do this in `scripts/`.
 
-### Prerequisites
-
-#### Windows
-
-There are **no runtime libraries** needed for Windows.
-
-Please use the prepackaged binaries in [Releases](https://github.com/BeamMP/BeamMP-Server/releases/).
-
-Dependencies for **Windows** can be installed with `vcpkg`.
-These are:
 ```
-lua zlib rapidjson openssl websocketpp curl
+liblua5.3-dev curl zip unzip tar cmake make git g++
 ```
-The triplet we use for releases is `x64-windows-static`.
 
-#### Linux
+The names of each package may change depending on your platform. See in `scripts/` or use a search engine to find out what they're called for you.
 
-We recommend Ubuntu 22.04 or Arch Linux. Any Linux distribution will work, but you have to figure out the package names yourself (please feel free to PR in a change to this README with that info).
+You can build on **Windows, Linux** or other platforms by following these steps:
 
-##### Runtime Dependencies
+1. Check out the repository with git: `git clone --recursive https://github.com/BeamMP/BeamMP-Server`.
+2. Go into the directory `cd BeamMP-Server`.
+3. Run CMake `cmake -S . -B bin -DCMAKE_BUILD_TYPE=Release` - this can take a few minutes and may take a lot of disk space and bandwidth.
+4. Build via `cmake --build bin --parallel -t BeamMP-Server`.
+5. Your executable can be found in `bin/`.
+
+When you make changes to the code, you only have to run step 4 again.
+
+### Runtime Dependencies
 
 These are needed to *run* the server.
 
-<details>
-<summary>
-Ubuntu 22.04
-</summary>
+Debian, Ubuntu and friends: `liblua5.3-0`
 
-`apt-get install` the following libraries:
-```
-liblua5.3-0
-libssl3
-curl
-```
-</details>
+Other Linux distros: `liblua` of *some kind*.
 
-<details>
-<summary>
-Arch Linux
-</summary>
-
-`pacman -Syu` the following libraries:
-```
-lua53
-openssl
-curl
-```
-</details>
-
-##### Build Dependencies
-These are needed for you to *build* the server, in addition to the [runtime dependencies](#runtime-dependencies).
-
-<details>
-<summary>
-Ubuntu 22.04
-</summary>
-
-`apt-get install` the following libraries and programs:
-```
-git
-libz-dev
-rapidjson-dev
-liblua5.3-dev
-libssl-dev
-libwebsocketpp-dev
-libcurl4-openssl-dev
-cmake
-g++-10
-libboost1.74-all-dev
-libssl3
-curl
-```
-</details>
-
-<details>
-<summary>
-Arch Linux
-</summary>
-
-`pacman -Syu` the following libraries and programs:
-```
-lua53
-openssl
-curl
-git
-cmake
-g++
-zlib
-boost
-websocketpp
-```
-</details>
-
-#### macOS
-
-Dependencies for **macOS** can be installed with homebrew.
-```
-brew install lua@5.3 rapidjson websocketpp cmake openssl@1.1
-```
-Some packages are included in **macOS** but you might want to install homebrew versions.
-```
-brew install curl zlib git make
-```
-
-### How to build
-
-On Windows, use git-bash for these commands. On Linux, these should work in your shell.
-
-1. Make sure you have all [prerequisites](#prerequisites) installed
-2. Clone the repository in a location of your choice with `git clone https://github.com/BeamMP/BeamMP-Server` . 
-3. Change into the BeamMP-Server directory by running `cd BeamMP-Server`. 
-4. Checkout the branch or tag of the release you want to compile, for example `git checkout tags/v3.0.2` for version 3.0.2. You can find the latest version [here](https://github.com/BeamMP/BeamMP-Server/tags).
-6. Run `cmake . -DCMAKE_BUILD_TYPE=Release` (with `.`). This may take some time, and will update all submodules and prepare the build.
-7. Run `make -j` . This step will take some time and will use a lot of CPU and RAM. Remove the `-j` if you run out of memory. *If you change something in the source code, you only have to re-run this step.*
-8. You now have a `BeamMP-Server` file in your directory, which is executable with `./BeamMP-Server` (`.\BeamMP-Server.exe` for windows). Follow the (Windows or Linux, doesnt matter) instructions on the [wiki](https://wiki.beammp.com/en/home/server-installation) for further setup after installation (which we just did), such as port-forwarding and getting a key to actually run the server.
-
-*tip: to run the server in the background, simply (in bash, zsh, etc) run:* `nohup ./BeamMP-Server &`*.*
+Windows: No libraries.
 
 ## Support
 The BeamMP project is supported by community donations via our [Patreon](https://www.patreon.com/BeamMP). This brings perks such as Patreon-only channels on our Discord, early access to new updates, and more server keys. 
