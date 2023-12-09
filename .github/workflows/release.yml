@@ -7,6 +7,7 @@ on:
 
 env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CMAKE_BUILD_TYPE: "Release"
 
 jobs:
   create-release:
@@ -27,7 +28,7 @@ jobs:
           prerelease: true
           body: |
               Files included in this release:
-              - `BeamMP-Server.exe` is the windows build.
+              - `BeamMP-Server.exe` is the windows build. You need to install the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe) to run this.
               - `BeamMP-Server-debian` is a Debian 11 build, requires `liblua5.3-0`.
               - `BeamMP-Server-ubuntu` is a Ubuntu 22.04 build, requires `liblua5.3-0`.
 
@@ -163,6 +164,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./bin/BeamMP-Server.exe
+          asset_path: ./bin/Release/BeamMP-Server.exe
           asset_name: BeamMP-Server.exe
           asset_content_type: application/vnd.microsoft.portable-executable

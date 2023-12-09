@@ -5,6 +5,7 @@ on: [push]
 env:
   VCPKG_DEFAULT_TRIPLET: x64-windows-static
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CMAKE_BUILD_TYPE: "Release"
 
 jobs:
   windows-build:
@@ -38,5 +39,5 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: BeamMP-Server-windows
-          path: ./bin/BeamMP-Server.exe
+          path: ./bin/Release/BeamMP-Server.exe
 
