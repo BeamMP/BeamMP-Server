@@ -4,6 +4,7 @@ on: [push]
 
 env: 
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CMAKE_BUILD_TYPE: "Release"
 
 jobs:
   debian-11-build:
