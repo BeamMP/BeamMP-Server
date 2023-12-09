@@ -126,9 +126,10 @@ include(FindThreads)
 # enables compile_commands.json for clang-related tools (such as the clang LS)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# build debug builds by default (if not specified otherwise)
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
+# build release builds by default (if not specified otherwise)
+if(NOT DEFINED CMAKE_BUILD_TYPE)
+    message(NOTICE "No build type specified, defaulting to 'Release'")
+    set(CMAKE_BUILD_TYPE "Release")
 endif()
 
 if(UNIX)
