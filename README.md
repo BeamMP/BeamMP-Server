@@ -12,7 +12,6 @@ The server is the point through which all clients communicate. You can write Lua
 
 Feel free to ask any questions via the following channels:
 
-- **IRC**: `#beammp` on [irc.libera.chat](https://web.libera.chat/)
 - **Discord**: [click for invite](https://discord.gg/beammp)
 - **BeamMP Forum**: [BeamMP Forum Support](https://forum.beammp.com/c/support/33)
 
