@@ -69,7 +69,6 @@ int main(int argc, char** argv) {
 
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
-    Application::InitializeConsole();
     ArgsParser Parser;
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
@@ -80,12 +79,10 @@ int BeamMPServerMain(MainArguments Arguments) {
         return 1;
     }
     if (Parser.FoundArgument({ "help" })) {
-        Application::Console().Internal().set_prompt("");
         Application::Console().WriteRaw(sCommandlineArguments);
         return 0;
     }
     if (Parser.FoundArgument({ "version" })) {
-        Application::Console().Internal().set_prompt("");
         Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
         return 0;
     }
@@ -109,10 +106,21 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
+    
+    TConfig Config(ConfigPath);
+
+    if (Config.Failed()) {
+        beammp_info("Closing in 10 seconds");
+        // loop to make it possible to ctrl+c instead
+        for (size_t i = 0; i < 20; ++i) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        return 1;
+    }
+    Application::InitializeConsole();
+    Application::Console().StartLoggingToFile();
 
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
-
-    Application::Console().StartLoggingToFile();
 
     SetupSignalHandlers();
 
@@ -128,16 +136,6 @@ int BeamMPServerMain(MainArguments Arguments) {
     });
 
     TServer Server(Arguments.List);
-    TConfig Config(ConfigPath);
-
-    if (Config.Failed()) {
-        beammp_info("Closing in 10 seconds");
-        // loop to make it possible to ctrl+c instead
-        for (size_t i = 0; i < 20; ++i) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        return 1;
-    }
 
     auto LuaEngine = std::make_shared<TLuaEngine>();
     LuaEngine->SetServer(&Server);

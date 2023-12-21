@@ -157,13 +157,13 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
         mIsLuaConsole = true;
         if (mStateId != mDefaultStateId) {
             Application::Console().WriteRaw("Attached to Lua state '" + mStateId + "'. For help, type `:help`. To detach, type `:exit`");
-            mCommandline.set_prompt("lua @" + LuaStateId + "> ");
+            mCommandline->set_prompt("lua @" + LuaStateId + "> ");
         } else {
             Application::Console().WriteRaw("Attached to Lua. For help, type `:help`. To detach, type `:exit`");
-            mCommandline.set_prompt("lua> ");
+            mCommandline->set_prompt("lua> ");
         }
-        mCachedRegularHistory = mCommandline.history();
-        mCommandline.set_history(mCachedLuaHistory);
+        mCachedRegularHistory = mCommandline->history();
+        mCommandline->set_history(mCachedLuaHistory);
     }
 }
 
@@ -175,9 +175,9 @@ void TConsole::ChangeToRegularConsole() {
         } else {
             Application::Console().WriteRaw("Detached from Lua.");
         }
-        mCachedLuaHistory = mCommandline.history();
-        mCommandline.set_history(mCachedRegularHistory);
-        mCommandline.set_prompt("> ");
+        mCachedLuaHistory = mCommandline->history();
+        mCommandline->set_history(mCachedRegularHistory);
+        mCommandline->set_prompt("> ");
         mStateId = mDefaultStateId;
     }
 }
@@ -257,7 +257,7 @@ void TConsole::Command_Clear(const std::string&, const std::vector<std::string>&
     if (!EnsureArgsCount(args, 0, size_t(-1))) {
         return;
     }
-    mCommandline.write("\x1b[;H\x1b[2J");
+    mCommandline->write("\x1b[;H\x1b[2J");
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
@@ -589,16 +589,20 @@ Commands
 }
 
 TConsole::TConsole() {
-    mCommandline.enable_history();
-    mCommandline.set_history_limit(20);
-    mCommandline.set_prompt("> ");
+}
+
+void TConsole::InitializeCommandline() {
+    mCommandline = std::make_unique<Commandline>();
+    mCommandline->enable_history();
+    mCommandline->set_history_limit(20);
+    mCommandline->set_prompt("> ");
     BackupOldLog();
-    mCommandline.on_command = [this](Commandline& c) {
+    mCommandline->on_command = [this](Commandline& c) {
         try {
             auto TrimmedCmd = c.get_command();
             TrimmedCmd = TrimString(TrimmedCmd);
             auto [cmd, args] = ParseCommand(TrimmedCmd);
-            mCommandline.write(mCommandline.prompt() + TrimmedCmd);
+            mCommandline->write(mCommandline->prompt() + TrimmedCmd);
             if (mIsLuaConsole) {
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
@@ -633,7 +637,7 @@ TConsole::TConsole() {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
         }
     };
-    mCommandline.on_autocomplete = [this](Commandline&, std::string stub, int) {
+    mCommandline->on_autocomplete = [this](Commandline&, std::string stub, int) {
         std::vector<std::string> suggestions;
         try {
             if (mIsLuaConsole) { // if lua
@@ -703,11 +707,21 @@ TConsole::TConsole() {
 
 void TConsole::Write(const std::string& str) {
     auto ToWrite = GetDate() + str;
-    mCommandline.write(ToWrite);
+    // allows writing to stdout without an initialized console
+    if (mCommandline) {
+        mCommandline->write(ToWrite);
+    } else {
+        std::cout << ToWrite << std::endl;
+    }
 }
 
 void TConsole::WriteRaw(const std::string& str) {
-    mCommandline.write(str);
+    // allows writing to stdout without an initialized console
+    if (mCommandline) {
+        mCommandline->write(str);
+    } else {
+        std::cout << str << std::endl;
+    }
 }
 
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
