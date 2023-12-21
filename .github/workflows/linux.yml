@@ -47,6 +47,12 @@ jobs:
           name: BeamMP-Server-debian
           path: ./bin/BeamMP-Server
 
+      - name: Archive server debug info artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-debian.debug
+          path: ./bin/BeamMP-Server.debug
+
       - name: Build Tests
         run: bash ./scripts/debian-11/3-build-tests.sh
 
@@ -101,6 +107,12 @@ jobs:
           name: BeamMP-Server-ubuntu
           path: ./bin/BeamMP-Server
       
+      - name: Archive server debug info artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-ubuntu.debug
+          path: ./bin/BeamMP-Server.debug
+
       - name: Build Tests
         run: bash ./scripts/ubuntu-22.04/3-build-tests.sh
 
