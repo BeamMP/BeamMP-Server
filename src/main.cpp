@@ -129,9 +129,6 @@ int BeamMPServerMain(MainArguments Arguments) {
 
     TServer Server(Arguments.List);
     TConfig Config(ConfigPath);
-    auto LuaEngine = std::make_shared<TLuaEngine>();
-    LuaEngine->SetServer(&Server);
-    Application::Console().InitializeLuaConsole(*LuaEngine);
 
     if (Config.Failed()) {
         beammp_info("Closing in 10 seconds");
@@ -141,6 +138,10 @@ int BeamMPServerMain(MainArguments Arguments) {
         }
         return 1;
     }
+
+    auto LuaEngine = std::make_shared<TLuaEngine>();
+    LuaEngine->SetServer(&Server);
+    Application::Console().InitializeLuaConsole(*LuaEngine);
 
     RegisterThread("Main");
 
