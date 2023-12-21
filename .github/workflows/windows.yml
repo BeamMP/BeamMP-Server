@@ -1,0 +1,43 @@
+name: Windows
+
+on: [push]
+
+env:
+  VCPKG_DEFAULT_TRIPLET: x64-windows-static
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  CMAKE_BUILD_TYPE: "Release"
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          runVcpkgInstall: true
+
+      - name: Create Build Environment
+        shell: bash
+        run: ./scripts/windows/1-configure.sh
+
+      - name: Build Server
+        shell: bash
+        run: bash ./scripts/windows/2-build.sh
+
+      - name: Archive server artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: BeamMP-Server-windows
+          path: ./bin/Release/BeamMP-Server.exe
+

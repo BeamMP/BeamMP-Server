@@ -1,8 +1,5 @@
 #pragma once
 
-#include "TSentry.h"
-extern TSentry Sentry;
-
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -78,7 +75,7 @@ public:
     static void RegisterShutdownHandler(const TShutdownHandler& Handler);
     // Causes all threads to finish up and exit gracefull gracefully
     static void GracefullyShutdown();
-    static TConsole& Console() { return *mConsole; }
+    static TConsole& Console() { return mConsole; }
     static std::string ServerVersionString();
     static const Version& ServerVersion() { return mVersion; }
     static uint8_t ClientMajorVersion() { return 2; }
@@ -104,9 +101,7 @@ public:
     static void SleepSafeSeconds(size_t Seconds);
 
     static void InitializeConsole() {
-        if (!mConsole) {
-            mConsole = std::make_unique<TConsole>();
-        }
+        mConsole.InitializeCommandline();
     }
 
     enum class Status {
@@ -132,13 +127,13 @@ private:
     static inline SystemStatusMap mSystemStatusMap {};
     static inline std::mutex mSystemStatusMapMutex {};
     static inline std::string mPPS;
-    static inline std::unique_ptr<TConsole> mConsole;
+    static inline TConsole mConsole;
     static inline std::shared_mutex mShutdownMtx {};
     static inline bool mShutdown { false };
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 1, 1 };
+    static inline Version mVersion { 3, 1, 3 };
 };
 
 std::string ThreadName(bool DebugModeOverride = false);
@@ -193,7 +188,6 @@ void RegisterThread(const std::string& str);
     #define beammp_error(x)                                                               \
         do {                                                                              \
             Application::Console().Write(_this_location + std::string("[ERROR] ") + (x)); \
-            Sentry.AddErrorBreadcrumb((x), _file_basename, _line);                        \
         } while (false)
     #define beammp_lua_error(x)                                                               \
         do {                                                                                  \

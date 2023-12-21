@@ -5,6 +5,7 @@
 #include <atomic>
 #include <fstream>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -16,12 +17,15 @@ class TConsole {
 public:
     TConsole();
 
+    // Initializes the commandline app to take over I/O
+    void InitializeCommandline();
+
     void Write(const std::string& str);
     void WriteRaw(const std::string& str);
     void InitializeLuaConsole(TLuaEngine& Engine);
     void BackupOldLog();
     void StartLoggingToFile();
-    Commandline& Internal() { return mCommandline; }
+    Commandline& Internal() { return *mCommandline; }
 
 private:
     void RunAsCommand(const std::string& cmd, bool IgnoreNotACommand = false);
@@ -55,7 +59,7 @@ private:
         { "say", [this](const auto&, const auto&) { Command_Say(""); } }, // shouldn't actually be called
     };
 
-    Commandline mCommandline;
+    std::unique_ptr<Commandline> mCommandline { nullptr };
     std::vector<std::string> mCachedLuaHistory;
     std::vector<std::string> mCachedRegularHistory;
     TLuaEngine* mLuaEngine { nullptr };

@@ -1,262 +1,213 @@
-# 3.4 is required for imported targets.
-cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
-message(STATUS "You can find build instructions and a list of dependencies in the README at \
-https://github.com/BeamMP/BeamMP-Server")
-
-project(BeamMP-Server
-    DESCRIPTION "Server for BeamMP - The Multiplayer Mod for BeamNG.drive"
-    HOMEPAGE_URL https://beammp.com
-    LANGUAGES CXX C)
-
-find_package(Git REQUIRED)
-# Update submodules as needed
-option(GIT_SUBMODULE "Check submodules during build" ON)
-if(GIT_SUBMODULE)
-    message(STATUS "Submodule update")
-    execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                    RESULT_VARIABLE GIT_SUBMOD_RESULT)
-    if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-        message(FATAL_ERROR "git submodule update --init --recursive failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-    endif()
+if (WIN32)
+    set(VCPKG_TARGET_TRIPLET x64-windows-static)
 endif()
 
+include(cmake/Vcpkg.cmake) # needs to happen before project()
 
-set(HTTPLIB_REQUIRE_OPENSSL ON)
-set(SENTRY_BUILD_SHARED_LIBS OFF)
+project(
+    "BeamMP-Server" # replace this
+    VERSION 3.3.0
+)
 
-add_compile_definitions(CPPHTTPLIB_OPENSSL_SUPPORT=1)
+include(cmake/StandardSettings.cmake)
+include(cmake/StaticAnalyzers.cmake)
+include(cmake/Git.cmake)
 
-option(WIN32_STATIC_RUNTIME "Build statically-linked runtime on windows (don't touch unless you know what you're doing)" ON)
+# below are options which should be changed
 
-# ------------------------ APPLE ---------------------------------
-if(APPLE)
-    if(IS_DIRECTORY /opt/homebrew/Cellar/lua@5.3/5.3.6)
-        set(LUA_INCLUDE_DIR /opt/homebrew/Cellar/lua@5.3/5.3.6/include/lua5.3)
-        link_directories(/opt/homebrew/Cellar/lua@5.3/5.3.6/lib)
-    else()
-        set(LUA_INCLUDE_DIR /usr/local/Cellar/lua@5.3/5.3.6/include/lua5.3)
-        link_directories(/usr/local/Cellar/lua@5.3/5.3.6/lib)
-    endif()
-    set(LUA_LIBRARIES lua)
-    if(IS_DIRECTORY /opt/homebrew/opt/openssl@1.1)
-        include_directories(/opt/homebrew/opt/openssl@1.1/include)
-        link_directories(/opt/homebrew/opt/openssl@1.1/lib)
-    else()
-        include_directories(/usr/local/opt/openssl@1.1/include)
-        link_directories(/usr/local/opt/openssl@1.1/lib)
-    endif()
-# ------------------------ WINDOWS ---------------------------------
-elseif (WIN32)
-    if (WIN32_STATIC_RUNTIME)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    endif()
-# ------------------------ UNIX ------------------------------------
-elseif (UNIX)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
-    option(SANITIZE "Turns on thread and UB sanitizers" OFF)
-    if (SANITIZE)
-        message(STATUS "sanitize is ON")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize={address,thread,undefined}")
-    endif (SANITIZE)
-endif ()
+### SETTINGS ###
 
-set(BUILD_SHARED_LIBS OFF)
-# ------------------------ SENTRY ---------------------------------
-message(STATUS "Checking for Sentry URL")
-# this is set by the build system.
-# IMPORTANT: if you're building from source, just leave this empty
-if (NOT DEFINED BEAMMP_SECRET_SENTRY_URL)
-    message(WARNING "No sentry URL configured. Sentry logging is disabled for this build. \
-    This is not an error, and if you're building the BeamMP-Server yourself, this is expected and can be ignored.")
-    set(BEAMMP_SECRET_SENTRY_URL "")
-    set(SENTRY_BACKEND none)
-else()
-    set(SENTRY_BACKEND breakpad)
-endif()
-add_subdirectory("deps/sentry-native")
-
-# ------------------------ C++ SETUP ---------------------------------
-set(CMAKE_CXX_STANDARD 17)
-
-# ------------------------ DEPENDENCIES ------------------------------
-message(STATUS "Adding local source dependencies")
-# this has to happen before -DDEBUG since it wont compile properly with -DDEBUG
-add_subdirectory(deps)
-
-# ------------------------ VARIABLES ---------------------------------
-
-include(FindLua)
-include(FindOpenSSL)
-include(FindThreads)
-include(FindZLIB)
-
-find_package(Boost 1.70 REQUIRED COMPONENTS system)
-
-set(BeamMP_Sources
-    include/TConsole.h src/TConsole.cpp
-    include/TServer.h src/TServer.cpp
-    include/Compat.h src/Compat.cpp
-    include/Common.h src/Common.cpp
-    include/Client.h src/Client.cpp
-    include/VehicleData.h src/VehicleData.cpp
-    include/TConfig.h src/TConfig.cpp
-    include/TLuaEngine.h src/TLuaEngine.cpp
-    include/TLuaPlugin.h src/TLuaPlugin.cpp
-    include/TResourceManager.h src/TResourceManager.cpp
-    include/THeartbeatThread.h src/THeartbeatThread.cpp
-    include/Http.h src/Http.cpp
-    include/TSentry.h src/TSentry.cpp
-    include/TPPSMonitor.h src/TPPSMonitor.cpp
-    include/TNetwork.h src/TNetwork.cpp
-    include/LuaAPI.h src/LuaAPI.cpp
-    include/TScopedTimer.h src/TScopedTimer.cpp
-    include/SignalHandling.h src/SignalHandling.cpp
-    include/ArgsParser.h src/ArgsParser.cpp
-    include/TPluginMonitor.h src/TPluginMonitor.cpp
-    include/Environment.h
+# add all headers (.h, .hpp) to this
+set(PRJ_HEADERS 
+    include/ArgsParser.h
     include/BoostAliases.h
+    include/Client.h
+    include/Common.h
+    include/Compat.h
+    include/Cryptography.h
+    include/CustomAssert.h
+    include/Defer.h
+    include/Environment.h
+    include/Http.h
+    include/IThreaded.h
+    include/Json.h
+    include/LuaAPI.h
+    include/RWMutex.h
+    include/SignalHandling.h
+    include/TConfig.h
+    include/TConsole.h
+    include/THeartbeatThread.h
+    include/TLuaEngine.h
+    include/TLuaPlugin.h
+    include/TNetwork.h
+    include/TPluginMonitor.h
+    include/TPPSMonitor.h
+    include/TResourceManager.h
+    include/TScopedTimer.h
+    include/TServer.h
+    include/VehicleData.h
+)
+# add all source files (.cpp) to this, except the one with main()
+set(PRJ_SOURCES
+    src/ArgsParser.cpp
+    src/Client.cpp
+    src/Common.cpp
+    src/Compat.cpp
+    src/Http.cpp
+    src/LuaAPI.cpp
+    src/SignalHandling.cpp
+    src/TConfig.cpp
+    src/TConsole.cpp
+    src/THeartbeatThread.cpp
+    src/TLuaEngine.cpp
+    src/TLuaPlugin.cpp
+    src/TNetwork.cpp
+    src/TPluginMonitor.cpp
+    src/TPPSMonitor.cpp
+    src/TResourceManager.cpp
+    src/TScopedTimer.cpp
+    src/TServer.cpp
+    src/VehicleData.cpp
 )
 
-set(BeamMP_Includes
-    ${LUA_INCLUDE_DIR}
-    ${CURL_INCLUDE_DIRS}
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps/cpp-httplib"
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps/commandline"
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps/json/single_include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps/sol2/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps/rapidjson/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps/asio/asio/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/deps"
-)
+find_package(Lua REQUIRED)
 
-set(BeamMP_Definitions
-    SECRET_SENTRY_URL="${BEAMMP_SECRET_SENTRY_URL}"
-)
-
-if (WIN32)
-    list(APPEND BeamMP_Definitions _WIN32_WINNT=0x0601)
-    list(APPEND BeamMP_Definitions _CRT_SECURE_NO_WARNINGS)
-endif()
-if (UNIX)
-    set(BeamMP_CompileOptions
-        -Wall
-        -Wextra
-        -Wpedantic
-    
-        -Werror=uninitialized
-        -Werror=float-equal
-        -Werror=pointer-arith
-        -Werror=double-promotion
-        -Werror=write-strings
-        -Werror=cast-qual
-        -Werror=init-self
-        -Werror=cast-align
-        -Werror=unreachable-code
-        -Werror=strict-aliasing -fstrict-aliasing
-        -Werror=redundant-decls
-        -Werror=missing-declarations
-        -Werror=missing-field-initializers
-        -Werror=write-strings
-        -Werror=ctor-dtor-privacy
-        -Werror=switch-enum
-        -Werror=switch-default
-        -Werror=old-style-cast
-        -Werror=overloaded-virtual
-        -Werror=overloaded-virtual
-        -Werror=missing-include-dirs
-        -Werror=unused-result
-
-        -fstack-protector
-        -Wzero-as-null-pointer-constant
-    )
-else()
-
-    set(BeamMP_CompileOptions
-        /bigobj
-        /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT /NODEFAULTLIB:LIBCMT
-    )
-endif()
-
-set(BeamMP_Libraries
-    Boost::boost
-    Boost::system
-    doctest::doctest
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    sol2::sol2
+# set the source file containing main()
+set(PRJ_MAIN src/main.cpp)
+# set the source file containing the test's main
+set(PRJ_TEST_MAIN test/test_main.cpp)
+# set include paths not part of libraries
+set(PRJ_INCLUDE_DIRS ${LUA_INCLUDE_DIR})
+# set compile features (e.g. standard version)
+set(PRJ_COMPILE_FEATURES cxx_std_20)
+# set #defines (test enable/disable not included here)
+set(PRJ_DEFINITIONS CPPHTTPLIB_OPENSSL_SUPPORT)
+# add all libraries used by the project (WARNING: also set them in vcpkg.json!)
+set(PRJ_LIBRARIES 
     fmt::fmt
+    doctest::doctest
     Threads::Threads
-    ZLIB::ZLIB
+    commandline_static
+    toml11::toml11
+    rapidjson
+    sol2
+    httplib::httplib
+    libzip::zip
+    OpenSSL::SSL OpenSSL::Crypto
     ${LUA_LIBRARIES}
-    commandline
-    sentry
 )
+
+# add dependency find_package calls and similar here
+find_package(fmt CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
+find_package(doctest CONFIG REQUIRED)
+find_package(Boost REQUIRED)
+find_package(httplib CONFIG REQUIRED)
+find_package(libzip CONFIG REQUIRED)
+find_package(RapidJSON CONFIG REQUIRED)
+find_package(sol2 CONFIG REQUIRED)
+find_package(toml11 CONFIG REQUIRED)
+
+include_directories(include)
+
+# to enable multithreading and the Threads::Threads dependency
+include(FindThreads)
+
+### END SETTINGS ###
+
+# DONT change anything beyond this point unless you've read the cmake bible and 
+# swore on it not to bonk up the ci/cd pipelines with your changes.
+
+####################
+
+
+# enables compile_commands.json for clang-related tools (such as the clang LS)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# build release builds by default (if not specified otherwise)
+if(NOT DEFINED CMAKE_BUILD_TYPE)
+    message(NOTICE "No build type specified, defaulting to 'Release'")
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
+if(UNIX)
+    # this will allow to use same _DEBUG macro available in both Linux as well as Windows - MSCV environment. Easy to put Debug specific code.
+    add_compile_options("$<$<CONFIG:DEBUG>:-D_DEBUG>")
+endif(UNIX)
 
 if (WIN32)
-    set(BeamMP_PlatformLibs wsock32 ws2_32)
+    add_compile_options("-D_WIN32_WINNT=0x0601")
+endif(WIN32)
+
+
+include(cmake/CompilerWarnings.cmake)
+
+# set MT library for msvc - this is required (says documentation)
+# linux/mac/etc should simply ignore this by default.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+set(PRJ_DEFINITIONS ${PRJ_DEFINITIONS}
+    PRJ_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    PRJ_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    PRJ_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+)
+
+# build commandline manually for funky windows flags to carry over without a custom toolchain file
+add_library(commandline_static 
+    deps/commandline/src/impls.h
+    deps/commandline/src/windows_impl.cpp
+    deps/commandline/src/linux_impl.cpp
+    deps/commandline/src/backends/InteractiveBackend.cpp
+    deps/commandline/src/backends/InteractiveBackend.h
+    deps/commandline/src/backends/Backend.cpp
+    deps/commandline/src/backends/Backend.h
+    deps/commandline/src/commandline.h
+    deps/commandline/src/commandline.cpp
+    deps/commandline/src/backends/BufferedBackend.cpp
+    deps/commandline/src/backends/BufferedBackend.h
+)
+if (WIN32)
+    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
+else ()
+    target_compile_definitions(commandline_static PRIVATE -DPLATFORM_LINUX=1)
 endif ()
+target_include_directories(commandline_static PUBLIC "deps/commandline/src")
+target_link_libraries(commandline_static Threads::Threads)
+# end of commandline custom build
 
-# ------------------------ BEAMMP SERVER -----------------------------
-
-add_executable(BeamMP-Server
-        src/main.cpp
-        ${BeamMP_Sources}
+add_executable(${PROJECT_NAME} ${PRJ_HEADERS} ${PRJ_SOURCES} ${PRJ_MAIN})
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    MACOSX_BUNDLE TRUE
+    WIN32_EXECUTABLE TRUE
+)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PRJ_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${PRJ_LIBRARIES})
+target_compile_features(${PROJECT_NAME} PRIVATE ${PRJ_COMPILE_FEATURES})
+target_compile_definitions(${PROJECT_NAME} PRIVATE ${PRJ_DEFINITIONS} ${PRJ_WARNINGS}
+    DOCTEST_CONFIG_DISABLE # disables all test code in the final executable
 )
 
-target_compile_definitions(BeamMP-Server PRIVATE
-    ${BeamMP_Definitions}
-    DOCTEST_CONFIG_DISABLE
-)
+if(MSVC)
+    target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:CONSOLE")
+endif(MSVC)
 
-target_compile_options(BeamMP-Server PRIVATE 
-    ${BeamMP_CompileOptions}
-)
+# setup all warnings (from cmake/CompilerWarnings.cmake)
+set_project_warnings(${PROJECT_NAME})
 
-target_include_directories(BeamMP-Server PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_include_directories(BeamMP-Server SYSTEM PRIVATE
-    ${BeamMP_Includes}
-)
-
-target_link_libraries(BeamMP-Server
-    ${BeamMP_Libraries}
-    ${BeamMP_PlatformLibs}
-)
-
-# ------------------------ BEAMMP SERVER TESTS -----------------------
-
-option(BUILD_TESTS "Build BeamMP-Server tests" ON)
-
-if(BUILD_TESTS)
-    add_executable(BeamMP-Server-tests
-            test/test_main.cpp
-            ${BeamMP_Sources}
-    )
-
-    target_compile_definitions(BeamMP-Server-tests PRIVATE
-        ${BeamMP_Definitions}
-    )
-    
-    target_compile_options(BeamMP-Server-tests PRIVATE 
-       ${BeamMP_CompileOptions}
-    )
-
-    target_include_directories(BeamMP-Server-tests PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    )
-
-    target_include_directories(BeamMP-Server-tests SYSTEM PRIVATE
-        ${BeamMP_Includes}
-    )
-    
-    target_link_libraries(BeamMP-Server-tests
-        ${BeamMP_Libraries}
-        ${BeamMP_PlatformLibs}
-    )
+if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
+    message(STATUS "Unit tests are enabled and will be built as '${PROJECT_NAME}-tests'")
+    add_executable(${PROJECT_NAME}-tests ${PRJ_HEADERS} ${PRJ_SOURCES} ${PRJ_TEST_MAIN})
+    target_include_directories(${PROJECT_NAME}-tests PRIVATE ${PRJ_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME}-tests ${PRJ_LIBRARIES})
+    target_compile_features(${PROJECT_NAME}-tests PRIVATE ${PRJ_COMPILE_FEATURES})
+    target_compile_definitions(${PROJECT_NAME}-tests PRIVATE ${PRJ_DEFINITIONS} ${PRJ_WARNINGS})
+    set_project_warnings(${PROJECT_NAME}-tests)
+    if(MSVC)
+        target_link_options(${PROJECT_NAME}-tests PRIVATE "/SUBSYSTEM:CONSOLE")
+    endif(MSVC)
 endif()
 

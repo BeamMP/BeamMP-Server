@@ -8,7 +8,7 @@ public:
     IThreaded()
         // invokes operator() on this object
         : mThread() { }
-    ~IThreaded() noexcept {
+    virtual ~IThreaded() noexcept {
         if (mThread.joinable()) {
             mThread.join();
         }
