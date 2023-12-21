@@ -116,7 +116,7 @@ jobs:
     container:
       image: debian:11
     steps:
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@v4
         with:
           name: BeamMP-Server-debian-tests
     
@@ -136,7 +136,7 @@ jobs:
     container:
       image: ubuntu:22.04
     steps:
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@v4
         with:
           name: BeamMP-Server-ubuntu-tests
     
