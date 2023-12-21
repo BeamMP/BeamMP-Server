@@ -605,7 +605,7 @@ std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionR
     }
 }
 
-httplib::Headers table_to_headers(const sol::table& headers) {
+static httplib::Headers table_to_headers(const sol::table& headers) {
     auto http_headers = httplib::Headers();
     if (!headers.empty()) {
         for (const auto& pair : headers) {
@@ -687,21 +687,6 @@ void TLuaEngine::StateThreadData::Lua_HttpPost(const std::string& host, const st
         auto response = client.Post(path, http_headers, body.c_str(), body.length(), content_type);
         this->Lua_HttpCallCallback(response, cb_ref);
     });
-}
-
-sol::table TLuaEngine::StateThreadData::Lua_HttpCreateConnection(const std::string& host, uint16_t port) {
-    auto table = mStateView.create_table();
-    table["host"] = host;
-    table["port"] = port;
-
-    table.set_function("Get", [this](sol::table table, std::string path, sol::table headers, sol::function cb) {
-        auto host = table["host"].get<std::string>();
-        auto port = table["port"].get<uint16_t>();
-        char buff[2000];
-        std::snprintf(buff, sizeof(buff), "%s:%i", host.c_str(), port);
-        return Lua_HttpGet(std::string(buff), path, headers, cb);
-    });
-    return table;
 }
 
 template <typename T>
@@ -907,9 +892,6 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     });
 
     auto HttpTable = StateView.create_named_table("Http");
-    HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
-        return Lua_HttpCreateConnection(host, port);
-    });
     HttpTable.set_function("Get", sol::overload(
         [this](const std::string& url, const std::string& path, const sol::function& cb) {
             return Lua_HttpGet(url, path, this->mStateView.create_table(), cb);
