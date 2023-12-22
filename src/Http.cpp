@@ -16,16 +16,24 @@ static std::shared_ptr<httplib::SSLClient> GetOrCreateClient(const std::string& 
     static thread_local std::unordered_map<std::pair<std::string, int>, std::shared_ptr<httplib::SSLClient>> clients {};
     const auto idx = std::pair<std::string, int>(host, port);
     if (!clients.contains(idx)) {
+        beammp_tracef("Creating connection to {}:{}", host, port);
         clients.emplace(std::make_shared<httplib::SSLClient>(host, port));
+        auto client = clients.at(idx);
+        client->enable_server_certificate_verification(false);
+        client->set_address_family(AF_INET);
+        client->set_read_timeout(std::chrono::seconds(10));
+        return client;
+    } else {
+        beammp_tracef("Reusing connection to {}:{}", host, port);
+        return clients.at(idx);
     }
-    clients.at(idx);
 }
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
-    httplib::SSLClient client(host, port);
-    client.enable_server_certificate_verification(false);
-    client.set_address_family(AF_INET);
-    auto res = client.Get(target.c_str());
+    auto client = GetOrCreateClient(host, port);
+    beammp_assert(client != nullptr);
+    beammp_assert(client.is_valid());
+    auto res = client->Get(target.c_str());
     if (res) {
         if (status) {
             *status = res->status;
@@ -37,12 +45,10 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
 }
 
 std::string Http::POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status, const httplib::Headers& headers) {
-    httplib::SSLClient client(host, port);
-    client.set_read_timeout(std::chrono::seconds(10));
+    auto client = GetOrCreateClient(host, port);
+    beammp_assert(client != nullptr);
     beammp_assert(client.is_valid());
-    client.enable_server_certificate_verification(false);
-    client.set_address_family(AF_INET);
-    auto res = client.Post(target.c_str(), headers, body.c_str(), body.size(), ContentType.c_str());
+    auto res = client->Post(target.c_str(), headers, body.c_str(), body.size(), ContentType.c_str());
     if (res) {
         if (status) {
             *status = res->status;
