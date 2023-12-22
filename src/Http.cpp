@@ -10,9 +10,16 @@
 #include <random>
 #include <stdexcept>
 
-// TODO: Add sentry error handling back
-
 using json = nlohmann::json;
+
+static std::shared_ptr<httplib::SSLClient> GetOrCreateClient(const std::string& host, int port) {
+    static thread_local std::unordered_map<std::pair<std::string, int>, std::shared_ptr<httplib::SSLClient>> clients {};
+    const auto idx = std::pair<std::string, int>(host, port);
+    if (!clients.contains(idx)) {
+        clients.emplace(std::make_shared<httplib::SSLClient>(host, port));
+    }
+    clients.at(idx);
+}
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
     httplib::SSLClient client(host, port);
