@@ -1,6 +1,7 @@
 #include "Common.h"
 
 #include "TConfig.h"
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -8,16 +9,27 @@
 
 // General
 static constexpr std::string_view StrDebug = "Debug";
+static constexpr std::string_view EnvStrDebug = "BEAMMP_DEBUG";
 static constexpr std::string_view StrPrivate = "Private";
+static constexpr std::string_view EnvStrPrivate = "BEAMMP_PRIVATE";
 static constexpr std::string_view StrPort = "Port";
+static constexpr std::string_view EnvStrPort = "BEAMMP_PORT";
 static constexpr std::string_view StrMaxCars = "MaxCars";
+static constexpr std::string_view EnvStrMaxCars = "BEAMMP_MAX_CARS";
 static constexpr std::string_view StrMaxPlayers = "MaxPlayers";
+static constexpr std::string_view EnvStrMaxPlayers = "BEAMMP_MAX_PLAYERS";
 static constexpr std::string_view StrMap = "Map";
+static constexpr std::string_view EnvStrMap = "BEAMMP_MAP";
 static constexpr std::string_view StrName = "Name";
+static constexpr std::string_view EnvStrName = "BEAMMP_NAME";
 static constexpr std::string_view StrDescription = "Description";
+static constexpr std::string_view EnvStrDescription = "BEAMMP_DESCRIPTION";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
+static constexpr std::string_view EnvStrResourceFolder = "BEAMMP_RESOURCE_FOLDER";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+static constexpr std::string_view EnvStrAuthKey = "BEAMMP_AUTH_KEY";
 static constexpr std::string_view StrLogChat = "LogChat";
+static constexpr std::string_view EnvStrLogChat = "BEAMMP_LOG_CHAT";
 static constexpr std::string_view StrPassword = "Password";
 
 // Misc
@@ -159,19 +171,35 @@ void TConfig::CreateConfigFile() {
     FlushToFile();
 }
 
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue) {
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+            OutValue = std::string(envp);
+        }
+    }
     if (Table[Category.c_str()][Key.data()].is_string()) {
         OutValue = Table[Category.c_str()][Key.data()].as_string();
     }
 }
 
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, bool& OutValue) {
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue) {
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+            auto Str = std::string(envp);
+            OutValue = Str == "1" || Str == "true";
+        }
+    }
     if (Table[Category.c_str()][Key.data()].is_boolean()) {
         OutValue = Table[Category.c_str()][Key.data()].as_boolean();
     }
 }
 
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue) {
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue) {
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+            OutValue = int(std::strtol(envp, nullptr, 10));
+        }
+    }
     if (Table[Category.c_str()][Key.data()].is_integer()) {
         OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
     }
@@ -181,29 +209,29 @@ void TConfig::ParseFromFile(std::string_view name) {
     try {
         toml::value data = toml::parse<toml::preserve_comments>(name.data());
         // GENERAL
-        TryReadValue(data, "General", StrDebug, Application::Settings.DebugModeEnabled);
-        TryReadValue(data, "General", StrPrivate, Application::Settings.Private);
-        TryReadValue(data, "General", StrPort, Application::Settings.Port);
-        TryReadValue(data, "General", StrMaxCars, Application::Settings.MaxCars);
-        TryReadValue(data, "General", StrMaxPlayers, Application::Settings.MaxPlayers);
-        TryReadValue(data, "General", StrMap, Application::Settings.MapName);
-        TryReadValue(data, "General", StrName, Application::Settings.ServerName);
-        TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
-        TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
-        TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
-        TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
-        TryReadValue(data, "General", StrPassword, Application::Settings.Password);
+        TryReadValue(data, "General", StrDebug, EnvStrDebug, Application::Settings.DebugModeEnabled);
+        TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Application::Settings.Private);
+        TryReadValue(data, "General", StrPort, EnvStrPort, Application::Settings.Port);
+        TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Application::Settings.MaxCars);
+        TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Application::Settings.MaxPlayers);
+        TryReadValue(data, "General", StrMap, EnvStrMap, Application::Settings.MapName);
+        TryReadValue(data, "General", StrName, EnvStrName, Application::Settings.ServerName);
+        TryReadValue(data, "General", StrDescription, EnvStrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
+        TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
+        TryReadValue(data, "General", StrPassword, "", Application::Settings.Password);
         // Misc
-        TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
-        TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
-        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
+        TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
         // HTTP
-        TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
-        TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
-        TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
-        TryReadValue(data, "HTTP", StrHTTPServerIP, Application::Settings.HTTPServerIP);
-        TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
-        TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
+        TryReadValue(data, "HTTP", StrSSLKeyPath, "", Application::Settings.SSLKeyPath);
+        TryReadValue(data, "HTTP", StrSSLCertPath, "", Application::Settings.SSLCertPath);
+        TryReadValue(data, "HTTP", StrHTTPServerPort, "", Application::Settings.HTTPServerPort);
+        TryReadValue(data, "HTTP", StrHTTPServerIP, "", Application::Settings.HTTPServerIP);
+        TryReadValue(data, "HTTP", StrHTTPServerEnabled, "", Application::Settings.HTTPServerEnabled);
+        TryReadValue(data, "HTTP", StrHTTPServerUseSSL, "", Application::Settings.HTTPServerUseSSL);
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
