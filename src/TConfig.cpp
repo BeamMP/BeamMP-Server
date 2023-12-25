@@ -175,6 +175,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
     if (!Env.empty()) {
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
             OutValue = std::string(envp);
+            return;
         }
     }
     if (Table[Category.c_str()][Key.data()].is_string()) {
@@ -187,6 +188,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
             auto Str = std::string(envp);
             OutValue = Str == "1" || Str == "true";
+            return;
         }
     }
     if (Table[Category.c_str()][Key.data()].is_boolean()) {
@@ -198,6 +200,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
     if (!Env.empty()) {
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
             OutValue = int(std::strtol(envp, nullptr, 10));
+            return;
         }
     }
     if (Table[Category.c_str()][Key.data()].is_integer()) {
