@@ -13,6 +13,7 @@
 #include "TServer.h"
 #include "Update.h"
 
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
@@ -94,6 +95,11 @@ int BeamMPServerMain(MainArguments Arguments) {
     if (Parser.FoundArgument({ "update" })) {
         Update::PerformUpdate(Arguments.InvokedAs);
         return 123;
+    }
+    // check that there is no old update file
+    auto OldFile = Arguments.InvokedAs + ".delete_me";
+    if (fs::exists(OldFile)) {
+        fs::remove(OldFile);
     }
 
     std::string ConfigPath = "ServerConfig.toml";
