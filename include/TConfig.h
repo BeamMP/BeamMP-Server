@@ -27,6 +27,7 @@ private:
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue);
 
     void ParseOldFormat();
+    std::string TagsAsPrettyArray() const;
     bool IsDefault();
     bool mFailed { false };
     std::string mConfigFileName;

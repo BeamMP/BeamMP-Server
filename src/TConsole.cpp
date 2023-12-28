@@ -52,17 +52,6 @@ TEST_CASE("TrimString") {
     CHECK(TrimString("") == "");
 }
 
-// TODO: add unit tests to SplitString
-static inline void SplitString(std::string const& str, const char delim, std::vector<std::string>& out) {
-    size_t start;
-    size_t end = 0;
-
-    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
-        end = str.find(delim, start);
-        out.push_back(str.substr(start, end - start));
-    }
-}
-
 static std::string GetDate() {
     std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     time_t tt = std::chrono::system_clock::to_time_t(now);

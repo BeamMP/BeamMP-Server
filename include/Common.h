@@ -137,6 +137,8 @@ private:
     static inline Version mVersion { 3, 2, 0 };
 };
 
+void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);
+
 std::string ThreadName(bool DebugModeOverride = false);
 void RegisterThread(const std::string& str);
 #define RegisterThreadAuto() RegisterThread(__func__)

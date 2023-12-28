@@ -214,7 +214,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
-    beammp_debug(std::string(StrTags) + ": \"" + Application::Settings.ServerTags + "\"");
+    beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     // special!
@@ -273,4 +273,14 @@ void TConfig::ParseOldFormat() {
         }
         Str >> std::ws;
     }
+}
+std::string TConfig::TagsAsPrettyArray() const {
+    std::vector<std::string> TagsArray = {};
+    SplitString(Application::Settings.ServerTags, ',', TagsArray);
+    std::string Pretty = {};
+    for (size_t i = 0; i < TagsArray.size() - 1; ++i) {
+        Pretty += '\"' + TagsArray[i] + "\", ";
+    }
+    Pretty += '\"' + TagsArray.at(TagsArray.size()-1) + "\"";
+    return Pretty;
 }
