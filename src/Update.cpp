@@ -115,12 +115,12 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
         while (std::getline(OsRelease, Line)) {
             if (Line.starts_with("ID=")) {
                 DistroID = Line.substr(3);
-            } else if (Line.starts_with("VERSION_ID=")) {
-                DistroVersion = Line.substr(strlen("VERSION_ID="));
             } else if (Line.starts_with("VERSION_ID=\"")) {
-                DistroVersion = Line.substr(strlen("VERSION_ID="));
+                DistroVersion = Line.substr(strlen("VERSION_ID=\""));
                 // skip closing quote
                 DistroVersion = DistroVersion.substr(0, DistroVersion.size() - 1);
+            } else if (Line.starts_with("VERSION_ID=")) {
+                DistroVersion = Line.substr(strlen("VERSION_ID="));
             }
         }
     }
@@ -232,10 +232,9 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
     auto DeleteMe = InvokedAs + ".delete_me";
     std::filesystem::rename(InvokedAs, DeleteMe);
     std::filesystem::rename(Temp, InvokedAs);
-    std::wstring Wide(DeleteMe.begin(), DeleteMe.end());
-    int Attr = GetFileAttributes(Wide.c_str());
+    int Attr = GetFileAttributesA(DeleteMe.c_str());
     if ((Attr & FILE_ATTRIBUTE_HIDDEN) == 0) {
-        SetFileAttributes(Wide.c_str(), Attr | FILE_ATTRIBUTE_HIDDEN);
+        SetFileAttributesA(DeleteMe.c_str(), Attr | FILE_ATTRIBUTE_HIDDEN);
     }
 #else
     beammp_error("Not implemented");
