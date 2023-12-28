@@ -24,6 +24,8 @@ static constexpr std::string_view StrName = "Name";
 static constexpr std::string_view EnvStrName = "BEAMMP_NAME";
 static constexpr std::string_view StrDescription = "Description";
 static constexpr std::string_view EnvStrDescription = "BEAMMP_DESCRIPTION";
+static constexpr std::string_view StrTags = "Tags";
+static constexpr std::string_view EnvStrTags = "BEAMMP_TAGS";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view EnvStrResourceFolder = "BEAMMP_RESOURCE_FOLDER";
 static constexpr std::string_view StrAuthKey = "AuthKey";
@@ -105,6 +107,8 @@ void TConfig::FlushToFile() {
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
     data["General"][StrName.data()] = Application::Settings.ServerName;
+    SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
+    data["General"][StrTags.data()] = Application::Settings.ServerTags;
     data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
     data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
     data["General"][StrMap.data()] = Application::Settings.MapName;
@@ -122,7 +126,7 @@ void TConfig::FlushToFile() {
     std::stringstream Ss;
     Ss << "# This is the BeamMP-Server config file.\n"
           "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://keymaster.beammp.com/` on the left under \"Keys\"\n"
        << data;
     auto File = std::fopen(mConfigFileName.c_str(), "w+");
     if (!File) {
@@ -201,6 +205,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrMap, EnvStrMap, Application::Settings.MapName);
         TryReadValue(data, "General", StrName, EnvStrName, Application::Settings.ServerName);
         TryReadValue(data, "General", StrDescription, EnvStrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrTags, EnvStrTags, Application::Settings.ServerTags);
         TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
         TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
@@ -241,6 +246,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     // special!
@@ -299,4 +305,14 @@ void TConfig::ParseOldFormat() {
         }
         Str >> std::ws;
     }
+}
+std::string TConfig::TagsAsPrettyArray() const {
+    std::vector<std::string> TagsArray = {};
+    SplitString(Application::Settings.ServerTags, ',', TagsArray);
+    std::string Pretty = {};
+    for (size_t i = 0; i < TagsArray.size() - 1; ++i) {
+        Pretty += '\"' + TagsArray[i] + "\", ";
+    }
+    Pretty += '\"' + TagsArray.at(TagsArray.size()-1) + "\"";
+    return Pretty;
 }

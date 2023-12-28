@@ -43,6 +43,7 @@ public:
     struct TSettings {
         std::string ServerName { "BeamMP Server" };
         std::string ServerDesc { "BeamMP Default Description" };
+        std::string ServerTags { "Freeroam" };
         std::string Resource { "Resources" };
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};
@@ -135,6 +136,8 @@ private:
 
     static inline Version mVersion { 3, 2, 0 };
 };
+
+void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);
 
 std::string ThreadName(bool DebugModeOverride = false);
 void RegisterThread(const std::string& str);
