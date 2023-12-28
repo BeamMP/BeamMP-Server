@@ -83,6 +83,17 @@ jobs:
           asset_path: ./bin/BeamMP-Server
           asset_name: BeamMP-Server-debian
           asset_content_type: application/x-elf
+
+      - name: Upload Debug Info
+        id: upload-debug-info
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./bin/BeamMP-Server.debug
+          asset_name: debuginfo-debian.debug
+          asset_content_type: application/x-elf
     
   upload-release-files-ubuntu-22-04:
     name: Build and upload Ubuntu 22.04 Release Files
@@ -129,6 +140,17 @@ jobs:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
           asset_path: ./bin/BeamMP-Server
           asset_name: BeamMP-Server-ubuntu
+          asset_content_type: application/x-elf
+
+      - name: Upload Debug Info
+        id: upload-debug-info
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./bin/BeamMP-Server.debug
+          asset_name: debuginfo-ubuntu.debug
           asset_content_type: application/x-elf
 
   upload-release-files-windows:

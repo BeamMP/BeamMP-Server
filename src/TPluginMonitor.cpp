@@ -1,6 +1,7 @@
 #include "TPluginMonitor.h"
 
 #include "TLuaEngine.h"
+#include <filesystem>
 
 TPluginMonitor::TPluginMonitor(const fs::path& Path, std::shared_ptr<TLuaEngine> Engine)
     : mEngine(Engine)
@@ -9,7 +10,7 @@ TPluginMonitor::TPluginMonitor(const fs::path& Path, std::shared_ptr<TLuaEngine>
     if (!fs::exists(mPath)) {
         fs::create_directories(mPath);
     }
-    for (const auto& Entry : fs::recursive_directory_iterator(mPath)) {
+    for (const auto& Entry : fs::recursive_directory_iterator(mPath, fs::directory_options::follow_directory_symlink)) {
         // TODO: trigger an event when a subfolder file changes
         if (Entry.is_regular_file()) {
             mFileTimes[Entry.path().string()] = fs::last_write_time(Entry.path());
