@@ -241,7 +241,6 @@ void TConfig::ParseFromFile(std::string_view name) {
         Application::SetSubsystemStatus("Config", Application::Status::Bad);
         return;
     }
-    PrintDebug();
 
     // Update in any case
     if (!mDisableConfig) {
