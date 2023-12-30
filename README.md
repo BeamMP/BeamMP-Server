@@ -52,20 +52,22 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 On Linux, you need some dependencies to **build** the server (on Windows, you don't):
 
-For Debian, Ubuntu and others you can find scripts that do this in `scripts/`.
-
 ```
 liblua5.3-dev curl zip unzip tar cmake make git g++
 ```
 
-The names of each package may change depending on your platform. See in `scripts/` or use a search engine to find out what they're called for you.
+You can install these with your distribution's package manager. You will need sudo or need root for ONLY this step.
+
+The names of each package may change depending on your platform.
+
+If you are building for ARM (like aarch64), you need to run `export VCPKG_FORCE_SYSTEM_BINARIES=1` before the following commands.
 
 You can build on **Windows, Linux** or other platforms by following these steps:
 
 1. Check out the repository with git: `git clone --recursive https://github.com/BeamMP/BeamMP-Server`.
 2. Go into the directory `cd BeamMP-Server`.
 3. Run CMake `cmake -S . -B bin -DCMAKE_BUILD_TYPE=Release` - this can take a few minutes and may take a lot of disk space and bandwidth.
-4. Build via `cmake --build bin --parallel -t BeamMP-Server`.
+4. Build via `cmake --build bin --parallel --config Release -t BeamMP-Server`.
 5. Your executable can be found in `bin/`.
 
 When you make changes to the code, you only have to run step 4 again.
