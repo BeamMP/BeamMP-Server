@@ -35,11 +35,11 @@ public:
     [[nodiscard]] bool Failed() const { return mFailed; }
 
     void FlushToFile();
+    void PrintDebug();
 
 private:
     void CreateConfigFile();
     void ParseFromFile(std::string_view name);
-    void PrintDebug();
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue);
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue);
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue);
