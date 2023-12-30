@@ -1,8 +1,10 @@
 #include "Common.h"
 
+#include "Env.h"
 #include "TConsole.h"
 #include <array>
 #include <charconv>
+#include <fmt/core.h>
 #include <iostream>
 #include <map>
 #include <regex>
@@ -201,8 +203,11 @@ void Application::CheckForUpdates() {
             auto MyVersion = ServerVersion();
             auto RemoteVersion = Version(VersionStrToInts(Response));
             if (IsOutdated(MyVersion, RemoteVersion)) {
-                std::string RealVersionString = RemoteVersion.AsString();
-                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION IS OUT! Please update to the new version (v" + RealVersionString + ") of the BeamMP-Server! Download it here: https://beammp.com/! For a guide on how to update, visit: https://wiki.beammp.com/en/home/server-maintenance#updating-the-server" + std::string(ANSI_RESET));
+                std::string RealVersionString = std::string("v") + RemoteVersion.AsString();
+                const std::string DefaultUpdateMsg = "NEW VERSION IS OUT! Please update to the new version ({}) of the BeamMP-Server! Download it here: https://beammp.com/! For a guide on how to update, visit: https://wiki.beammp.com/en/home/server-maintenance#updating-the-server";
+                auto UpdateMsg = Env::Get(Env::Key::PROVIDER_UPDATE_MESSAGE).value_or(DefaultUpdateMsg);
+                UpdateMsg = fmt::vformat(std::string_view(UpdateMsg), fmt::make_format_args(RealVersionString));
+                beammp_warnf("{}{}{}", ANSI_YELLOW_BOLD, UpdateMsg, ANSI_RESET);
             } else {
                 if (FirstTime) {
                     beammp_info("Server up-to-date!");

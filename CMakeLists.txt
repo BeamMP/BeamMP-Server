@@ -48,6 +48,7 @@ set(PRJ_HEADERS
     include/TScopedTimer.h
     include/TServer.h
     include/VehicleData.h
+    include/Env.h
 )
 # add all source files (.cpp) to this, except the one with main()
 set(PRJ_SOURCES
@@ -70,6 +71,7 @@ set(PRJ_SOURCES
     src/TScopedTimer.cpp
     src/TServer.cpp
     src/VehicleData.cpp
+    src/Env.cpp
 )
 
 find_package(Lua REQUIRED)
@@ -192,6 +194,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE ${PRJ_DEFINITIONS} ${PRJ_WARN
 )
 
 if(MSVC)
+    target_compile_options(${PROJECT_NAME} PUBLIC "/bigobj")
     target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:CONSOLE")
 endif(MSVC)
 
