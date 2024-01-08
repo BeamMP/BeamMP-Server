@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <httplib.h>
 #include <nlohmann/json.hpp>
+#include <boost/predef.h>
 
 #if defined(__linux)
 #include <unistd.h>
@@ -24,11 +25,6 @@ static bool ProgressReport(uint64_t current, uint64_t total) {
     }
     return true;
 }
-
-static std::unordered_map<std::string, std::string> sDistroMap = {
-    { "debian:11", "-debian" },
-    { "ubuntu:22.04", "-ubuntu" },
-};
 
 void Update::PerformUpdate(const std::string& InvokedAs) {
     using json = nlohmann::json;
@@ -87,14 +83,15 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
         beammp_infof("New update available, updating from v{} to v{}", Current.AsString(), NewVersion.AsString());
     }
 
-    // see https://github.com/cpredef/predef for information
-#if !defined(__amd64__)     \
-    && !defined(__amd64)    \
-    && !defined(__x86_64__) \
-    && !defined(__x86_64)   \
-    && !defined(_M_X64)     \
-    && !defined(_M_AMD64)
-    beammp_errorf("BeamMP doesn't provide binaries for your CPU architecture (only x86_64). Please update manually");
+    std::string Arch = "";
+
+#if BOOST_ARCH_ARM && BOOST_ARCH_WORD_BITS == 64
+    Arch = "arm64";
+#elif BOOST_ARCH_X86_64
+    Arch = "x86_64";
+#else
+    beammp_errorf("The current architecture is not supported, please update manually.");
+    std::exit(1);
 #endif
 
     std::string Postfix = {};
@@ -125,18 +122,15 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
         }
     }
     beammp_infof("Distribution: {} {}", DistroID, DistroVersion);
-    const auto Distro = DistroID + ":" + DistroVersion;
+    const auto Distro = DistroID + "." + DistroVersion;
 
-    if (sDistroMap.contains(Distro)) {
-        Postfix = sDistroMap[Distro];
-    } else {
-        beammp_errorf("BeamMP doesn't provide binaries for this distribution, please update manually");
-        std::exit(1);
-    }
+    Postfix = fmt::format(".{}.{}.{}", DistroID, DistroVersion, Arch);
 #else
-    beammp_infof("BeamMP doesn't provide binaries for this platform, please update manually");
+    beammp_infof("BeamMP doesn't provide binaries for this OS, please update manually");
     std::exit(1);
 #endif
+    
+    beammp_infof("Looking for BeamMP-Server{}", Postfix);
 
     // check if the release exists for that platform
     std::string DownloadURL = "";
@@ -152,7 +146,7 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
         std::exit(1);
     }
     if (DownloadURL.empty()) {
-        beammp_infof("BeamMP doesn't provide binaries for this platform or distribution (postfix '{}' not found in the release assets), please update manually", Postfix);
+        beammp_infof("BeamMP doesn't provide binaries for this platform or distribution (release 'BeamMP-Server{}' not found in the release assets), please update manually", Postfix);
         std::exit(1);
     }
 
@@ -242,6 +236,8 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
 #endif
 
     // make sure the user knows that it was a success, on windows wait for return???
+
+    beammp_infof("SUCCESSFULLY UPDATED to v{}. Please launch the server manually to start the new version!", NewVersion.AsString());
 
     std::exit(0);
 }
