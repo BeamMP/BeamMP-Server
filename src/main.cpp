@@ -11,7 +11,9 @@
 #include "TPluginMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+#include "Update.h"
 
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
@@ -33,6 +35,9 @@ ARGUMENTS:
                         including the path given in --config.
     --version
                         Prints version info and exits.
+    --update
+                        Starts an interactive update to the newest 
+                        version of BeamMP-Server.
 
 EXAMPLES:
     BeamMP-Server --config=../MyWestCoastServerConfig.toml
@@ -72,6 +77,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     ArgsParser Parser;
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
+    Parser.RegisterArgument({ "update" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "config" }, ArgsParser::HAS_VALUE);
     Parser.RegisterArgument({ "working-directory" }, ArgsParser::HAS_VALUE);
     Parser.Parse(Arguments.List);
@@ -85,6 +91,15 @@ int BeamMPServerMain(MainArguments Arguments) {
     if (Parser.FoundArgument({ "version" })) {
         Application::Console().WriteRaw("BeamMP-Server v" + Application::ServerVersionString());
         return 0;
+    }
+    if (Parser.FoundArgument({ "update" })) {
+        Update::PerformUpdate(Arguments.InvokedAs);
+        return 123;
+    }
+    // check that there is no old update file
+    auto OldFile = Arguments.InvokedAs + ".delete_me";
+    if (fs::exists(OldFile)) {
+        fs::remove(OldFile);
     }
 
     std::string ConfigPath = "ServerConfig.toml";
