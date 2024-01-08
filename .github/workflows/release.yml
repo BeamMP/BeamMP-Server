@@ -8,6 +8,7 @@ on:
 env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   CMAKE_BUILD_TYPE: "Release"
+  DEBIAN_FRONTEND: "noninteractive"
 
 jobs:
   create-release:
