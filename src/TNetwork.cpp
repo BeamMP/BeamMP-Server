@@ -101,7 +101,7 @@ void TNetwork::UDPServerMain() {
                     Client->SetUDPAddr(client);
                     Client->SetIsConnected(true);
                     Data.erase(Data.begin(), Data.begin() + 2);
-                    TServer::GlobalParser(ClientPtr, std::move(Data), mPPSMonitor, *this);
+                    mServer.GlobalParser(ClientPtr, std::move(Data), mPPSMonitor, *this);
                 }
 
                 return true;
@@ -552,7 +552,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
             Client->Disconnect("TCPRcv failed");
             break;
         }
-        TServer::GlobalParser(c, std::move(res), mPPSMonitor, *this);
+        mServer.GlobalParser(c, std::move(res), mPPSMonitor, *this);
     }
 
     if (QueueSync.joinable())
