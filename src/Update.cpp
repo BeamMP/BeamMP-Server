@@ -1,13 +1,13 @@
 #include "Update.h"
 #include "Common.h"
 #include <algorithm>
+#include <boost/predef.h>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <httplib.h>
 #include <nlohmann/json.hpp>
-#include <boost/predef.h>
 
 #if defined(__linux)
 #include <unistd.h>
@@ -122,14 +122,20 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
         }
     }
     beammp_infof("Distribution: {} {}", DistroID, DistroVersion);
-    const auto Distro = DistroID + "." + DistroVersion;
+
+    std::string Distro = {};
+    if (DistroVersion.empty()) {
+        Distro = DistroID;
+    } else {
+        Distro = DistroID + "." + DistroVersion;
+    }
 
     Postfix = fmt::format(".{}.{}.{}", DistroID, DistroVersion, Arch);
 #else
     beammp_infof("BeamMP doesn't provide binaries for this OS, please update manually");
     std::exit(1);
 #endif
-    
+
     beammp_infof("Looking for BeamMP-Server{}", Postfix);
 
     // check if the release exists for that platform
