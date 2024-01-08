@@ -9,10 +9,22 @@ env:
   CMAKE_BUILD_TYPE: "Release"
 
 jobs:
-  debian-11-build:
-    runs-on: ubuntu-latest
+  x86_64-matrix:
+    runs-on: ubuntu-22.04
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - distro: debian
+            version: 11
+          - distro: debian
+            version: 12
+          - distro: ubuntu
+            version: 22.04
+          - distro: ubuntu
+            version: 20.04
     container:
-      image: debian:11
+      image: ${{ matrix.distro }}:${{ matrix.version }}
     steps:
       - name: get-cmake
         uses: lukka/get-cmake@v3.28.1
@@ -35,115 +47,60 @@ jobs:
 
       - name: Git config safe directory
         shell: bash
-        run: bash ./scripts/debian-11/1.5-git-safe.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/1.5-git-safe.sh
 
       - name: Install Dependencies
-        run: bash ./scripts/debian-11/1-install-deps.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/1-install-deps.sh
 
       - name: Create Build Environment
-        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
 
       - name: Build Server
-        run: bash ./scripts/debian-11/3-build.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/3-build.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
-          name: BeamMP-Server-debian
+          name: BeamMP-Server.${{ matrix.distro }}.${{ matrix.version }}.x86_64
           path: ./bin/BeamMP-Server
 
       - name: Archive server debug info artifact
         uses: actions/upload-artifact@v2
         with:
-          name: BeamMP-Server-debian.debug
+          name: debuginfo.${{ matrix.distro }}.${{ matrix.version }}.x86_64
           path: ./bin/BeamMP-Server.debug
 
       - name: Build Tests
-        run: bash ./scripts/debian-11/3-build-tests.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/3-build-tests.sh
 
       - name: Install Runtime Dependencies
-        run: bash ./scripts/debian-11/4-install-runtime-deps.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/4-install-runtime-deps.sh
 
       - name: Test
         run: ./bin/BeamMP-Server-tests
 
-  debian-11-arm64-build:
+  arm64-matrix:
     runs-on: [Linux, ARM64]
-    container:
-      image: debian:11
+    needs: create-release
     env:
       VCPKG_DEFAULT_TRIPLET: "arm64-linux"
-    steps:
-      - uses: actions/setup-node@v4
-
-      - name: get-cmake
-        uses: lukka/get-cmake@v3.28.1
-
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Install git
-        run: |
-          apt-get update -y
-          apt-get install -y git
-
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-
-      - name: Git config safe directory
-        shell: bash
-        run: bash ./scripts/debian-11/1.5-git-safe.sh
-
-      - name: Install Dependencies
-        run: bash ./scripts/debian-11/1-install-deps.sh
-
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          runVcpkgInstall: true
-
-      - name: Create Build Environment
-        run: bash ./scripts/debian-11/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
-
-      - name: Build Server
-        run: bash ./scripts/debian-11/3-build.sh
-
-      - name: Archive server artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: BeamMP-Server-debian.arm64
-          path: ./bin/BeamMP-Server
-
-      - name: Archive server debug info artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: BeamMP-Server-debian.arm64.debug
-          path: ./bin/BeamMP-Server.debug
-
-      - name: Build Tests
-        run: bash ./scripts/debian-11/3-build-tests.sh
-
-      - name: Install Runtime Dependencies
-        run: bash ./scripts/debian-11/4-install-runtime-deps.sh
-
-      - name: Test
-        run: ./bin/BeamMP-Server-tests
-
-  ubuntu-22-04-build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - distro: debian
+            version: 11
+          - distro: debian
+            version: 12
+          - distro: ubuntu
+            version: 22.04
+          - distro: ubuntu
+            version: 20.04
     container:
-      image: ubuntu:22.04
+      image: ${{ matrix.distro }}:${{ matrix.version }}
     steps:
-      - uses: actions/setup-node@v4
-
       - name: get-cmake
         uses: lukka/get-cmake@v3.28.1
-
+            
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
         with:
@@ -162,106 +119,35 @@ jobs:
 
       - name: Git config safe directory
         shell: bash
-        run: bash ./scripts/ubuntu-22.04/1.5-git-safe.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/1.5-git-safe.sh
 
       - name: Install Dependencies
-        run: bash ./scripts/ubuntu-22.04/1-install-deps.sh
-
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          runVcpkgInstall: true
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/1-install-deps.sh
 
       - name: Create Build Environment
-        run: bash ./scripts/ubuntu-22.04/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
 
       - name: Build Server
-        run: bash ./scripts/ubuntu-22.04/3-build.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/3-build.sh
 
       - name: Archive server artifact
         uses: actions/upload-artifact@v2
         with:
-          name: BeamMP-Server-ubuntu
+          name: BeamMP-Server.${{ matrix.distro }}.${{ matrix.version }}.arm64
           path: ./bin/BeamMP-Server
-      
+
       - name: Archive server debug info artifact
         uses: actions/upload-artifact@v2
         with:
-          name: BeamMP-Server-ubuntu.debug
+          name: debuginfo.${{ matrix.distro }}.${{ matrix.version }}.arm64
           path: ./bin/BeamMP-Server.debug
 
       - name: Build Tests
-        run: bash ./scripts/ubuntu-22.04/3-build-tests.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/3-build-tests.sh
 
       - name: Install Runtime Dependencies
-        run: bash ./scripts/ubuntu-22.04/4-install-runtime-deps.sh
+        run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/4-install-runtime-deps.sh
 
       - name: Test
         run: ./bin/BeamMP-Server-tests
 
-  ubuntu-22-04-arm64-build:
-    runs-on: [Linux, ARM64]
-    container:
-      image: ubuntu:22.04
-    env:
-      VCPKG_DEFAULT_TRIPLET: "arm64-linux"
-    steps:
-      - uses: actions/setup-node@v4
-
-      - name: get-cmake
-        uses: lukka/get-cmake@v3.28.1
-
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Install git
-        run: |
-          apt-get update -y
-          apt-get install -y git
-
-      - uses: actions/checkout@v2
-        with:
-          submodules: 'recursive'
-
-      - name: Git config safe directory
-        shell: bash
-        run: bash ./scripts/ubuntu-22.04/1.5-git-safe.sh
-
-      - name: Install Dependencies
-        run: bash ./scripts/ubuntu-22.04/1-install-deps.sh
-
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          runVcpkgInstall: true
-
-      - name: Create Build Environment
-        run: bash ./scripts/ubuntu-22.04/2-configure.sh '-DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake'
-
-      - name: Build Server
-        run: bash ./scripts/ubuntu-22.04/3-build.sh
-
-      - name: Archive server artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: BeamMP-Server-ubuntu.arm64
-          path: ./bin/BeamMP-Server
-      
-      - name: Archive server debug info artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: BeamMP-Server-ubuntu.arm64.debug
-          path: ./bin/BeamMP-Server.debug
-
-      - name: Build Tests
-        run: bash ./scripts/ubuntu-22.04/3-build-tests.sh
-
-      - name: Install Runtime Dependencies
-        run: bash ./scripts/ubuntu-22.04/4-install-runtime-deps.sh
-
-      - name: Test
-        run: ./bin/BeamMP-Server-tests
