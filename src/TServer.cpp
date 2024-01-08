@@ -51,6 +51,30 @@ TEST_CASE("GetPidVid") {
         CHECK_EQ(pid, 10);
         CHECK_EQ(vid, 12);
     }
+    SUBCASE("Valid doubledigit 2") {
+        const auto MaybePidVid = GetPidVid("10-2");
+        CHECK(MaybePidVid);
+        auto [pid, vid] = MaybePidVid.value();
+
+        CHECK_EQ(pid, 10);
+        CHECK_EQ(vid, 2);
+    }
+    SUBCASE("Valid doubledigit 3") {
+        const auto MaybePidVid = GetPidVid("33-23");
+        CHECK(MaybePidVid);
+        auto [pid, vid] = MaybePidVid.value();
+
+        CHECK_EQ(pid, 33);
+        CHECK_EQ(vid, 23);
+    }
+    SUBCASE("Valid doubledigit 4") {
+        const auto MaybePidVid = GetPidVid("3-23");
+        CHECK(MaybePidVid);
+        auto [pid, vid] = MaybePidVid.value();
+
+        CHECK_EQ(pid, 3);
+        CHECK_EQ(vid, 23);
+    }
     SUBCASE("Empty string") {
         const auto MaybePidVid = GetPidVid("");
         CHECK(!MaybePidVid);
@@ -451,6 +475,8 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
         // FIXME: check that the VID and PID are valid, so that we don't waste memory
         std::tie(PID, VID) = MaybePidVid.value();
 
-        c.SetCarPosition(VID, Data);
+        if (auto ClientPtr = GetClient(*this, PID); ClientPtr.has_value()) {
+            ClientPtr->lock()->SetCarPosition(VID, Data);
+        }
     }
 }
