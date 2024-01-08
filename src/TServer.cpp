@@ -7,6 +7,7 @@
 #include <TLuaPlugin.h>
 #include <algorithm>
 #include <any>
+#include <optional>
 #include <sstream>
 
 #include <nlohmann/json.hpp>
@@ -447,10 +448,16 @@ void TServer::InsertClient(const std::shared_ptr<TClient>& NewClient) {
     (void)mClients.insert(NewClient);
 }
 
-void TServer::HandlePosition(TClient& c, const std::string& Packet) {
+struct PidVidData {
+    int PID;
+    int VID;
+    std::string Data;
+};
+
+static std::optional<PidVidData> ParsePositionPacket(const std::string& Packet) {
     if (Packet.size() < 3) {
         // invalid packet
-        return;
+        return std::nullopt;
     }
     // Zp:PID-VID:DATA
     std::string withoutCode = Packet.substr(3);
@@ -458,7 +465,7 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
     // parse veh ID
     if (auto DataBeginPos = withoutCode.find('{'); DataBeginPos != std::string::npos && DataBeginPos != 0) {
         // separator is :{, so position of { minus one
-        auto PidVidOnly = withoutCode.substr(0, DataBeginPos-1);
+        auto PidVidOnly = withoutCode.substr(0, DataBeginPos - 1);
         auto MaybePidVid = GetPidVid(PidVidOnly);
         if (MaybePidVid) {
             int PID = -1;
@@ -467,10 +474,37 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
             std::tie(PID, VID) = MaybePidVid.value();
 
             std::string Data = withoutCode.substr(DataBeginPos);
-            c.SetCarPosition(VID, Data);
+            return PidVidData {
+                .PID = PID,
+                .VID = VID,
+                .Data = Data,
+            };
         } else {
             // invalid packet
-            return;
+            return std::nullopt;
         }
+    }
+    // invalid packet
+    return std::nullopt;
+}
+
+TEST_CASE("ParsePositionPacket") {
+    const auto TestData = R"({"tim":10.428000331623,"vel":[-2.4171722121385e-05,-9.7184734153252e-06,-7.6420763232237e-06],"rot":[-0.0001296154171915,0.0031575385950029,0.98994906610295,0.14138903660382],"rvel":[5.3640324636461e-05,-9.9824529946024e-05,5.1664064641372e-05],"pos":[-0.27281248907838,-0.20515357944633,0.49695488960431],"ping":0.032999999821186})";
+    SUBCASE("All the pids and vids") {
+        for (int pid = 0; pid < 100; ++pid) {
+            for (int vid = 0; vid < 100; ++vid) {
+                std::optional<PidVidData> MaybeRes = ParsePositionPacket(fmt::format("Zp:{}-{}:{}", pid, vid, TestData));
+                CHECK(MaybeRes.has_value());
+                CHECK_EQ(MaybeRes.value().PID, pid);
+                CHECK_EQ(MaybeRes.value().VID, vid);
+                CHECK_EQ(MaybeRes.value().Data, TestData);
+            }
+        }
+    }
+}
+
+void TServer::HandlePosition(TClient& c, const std::string& Packet) {
+    if (auto Parsed = ParsePositionPacket(Packet); Parsed.has_value()) {
+        c.SetCarPosition(Parsed.value().VID, Parsed.value().Data);
     }
 }
