@@ -7,6 +7,7 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VCPKG_FORCE_SYSTEM_BINARIES: 1
   CMAKE_BUILD_TYPE: "Release"
+  DEBIAN_FRONTEND: "noninteractive"
 
 jobs:
   x86_64-matrix:
