@@ -130,7 +130,7 @@ void Update::PerformUpdate(const std::string& InvokedAs) {
         Distro = DistroID + "." + DistroVersion;
     }
 
-    Postfix = fmt::format(".{}.{}.{}", DistroID, DistroVersion, Arch);
+    Postfix = fmt::format(".{}.{}", Distro, Arch);
 #else
     beammp_infof("BeamMP doesn't provide binaries for this OS, please update manually");
     std::exit(1);
