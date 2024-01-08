@@ -2,18 +2,18 @@
   "name": "server",
   "version-string": "0.1.0",
   "dependencies": [
-    "fmt",
-    "doctest",
     "boost-asio",
-    "boost-variant",
     "boost-spirit",
     "boost-uuid",
+    "boost-variant",
     "cpp-httplib",
-    "toml11",
+    "doctest",
+    "fmt",
     "libzip",
-    "rapidjson",
     "nlohmann-json",
     "openssl",
-    "sol2"
+    "rapidjson",
+    "sol2",
+    "toml11"
   ]
 }
