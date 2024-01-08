@@ -612,7 +612,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
 }
 
 int TNetwork::OpenID() {
-    int ID = 0;
+    int ID = 10;
     bool found;
     do {
         found = true;

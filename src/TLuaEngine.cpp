@@ -601,7 +601,7 @@ std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionR
         return Result;
     } else {
         // return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Client expired"));
-        Result.second = "Client expired";
+        Result.second = "No such player";
         return Result;
     }
 }

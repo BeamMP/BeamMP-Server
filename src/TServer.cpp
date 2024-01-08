@@ -238,6 +238,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         PPSMonitor.IncrementInternalPPS();
         Network.SendToAll(LockedClient.get(), Packet, false, false);
         HandlePosition(*LockedClient, StringPacket);
+        return;
     default:
         return;
     }
@@ -412,7 +413,7 @@ void TServer::Apply(TClient& c, int VID, const std::string& pckt) {
 
     FoundPos = VD.find('{');
     if (FoundPos == std::string::npos) {
-       return;
+        return;
     }
     VD = VD.substr(FoundPos);
     rapidjson::Document Veh, Pack;
@@ -451,32 +452,25 @@ void TServer::HandlePosition(TClient& c, const std::string& Packet) {
         // invalid packet
         return;
     }
-    // Zp:serverVehicleID:data
-    // Zp:0:data
+    // Zp:PID-VID:DATA
     std::string withoutCode = Packet.substr(3);
-    auto NameDataSep = withoutCode.find(':', 2);
-    if (NameDataSep == std::string::npos || NameDataSep < 2) {
-        // invalid packet
-        return;
-    }
-    // FIXME: ensure that -2 does what it should... it seems weird.
-    std::string ServerVehicleID = withoutCode.substr(2, NameDataSep - 2);
-    if (NameDataSep + 1 > withoutCode.size()) {
-        // invalid packet
-        return;
-    }
-    std::string Data = withoutCode.substr(NameDataSep + 1);
 
     // parse veh ID
-    auto MaybePidVid = GetPidVid(ServerVehicleID);
-    if (MaybePidVid) {
-        int PID = -1;
-        int VID = -1;
-        // FIXME: check that the VID and PID are valid, so that we don't waste memory
-        std::tie(PID, VID) = MaybePidVid.value();
+    if (auto DataBeginPos = withoutCode.find('{'); DataBeginPos != std::string::npos && DataBeginPos != 0) {
+        // separator is :{, so position of { minus one
+        auto PidVidOnly = withoutCode.substr(0, DataBeginPos-1);
+        auto MaybePidVid = GetPidVid(PidVidOnly);
+        if (MaybePidVid) {
+            int PID = -1;
+            int VID = -1;
+            // FIXME: check that the VID and PID are valid, so that we don't waste memory
+            std::tie(PID, VID) = MaybePidVid.value();
 
-        if (auto ClientPtr = GetClient(*this, PID); ClientPtr.has_value()) {
-            ClientPtr->lock()->SetCarPosition(VID, Data);
+            std::string Data = withoutCode.substr(DataBeginPos);
+            c.SetCarPosition(VID, Data);
+        } else {
+            // invalid packet
+            return;
         }
     }
 }
