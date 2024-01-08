@@ -120,9 +120,9 @@ void TConfig::FlushToFile() {
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
     data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
-    SetComment(data["Misc"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
+    SetComment(data["Misc"][StrSendErrors.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
     data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
+    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     std::stringstream Ss;
     Ss << "# This is the BeamMP-Server config file.\n"
           "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
@@ -313,6 +313,6 @@ std::string TConfig::TagsAsPrettyArray() const {
     for (size_t i = 0; i < TagsArray.size() - 1; ++i) {
         Pretty += '\"' + TagsArray[i] + "\", ";
     }
-    Pretty += '\"' + TagsArray.at(TagsArray.size()-1) + "\"";
+    Pretty += '\"' + TagsArray.at(TagsArray.size() - 1) + "\"";
     return Pretty;
 }
