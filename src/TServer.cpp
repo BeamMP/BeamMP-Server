@@ -118,7 +118,17 @@ TServer::TServer(const std::vector<std::string_view>& Arguments) {
     }
     Application::SetSubsystemStatus("Server", Application::Status::Good);
 }
-
+void TServer::RemoveClient(TClient& Client) {
+    beammp_debug("removing client " + Client.Name.get() + " (" + std::to_string(ClientCount()) + ")");
+    Client.ClearCars();
+    WriteLock Lock(mClientsMutex);
+    // erase all clients whose id matches, and those who have expired
+    std::erase_if(mClients,
+        [&](const std::weak_ptr<TClient>& C) {
+            return C.expired()
+                || C.lock()->ID.get() == Client.ID.get();
+        });
+}
 void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     std::shared_ptr<TClient> LockedClientPtr { nullptr };
     try {
@@ -129,14 +139,39 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     }
     beammp_assert(LockedClientPtr != nullptr);
     TClient& Client = *LockedClientPtr;
-    beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
-    // TODO: Send delete packets for all cars
-    Client.ClearCars();
-    WriteLock Lock(mClientsMutex);
-    mClients.erase(WeakClientPtr.lock());
+    RemoveClient(Client);
 }
 
-void TServer::ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
+void TServer::ClaimFreeIDFor(TClient& ClientToChange) {
+    ReadLock lock(mClientsMutex);
+    int ID = 0;
+    bool found = true;
+    do {
+        found = true;
+        for (const auto& Client : mClients) {
+            if (Client->ID.get() == ID) {
+                found = false;
+                ++ID;
+            }
+        }
+    } while (!found);
+    ClientToChange.ID = ID;
+}
+
+void TServer::ForEachClient(const std::function<bool(const std::shared_ptr<TClient>&)> Fn) {
+    decltype(mClients) Clients;
+    {
+        ReadLock lock(mClientsMutex);
+        Clients = mClients;
+    }
+    for (auto& Client : Clients) {
+        if (!Fn(Client)) {
+            break;
+        }
+    }
+}
+
+void TServer::ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
     decltype(mClients) Clients;
     {
         ReadLock lock(mClientsMutex);
@@ -196,7 +231,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         return;
     case 'O':
         if (Packet.size() > 1000) {
-            beammp_debug(("Received data from: ") + LockedClient->GetName() + (" Size: ") + std::to_string(Packet.size()));
+            beammp_debug(("Received data from: ") + LockedClient->Name.get() + (" Size: ") + std::to_string(Packet.size()));
         }
         ParseVehicle(*LockedClient, StringPacket, Network);
         return;
@@ -210,12 +245,12 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
             Message = PacketAsString.substr(ColonPos + 2);
         }
         if (Message.empty()) {
-            beammp_debugf("Empty chat message received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
+            beammp_debugf("Empty chat message received from '{}' ({}), ignoring it", LockedClient->Name.get(), LockedClient->ID.get());
             return;
         }
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Message);
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->ID.get(), LockedClient->Name.get(), Message);
         TLuaEngine::WaitForAll(Futures);
-        LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
+        LogChatMessage(LockedClient->Name.get(), LockedClient->ID.get(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
         if (std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Elem) {
                     return !Elem->Error
@@ -224,7 +259,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
                 })) {
             break;
         }
-        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
+        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->Name.get(), Message);
         Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
         return;
     }
@@ -249,7 +284,7 @@ void TServer::HandleEvent(TClient& c, const std::string& RawData) {
     // E:Name:Data
     // Data is allowed to have ':'
     if (RawData.size() < 2) {
-        beammp_debugf("Client '{}' ({}) tried to send an empty event, ignoring", c.GetName(), c.GetID());
+        beammp_debugf("Client '{}' ({}) tried to send an empty event, ignoring", c.Name.get(), c.ID.get());
         return;
     }
     auto NameDataSep = RawData.find(':', 2);
@@ -258,7 +293,7 @@ void TServer::HandleEvent(TClient& c, const std::string& RawData) {
     }
     std::string Name = RawData.substr(2, NameDataSep - 2);
     std::string Data = RawData.substr(NameDataSep + 1);
-    LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.GetID(), Data));
+    LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent(Name, "", c.ID.get(), Data));
 }
 
 bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
@@ -269,14 +304,15 @@ bool TServer::IsUnicycle(TClient& c, const std::string& CarJson) {
             return true;
         }
     } catch (const std::exception& e) {
-        beammp_warn("Failed to parse vehicle data as json for client " + std::to_string(c.GetID()) + ": '" + CarJson + "'.");
+        beammp_warn("Failed to parse vehicle data as json for client " + std::to_string(c.ID.get()) + ": '" + CarJson + "'.");
     }
     return false;
 }
 
 bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
-    if (IsUnicycle(c, CarJson) && c.GetUnicycleID() < 0) {
-        c.SetUnicycleID(ID);
+    auto UnicycleID = c.UnicycleID.synchronize();
+    if (IsUnicycle(c, CarJson) && *UnicycleID < 0) {
+        *UnicycleID = ID;
         return true;
     } else {
         return c.GetCarCount() < Application::Settings.MaxCars;
@@ -296,11 +332,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         beammp_tracef("got 'Os' packet: '{}' ({})", Packet, Packet.size());
         if (Data.at(0) == '0') {
             int CarID = c.GetOpenCarID();
-            beammp_debugf("'{}' created a car with ID {}", c.GetName(), CarID);
+            beammp_debugf("'{}' created a car with ID {}", c.Name.get(), CarID);
 
             std::string CarJson = Packet.substr(5);
-            Packet = "Os:" + c.GetRoles() + ":" + c.GetName() + ":" + std::to_string(c.GetID()) + "-" + std::to_string(CarID) + ":" + CarJson;
-            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", "", c.GetID(), CarID, Packet.substr(3));
+            Packet = "Os:" + c.Role.get() + ":" + c.Name.get() + ":" + std::to_string(c.ID.get()) + "-" + std::to_string(CarID) + ":" + CarJson;
+            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleSpawn", "", c.ID.get(), CarID, Packet.substr(3));
             TLuaEngine::WaitForAll(Futures);
             bool ShouldntSpawn = std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Result) {
@@ -314,11 +350,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 if (!Network.Respond(c, StringToVector(Packet), true)) {
                     // TODO: handle
                 }
-                std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(CarID);
+                std::string Destroy = "Od:" + std::to_string(c.ID.get()) + "-" + std::to_string(CarID);
                 if (!Network.Respond(c, StringToVector(Destroy), true)) {
                     // TODO: handle
                 }
-                beammp_debugf("{} (force : car limit/lua) removed ID {}", c.GetName(), CarID);
+                beammp_debugf("{} (force : car limit/lua) removed ID {}", c.Name.get(), CarID);
             }
         }
         return;
@@ -328,8 +364,8 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         if (MaybePidVid) {
             std::tie(PID, VID) = MaybePidVid.value();
         }
-        if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleEdited", "", c.GetID(), VID, Packet.substr(3));
+        if (PID != -1 && VID != -1 && PID == c.ID.get()) {
+            auto Futures = LuaAPI::MP::Engine->TriggerEvent("onVehicleEdited", "", c.ID.get(), VID, Packet.substr(3));
             TLuaEngine::WaitForAll(Futures);
             bool ShouldntAllow = std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Result) {
@@ -338,15 +374,16 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
             auto FoundPos = Packet.find('{');
             FoundPos = FoundPos == std::string::npos ? 0 : FoundPos; // attempt at sanitizing this
-            if ((c.GetUnicycleID() != VID || IsUnicycle(c, Packet.substr(FoundPos)))
+            auto UnicycleID = c.UnicycleID.synchronize();
+            if ((*UnicycleID != VID || IsUnicycle(c, Packet.substr(FoundPos)))
                 && !ShouldntAllow) {
                 Network.SendToAll(&c, StringToVector(Packet), false, true);
                 Apply(c, VID, Packet);
             } else {
-                if (c.GetUnicycleID() == VID) {
-                    c.SetUnicycleID(-1);
+                if (*UnicycleID == VID) {
+                    *UnicycleID = -1;
                 }
-                std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
+                std::string Destroy = "Od:" + std::to_string(c.ID.get()) + "-" + std::to_string(VID);
                 Network.SendToAll(nullptr, StringToVector(Destroy), true, true);
                 c.DeleteCar(VID);
             }
@@ -359,15 +396,16 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         if (MaybePidVid) {
             std::tie(PID, VID) = MaybePidVid.value();
         }
-        if (PID != -1 && VID != -1 && PID == c.GetID()) {
-            if (c.GetUnicycleID() == VID) {
-                c.SetUnicycleID(-1);
+        if (PID != -1 && VID != -1 && PID == c.ID.get()) {
+            auto UnicycleID = c.UnicycleID.synchronize();
+            if (*UnicycleID == VID) {
+                *UnicycleID = -1;
             }
             Network.SendToAll(nullptr, StringToVector(Packet), true, true);
             // TODO: should this trigger on all vehicle deletions?
-            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.ID.get(), VID));
             c.DeleteCar(VID);
-            beammp_debug(c.GetName() + (" deleted car with ID ") + std::to_string(VID));
+            beammp_debug(c.Name.get() + (" deleted car with ID ") + std::to_string(VID));
         }
         return;
     }
@@ -378,9 +416,9 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
             std::tie(PID, VID) = MaybePidVid.value();
         }
 
-        if (PID != -1 && VID != -1 && PID == c.GetID()) {
+        if (PID != -1 && VID != -1 && PID == c.ID.get()) {
             Data = Data.substr(Data.find('{'));
-            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", "", c.GetID(), VID, Data));
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleReset", "", c.ID.get(), VID, Data));
             Network.SendToAll(&c, StringToVector(Packet), false, true);
         }
         return;

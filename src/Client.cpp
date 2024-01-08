@@ -7,29 +7,28 @@
 
 void TClient::DeleteCar(int Ident) {
     // TODO: Send delete packets
-    std::unique_lock lock(mVehicleDataMutex);
-    auto iter = std::find_if(mVehicleData.begin(), mVehicleData.end(), [&](auto& elem) {
+    auto VehData = VehicleData.synchronize();
+    auto iter = std::find_if(VehData->begin(), VehData->end(), [&](auto& elem) {
         return Ident == elem.ID();
     });
-    if (iter != mVehicleData.end()) {
-        mVehicleData.erase(iter);
+    if (iter != VehData->end()) {
+        VehData->erase(iter);
     } else {
         beammp_debug("tried to erase a vehicle that doesn't exist (not an error)");
     }
 }
 
 void TClient::ClearCars() {
-    std::unique_lock lock(mVehicleDataMutex);
-    mVehicleData.clear();
+    VehicleData->clear();
 }
 
 int TClient::GetOpenCarID() const {
     int OpenID = 0;
     bool found;
-    std::unique_lock lock(mVehicleDataMutex);
+    auto VehData = VehicleData.synchronize();
     do {
         found = true;
-        for (auto& v : mVehicleData) {
+        for (auto& v : *VehData) {
             if (v.ID() == OpenID) {
                 OpenID++;
                 found = false;
@@ -40,46 +39,41 @@ int TClient::GetOpenCarID() const {
 }
 
 void TClient::AddNewCar(int Ident, const std::string& Data) {
-    std::unique_lock lock(mVehicleDataMutex);
-    mVehicleData.emplace_back(Ident, Data);
-}
-
-TClient::TVehicleDataLockPair TClient::GetAllCars() {
-    return { &mVehicleData, std::unique_lock(mVehicleDataMutex) };
+    VehicleData->emplace_back(Ident, Data);
 }
 
 std::string TClient::GetCarPositionRaw(int Ident) {
-    std::unique_lock lock(mVehiclePositionMutex);
     try {
-        return mVehiclePosition.at(size_t(Ident));
+        return VehiclePosition->at(size_t(Ident));
     } catch (const std::out_of_range& oor) {
-        beammp_debugf("Failed to get vehicle position for {}: {}", Ident, oor.what());
+        beammp_debugf("GetCarPositionRaw failed for id {}, as that car doesn't exist on client id {}: {}", Ident, int(ID), oor.what());
         return "";
     }
 }
 
 void TClient::Disconnect(std::string_view Reason) {
-    beammp_debugf("Disconnecting client {} for reason: {}", GetID(), Reason);
+    auto LockedSocket = TCPSocket.synchronize();
+    beammp_debugf("Disconnecting client {} for reason: {}", int(ID), Reason);
     boost::system::error_code ec;
-    mSocket.shutdown(socket_base::shutdown_both, ec);
+    LockedSocket->shutdown(socket_base::shutdown_both, ec);
     if (ec) {
         beammp_debugf("Failed to shutdown client socket: {}", ec.message());
     }
-    mSocket.close(ec);
+    LockedSocket->close(ec);
     if (ec) {
         beammp_debugf("Failed to close client socket: {}", ec.message());
     }
 }
 
 void TClient::SetCarPosition(int Ident, const std::string& Data) {
-    std::unique_lock lock(mVehiclePositionMutex);
-    mVehiclePosition[size_t(Ident)] = Data;
+    // ugly but this is c++ so
+    VehiclePosition->operator[](size_t(Ident)) = Data;
 }
 
 std::string TClient::GetCarData(int Ident) {
     { // lock
-        std::unique_lock lock(mVehicleDataMutex);
-        for (auto& v : mVehicleData) {
+        auto Lock = VehicleData.synchronize();
+        for (auto& v : *Lock) {
             if (v.ID() == Ident) {
                 return v.Data();
             }
@@ -91,8 +85,8 @@ std::string TClient::GetCarData(int Ident) {
 
 void TClient::SetCarData(int Ident, const std::string& Data) {
     { // lock
-        std::unique_lock lock(mVehicleDataMutex);
-        for (auto& v : mVehicleData) {
+        auto Lock = VehicleData.synchronize();
+        for (auto& v : *Lock) {
             if (v.ID() == Ident) {
                 v.SetData(Data);
                 return;
@@ -103,7 +97,7 @@ void TClient::SetCarData(int Ident, const std::string& Data) {
 }
 
 int TClient::GetCarCount() const {
-    return int(mVehicleData.size());
+    return int(VehicleData->size());
 }
 
 TServer& TClient::Server() const {
@@ -111,45 +105,44 @@ TServer& TClient::Server() const {
 }
 
 void TClient::EnqueuePacket(const std::vector<uint8_t>& Packet) {
-    std::unique_lock Lock(mMissedPacketsMutex);
-    mPacketsSync.push(Packet);
+    MissedPacketsQueue->push(Packet);
 }
 
 TClient::TClient(TServer& Server, ip::tcp::socket&& Socket)
-    : mServer(Server)
-    , mSocket(std::move(Socket))
-    , mDownSocket(ip::tcp::socket(Server.IoCtx()))
-    , mLastPingTime(std::chrono::high_resolution_clock::now()) {
+    : TCPSocket(std::move(Socket))
+    , DownSocket(ip::tcp::socket(Server.IoCtx()))
+    , LastPingTime(std::chrono::high_resolution_clock::now())
+    , mServer(Server) {
 }
 
 TClient::~TClient() {
-    beammp_debugf("client destroyed: {} ('{}')", this->GetID(), this->GetName());
+    beammp_debugf("client destroyed: {} ('{}')", ID.get(), Name.get());
 }
 
 void TClient::UpdatePingTime() {
-    mLastPingTime = std::chrono::high_resolution_clock::now();
+    LastPingTime = std::chrono::high_resolution_clock::now();
 }
 int TClient::SecondsSinceLastPing() {
     auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::high_resolution_clock::now() - mLastPingTime)
+        std::chrono::high_resolution_clock::now() - LastPingTime.get())
                        .count();
     return int(seconds);
 }
 
-std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
-    std::optional<std::weak_ptr<TClient>> MaybeClient { std::nullopt };
-    Server.ForEachClient([&](std::weak_ptr<TClient> CPtr) -> bool {
-        ReadLock Lock(Server.GetClientMutex());
-        if (!CPtr.expired()) {
-            auto C = CPtr.lock();
-            if (C->GetID() == ID) {
-                MaybeClient = CPtr;
-                return false;
-            }
+std::optional<std::shared_ptr<TClient>> GetClient(TServer& Server, int ID) {
+    std::optional<std::shared_ptr<TClient>> MaybeClient { std::nullopt };
+    Server.ForEachClient([ID, &MaybeClient](const auto& Client) -> bool {
+        if (Client->ID.get() == ID) {
+            MaybeClient = Client;
+            return false;
+        }
         } else {
             beammp_debugf("Found an expired client while looking for id {}", ID);
-        }
         return true;
     });
     return MaybeClient;
+}
+void TClient::SetIdentifier(const std::string& key, const std::string& value) {
+    // I know this is bad, but what can ya do
+    Identifiers->operator[](key) = value;
 }

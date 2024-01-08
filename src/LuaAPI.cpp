@@ -120,11 +120,11 @@ static inline std::pair<bool, std::string> InternalTriggerClientEvent(int Player
         return { true, "" };
     } else {
         auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
-        if (!MaybeClient || MaybeClient.value().expired()) {
+        if (!MaybeClient) {
             beammp_lua_errorf("TriggerClientEvent invalid Player ID '{}'", PlayerID);
             return { false, "Invalid Player ID" };
         }
-        auto c = MaybeClient.value().lock();
+        auto c = MaybeClient.value();
         if (!LuaAPI::MP::Engine->Network().Respond(*c, StringToVector(Packet), true)) {
             beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
             LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
@@ -141,11 +141,11 @@ std::pair<bool, std::string> LuaAPI::MP::TriggerClientEvent(int PlayerID, const 
 
 std::pair<bool, std::string> LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
-    if (!MaybeClient || MaybeClient.value().expired()) {
+    if (!MaybeClient) {
         beammp_lua_errorf("Tried to drop client with id {}, who doesn't exist", ID);
         return { false, "Player does not exist" };
     }
-    auto c = MaybeClient.value().lock();
+    auto c = MaybeClient.value();
     LuaAPI::MP::Engine->Network().ClientKick(*c, MaybeReason.value_or("No reason"));
     return { true, "" };
 }
@@ -159,14 +159,14 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
         Result.first = true;
     } else {
         auto MaybeClient = GetClient(Engine->Server(), ID);
-        if (MaybeClient && !MaybeClient.value().expired()) {
-            auto c = MaybeClient.value().lock();
-            if (!c->IsSynced()) {
+        if (MaybeClient) {
+            auto c = MaybeClient.value();
+            if (!c->IsSynced) {
                 Result.first = false;
                 Result.second = "Player still syncing data";
                 return Result;
             }
-            LogChatMessage("<Server> (to \"" + c->GetName() + "\")", -1, Message);
+            LogChatMessage("<Server> (to \"" + c->Name.get() + "\")", -1, Message);
             if (!Engine->Network().Respond(*c, StringToVector(Packet), true)) {
                 beammp_errorf("Failed to send chat message back to sender (id {}) - did the sender disconnect?", ID);
                 // TODO: should we return an error here?
@@ -185,13 +185,13 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
 std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
     std::pair<bool, std::string> Result;
     auto MaybeClient = GetClient(Engine->Server(), PID);
-    if (!MaybeClient || MaybeClient.value().expired()) {
+    if (!MaybeClient) {
         beammp_lua_error("RemoveVehicle invalid Player ID");
         Result.first = false;
         Result.second = "Invalid Player ID";
         return Result;
     }
-    auto c = MaybeClient.value().lock();
+    auto c = MaybeClient.value();
     if (!c->GetCarData(VID).empty()) {
         std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
         Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
@@ -274,8 +274,8 @@ void LuaAPI::MP::Sleep(size_t Ms) {
 
 bool LuaAPI::MP::IsPlayerConnected(int ID) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        return MaybeClient.value().lock()->IsConnected();
+    if (MaybeClient) {
+        return MaybeClient.value()->IsConnected.get();
     } else {
         return false;
     }
@@ -283,8 +283,8 @@ bool LuaAPI::MP::IsPlayerConnected(int ID) {
 
 bool LuaAPI::MP::IsPlayerGuest(int ID) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        return MaybeClient.value().lock()->IsGuest();
+    if (MaybeClient) {
+        return MaybeClient.value()->IsGuest.get();
     } else {
         return false;
     }

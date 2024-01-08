@@ -43,8 +43,9 @@ private:
     void OnConnect(const std::weak_ptr<TClient>& c);
     void TCPClient(const std::weak_ptr<TClient>& c);
     void Looper(const std::weak_ptr<TClient>& c);
-    int OpenID();
+    void OnDisconnect(const std::shared_ptr<TClient>& ClientPtr);
     void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr);
+    void OnDisconnect(TClient& Client);
     void Parse(TClient& c, const std::vector<uint8_t>& Packet);
     void SendFile(TClient& c, const std::string& Name);
     static bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);

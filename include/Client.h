@@ -10,6 +10,8 @@
 #include "BoostAliases.h"
 #include "Common.h"
 #include "Compat.h"
+#include "RWMutex.h"
+#include "Sync.h"
 #include "VehicleData.h"
 
 class TServer;
@@ -41,76 +43,47 @@ public:
     void AddNewCar(int Ident, const std::string& Data);
     void SetCarData(int Ident, const std::string& Data);
     void SetCarPosition(int Ident, const std::string& Data);
-    TVehicleDataLockPair GetAllCars();
-    void SetName(const std::string& Name) { mName = Name; }
-    void SetRoles(const std::string& Role) { mRole = Role; }
-    void SetIdentifier(const std::string& key, const std::string& value) { mIdentifiers[key] = value; }
+
+    void SetName(const std::string& NewName) { Name = NewName; }
+    void SetRoles(const std::string& NewRole) { Role = NewRole; }
+    void SetIdentifier(const std::string& key, const std::string& value);
     std::string GetCarData(int Ident);
     std::string GetCarPositionRaw(int Ident);
-    void SetUDPAddr(const ip::udp::endpoint& Addr) { mUDPAddress = Addr; }
-    void SetDownSock(ip::tcp::socket&& CSock) { mDownSocket = std::move(CSock); }
-    void SetTCPSock(ip::tcp::socket&& CSock) { mSocket = std::move(CSock); }
     void Disconnect(std::string_view Reason);
-    bool IsDisconnected() const { return !mSocket.is_open(); }
+    bool IsDisconnected() const { return !TCPSocket->is_open(); }
     // locks
     void DeleteCar(int Ident);
-    [[nodiscard]] const std::unordered_map<std::string, std::string>& GetIdentifiers() const { return mIdentifiers; }
-    [[nodiscard]] const ip::udp::endpoint& GetUDPAddr() const { return mUDPAddress; }
-    [[nodiscard]] ip::udp::endpoint& GetUDPAddr() { return mUDPAddress; }
-    [[nodiscard]] ip::tcp::socket& GetDownSock() { return mDownSocket; }
-    [[nodiscard]] const ip::tcp::socket& GetDownSock() const { return mDownSocket; }
-    [[nodiscard]] ip::tcp::socket& GetTCPSock() { return mSocket; }
-    [[nodiscard]] const ip::tcp::socket& GetTCPSock() const { return mSocket; }
-    [[nodiscard]] std::string GetRoles() const { return mRole; }
-    [[nodiscard]] std::string GetName() const { return mName; }
-    void SetUnicycleID(int ID) { mUnicycleID = ID; }
-    void SetID(int ID) { mID = ID; }
     [[nodiscard]] int GetOpenCarID() const;
     [[nodiscard]] int GetCarCount() const;
     void ClearCars();
-    [[nodiscard]] int GetID() const { return mID; }
-    [[nodiscard]] int GetUnicycleID() const { return mUnicycleID; }
-    [[nodiscard]] bool IsConnected() const { return mIsConnected; }
-    [[nodiscard]] bool IsSynced() const { return mIsSynced; }
-    [[nodiscard]] bool IsSyncing() const { return mIsSyncing; }
-    [[nodiscard]] bool IsGuest() const { return mIsGuest; }
-    void SetIsGuest(bool NewIsGuest) { mIsGuest = NewIsGuest; }
-    void SetIsSynced(bool NewIsSynced) { mIsSynced = NewIsSynced; }
-    void SetIsSyncing(bool NewIsSyncing) { mIsSyncing = NewIsSyncing; }
     void EnqueuePacket(const std::vector<uint8_t>& Packet);
-    [[nodiscard]] std::queue<std::vector<uint8_t>>& MissedPacketQueue() { return mPacketsSync; }
-    [[nodiscard]] const std::queue<std::vector<uint8_t>>& MissedPacketQueue() const { return mPacketsSync; }
-    [[nodiscard]] size_t MissedPacketQueueSize() const { return mPacketsSync.size(); }
-    [[nodiscard]] std::mutex& MissedPacketQueueMutex() const { return mMissedPacketsMutex; }
-    void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
+    void SetIsConnected(bool NewIsConnected) { IsConnected = NewIsConnected; }
     [[nodiscard]] TServer& Server() const;
     void UpdatePingTime();
     int SecondsSinceLastPing();
+
+    Sync<bool> IsConnected = false;
+    Sync<bool> IsSynced = false;
+    Sync<bool> IsSyncing = false;
+    Sync<std::unordered_map<std::string, std::string>> Identifiers;
+    Sync<ip::tcp::socket> TCPSocket;
+    Sync<ip::tcp::socket> DownSocket;
+    Sync<ip::udp::endpoint> UDPAddress {};
+    Sync<int> UnicycleID = -1;
+    Sync<std::string> Role;
+    Sync<std::string> DID;
+    Sync<int> ID = -1;
+    Sync<bool> IsGuest = false;
+    Sync<std::string> Name = std::string("Unknown Client");
+    Sync<TSetOfVehicleData> VehicleData;
+    Sync<SparseArray<std::string>> VehiclePosition;
+    Sync<std::queue<std::vector<uint8_t>>> MissedPacketsQueue;
+    Sync<std::chrono::time_point<std::chrono::high_resolution_clock>> LastPingTime;
 
 private:
     void InsertVehicle(int ID, const std::string& Data);
 
     TServer& mServer;
-    bool mIsConnected = false;
-    bool mIsSynced = false;
-    bool mIsSyncing = false;
-    mutable std::mutex mMissedPacketsMutex;
-    std::queue<std::vector<uint8_t>> mPacketsSync;
-    std::unordered_map<std::string, std::string> mIdentifiers;
-    bool mIsGuest = false;
-    mutable std::mutex mVehicleDataMutex;
-    mutable std::mutex mVehiclePositionMutex;
-    TSetOfVehicleData mVehicleData;
-    SparseArray<std::string> mVehiclePosition;
-    std::string mName = "Unknown Client";
-    ip::tcp::socket mSocket;
-    ip::tcp::socket mDownSocket;
-    ip::udp::endpoint mUDPAddress {};
-    int mUnicycleID = -1;
-    std::string mRole;
-    std::string mDID;
-    int mID = -1;
-    std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
 };
 
-std::optional<std::weak_ptr<TClient>> GetClient(class TServer& Server, int ID);
+std::optional<std::shared_ptr<TClient>> GetClient(class TServer& Server, int ID);

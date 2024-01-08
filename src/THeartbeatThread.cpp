@@ -153,11 +153,8 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
 }
 std::string THeartbeatThread::GetPlayers() {
     std::string Return;
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        ReadLock Lock(mServer.GetClientMutex());
-        if (!ClientPtr.expired()) {
-            Return += ClientPtr.lock()->GetName() + ";";
-        }
+    mServer.ForEachClient([&](const std::shared_ptr<TClient>& ClientPtr) -> bool {
+        Return += ClientPtr->Name.get() + ";";
         return true;
     });
     return Return;

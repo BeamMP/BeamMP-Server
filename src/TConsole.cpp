@@ -266,10 +266,10 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
         std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = char(std::tolower(char(c))); });
         return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
     };
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto locked = Client.lock();
-            if (NameCompare(locked->GetName(), Name)) {
+            if (NameCompare(locked->Name.get(), Name)) {
                 mLuaEngine->Network().ClientKick(*locked, Reason);
                 Kicked = true;
                 return false;
@@ -364,11 +364,11 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
     } else {
         std::stringstream ss;
         ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::endl;
-        mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+        mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
             if (!Client.expired()) {
                 auto locked = Client.lock();
-                ss << std::left << std::setw(25) << locked->GetName()
-                   << std::setw(6) << locked->GetID()
+                ss << std::left << std::setw(25) << locked->Name.get()
+                   << std::setw(6) << locked->ID.get()
                    << std::setw(6) << locked->GetCarCount() << "\n";
             }
             return true;
@@ -391,18 +391,15 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
     size_t SyncingCount = 0;
     size_t MissedPacketQueueSum = 0;
     int LargestSecondsSinceLastPing = 0;
-    mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
-        if (!Client.expired()) {
-            auto Locked = Client.lock();
-            CarCount += Locked->GetCarCount();
-            ConnectedCount += Locked->IsConnected() ? 1 : 0;
-            GuestCount += Locked->IsGuest() ? 1 : 0;
-            SyncedCount += Locked->IsSynced() ? 1 : 0;
-            SyncingCount += Locked->IsSyncing() ? 1 : 0;
-            MissedPacketQueueSum += Locked->MissedPacketQueueSize();
-            if (Locked->SecondsSinceLastPing() < LargestSecondsSinceLastPing) {
-                LargestSecondsSinceLastPing = Locked->SecondsSinceLastPing();
-            }
+    mLuaEngine->Server().ForEachClient([&](std::shared_ptr<TClient> Client) -> bool {
+        CarCount += size_t(Client->GetCarCount());
+        ConnectedCount += Client->IsConnected ? 1 : 0;
+        GuestCount += Client->IsGuest ? 1 : 0;
+        SyncedCount += Client->IsSynced ? 1 : 0;
+        SyncingCount += Client->IsSyncing ? 1 : 0;
+        MissedPacketQueueSum += Client->MissedPacketsQueue->size();
+        if (Client->SecondsSinceLastPing() < LargestSecondsSinceLastPing) {
+            LargestSecondsSinceLastPing = Client->SecondsSinceLastPing();
         }
         return true;
     });

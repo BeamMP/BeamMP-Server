@@ -480,13 +480,13 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        auto IDs = MaybeClient.value().lock()->GetIdentifiers();
-        if (IDs.empty()) {
+    if (MaybeClient) {
+        auto IDs = MaybeClient.value()->Identifiers.synchronize();
+        if (IDs->empty()) {
             return sol::lua_nil;
         }
         sol::table Result = mStateView.create_table();
-        for (const auto& Pair : IDs) {
+        for (const auto& Pair : *IDs) {
             Result[Pair.first] = Pair.second;
         }
         return Result;
@@ -497,10 +497,10 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
     sol::table Result = mStateView.create_table();
-    mEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
+    mEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto locked = Client.lock();
-            Result[locked->GetID()] = locked->GetName();
+            Result[locked->ID.get()] = locked->Name.get();
         }
         return true;
     });
@@ -509,11 +509,11 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
 
 int TLuaEngine::StateThreadData::Lua_GetPlayerIDByName(const std::string& Name) {
     int Id = -1;
-    mEngine->mServer->ForEachClient([&Id, &Name](std::weak_ptr<TClient> Client) -> bool {
+    mEngine->mServer->ForEachClientWeak([&Id, &Name](std::weak_ptr<TClient> Client) -> bool {
         if (!Client.expired()) {
             auto locked = Client.lock();
-            if (locked->GetName() == Name) {
-                Id = locked->GetID();
+            if (locked->Name.get() == Name) {
+                Id = locked->ID.get();
                 return false;
             }
         }
@@ -550,8 +550,8 @@ sol::table TLuaEngine::StateThreadData::Lua_FS_ListDirectories(const std::string
 
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        return MaybeClient.value().lock()->GetName();
+    if (MaybeClient) {
+        return MaybeClient.value()->Name.get();
     } else {
         return "";
     }
@@ -559,19 +559,15 @@ std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        auto Client = MaybeClient.value().lock();
-        TClient::TSetOfVehicleData VehicleData;
-        { // Vehicle Data Lock Scope
-            auto LockedData = Client->GetAllCars();
-            VehicleData = *LockedData.VehicleData;
-        } // End Vehicle Data Lock Scope
-        if (VehicleData.empty()) {
+    if (MaybeClient) {
+        auto Client = MaybeClient.value();
+        auto VehicleData = Client->VehicleData.synchronize();
+        if (VehicleData->empty()) {
             return sol::lua_nil;
         }
         sol::state_view StateView(mState);
         sol::table Result = StateView.create_table();
-        for (const auto& v : VehicleData) {
+        for (const auto& v : *VehicleData) {
             Result[v.ID()] = v.Data().substr(3);
         }
         return Result;
@@ -582,8 +578,8 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
 std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionRaw(int PID, int VID) {
     std::pair<sol::table, std::string> Result;
     auto MaybeClient = GetClient(mEngine->Server(), PID);
-    if (MaybeClient && !MaybeClient.value().expired()) {
-        auto Client = MaybeClient.value().lock();
+    if (MaybeClient) {
+        auto Client = MaybeClient.value();
         std::string VehiclePos = Client->GetCarPositionRaw(VID);
 
         if (VehiclePos.empty()) {
@@ -1083,7 +1079,7 @@ void TLuaResult::MarkAsReady() {
 void TLuaResult::WaitUntilReady() {
     std::unique_lock readyLock(*this->ReadyMutex);
     // wait if not ready yet
-    if(!this->Ready)
+    if (!this->Ready)
         this->ReadyCondition->wait(readyLock);
 }
 

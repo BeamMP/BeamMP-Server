@@ -33,7 +33,7 @@ void TPPSMonitor::operator()() {
             Application::SetPPS("-");
             continue;
         }
-        mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+        mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
             std::shared_ptr<TClient> c;
             {
                 ReadLock Lock(mServer.GetClientMutex());
@@ -48,7 +48,7 @@ void TPPSMonitor::operator()() {
             }
             // kick on "no ping"
             if (c->SecondsSinceLastPing() > (20 * 60)) {
-                beammp_debug("client " + std::string("(") + std::to_string(c->GetID()) + ")" + c->GetName() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
+                beammp_debug("client " + std::string("(") + std::to_string(c->ID.get()) + ")" + c->Name.get() + " timing out: " + std::to_string(c->SecondsSinceLastPing()) + ", pps: " + Application::PPS());
                 TimedOutClients.push_back(c);
             }
 
