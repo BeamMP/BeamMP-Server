@@ -28,7 +28,7 @@ jobs:
           draft: false
           prerelease: true
           body: |
-            Files included in this release are: named after `BeamMP-Server.$DISTRO.$VERSION.$ARCH`, for example:
+            Files included in this release are:
             - `BeamMP-Server.$DISTRO.$DISTROVERSION.$ARCH` for linux builds, for example `BeamMP-Server.debian.11.x86_64` for the Debian 11 build for x86_64. All require `liblua5.3` to be installed.
             - `BeamMP-Server.exe` for the Windows build (x86_64). You need to install the [Visual C++ Redistributables](https://aka.ms/vs/17/release/vc_redist.x64.exe) to run this.
 
