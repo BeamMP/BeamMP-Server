@@ -44,8 +44,8 @@ private:
     std::vector<uint8_t> UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint);
     void HandleDownload(TConnection&& TCPSock);
     void OnConnect(const std::weak_ptr<TClient>& c);
-    void TCPClient(const std::weak_ptr<TClient>& c);
-    void Looper(const std::weak_ptr<TClient>& c);
+    void TCPClient(const std::shared_ptr<TClient>& c);
+    void Looper(const std::shared_ptr<TClient>& c);
     void Parse(TClient& c, const std::vector<uint8_t>& Packet);
     void SendFile(TClient& c, const std::string& Name);
     bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);

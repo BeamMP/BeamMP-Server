@@ -144,8 +144,6 @@ std::optional<std::shared_ptr<TClient>> GetClient(TServer& Server, int ID) {
             MaybeClient = Client;
             return false;
         }
-        } else {
-            beammp_debugf("Found an expired client while looking for id {}", ID);
         return true;
     });
     return MaybeClient;

@@ -176,7 +176,7 @@ size_t TServer::ClientCount() const {
     return mClients.size();
 }
 
-void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
+void TServer::GlobalParser(const std::shared_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network) {
     constexpr std::string_view ABG = "ABG:";
     if (Packet.size() >= ABG.size() && std::equal(Packet.begin(), Packet.begin() + ABG.size(), ABG.begin(), ABG.end())) {
         Packet.erase(Packet.begin(), Packet.begin() + ABG.size());
@@ -186,11 +186,6 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         return;
     }
 
-    if (Client.expired()) {
-        return;
-    }
-    auto LockedClient = Client.lock();
-
     std::any Res;
     char Code = Packet.at(0);
 
@@ -199,7 +194,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     // V to Y
     if (Code <= 89 && Code >= 86) {
         PPSMonitor.IncrementInternalPPS();
-        Network.SendToAll(LockedClient.get(), Packet, false, false);
+        Network.SendToAll(Client.get(), Packet, false, false);
         return;
     }
     switch (Code) {
@@ -209,18 +204,18 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         }
         return;
     case 'p':
-        if (!Network.Respond(*LockedClient, StringToVector("p"), false)) {
+        if (!Network.Respond(*Client, StringToVector("p"), false)) {
             // failed to send
-            Disconnect(LockedClient);
+            Network.Disconnect(Client);
         } else {
-            Network.UpdatePlayer(*LockedClient);
+            Network.UpdatePlayer(*Client);
         }
         return;
     case 'O':
         if (Packet.size() > 1000) {
-            beammp_debug(("Received data from: ") + LockedClient->Name.get() + (" Size: ") + std::to_string(Packet.size()));
+            beammp_debug(("Received data from: ") + Client->Name.get() + (" Size: ") + std::to_string(Packet.size()));
         }
-        ParseVehicle(*LockedClient, StringPacket, Network);
+        ParseVehicle(*Client, StringPacket, Network);
         return;
     case 'C': {
         if (Packet.size() < 4 || std::find(Packet.begin() + 3, Packet.end(), ':') == Packet.end())
@@ -232,12 +227,12 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
             Message = PacketAsString.substr(ColonPos + 2);
         }
         if (Message.empty()) {
-            beammp_debugf("Empty chat message received from '{}' ({}), ignoring it", LockedClient->Name.get(), LockedClient->ID.get());
+            beammp_debugf("Empty chat message received from '{}' ({}), ignoring it", Client->Name.get(), Client->ID.get());
             return;
         }
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->ID.get(), LockedClient->Name.get(), Message);
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", Client->ID.get(), Client->Name.get(), Message);
         TLuaEngine::WaitForAll(Futures);
-        LogChatMessage(LockedClient->Name.get(), LockedClient->ID.get(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
+        LogChatMessage(Client->Name.get(), Client->ID.get(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
         if (std::any_of(Futures.begin(), Futures.end(),
                 [](const std::shared_ptr<TLuaResult>& Elem) {
                     return !Elem->Error
@@ -246,21 +241,21 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
                 })) {
             break;
         }
-        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->Name.get(), Message);
+        std::string SanitizedPacket = fmt::format("C:{}: {}", Client->Name.get(), Message);
         Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
         return;
     }
     case 'E':
-        HandleEvent(*LockedClient, StringPacket);
+        HandleEvent(*Client, StringPacket);
         return;
     case 'N':
         beammp_trace("got 'N' packet (" + std::to_string(Packet.size()) + ")");
-        Network.SendToAll(LockedClient.get(), Packet, false, true);
+        Network.SendToAll(Client.get(), Packet, false, true);
         return;
     case 'Z': // position packet
         PPSMonitor.IncrementInternalPPS();
-        Network.SendToAll(LockedClient.get(), Packet, false, false);
-        HandlePosition(*LockedClient, StringPacket);
+        Network.SendToAll(Client.get(), Packet, false, false);
+        HandlePosition(*Client, StringPacket);
         return;
     default:
         return;

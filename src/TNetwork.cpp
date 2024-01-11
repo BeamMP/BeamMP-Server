@@ -91,9 +91,8 @@ void TNetwork::UDPServerMain() {
                     Client->UDPAddress = client;
                     Client->IsConnected = true;
                     Data.erase(Data.begin(), Data.begin() + 2);
-                    mServer.GlobalParser(ClientPtr, std::move(Data), mPPSMonitor, *this);
+                    mServer.GlobalParser(Client, std::move(Data), mPPSMonitor, *this);
                 }
-
                 return true;
             });
         } catch (const std::exception& e) {
@@ -471,16 +470,10 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
     Disconnect(c);
 }
 
-void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
+void TNetwork::Looper(const std::shared_ptr<TClient>& Client) {
     RegisterThreadAuto();
-    while (!c.expired()) {
-        auto Client = c.lock();
-        if (Client->IsDisconnected()) {
-            beammp_debug("client is disconnected, breaking client loop");
-            break;
-        }
+    while (!Client->IsDisconnected()) {
         if (!Client->IsSyncing.get() && Client->IsSynced.get() && Client->MissedPacketsQueue->size() != 0) {
-            // debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
             while (Client->MissedPacketsQueue->size() > 0) {
                 std::vector<uint8_t> QData {};
                 { // locked context
@@ -491,7 +484,6 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
                     QData = Lock->front();
                     Lock->pop();
                 } // end locked context
-                // beammp_debug("sending a missed packet: " + QData);
                 if (!TCPSend(*Client, QData, true)) {
                     Disconnect(Client);
                     auto Lock = Client->MissedPacketsQueue;
@@ -507,30 +499,22 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
     }
 }
 
-void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
-    // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
-    if (c.expired() || !c.lock()->TCPSocket->is_open()) {
-        mServer.RemoveClient(c);
-        return;
-    }
+void TNetwork::TCPClient(const std::shared_ptr<TClient>& c) {
     OnConnect(c);
-    RegisterThread("(" + std::to_string(c.lock()->ID.get()) + ") \"" + c.lock()->Name.get() + "\"");
+    RegisterThread("(" + std::to_string(c->ID.get()) + ") \"" + c->Name.get() + "\"");
 
     std::thread QueueSync(&TNetwork::Looper, this, c);
 
     while (true) {
-        if (c.expired())
-            break;
-        auto Client = c.lock();
-        if (Client->IsDisconnected()) {
+        if (c->IsDisconnected()) {
             beammp_debug("client status < 0, breaking client loop");
             break;
         }
 
-        auto res = TCPRcv(*Client);
+        auto res = TCPRcv(*c);
         if (res.empty()) {
             beammp_debug("TCPRcv empty");
-            Disconnect(Client);
+            Disconnect(c);
             break;
         }
         mServer.GlobalParser(c, std::move(res), mPPSMonitor, *this);
@@ -539,13 +523,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
     if (QueueSync.joinable())
         QueueSync.join();
 
-    if (!c.expired()) {
-        auto Client = c.lock();
-        Disconnect(c);
-        return;
-    } else {
-        beammp_warn("client expired in TCPClient, should never happen");
-    }
+    Disconnect(c);
 }
 
 void TNetwork::UpdatePlayer(TClient& Client) {

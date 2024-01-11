@@ -27,7 +27,7 @@ public:
     void ForEachClient(const std::function<bool(const std::shared_ptr<TClient>&)> Fn);
     size_t ClientCount() const;
 
-    void GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
+    void GlobalParser(const std::shared_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
     static void HandleEvent(TClient& c, const std::string& Data);
     RWMutex& GetClientMutex() const { return mClientsMutex; }
 
