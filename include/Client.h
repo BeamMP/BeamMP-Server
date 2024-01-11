@@ -30,11 +30,6 @@ class TClient final {
 public:
     using TSetOfVehicleData = std::vector<TVehicleData>;
 
-    struct TVehicleDataLockPair {
-        TSetOfVehicleData* VehicleData;
-        std::unique_lock<std::mutex> Lock;
-    };
-
     TClient(TServer& Server, ip::tcp::socket&& Socket);
     TClient(const TClient&) = delete;
     ~TClient();
