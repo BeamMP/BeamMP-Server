@@ -171,19 +171,6 @@ void TServer::ForEachClient(const std::function<bool(const std::shared_ptr<TClie
     }
 }
 
-void TServer::ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn) {
-    decltype(mClients) Clients;
-    {
-        ReadLock lock(mClientsMutex);
-        Clients = mClients;
-    }
-    for (auto& Client : Clients) {
-        if (!Fn(Client)) {
-            break;
-        }
-    }
-}
-
 size_t TServer::ClientCount() const {
     ReadLock Lock(mClientsMutex);
     return mClients.size();
@@ -224,7 +211,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     case 'p':
         if (!Network.Respond(*LockedClient, StringToVector("p"), false)) {
             // failed to send
-            LockedClient->Disconnect("Failed to send ping");
+            Disconnect(LockedClient);
         } else {
             Network.UpdatePlayer(*LockedClient);
         }

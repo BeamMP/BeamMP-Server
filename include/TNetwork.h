@@ -19,6 +19,9 @@ public:
     std::shared_ptr<TClient> CreateClient(ip::tcp::socket&& TCPSock);
     std::vector<uint8_t> TCPRcv(TClient& c);
     void ClientKick(TClient& c, const std::string& R);
+    void Disconnect(const std::shared_ptr<TClient>& ClientPtr);
+    void Disconnect(const std::weak_ptr<TClient>& ClientPtr);
+    void Disconnect(TClient& Client);
     [[nodiscard]] bool SyncClient(const std::weak_ptr<TClient>& c);
     void Identify(TConnection&& client);
     std::shared_ptr<TClient> Authentication(TConnection&& ClientConnection);
@@ -43,14 +46,11 @@ private:
     void OnConnect(const std::weak_ptr<TClient>& c);
     void TCPClient(const std::weak_ptr<TClient>& c);
     void Looper(const std::weak_ptr<TClient>& c);
-    void OnDisconnect(const std::shared_ptr<TClient>& ClientPtr);
-    void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr);
-    void OnDisconnect(TClient& Client);
     void Parse(TClient& c, const std::vector<uint8_t>& Packet);
     void SendFile(TClient& c, const std::string& Name);
-    static bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);
-    static void SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name);
-    static const uint8_t* SendSplit(TClient& c, ip::tcp::socket& Socket, const uint8_t* DataPtr, size_t Size);
+    bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);
+    void SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name);
+    const uint8_t* SendSplit(TClient& c, ip::tcp::socket& Socket, const uint8_t* DataPtr, size_t Size);
 };
 
 std::string HashPassword(const std::string& str);

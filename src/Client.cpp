@@ -51,17 +51,25 @@ std::string TClient::GetCarPositionRaw(int Ident) {
     }
 }
 
-void TClient::Disconnect(std::string_view Reason) {
+void TClient::CloseSockets(std::string_view Reason) {
     auto LockedSocket = TCPSocket.synchronize();
     beammp_debugf("Disconnecting client {} for reason: {}", int(ID), Reason);
     boost::system::error_code ec;
     LockedSocket->shutdown(socket_base::shutdown_both, ec);
     if (ec) {
-        beammp_debugf("Failed to shutdown client socket: {}", ec.message());
+        beammp_debugf("Failed to shutdown client socket of client {}: {}", ID.get(), ec.message());
     }
     LockedSocket->close(ec);
     if (ec) {
-        beammp_debugf("Failed to close client socket: {}", ec.message());
+        beammp_debugf("Failed to close client socket of client {}: {}", ID.get(), ec.message());
+    }
+    DownSocket->shutdown(socket_base::shutdown_both, ec);
+    if (ec) {
+        beammp_debugf("Failed to shutdown client download socket of client {}: {}", ID.get(), ec.message());
+    }
+    DownSocket->close(ec);
+    if (ec) {
+        beammp_debugf("Failed to close client download socket of client {}: {}", ID.get(), ec.message());
     }
 }
 

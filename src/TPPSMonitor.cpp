@@ -33,15 +33,7 @@ void TPPSMonitor::operator()() {
             Application::SetPPS("-");
             continue;
         }
-        mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-            std::shared_ptr<TClient> c;
-            {
-                ReadLock Lock(mServer.GetClientMutex());
-                if (!ClientPtr.expired()) {
-                    c = ClientPtr.lock();
-                } else
-                    return true;
-            }
+        mServer.ForEachClient([&](const std::shared_ptr<TClient>& c) -> bool {
             if (c->GetCarCount() > 0) {
                 C++;
                 V += c->GetCarCount();

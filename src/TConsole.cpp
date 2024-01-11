@@ -266,15 +266,12 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
         std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = char(std::tolower(char(c))); });
         return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
     };
-    mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-        if (!Client.expired()) {
-            auto locked = Client.lock();
-            if (NameCompare(locked->Name.get(), Name)) {
-                mLuaEngine->Network().ClientKick(*locked, Reason);
+    mLuaEngine->Server().ForEachClient([&](const std::shared_ptr<TClient>& Client) -> bool {
+            if (NameCompare(Client->Name.get(), Name)) {
+                mLuaEngine->Network().ClientKick(*Client, Reason);
                 Kicked = true;
                 return false;
             }
-        }
         return true;
     });
     if (!Kicked) {
@@ -364,13 +361,10 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
     } else {
         std::stringstream ss;
         ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::endl;
-        mLuaEngine->Server().ForEachClientWeak([&](std::weak_ptr<TClient> Client) -> bool {
-            if (!Client.expired()) {
-                auto locked = Client.lock();
-                ss << std::left << std::setw(25) << locked->Name.get()
-                   << std::setw(6) << locked->ID.get()
-                   << std::setw(6) << locked->GetCarCount() << "\n";
-            }
+        mLuaEngine->Server().ForEachClient([&](const std::shared_ptr<TClient>& Client) -> bool {
+            ss << std::left << std::setw(25) << Client->Name.get()
+               << std::setw(6) << Client->ID.get()
+               << std::setw(6) << Client->GetCarCount() << "\n";
             return true;
         });
         auto Str = ss.str();

@@ -24,7 +24,6 @@ public:
     void RemoveClient(const std::weak_ptr<TClient>&);
     void RemoveClient(TClient&);
     // in Fn, return true to continue, return false to break
-    [[deprecated("Use ForEachClient instead")]] void ForEachClientWeak(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     void ForEachClient(const std::function<bool(const std::shared_ptr<TClient>&)> Fn);
     size_t ClientCount() const;
 

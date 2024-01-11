@@ -44,7 +44,6 @@ public:
     void SetIdentifier(const std::string& key, const std::string& value);
     std::string GetCarData(int Ident);
     std::string GetCarPositionRaw(int Ident);
-    void Disconnect(std::string_view Reason);
     bool IsDisconnected() const { return !TCPSocket->is_open(); }
     // locks
     void DeleteCar(int Ident);
@@ -75,7 +74,12 @@ public:
     Sync<std::queue<std::vector<uint8_t>>> MissedPacketsQueue;
     Sync<std::chrono::time_point<std::chrono::high_resolution_clock>> LastPingTime;
 
+    friend class TNetwork;
+
 private:
+    /// ONLY call after the client has been cleaned up, all cars deleted, etc.
+    void CloseSockets(std::string_view Reason);
+
     void InsertVehicle(int ID, const std::string& Data);
 
     TServer& mServer;

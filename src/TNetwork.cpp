@@ -246,7 +246,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     if (!TCPSend(*Client, StringToVector("A"))) { // changed to A for Accepted version
-        OnDisconnect(Client);
+        Disconnect(Client);
         return nullptr;
     }
 
@@ -304,7 +304,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
 
     if (!Application::Settings.Password.empty()) { // ask password
         if (!TCPSend(*Client, StringToVector("S"))) {
-            OnDisconnect(Client);
+            Disconnect(Client);
             return {};
         }
         beammp_info("Waiting for password");
@@ -320,20 +320,11 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     beammp_debug("Name-> " + Client->Name.get() + ", Guest-> " + std::to_string(Client->IsGuest.get()) + ", Roles-> " + Client->Role.get());
-    mServer.ForEachClientWeak([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        std::shared_ptr<TClient> Cl;
-        {
-            ReadLock Lock(mServer.GetClientMutex());
-            if (!ClientPtr.expired()) {
-                Cl = ClientPtr.lock();
-            } else
-                return true;
-        }
+    mServer.ForEachClient([&](const std::shared_ptr<TClient>& Cl) -> bool {
         if (Cl->Name.get() == Client->Name.get() && Cl->IsGuest == Client->IsGuest) {
-            Cl->Disconnect("Stale Client (not a real player)");
+            Disconnect(Cl);
             return false;
         }
-
         return true;
     });
 
@@ -368,7 +359,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             TCPClient(Client);
         } catch (const std::exception& e) {
             beammp_infof("Client {} disconnected: {}", Client->ID.get(), e.what());
-            OnDisconnect(Client);
+            Disconnect(Client);
             return {};
         }
     } else {
@@ -412,7 +403,7 @@ bool TNetwork::TCPSend(TClient& c, const std::vector<uint8_t>& Data, bool IsSync
     write(*c.TCPSocket.synchronize(), buffer(ToSend), ec);
     if (ec) {
         beammp_debugf("write(): {}", ec.message());
-        c.Disconnect("write() failed");
+        Disconnect(c);
         return false;
     }
     c.UpdatePingTime();
@@ -477,7 +468,7 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
     if (!TCPSend(c, StringToVector("K" + R))) {
         beammp_debugf("tried to kick player '{}' (id {}), but was already disconnected", c.Name.get(), c.ID.get());
     }
-    c.Disconnect("Kicked");
+    Disconnect(c);
 }
 
 void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
@@ -502,7 +493,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
                 } // end locked context
                 // beammp_debug("sending a missed packet: " + QData);
                 if (!TCPSend(*Client, QData, true)) {
-                    Client->Disconnect("Failed to TCPSend while clearing the missed packet queue");
+                    Disconnect(Client);
                     auto Lock = Client->MissedPacketsQueue;
                     while (!Lock->empty()) {
                         Lock->pop();
@@ -539,7 +530,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         auto res = TCPRcv(*Client);
         if (res.empty()) {
             beammp_debug("TCPRcv empty");
-            Client->Disconnect("TCPRcv failed");
+            Disconnect(Client);
             break;
         }
         mServer.GlobalParser(c, std::move(res), mPPSMonitor, *this);
@@ -550,7 +541,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
 
     if (!c.expired()) {
         auto Client = c.lock();
-        OnDisconnect(c);
+        Disconnect(c);
         return;
     } else {
         beammp_warn("client expired in TCPClient, should never happen");
@@ -569,7 +560,7 @@ void TNetwork::UpdatePlayer(TClient& Client) {
     //(void)Respond(Client, Packet, true);
 }
 
-void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
+void TNetwork::Disconnect(const std::weak_ptr<TClient>& ClientPtr) {
     // this is how one checks that the ClientPtr is not empty (as opposed to expired)
     if (ClientPtr.owner_before(std::weak_ptr<TClient> {})) {
         return;
@@ -578,37 +569,37 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     try {
         LockedClientPtr = ClientPtr.lock();
     } catch (const std::exception&) {
-        beammp_warn("Client expired in OnDisconnect, this is unexpected");
+        beammp_warn("Client expired in CloseSockets, this is unexpected");
         return;
     }
     beammp_assert(LockedClientPtr != nullptr);
     TClient& c = *LockedClientPtr;
-    OnDisconnect(c);
+    Disconnect(c);
 }
-void TNetwork::OnDisconnect(TClient& c) {
-    beammp_info(c.Name.get() + (" Connection Terminated"));
+void TNetwork::Disconnect(TClient& Client) {
+    beammp_info(Client.Name.get() + (" Connection Terminated"));
     std::string Packet;
     {
-        auto Locked = c.VehicleData.synchronize();
+        auto Locked = Client.VehicleData.synchronize();
         for (auto& v : *Locked) {
-            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.ID.get(), v.ID()));
-            Packet = "Od:" + std::to_string(c.ID.get()) + "-" + std::to_string(v.ID());
-            SendToAll(&c, StringToVector(Packet), false, true);
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", Client.ID.get(), v.ID()));
+            Packet = "Od:" + std::to_string(Client.ID.get()) + "-" + std::to_string(v.ID());
+            SendToAll(&Client, StringToVector(Packet), false, true);
         }
     }
-    Packet = ("L") + c.Name.get() + (" left the server!");
-    SendToAll(&c, StringToVector(Packet), false, true);
+    Packet = ("L") + Client.Name.get() + (" left the server!");
+    SendToAll(&Client, StringToVector(Packet), false, true);
     Packet.clear();
-    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", c.ID.get());
+    auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", Client.ID.get());
     TLuaEngine::WaitForAll(Futures);
-    c.Disconnect("Already Disconnected (OnDisconnect)");
-    mServer.RemoveClient(c);
+    Client.CloseSockets("Normal disconnect");
+    mServer.RemoveClient(Client);
 }
-void TNetwork::OnDisconnect(const std::shared_ptr<TClient>& ClientPtr) {
+void TNetwork::Disconnect(const std::shared_ptr<TClient>& ClientPtr) {
     if (ClientPtr == nullptr) {
         return;
     }
-    OnDisconnect(*ClientPtr);
+    Disconnect(*ClientPtr);
 }
 
 void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
@@ -674,7 +665,8 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 
     if (!fs::path(UnsafeName).has_filename()) {
         if (!TCPSend(c, StringToVector("CO"))) {
-            OnDisconnect(c);
+            Disconnect(c);
+            return;
         }
         beammp_warn("File " + UnsafeName + " is not a file!");
         return;
@@ -684,14 +676,16 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 
     if (!std::filesystem::exists(FileName)) {
         if (!TCPSend(c, StringToVector("CO"))) {
-            OnDisconnect(c);
+            Disconnect(c);
+            return;
         }
         beammp_warn("File " + UnsafeName + " could not be accessed!");
         return;
     }
 
     if (!TCPSend(c, StringToVector("AG"))) {
-        OnDisconnect(c);
+        Disconnect(c);
+        return;
     }
 
     /// Wait for connections
@@ -704,7 +698,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
     if (!c.DownSocket->is_open()) {
         beammp_error("Client doesn't have a download socket!");
         if (!c.IsDisconnected())
-            c.Disconnect("Missing download socket");
+            Disconnect(c);
         return;
     }
 
@@ -794,7 +788,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
                 f.read(reinterpret_cast<char*>(Data.data()), Split);
                 if (!TCPSendRaw(c, *TCPSock, Data.data(), Split)) {
                     if (!c.IsDisconnected())
-                        c.Disconnect("TCPSendRaw failed in mod download (1)");
+                        Disconnect(c);
                     break;
                 }
                 Sent += Split;
@@ -803,7 +797,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
                 f.read(reinterpret_cast<char*>(Data.data()), Diff);
                 if (!TCPSendRaw(c, *TCPSock, Data.data(), int32_t(Diff))) {
                     if (!c.IsDisconnected())
-                        c.Disconnect("TCPSendRaw failed in mod download (2)");
+                        Disconnect(c);
                     break;
                 }
                 Sent += Diff;
@@ -818,7 +812,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
                 f.read(reinterpret_cast<char*>(Data.data()), Split);
                 if (!TCPSendRaw(c, *TCPSock, Data.data(), Split)) {
                     if (!c.IsDisconnected())
-                        c.Disconnect("TCPSendRaw failed in mod download (1)");
+                        Disconnect(c);
                     break;
                 }
                 Sent += Split;
@@ -827,7 +821,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std
                 f.read(reinterpret_cast<char*>(Data.data()), Diff);
                 if (!TCPSendRaw(c, *TCPSock, Data.data(), int32_t(Diff))) {
                     if (!c.IsDisconnected())
-                        c.Disconnect("TCPSendRaw failed in mod download (2)");
+                        Disconnect(c);
                     break;
                 }
                 Sent += Diff;
@@ -931,7 +925,7 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
                     }
                 } else {
                     if (!UDPSend(*Client, Data)) {
-                        OnDisconnect(Client);
+                        Disconnect(Client);
                     }
                 }
             }
@@ -957,7 +951,7 @@ bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
     if (ec) {
         beammp_debugf("UDP sendto() failed: {}", ec.message());
         if (!Client.IsDisconnected())
-            Client.Disconnect("UDP send failed");
+            Disconnect(Client);
         return false;
     }
     return true;

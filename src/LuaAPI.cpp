@@ -127,7 +127,7 @@ static inline std::pair<bool, std::string> InternalTriggerClientEvent(int Player
         auto c = MaybeClient.value();
         if (!LuaAPI::MP::Engine->Network().Respond(*c, StringToVector(Packet), true)) {
             beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
-            LuaAPI::MP::Engine->Network().ClientKick(*c, "Disconnected after failing to receive packets");
+            LuaAPI::MP::Engine->Network().Disconnect(*c);
             return { false, "Respond failed, dropping client" };
         }
         return { true, "" };
@@ -169,7 +169,8 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
             LogChatMessage("<Server> (to \"" + c->Name.get() + "\")", -1, Message);
             if (!Engine->Network().Respond(*c, StringToVector(Packet), true)) {
                 beammp_errorf("Failed to send chat message back to sender (id {}) - did the sender disconnect?", ID);
-                // TODO: should we return an error here?
+                beammp_infof("Disconnecting client {} for failure to receive a chat message (TCP disconnect)", c->Name.get());
+                Engine->Network().Disconnect(c);
             }
             Result.first = true;
         } else {
