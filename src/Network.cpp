@@ -4,7 +4,7 @@
 
 #if defined(BEAMMP_LINUX)
 #include <cstring>
-#include <errno.h>
+#include <cerrno>
 #include <sys/sendfile.h>
 #include <unistd.h>
 #elif defined(BEAMMP_WINDOWS)
