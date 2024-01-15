@@ -73,7 +73,6 @@ function(set_project_warnings project_name)
             -Werror=missing-declarations
             -Werror=missing-field-initializers
             -Werror=ctor-dtor-privacy
-            -Werror=switch-enum
             -Wswitch-default
             -Werror=unused-result
             -Werror=implicit-fallthrough
