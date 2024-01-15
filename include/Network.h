@@ -28,11 +28,11 @@ struct Client {
     ClientID id;
     bmp::State state;
 
-    Packet tcp_read(boost::system::error_code& ec);
-    void tcp_write(const Packet& packet, boost::system::error_code& ec);
-    void tcp_write_file_raw(const std::filesystem::path& path, boost::system::error_code& ec);
-    Packet udp_read(boost::system::error_code& ec, ip::udp::socket& socket);
-    void udp_write(const Packet& packet, ip::udp::socket& socket, boost::system::error_code& ec);
+    Packet tcp_read();
+    void tcp_write(const Packet& packet);
+    void tcp_write_file_raw(const std::filesystem::path& path);
+    Packet udp_read(ip::udp::socket& socket);
+    void udp_write(const Packet& packet, ip::udp::socket& socket);
 
     Client(ip::udp::endpoint& ep, ip::tcp::socket&& socket);
     ~Client();
