@@ -245,6 +245,29 @@ void Network::handle_packet(ClientID id, const Packet& packet) {
                 cinfo.program_version.major,
                 cinfo.program_version.minor,
                 cinfo.program_version.patch);
+            // respond with server info
+            auto version = Application::ServerVersion();
+            struct bmp::ServerInfo sinfo {
+                .program_version = {
+                    .major = version.major,
+                    .minor = version.minor,
+                    .patch = version.patch,
+                },
+                .implementation = {
+                    .value = "Official BeamMP Server (BeamMP Ltd.)",
+                },
+            };
+            Packet sinfo_packet {
+                .purpose = bmp::Purpose::ServerInfo,
+                .data = std::vector<uint8_t>(1024),
+            };
+            sinfo.serialize_to(sinfo_packet.data);
+            client->tcp_write(sinfo_packet);
+            // now transfer to next state
+            Packet auth_state {
+                .purpose = bmp::Purpose::StateChangeAuthentication,
+            };
+            client->tcp_write(auth_state);
             break;
         }
         default:
