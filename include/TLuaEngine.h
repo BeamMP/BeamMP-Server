@@ -1,7 +1,6 @@
 #pragma once
 
-#include "TNetwork.h"
-#include "TServer.h"
+#include "Network.h"
 #include <any>
 #include <condition_variable>
 #include <filesystem>

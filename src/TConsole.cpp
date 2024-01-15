@@ -2,7 +2,6 @@
 #include "Common.h"
 #include "Compat.h"
 
-#include "Client.h"
 #include "CustomAssert.h"
 #include "LuaAPI.h"
 #include "TLuaEngine.h"

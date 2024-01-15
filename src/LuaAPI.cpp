@@ -1,5 +1,4 @@
 #include "LuaAPI.h"
-#include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
 #include "TLuaEngine.h"

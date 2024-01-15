@@ -2,8 +2,6 @@
 
 #include "Common.h"
 #include "IThreaded.h"
-#include "TResourceManager.h"
-#include "TServer.h"
 
 class THeartbeatThread : public IThreaded {
 public:

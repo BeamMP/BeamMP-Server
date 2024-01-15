@@ -1,6 +1,5 @@
 #include "Http.h"
 
-#include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
 #include "LuaAPI.h"
@@ -181,7 +180,7 @@ void Http::Server::THttpServerInstance::operator()() try {
             }
         }
         res.set_content(
-            json {
+            nlohmann::json {
                 { "ok", SystemsBad == 0 },
             }
                 .dump(),

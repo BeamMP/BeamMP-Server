@@ -1,6 +1,5 @@
 #include "THeartbeatThread.h"
 
-#include "Client.h"
 #include "Http.h"
 //#include "SocketIO.h"
 #include <rapidjson/document.h>

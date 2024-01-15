@@ -29,6 +29,11 @@ struct Client {
     ClientID id;
     bmp::State state { bmp::State::None };
 
+    Sync<std::string> name;
+    Sync<std::string> role;
+    Sync<bool> is_guest;
+    Sync<std::unordered_map<std::string /* identifier */, std::string /* value */>> identifiers;
+
     /// Reads a single packet from the TCP stream. Blocks all other reads (not writes).
     Packet tcp_read();
     /// Writes the packet to the TCP stream. Blocks all other writes.
@@ -37,15 +42,17 @@ struct Client {
     /// conjunction with something else. Blocks other writes.
     void tcp_write_file_raw(const std::filesystem::path& path);
 
-    Client(ClientID id, class Network& network, ip::tcp::socket&& tcp_socket);
+    Client(ClientID id, class Network& network, ip::tcp::socket&& tcp_sockem_udp_endpointst);
     ~Client();
 
     ip::tcp::socket& tcp_socket() { return m_tcp_socket; }
 
-    [[nodiscard]] const ip::udp::endpoint& udp_endpoint() const { return m_udp_ep; }
-    void set_udp_endpoint(const ip::udp::endpoint& ep) { m_udp_ep = ep; }
-
     void start_tcp();
+
+    /// Used to associate the udp socket with this client.
+    /// This isn't very secure and still allows spoofing of the UDP connection (technically),
+    /// but better than simply using the ID like the old protocol.
+    const uint64_t udp_magic;
 
 private:
 
@@ -55,7 +62,6 @@ private:
     std::mutex m_tcp_write_mtx;
     std::mutex m_udp_read_mtx;
 
-    ip::udp::endpoint m_udp_ep;
     ip::tcp::socket m_tcp_socket;
 
     boost::scoped_thread<> m_tcp_thread;
@@ -89,6 +95,8 @@ private:
 
     Sync<std::unordered_map<ClientID, Client::Ptr>> m_clients {};
     Sync<std::unordered_map<VehicleID, Vehicle::Ptr>> m_vehicles {};
+    Sync<std::unordered_map<uint64_t, ClientID>> m_client_magics {};
+    Sync<std::unordered_map<ip::udp::endpoint, ClientID>> m_udp_endpoints {};
 
     ClientID new_client_id() {
         static Sync<ClientID> s_id { 0 };
@@ -105,5 +113,11 @@ private:
     thread_pool m_threadpool {};
     Sync<bool> m_shutdown { false };
     ip::udp::socket m_udp_socket { m_io };
+
     void handle_identification(ClientID id, const Packet& packet, std::shared_ptr<Client>& client);
+
+    void handle_authentication(ClientID id, const Packet& packet, std::shared_ptr<Client>& client);
+
+    /// On failure, throws an exception with the error for the client.
+    static void authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client);
 };

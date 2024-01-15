@@ -71,7 +71,6 @@ function(set_project_warnings project_name)
             -Werror=write-strings
             -Werror=strict-aliasing -fstrict-aliasing
             -Werror=missing-declarations
-            -Werror=missing-field-initializers
             -Werror=ctor-dtor-privacy
             -Wswitch-default
             -Werror=unused-result

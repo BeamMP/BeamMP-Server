@@ -2,8 +2,15 @@
 #include "ClientInfo.h"
 #include "Common.h"
 #include "Environment.h"
+#include "Http.h"
+#include "LuaAPI.h"
 #include "ProtocolVersion.h"
 #include "ServerInfo.h"
+#include "TLuaEngine.h"
+#include "Util.h"
+#include <boost/thread/synchronized_value.hpp>
+#include <cstdlib>
+#include <nlohmann/json.hpp>
 
 #if defined(BEAMMP_LINUX)
 #include <cerrno>
@@ -30,6 +37,7 @@ Packet Client::tcp_read() {
 }
 
 void Client::tcp_write(const Packet& packet) {
+    beammp_tracef("Sending 0x{:x} to {}", int(packet.purpose), id);
     std::unique_lock lock(m_tcp_write_mtx);
     auto header = packet.header();
     std::vector<uint8_t> header_data(bmp::Header::SERIALIZED_SIZE);
@@ -73,6 +81,7 @@ Client::~Client() {
 
 Client::Client(ClientID id, Network& network, ip::tcp::socket&& tcp_socket)
     : id(id)
+    , udp_magic(id ^ uint64_t(std::rand()) ^ uint64_t(this))
     , m_tcp_socket(std::forward<ip::tcp::socket&&>(tcp_socket))
     , m_network(network) {
     beammp_debugf("Client {} created", id);
@@ -116,6 +125,8 @@ Packet Network::udp_read(ip::udp::endpoint& out_ep) {
         beammp_errorf("Flags are not implemented");
         return {};
     }
+    packet.data.resize(header.size);
+    std::copy(s_buffer.begin() + offset, s_buffer.begin() + offset + header.size, packet.data.begin());
     return packet;
 }
 
@@ -183,13 +194,76 @@ void Network::tcp_listen_main() {
 }
 
 void Network::udp_read_main() {
+    m_udp_socket = ip::udp::socket(m_io, ip::udp::endpoint(ip::udp::v4(), Application::Settings.Port));
     while (!*m_shutdown) {
+        try {
+            ip::udp::endpoint ep;
+            auto packet = udp_read(ep);
+            // special case for new udp connections, only happens once
+            if (packet.purpose == bmp::Purpose::StartUDP) [[unlikely]] {
+                auto all = boost::synchronize(m_clients, m_udp_endpoints, m_client_magics);
+                auto& clients = std::get<0>(all);
+                auto& endpoints = std::get<1>(all);
+                auto& magics = std::get<2>(all);
+                ClientID id = 0xffffffff;
+                uint64_t recv_magic;
+                bmp::deserialize(recv_magic, packet.data);
+                if (magics->contains(recv_magic)) {
+                    id = magics->at(recv_magic);
+                    magics->erase(recv_magic);
+                } else {
+                    beammp_debugf("Invalid magic received on UDP from [{}]:{}, ignoring.", ep.address().to_string(), ep.port());
+                    continue;
+                }
+                if (clients->contains(id)) {
+                    auto client = clients->at(id);
+                    // check if endpoint already exists for this client!
+                    auto iter = std::find_if(endpoints->begin(), endpoints->end(), [&](const auto& item) {
+                        return item.second == id;
+                    });
+                    if (iter != endpoints->end()) {
+                        // already exists, malicious attempt!
+                        beammp_debugf("[{}]:{} tried to replace {}'s UDP endpoint, ignoring.", ep.address().to_string(), ep.port(), id);
+                        continue;
+                    }
+                    // not yet set! nice! set!
+                    endpoints->emplace(ep, id);
+                    // now transfer them to the next state
+                    beammp_debugf("Client {} successfully connected via UDP", client->id);
+                    Packet state_change {
+                        .purpose = bmp::Purpose::StateChangeModDownload,
+                    };
+                    client->tcp_write(state_change);
+                    client->state = bmp::State::ModDownload;
+                } else {
+                    beammp_warnf("Received magic for client who doesn't exist anymore: {}. Ignoring.", id);
+                }
+            }
+        } catch (const std::exception& e) {
+            beammp_errorf("Failed to UDP read: {}", e.what());
+        }
     }
 }
 
 void Network::disconnect(ClientID id, const std::string& msg) {
     beammp_infof("Disconnecting client {}: {}", id, msg);
-    m_clients->erase(id);
+    // deadlock-free algorithm to acquire a lock on all these
+    // this is a little ugly but saves a headache here in the future
+    auto all = boost::synchronize(m_clients, m_udp_endpoints, m_client_magics);
+    auto& clients = std::get<0>(all);
+    auto& endpoints = std::get<1>(all);
+    auto& magics = std::get<2>(all);
+
+    if (clients->contains(id)) {
+        auto client = clients->at(id);
+        beammp_debugf("Removing client udp magic {}", client->udp_magic);
+        magics->erase(client->udp_magic);
+    }
+    std::erase_if(*endpoints, [&](const auto& item) {
+        const auto& [key, value] = item;
+        return value == id;
+    });
+    clients->erase(id);
 }
 void Network::handle_packet(ClientID id, const Packet& packet) {
     std::shared_ptr<Client> client;
@@ -211,6 +285,7 @@ void Network::handle_packet(ClientID id, const Packet& packet) {
         handle_identification(id, packet, client);
         break;
     case bmp::State::Authentication:
+        handle_authentication(id, packet, client);
         break;
     case bmp::State::ModDownload:
         break;
@@ -283,11 +358,131 @@ void Network::handle_identification(ClientID id, const Packet& packet, std::shar
             .purpose = bmp::StateChangeAuthentication,
         };
         client->tcp_write(auth_state);
+        client->state = bmp::State::Authentication;
         break;
     }
     default:
-        beammp_errorf("Got 0x{:x} in state {}. This is not allowed disconnecting the client", uint16_t(packet.purpose), int(client->state));
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state));
         disconnect(id, "invalid purpose in current state");
     }
+}
 
+void Network::authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client) {
+    nlohmann::json AuthReq {};
+    std::string auth_res_str {};
+    try {
+        AuthReq = nlohmann::json {
+            { "key", public_key }
+        };
+
+        auto Target = "/pkToUser";
+        unsigned int ResponseCode = 0;
+        auth_res_str = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, AuthReq.dump(), "application/json", &ResponseCode);
+    } catch (const std::exception& e) {
+        beammp_debugf("Invalid key sent by client {}: {}", client->id, e.what());
+        throw std::runtime_error("Public key was of an invalid format");
+    }
+
+    try {
+        nlohmann::json auth_response = nlohmann::json::parse(auth_res_str);
+
+        if (auth_response["username"].is_string() && auth_response["roles"].is_string()
+            && auth_response["guest"].is_boolean() && auth_response["identifiers"].is_array()) {
+
+            *client->name = auth_response["username"];
+            *client->role = auth_response["roles"];
+            *client->is_guest = auth_response["guest"];
+            for (const auto& identifier : auth_response["identifiers"]) {
+                auto identifier_str = std::string(identifier);
+                auto identifier_sep_idx = identifier_str.find(':');
+                client->identifiers->emplace(identifier_str.substr(0, identifier_sep_idx), identifier_str.substr(identifier_sep_idx + 1));
+            }
+        } else {
+            beammp_errorf("Invalid authentication data received from authentication backend for client {}", client->id);
+            throw std::runtime_error("Backend failed to authenticate the client");
+        }
+    } catch (const std::exception& e) {
+        beammp_errorf("Client {} sent invalid key. Error was: {}", client->id, e.what());
+        throw std::runtime_error("Invalid public key");
+    }
+}
+
+void Network::handle_authentication(ClientID id, const Packet& packet, std::shared_ptr<Client>& client) {
+    switch (packet.purpose) {
+    case bmp::Purpose::PlayerPublicKey: {
+        auto public_key = std::string(packet.data.begin(), packet.data.end());
+        try {
+            authenticate_user(public_key, client);
+        } catch (const std::exception& e) {
+            // propragate to client and disconnect
+            auto err = std::string(e.what());
+            beammp_errorf("Client {} failed to authenticate: {}", id, err);
+            Packet auth_fail_packet {
+                .purpose = bmp::Purpose::AuthFailed,
+                .data = std::vector<uint8_t>(err.begin(), err.end()),
+            };
+            client->tcp_write(auth_fail_packet);
+            disconnect(id, err);
+            return;
+        }
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", "", client->name.get(), client->role.get(), client->is_guest.get(), client->identifiers.get());
+        TLuaEngine::WaitForAll(Futures);
+        bool NotAllowed = std::any_of(Futures.begin(), Futures.end(),
+            [](const std::shared_ptr<TLuaResult>& Result) {
+                return !Result->Error && Result->Result.is<int>() && bool(Result->Result.as<int>());
+            });
+        std::string Reason;
+        bool NotAllowedWithReason = std::any_of(Futures.begin(), Futures.end(),
+            [&Reason](const std::shared_ptr<TLuaResult>& Result) -> bool {
+                if (!Result->Error && Result->Result.is<std::string>()) {
+                    Reason = Result->Result.as<std::string>();
+                    return true;
+                }
+                return false;
+            });
+
+        if (NotAllowed) {
+            Packet auth_fail_packet {
+                .purpose = bmp::Purpose::PlayerRejected
+            };
+            client->tcp_write(auth_fail_packet);
+            disconnect(id, "Rejected by a plugin");
+            return;
+        } else if (NotAllowedWithReason) {
+            Packet auth_fail_packet {
+                .purpose = bmp::Purpose::PlayerRejected,
+                .data = std::vector<uint8_t>(Reason.begin(), Reason.end()),
+            };
+            client->tcp_write(auth_fail_packet);
+            disconnect(id, fmt::format("Rejected by a plugin for reason: {}", Reason));
+            return;
+        }
+        beammp_debugf("Client {} successfully authenticated as {} '{}'", id, client->role.get(), client->name.get());
+        // send auth ok since auth succeeded
+        Packet auth_ok {
+            .purpose = bmp::Purpose::AuthOk,
+            .data = std::vector<uint8_t>(4),
+        };
+        // with the player id
+        bmp::serialize(client->id, auth_ok.data);
+        client->tcp_write(auth_ok);
+
+        // save the udp magic
+        m_udp_magics.emplace(client->udp_magic, client->id);
+
+        // send the udp start packet, which should get the client to start udp with
+        // this packet as the first message
+        Packet udp_start {
+            .purpose = bmp::Purpose::StartUDP,
+            .data = std::vector<uint8_t>(8),
+        };
+        bmp::serialize(client->udp_magic, udp_start.data);
+        client->tcp_write(udp_start);
+        // player must start udp to advance now, so no state change
+        break;
+    }
+    default:
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state));
+        disconnect(id, "invalid purpose in current state");
+    }
 }
