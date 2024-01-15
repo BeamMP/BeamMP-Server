@@ -6,14 +6,15 @@
     "boost-spirit",
     "boost-uuid",
     "boost-variant",
+    "boost-iostreams",
     "cpp-httplib",
     "doctest",
     "fmt",
-    "libzip",
     "nlohmann-json",
     "openssl",
     "rapidjson",
     "sol2",
-    "toml11"
+    "toml11",
+    "zstd"
   ]
 }

@@ -15,6 +15,8 @@ include(cmake/StandardSettings.cmake)
 include(cmake/StaticAnalyzers.cmake)
 include(cmake/Git.cmake)
 
+add_subdirectory(deps/BeamMP-Protocol)
+
 # below are options which should be changed
 
 ### SETTINGS ###
@@ -23,7 +25,6 @@ include(cmake/Git.cmake)
 set(PRJ_HEADERS 
     include/ArgsParser.h
     include/BoostAliases.h
-    include/Client.h
     include/Common.h
     include/Compat.h
     include/Cryptography.h
@@ -41,19 +42,15 @@ set(PRJ_HEADERS
     include/THeartbeatThread.h
     include/TLuaEngine.h
     include/TLuaPlugin.h
-    include/TNetwork.h
     include/TPluginMonitor.h
-    include/TPPSMonitor.h
-    include/TResourceManager.h
     include/TScopedTimer.h
-    include/TServer.h
     include/VehicleData.h
     include/Env.h
+    include/Network.h
 )
 # add all source files (.cpp) to this, except the one with main()
 set(PRJ_SOURCES
     src/ArgsParser.cpp
-    src/Client.cpp
     src/Common.cpp
     src/Compat.cpp
     src/Http.cpp
@@ -64,14 +61,11 @@ set(PRJ_SOURCES
     src/THeartbeatThread.cpp
     src/TLuaEngine.cpp
     src/TLuaPlugin.cpp
-    src/TNetwork.cpp
     src/TPluginMonitor.cpp
-    src/TPPSMonitor.cpp
-    src/TResourceManager.cpp
     src/TScopedTimer.cpp
-    src/TServer.cpp
     src/VehicleData.cpp
     src/Env.cpp
+    src/Network.cpp
 )
 
 find_package(Lua REQUIRED)
@@ -98,7 +92,9 @@ set(PRJ_LIBRARIES
     httplib::httplib
     libzip::zip
     OpenSSL::SSL OpenSSL::Crypto
+    protocol
     ${LUA_LIBRARIES}
+    zstd::libzstd_static
 )
 
 # add dependency find_package calls and similar here
@@ -111,6 +107,7 @@ find_package(libzip CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(toml11 CONFIG REQUIRED)
+find_package(zstd CONFIG REQUIRED)
 
 include_directories(include)
 
