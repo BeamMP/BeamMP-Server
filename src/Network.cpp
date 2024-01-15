@@ -208,73 +208,7 @@ void Network::handle_packet(ClientID id, const Packet& packet) {
         // and fall through
         [[fallthrough]];
     case bmp::State::Identification:
-        switch (packet.purpose) {
-        case bmp::Purpose::ProtocolVersion: {
-            struct bmp::ProtocolVersion protocol_version { };
-            protocol_version.deserialize_from(packet.data);
-            if (protocol_version.version.major != 1) {
-                beammp_debugf("{}: Protocol version bad", id);
-                // version bad
-                Packet protocol_v_bad_packet {
-                    .purpose = bmp::ProtocolVersionBad,
-                };
-                client->tcp_write(protocol_v_bad_packet);
-                disconnect(id, fmt::format("bad protocol version: {}.{}.{}", protocol_version.version.major, protocol_version.version.minor, protocol_version.version.patch));
-            } else {
-                beammp_debugf("{}: Protocol version ok", id);
-                // version ok
-                Packet protocol_v_ok_packet {
-                    .purpose = bmp::ProtocolVersionOk,
-                };
-                client->tcp_write(protocol_v_ok_packet);
-            }
-            break;
-        }
-        case bmp::Purpose::ClientInfo: {
-            struct bmp::ClientInfo cinfo { };
-            cinfo.deserialize_from(packet.data);
-            beammp_debugf("{} is running game version: v{}.{}.{}, mod version: v{}.{}.{}, client implementation '{}' v{}.{}.{}",
-                id,
-                cinfo.game_version.major,
-                cinfo.game_version.minor,
-                cinfo.game_version.patch,
-                cinfo.mod_version.major,
-                cinfo.mod_version.minor,
-                cinfo.mod_version.patch,
-                cinfo.implementation.value,
-                cinfo.program_version.major,
-                cinfo.program_version.minor,
-                cinfo.program_version.patch);
-            // respond with server info
-            auto version = Application::ServerVersion();
-            struct bmp::ServerInfo sinfo {
-                .program_version = {
-                    .major = version.major,
-                    .minor = version.minor,
-                    .patch = version.patch,
-                },
-                .implementation = {
-                    .value = "Official BeamMP Server (BeamMP Ltd.)",
-                },
-            };
-            Packet sinfo_packet {
-                .purpose = bmp::Purpose::ServerInfo,
-                .data = std::vector<uint8_t>(1024),
-            };
-            sinfo.serialize_to(sinfo_packet.data);
-            client->tcp_write(sinfo_packet);
-            // now transfer to next state
-            Packet auth_state {
-                .purpose = bmp::Purpose::StateChangeAuthentication,
-            };
-            client->tcp_write(auth_state);
-            break;
-        }
-        default:
-            beammp_errorf("Got 0x{:x} in state {}. This is not allowed disconnecting the client", uint16_t(packet.purpose), int(client->state));
-            disconnect(id, "invalid purpose in current state");
-            return;
-        }
+        handle_identification(id, packet, client);
         break;
     case bmp::State::Authentication:
         break;
@@ -287,4 +221,73 @@ void Network::handle_packet(ClientID id, const Packet& packet) {
     case bmp::State::Leaving:
         break;
     }
+}
+void Network::handle_identification(ClientID id, const Packet& packet, std::shared_ptr<Client>& client) {
+    switch (packet.purpose) {
+    case bmp::ProtocolVersion: {
+        struct bmp::ProtocolVersion protocol_version { };
+        protocol_version.deserialize_from(packet.data);
+        if (protocol_version.version.major != 1) {
+            beammp_debugf("{}: Protocol version bad", id);
+            // version bad
+            Packet protocol_v_bad_packet {
+                .purpose = bmp::ProtocolVersionBad,
+            };
+            client->tcp_write(protocol_v_bad_packet);
+            disconnect(id, fmt::format("bad protocol version: {}.{}.{}", protocol_version.version.major, protocol_version.version.minor, protocol_version.version.patch));
+        } else {
+            beammp_debugf("{}: Protocol version ok", id);
+            // version ok
+            Packet protocol_v_ok_packet {
+                .purpose = bmp::ProtocolVersionOk,
+            };
+            client->tcp_write(protocol_v_ok_packet);
+        }
+        break;
+    }
+    case bmp::ClientInfo: {
+        struct bmp::ClientInfo cinfo { };
+        cinfo.deserialize_from(packet.data);
+        beammp_debugf("{} is running game version: v{}.{}.{}, mod version: v{}.{}.{}, client implementation '{}' v{}.{}.{}",
+            id,
+            cinfo.game_version.major,
+            cinfo.game_version.minor,
+            cinfo.game_version.patch,
+            cinfo.mod_version.major,
+            cinfo.mod_version.minor,
+            cinfo.mod_version.patch,
+            cinfo.implementation.value,
+            cinfo.program_version.major,
+            cinfo.program_version.minor,
+            cinfo.program_version.patch);
+        // respond with server info
+        auto version = Application::ServerVersion();
+        struct bmp::ServerInfo sinfo {
+            .program_version = {
+                .major = version.major,
+                .minor = version.minor,
+                .patch = version.patch,
+            },
+            .implementation = {
+                .value = "Official BeamMP Server (BeamMP Ltd.)",
+            },
+        };
+        Packet sinfo_packet {
+            .purpose = bmp::ServerInfo,
+            .data = std::vector<uint8_t>(1024),
+        };
+        sinfo.serialize_to(sinfo_packet.data);
+        client->tcp_write(sinfo_packet);
+        // now transfer to next state
+        Packet auth_state {
+            .purpose = bmp::StateChangeAuthentication,
+        };
+        client->tcp_write(auth_state);
+        break;
+    }
+    default:
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed disconnecting the client", uint16_t(packet.purpose), int(client->state));
+        disconnect(id, "invalid purpose in current state");
+    }
+
 }

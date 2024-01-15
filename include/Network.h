@@ -105,4 +105,5 @@ private:
     thread_pool m_threadpool {};
     Sync<bool> m_shutdown { false };
     ip::udp::socket m_udp_socket { m_io };
+    void handle_identification(ClientID id, const Packet& packet, std::shared_ptr<Client>& client);
 };
