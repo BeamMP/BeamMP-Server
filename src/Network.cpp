@@ -235,9 +235,12 @@ void Network::udp_read_main() {
                     };
                     client->tcp_write(state_change);
                     client->state = bmp::State::ModDownload;
+                    continue;
                 } else {
                     beammp_warnf("Received magic for client who doesn't exist anymore: {}. Ignoring.", id);
                 }
+            } else {
+                handle_packet(m_udp_endpoints->at(ep), packet);
             }
         } catch (const std::exception& e) {
             beammp_errorf("Failed to UDP read: {}", e.what());
