@@ -19,9 +19,17 @@ using namespace boost::asio;
 struct Packet {
     bmp::Purpose purpose;
     bmp::Flags flags;
-    std::vector<uint8_t> data;
 
-    bmp::Header header() const;
+    /// Returns data with consideration to flags.
+    std::vector<uint8_t> get_readable_data() const;
+
+    /// Sets flags (e.g. compression flag) if the data is above some threshold,
+    /// and compresses the data.
+    /// Returns the header needed to send this packet.
+    [[nodiscard]] bmp::Header finalize();
+
+    /// Raw (potentially compressed) data -- do not read directly to deserialize from.
+    std::vector<uint8_t> raw_data;
 };
 
 struct Client {
@@ -37,7 +45,7 @@ struct Client {
     /// Reads a single packet from the TCP stream. Blocks all other reads (not writes).
     Packet tcp_read();
     /// Writes the packet to the TCP stream. Blocks all other writes.
-    void tcp_write(const Packet& packet);
+    void tcp_write(Packet& packet);
     /// Writes the specified to the TCP stream without a header or any metadata - use in
     /// conjunction with something else. Blocks other writes.
     void tcp_write_file_raw(const std::filesystem::path& path);
@@ -55,7 +63,6 @@ struct Client {
     const uint64_t udp_magic;
 
 private:
-
     void tcp_main();
 
     std::mutex m_tcp_read_mtx;
@@ -83,7 +90,7 @@ public:
     /// Reads a packet from the given UDP socket, returning the client's endpoint as an out-argument.
     Packet udp_read(ip::udp::endpoint& out_ep);
     /// Sends a packet to the specified UDP endpoint via the UDP socket.
-    void udp_write(const Packet& packet, const ip::udp::endpoint& to_ep);
+    void udp_write(Packet& packet, const ip::udp::endpoint& to_ep);
 
     void disconnect(ClientID id, const std::string& msg);
 
