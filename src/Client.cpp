@@ -53,9 +53,9 @@ std::string TClient::GetCarPositionRaw(int Ident) {
     try {
         return mVehiclePosition.at(size_t(Ident));
     } catch (const std::out_of_range& oor) {
+        beammp_debugf("Failed to get vehicle position for {}: {}", Ident, oor.what());
         return "";
     }
-    return "";
 }
 
 void TClient::Disconnect(std::string_view Reason) {
@@ -146,6 +146,8 @@ std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
                 MaybeClient = CPtr;
                 return false;
             }
+        } else {
+            beammp_debugf("Found an expired client while looking for id {}", ID);
         }
         return true;
     });

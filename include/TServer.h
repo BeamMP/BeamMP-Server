@@ -26,7 +26,7 @@ public:
     void ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     size_t ClientCount() const;
 
-    static void GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
+    void GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uint8_t>&& Packet, TPPSMonitor& PPSMonitor, TNetwork& Network);
     static void HandleEvent(TClient& c, const std::string& Data);
     RWMutex& GetClientMutex() const { return mClientsMutex; }
 
@@ -43,7 +43,7 @@ private:
     static bool ShouldSpawn(TClient& c, const std::string& CarJson, int ID);
     static bool IsUnicycle(TClient& c, const std::string& CarJson);
     static void Apply(TClient& c, int VID, const std::string& pckt);
-    static void HandlePosition(TClient& c, const std::string& Packet);
+    void HandlePosition(TClient& c, const std::string& Packet);
 };
 
 struct BufferView {
