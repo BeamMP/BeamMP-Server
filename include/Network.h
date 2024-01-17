@@ -3,6 +3,7 @@
 #include "State.h"
 #include "Sync.h"
 #include "Transport.h"
+#include "Packet.h"
 #include <boost/asio.hpp>
 #include <boost/thread/scoped_thread.hpp>
 #include <cstdint>
@@ -16,21 +17,6 @@ using VehicleID = uint16_t;
 
 using namespace boost::asio;
 
-struct Packet {
-    bmp::Purpose purpose;
-    bmp::Flags flags;
-
-    /// Returns data with consideration to flags.
-    std::vector<uint8_t> get_readable_data() const;
-
-    /// Sets flags (e.g. compression flag) if the data is above some threshold,
-    /// and compresses the data.
-    /// Returns the header needed to send this packet.
-    [[nodiscard]] bmp::Header finalize();
-
-    /// Raw (potentially compressed) data -- do not read directly to deserialize from.
-    std::vector<uint8_t> raw_data;
-};
 
 struct Client {
     using Ptr = std::shared_ptr<Client>;
@@ -43,9 +29,9 @@ struct Client {
     Sync<std::unordered_map<std::string /* identifier */, std::string /* value */>> identifiers;
 
     /// Reads a single packet from the TCP stream. Blocks all other reads (not writes).
-    Packet tcp_read();
+    bmp::Packet tcp_read();
     /// Writes the packet to the TCP stream. Blocks all other writes.
-    void tcp_write(Packet& packet);
+    void tcp_write(bmp::Packet& packet);
     /// Writes the specified to the TCP stream without a header or any metadata - use in
     /// conjunction with something else. Blocks other writes.
     void tcp_write_file_raw(const std::filesystem::path& path);
@@ -88,13 +74,13 @@ public:
     ~Network();
 
     /// Reads a packet from the given UDP socket, returning the client's endpoint as an out-argument.
-    Packet udp_read(ip::udp::endpoint& out_ep);
+    bmp::Packet udp_read(ip::udp::endpoint& out_ep);
     /// Sends a packet to the specified UDP endpoint via the UDP socket.
-    void udp_write(Packet& packet, const ip::udp::endpoint& to_ep);
+    void udp_write(bmp::Packet& packet, const ip::udp::endpoint& to_ep);
 
     void disconnect(ClientID id, const std::string& msg);
 
-    void handle_packet(ClientID i, const Packet& packet);
+    void handle_packet(ClientID i, const bmp::Packet& packet);
 
 private:
     void udp_read_main();
@@ -121,9 +107,9 @@ private:
     Sync<bool> m_shutdown { false };
     ip::udp::socket m_udp_socket { m_io };
 
-    void handle_identification(ClientID id, const Packet& packet, std::shared_ptr<Client>& client);
+    void handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
 
-    void handle_authentication(ClientID id, const Packet& packet, std::shared_ptr<Client>& client);
+    void handle_authentication(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
 
     /// On failure, throws an exception with the error for the client.
     static void authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client);

@@ -5,6 +5,7 @@
 #include "Environment.h"
 #include "Http.h"
 #include "LuaAPI.h"
+#include "Packet.h"
 #include "ProtocolVersion.h"
 #include "ServerInfo.h"
 #include "TLuaEngine.h"
@@ -24,53 +25,9 @@
 
 #include <doctest/doctest.h>
 
-std::vector<uint8_t> Packet::get_readable_data() const {
-    if ((flags & bmp::Flags::ZstdCompressed) != 0) {
-        return bmp::zstd_decompress(raw_data);
-    } else {
-        return raw_data;
-    }
-}
-
-TEST_CASE("Packet finalize") {
-    Packet packet {
-        .purpose = bmp::Purpose::Invalid,
-    };
-    SUBCASE("No compression, under threshold") {
-        packet.raw_data = std::vector<uint8_t>(bmp::COMPRESSION_THRESHOLD - 1, 5);
-        (void)packet.finalize();
-        // not compressed, still the same
-        CHECK(std::all_of(packet.raw_data.begin(), packet.raw_data.end(), [](uint8_t value) { return value == 5; }));
-        ;
-        // no compression flag
-        CHECK_EQ(packet.flags & bmp::Flags::ZstdCompressed, 0);
-    }
-    SUBCASE("Compression via threshold") {
-        packet.raw_data = std::vector<uint8_t>(bmp::COMPRESSION_THRESHOLD + 1, 5);
-        (void)packet.finalize();
-        // compressed, not the exact same
-        CHECK(!std::all_of(packet.raw_data.begin(), packet.raw_data.end(), [](uint8_t value) { return value == 5; }));
-        // decompressable
-        CHECK_NOTHROW(bmp::zstd_decompress(packet.raw_data));
-        // compression flag set
-        CHECK_NE(packet.flags & bmp::Flags::ZstdCompressed, 0);
-    }
-    SUBCASE("Compression flag") {
-        packet.raw_data = std::vector<uint8_t>(bmp::COMPRESSION_THRESHOLD - 1, 5);
-        packet.flags = bmp::Flags(packet.flags | bmp::Flags::ZstdCompressed);
-        (void)packet.finalize();
-        // compressed, not the exact same
-        CHECK(!std::all_of(packet.raw_data.begin(), packet.raw_data.end(), [](uint8_t value) { return value == 5; }));
-        // decompressable
-        CHECK_NOTHROW(bmp::zstd_decompress(packet.raw_data));
-        // compression flag set
-        CHECK_NE(packet.flags & bmp::Flags::ZstdCompressed, 0);
-    }
-}
-
-Packet Client::tcp_read() {
+bmp::Packet Client::tcp_read() {
     std::unique_lock lock(m_tcp_read_mtx);
-    Packet packet {};
+    bmp::Packet packet {};
     std::vector<uint8_t> header_buffer(bmp::Header::SERIALIZED_SIZE);
     read(m_tcp_socket, buffer(header_buffer));
     bmp::Header hdr {};
@@ -83,7 +40,7 @@ Packet Client::tcp_read() {
     return packet;
 }
 
-void Client::tcp_write(Packet& packet) {
+void Client::tcp_write(bmp::Packet& packet) {
     beammp_tracef("Sending 0x{:x} to {}", int(packet.purpose), id);
     // acquire a lock to avoid writing a header, then being interrupted by another write
     std::unique_lock lock(m_tcp_write_mtx);
@@ -156,27 +113,11 @@ void Client::tcp_main() {
     beammp_debugf("TCP thread stopped for client {}", id);
 }
 
-bmp::Header Packet::finalize() {
-    // the user can force zstd compression on before setting data to force compression,
-    // otherwise the threshold is used.
-    if ((flags & bmp::Flags::ZstdCompressed) != 0
-        || raw_data.size() > bmp::COMPRESSION_THRESHOLD) {
-        flags = bmp::Flags(flags | bmp::Flags::ZstdCompressed);
-        raw_data = bmp::zstd_compress(raw_data);
-    }
-    return {
-        .purpose = purpose,
-        .flags = flags,
-        .rsv = 0,
-        .size = static_cast<uint32_t>(raw_data.size()),
-    };
-}
-
-Packet Network::udp_read(ip::udp::endpoint& out_ep) {
+bmp::Packet Network::udp_read(ip::udp::endpoint& out_ep) {
     // maximum we can ever expect from udp
     static thread_local std::vector<uint8_t> s_buffer(std::numeric_limits<uint16_t>::max());
     m_udp_socket.receive_from(buffer(s_buffer), out_ep, {});
-    Packet packet;
+    bmp::Packet packet;
     bmp::Header header {};
     auto offset = header.deserialize_from(s_buffer);
     if (header.flags != bmp::Flags::None) {
@@ -188,7 +129,7 @@ Packet Network::udp_read(ip::udp::endpoint& out_ep) {
     return packet;
 }
 
-void Network::udp_write(Packet& packet, const ip::udp::endpoint& to_ep) {
+void Network::udp_write(bmp::Packet& packet, const ip::udp::endpoint& to_ep) {
     auto header = packet.finalize();
     std::vector<uint8_t> data(header.size + bmp::Header::SERIALIZED_SIZE);
     auto offset = header.serialize_to(data);
@@ -288,7 +229,7 @@ void Network::udp_read_main() {
                     endpoints->emplace(ep, id);
                     // now transfer them to the next state
                     beammp_debugf("Client {} successfully connected via UDP", client->id);
-                    Packet state_change {
+                    bmp::Packet state_change {
                         .purpose = bmp::Purpose::StateChangeModDownload,
                     };
                     client->tcp_write(state_change);
@@ -326,7 +267,7 @@ void Network::disconnect(ClientID id, const std::string& msg) {
     });
     clients->erase(id);
 }
-void Network::handle_packet(ClientID id, const Packet& packet) {
+void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
     std::shared_ptr<Client> client;
     {
         auto clients = m_clients.synchronize();
@@ -358,7 +299,7 @@ void Network::handle_packet(ClientID id, const Packet& packet) {
         break;
     }
 }
-void Network::handle_identification(ClientID id, const Packet& packet, std::shared_ptr<Client>& client) {
+void Network::handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
     switch (packet.purpose) {
     case bmp::ProtocolVersion: {
         struct bmp::ProtocolVersion protocol_version { };
@@ -366,7 +307,7 @@ void Network::handle_identification(ClientID id, const Packet& packet, std::shar
         if (protocol_version.version.major != 1) {
             beammp_debugf("{}: Protocol version bad", id);
             // version bad
-            Packet protocol_v_bad_packet {
+            bmp::Packet protocol_v_bad_packet {
                 .purpose = bmp::ProtocolVersionBad,
             };
             client->tcp_write(protocol_v_bad_packet);
@@ -374,7 +315,7 @@ void Network::handle_identification(ClientID id, const Packet& packet, std::shar
         } else {
             beammp_debugf("{}: Protocol version ok", id);
             // version ok
-            Packet protocol_v_ok_packet {
+            bmp::Packet protocol_v_ok_packet {
                 .purpose = bmp::ProtocolVersionOk,
             };
             client->tcp_write(protocol_v_ok_packet);
@@ -408,14 +349,14 @@ void Network::handle_identification(ClientID id, const Packet& packet, std::shar
                 .value = "Official BeamMP Server (BeamMP Ltd.)",
             },
         };
-        Packet sinfo_packet {
+        bmp::Packet sinfo_packet {
             .purpose = bmp::ServerInfo,
             .raw_data = std::vector<uint8_t>(1024),
         };
         sinfo.serialize_to(sinfo_packet.raw_data);
         client->tcp_write(sinfo_packet);
         // now transfer to next state
-        Packet auth_state {
+        bmp::Packet auth_state {
             .purpose = bmp::StateChangeAuthentication,
         };
         client->tcp_write(auth_state);
@@ -468,7 +409,7 @@ void Network::authenticate_user(const std::string& public_key, std::shared_ptr<C
     }
 }
 
-void Network::handle_authentication(ClientID id, const Packet& packet, std::shared_ptr<Client>& client) {
+void Network::handle_authentication(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
     switch (packet.purpose) {
     case bmp::Purpose::PlayerPublicKey: {
         auto packet_data = packet.get_readable_data();
@@ -479,7 +420,7 @@ void Network::handle_authentication(ClientID id, const Packet& packet, std::shar
             // propragate to client and disconnect
             auto err = std::string(e.what());
             beammp_errorf("Client {} failed to authenticate: {}", id, err);
-            Packet auth_fail_packet {
+            bmp::Packet auth_fail_packet {
                 .purpose = bmp::Purpose::AuthFailed,
                 .raw_data = std::vector<uint8_t>(err.begin(), err.end()),
             };
@@ -504,14 +445,14 @@ void Network::handle_authentication(ClientID id, const Packet& packet, std::shar
             });
 
         if (NotAllowed) {
-            Packet auth_fail_packet {
+            bmp::Packet auth_fail_packet {
                 .purpose = bmp::Purpose::PlayerRejected
             };
             client->tcp_write(auth_fail_packet);
             disconnect(id, "Rejected by a plugin");
             return;
         } else if (NotAllowedWithReason) {
-            Packet auth_fail_packet {
+            bmp::Packet auth_fail_packet {
                 .purpose = bmp::Purpose::PlayerRejected,
                 .raw_data = std::vector<uint8_t>(Reason.begin(), Reason.end()),
             };
@@ -521,7 +462,7 @@ void Network::handle_authentication(ClientID id, const Packet& packet, std::shar
         }
         beammp_debugf("Client {} successfully authenticated as {} '{}'", id, client->role.get(), client->name.get());
         // send auth ok since auth succeeded
-        Packet auth_ok {
+        bmp::Packet auth_ok {
             .purpose = bmp::Purpose::AuthOk,
             .raw_data = std::vector<uint8_t>(4),
         };
@@ -534,7 +475,7 @@ void Network::handle_authentication(ClientID id, const Packet& packet, std::shar
 
         // send the udp start packet, which should get the client to start udp with
         // this packet as the first message
-        Packet udp_start {
+        bmp::Packet udp_start {
             .purpose = bmp::Purpose::StartUDP,
             .raw_data = std::vector<uint8_t>(8),
         };
