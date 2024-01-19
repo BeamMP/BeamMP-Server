@@ -42,7 +42,7 @@ We only allow building unmodified (original) source code for public use. `master
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
+The code itself supports (latest stable) Linux, Windows andcurrently supported production releases of FreeBSD. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
 
 Recommended compilers: MSVC, GCC, CLANG. 
 
@@ -71,6 +71,14 @@ You can build on **Windows, Linux** or other platforms by following these steps:
 5. Your executable can be found in `bin/`.
 
 When you make changes to the code, you only have to run step 4 again.
+
+It's a similar situation on FreeBSD, although build dependencies can be universally installed from ports via pkg:
+```
+pkg install git cmake-core zip bash devel/ninja devel/pkgconf lua53
+```
+Then follow the linux build instructions beginning from step 3. **Note**: Running the initial cmake command will compile vcpkg from source, as vcpkg has no native FreeBSD port - this may take some time.
+
+**Note**: On systems with a single logical CPU core, `make` may fail to build the server when using the `--parallel` option when calling CMake. 
 
 ### Runtime Dependencies
 

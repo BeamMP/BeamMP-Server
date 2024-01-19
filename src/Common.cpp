@@ -274,7 +274,9 @@ void RegisterThread(const std::string& str) {
 #elif defined(BEAMMP_APPLE)
     ThreadId = std::to_string(getpid()); // todo: research if 'getpid()' is a valid, posix compliant alternative to 'gettid()'
 #elif defined(BEAMMP_LINUX)
-    ThreadId = std::to_string(gettid());
+    ThreadId = std::to_string(gettid()); //todo: 'gettid()' may not produce the inted behavior, as tid's can be the same as pid's when the calling process only has one thread (according to this StackOverflow answer: https://stackoverflow.com/a/8787888). gettid is also a linux specific call (not in posix standard). consider to refactor this in a posix compliant way (maybe 'pthread_self()'?).
+#elif defined(BEAMMP_FREEBSD)
+    ThreadId = std::to_string(getpid());
 #endif
     if (Application::Settings.DebugModeEnabled) {
         std::ofstream ThreadFile(".Threads.log", std::ios::app);
@@ -288,6 +290,11 @@ TEST_CASE("RegisterThread") {
     RegisterThread("MyThread");
     CHECK(threadNameMap.at(std::this_thread::get_id()) == "MyThread");
 }
+
+#ifdef BEAMMP_FREEBSD
+    #undef major
+    #undef minor
+#endif
 
 Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
     : major(major)
