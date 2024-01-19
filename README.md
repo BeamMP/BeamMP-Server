@@ -42,7 +42,7 @@ We only allow building unmodified (original) source code for public use. `master
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux, Windows andcurrently supported production releases of FreeBSD. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
+The code itself supports (latest stable) Linux, Windows and supported major release branches of FreeBSD (FreeBSD RELEASE). In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
 
 Recommended compilers: MSVC, GCC, CLANG. 
 
@@ -78,7 +78,7 @@ pkg install git cmake-core zip bash devel/ninja devel/pkgconf lua53
 ```
 Then follow the linux build instructions beginning from step 3. **Note**: Running the initial cmake command will compile vcpkg from source, as vcpkg has no native FreeBSD port - this may take some time.
 
-**Note**: On systems with a single logical CPU core, `make` may fail to build the server when using the `--parallel` option when calling CMake. 
+**Note**: On systems with a single logical CPU core, `make` may fail to build the server when using the `--parallel` option when calling CMake. If you see error messages related to make, simply omit the `--parallel` from the command: `cmake --build bin --config Release -t BeamMP-Server`.
 
 ### Runtime Dependencies
 
