@@ -40,17 +40,16 @@ bmp::Packet Client::tcp_read() {
     return packet;
 }
 
+void Network::send_to(ClientID id, const bmp::Packet& packet) {
+}
+
 void Client::tcp_write(bmp::Packet& packet) {
-    beammp_tracef("Sending 0x{:x} to {}", int(packet.purpose), id);
     // acquire a lock to avoid writing a header, then being interrupted by another write
     std::unique_lock lock(m_tcp_write_mtx);
     // finalize the packet (compress etc) and produce header
     auto header = packet.finalize();
     // serialize header
     std::vector<uint8_t> header_data(bmp::Header::SERIALIZED_SIZE);
-    if (header.flags != bmp::Flags::None) {
-        beammp_errorf("Flags are not implemented");
-    }
     header.serialize_to(header_data);
     // write header and packet data
     write(m_tcp_socket, buffer(header_data));
@@ -120,10 +119,6 @@ bmp::Packet Network::udp_read(ip::udp::endpoint& out_ep) {
     bmp::Packet packet;
     bmp::Header header {};
     auto offset = header.deserialize_from(s_buffer);
-    if (header.flags != bmp::Flags::None) {
-        beammp_errorf("Flags are not implemented");
-        return {};
-    }
     packet.raw_data.resize(header.size);
     std::copy(s_buffer.begin() + offset, s_buffer.begin() + offset + header.size, packet.raw_data.begin());
     return packet;
@@ -146,13 +141,25 @@ Network::Network()
         m_tcp_listen_thread.interrupt();
         m_udp_read_thread.interrupt();
     });
+    Application::SetSubsystemStatus("Network", Application::Status::Good);
 }
 
 Network::~Network() {
+    Application::SetSubsystemStatus("Network", Application::Status::ShuttingDown);
     *m_shutdown = true;
+    if (!m_tcp_listen_thread.try_join_for(boost::chrono::seconds(1))) {
+        m_tcp_listen_thread.detach();
+        Application::SetSubsystemStatus("TCP", Application::Status::Shutdown);
+    }
+    if (!m_udp_read_thread.try_join_for(boost::chrono::seconds(1))) {
+        m_udp_read_thread.detach();
+        Application::SetSubsystemStatus("UDP", Application::Status::Shutdown);
+    }
+    Application::SetSubsystemStatus("Network", Application::Status::Shutdown);
 }
 
 void Network::tcp_listen_main() {
+    Application::SetSubsystemStatus("TCP", Application::Status::Starting);
     ip::tcp::endpoint listen_ep(ip::address::from_string("0.0.0.0"), static_cast<uint16_t>(Application::Settings.Port));
     ip::tcp::socket listener(m_threadpool);
     boost::system::error_code ec;
@@ -178,6 +185,7 @@ void Network::tcp_listen_main() {
             ec.message());
         Application::GracefullyShutdown();
     }
+    Application::SetSubsystemStatus("TCP", Application::Status::Good);
     while (!*m_shutdown) {
         auto new_socket = acceptor.accept();
         if (ec) {
@@ -190,10 +198,13 @@ void Network::tcp_listen_main() {
         std::shared_ptr<Client> new_client(std::make_shared<Client>(new_id, *this, std::move(new_socket)));
         m_clients->emplace(new_id, new_client);
     }
+    Application::SetSubsystemStatus("TCP", Application::Status::Shutdown);
 }
 
 void Network::udp_read_main() {
+    Application::SetSubsystemStatus("UDP", Application::Status::Starting);
     m_udp_socket = ip::udp::socket(m_io, ip::udp::endpoint(ip::udp::v4(), Application::Settings.Port));
+    Application::SetSubsystemStatus("UDP", Application::Status::Good);
     while (!*m_shutdown) {
         try {
             ip::udp::endpoint ep;
@@ -245,6 +256,7 @@ void Network::udp_read_main() {
             beammp_errorf("Failed to UDP read: {}", e.what());
         }
     }
+    Application::SetSubsystemStatus("UDP", Application::Status::Shutdown);
 }
 
 void Network::disconnect(ClientID id, const std::string& msg) {
@@ -265,8 +277,42 @@ void Network::disconnect(ClientID id, const std::string& msg) {
         const auto& [key, value] = item;
         return value == id;
     });
+    // TODO: Despawn vehicles owned by this player
     clients->erase(id);
 }
+
+std::unordered_map<ClientID, Client::Ptr> Network::playing_clients() const {
+    std::unordered_map<ClientID, Client::Ptr> copy {};
+    auto clients = m_clients.synchronize();
+    copy.reserve(clients->size());
+    for (const auto& [id, client] : *clients) {
+        if (client->state == bmp::State::Playing) {
+            copy[id] = client;
+        }
+    }
+    return copy;
+}
+std::unordered_map<ClientID, Client::Ptr> Network::authenticated_clients() const {
+    std::unordered_map<ClientID, Client::Ptr> copy {};
+    auto clients = m_clients.synchronize();
+    copy.reserve(clients->size());
+    for (const auto& [id, client] : *clients) {
+        if (client->state >= bmp::State::Authentication) {
+            copy[id] = client;
+        }
+    }
+    return copy;
+}
+std::unordered_map<ClientID, Client::Ptr> Network::all_clients() const {
+    return *m_clients;
+}
+size_t Network::authenticated_client_count() const {
+    auto clients = m_clients.synchronize();
+    return size_t(std::count_if(clients->begin(), clients->end(), [](const auto& pair) {
+        return pair.second->state >= bmp::State::Authentication;
+    }));
+}
+
 void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
     std::shared_ptr<Client> client;
     {
@@ -277,7 +323,7 @@ void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
         }
         client = clients->at(id);
     }
-    switch (client->state) {
+    switch (*client->state) {
     case bmp::State::None:
         // move to identification
         client->state = bmp::State::Identification;
@@ -346,14 +392,15 @@ void Network::handle_identification(ClientID id, const bmp::Packet& packet, std:
                 .patch = version.patch,
             },
             .implementation = {
-                .value = "Official BeamMP Server (BeamMP Ltd.)",
+                .value = "Official BeamMP Server",
             },
         };
         bmp::Packet sinfo_packet {
             .purpose = bmp::ServerInfo,
             .raw_data = std::vector<uint8_t>(1024),
         };
-        sinfo.serialize_to(sinfo_packet.raw_data);
+        auto offset = sinfo.serialize_to(sinfo_packet.raw_data);
+        sinfo_packet.raw_data.resize(offset);
         client->tcp_write(sinfo_packet);
         // now transfer to next state
         bmp::Packet auth_state {
@@ -364,7 +411,7 @@ void Network::handle_identification(ClientID id, const bmp::Packet& packet, std:
         break;
     }
     default:
-        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state));
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state.get()));
         disconnect(id, "invalid purpose in current state");
     }
 }
@@ -485,7 +532,114 @@ void Network::handle_authentication(ClientID id, const bmp::Packet& packet, std:
         break;
     }
     default:
-        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state));
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state.get()));
         disconnect(id, "invalid purpose in current state");
     }
 }
+std::optional<Client::Ptr> Network::get_client(ClientID id, bmp::State min_state) const {
+    auto clients = m_clients.synchronize();
+    if (clients->contains(id)) {
+        auto client = clients->at(id);
+        if (client->state >= min_state) {
+            return clients->at(id);
+        } else {
+            beammp_warnf("Tried to get client {}, but client is not yet in state {} (is in state {})", id, int(min_state), int(client->state.get()));
+            return std::nullopt;
+        }
+    } else {
+        return std::nullopt;
+    }
+}
+std::unordered_map<VehicleID, Vehicle::Ptr> Network::get_vehicles_owned_by(ClientID id) {
+    auto vehicles = m_vehicles.synchronize();
+    std::unordered_map<VehicleID, Vehicle::Ptr> result {};
+    for (const auto& [vid, vehicle] : *vehicles) {
+        if (vehicle->owner == id) {
+            result[vid] = vehicle;
+        }
+    }
+    return result;
+}
+
+void Vehicle::refresh_cache(std::unique_lock<std::recursive_mutex>& lock) {
+    (void)lock;
+    if (!m_needs_refresh) {
+        return;
+    }
+    try {
+        auto json = nlohmann::json::parse(m_status_data.data());
+        if (json["rvel"].is_array()) {
+            auto array = json["rvel"].get<std::vector<float>>();
+            m_rvel = {
+                array.at(0),
+                array.at(1),
+                array.at(2)
+            };
+        }
+
+        if (json["rot"].is_array()) {
+            auto array = json["rot"].get<std::vector<float>>();
+            m_rot = {
+                array.at(0),
+                array.at(1),
+                array.at(2),
+                array.at(3),
+            };
+        }
+        if (json["vel"].is_array()) {
+            auto array = json["vel"].get<std::vector<float>>();
+            m_vel = {
+                array.at(0),
+                array.at(1),
+                array.at(2)
+            };
+        }
+        if (json["pos"].is_array()) {
+            auto array = json["pos"].get<std::vector<float>>();
+            m_pos = {
+                array.at(0),
+                array.at(1),
+                array.at(2)
+            };
+        }
+        if (json["tim"].is_number()) {
+            m_time = json["tim"].get<float>();
+        }
+    } catch (const std::exception& e) {
+        beammp_errorf("Invalid position data: {}", e.what());
+    }
+    m_needs_refresh = false;
+}
+
+TEST_CASE("Vehicle position parse, cache, access") {
+    Vehicle veh {};
+    std::string str = R"({"rvel":[0.034001241344458,0.016966195008928,-0.0032029844877877],"rot":[-0.0012675799979579,0.0014056711767528,0.94126306518056,0.3376688606555],"tim":66.978502945043,"vel":[-18.80228647297,22.830758602197,0.0011466381380035],"pos":[562.68027268429,-379.27891669179,160.40605946989],"ping":0.032000000871718})";
+    veh.update_status(std::vector<uint8_t>(str.begin(), str.end()));
+    auto status = veh.get_status();
+    constexpr double EPS = 0.00001;
+    CHECK_LT(std::abs(status.rvel.x - 0.034001241344458f), EPS);
+    CHECK_LT(std::abs(status.rvel.y - 0.016966195008928f), EPS);
+    CHECK_LT(std::abs(status.rvel.z - -0.0032029844877877f), EPS);
+    CHECK_LT(std::abs(status.rot.x - -0.0012675799979579f), EPS);
+    CHECK_LT(std::abs(status.rot.y - 0.0014056711767528f), EPS);
+    CHECK_LT(std::abs(status.rot.z - 0.94126306518056f), EPS);
+    CHECK_LT(std::abs(status.rot.w - 0.3376688606555f), EPS);
+    CHECK_LT(std::abs(status.time - 66.978502945043f), EPS);
+    CHECK_LT(std::abs(status.vel.x - -18.80228647297f), EPS);
+    CHECK_LT(std::abs(status.vel.y - 22.830758602197f), EPS);
+    CHECK_LT(std::abs(status.vel.z - 0.0011466381380035f), EPS);
+    CHECK_LT(std::abs(status.pos.x - 562.68027268429f), EPS);
+    CHECK_LT(std::abs(status.pos.y - -379.27891669179f), EPS);
+    CHECK_LT(std::abs(status.pos.z - 160.40605946989f), EPS);
+}
+size_t Network::guest_count() const {
+    auto clients = m_clients.synchronize();
+    return size_t(std::count_if(clients->begin(), clients->end(), [](const auto& pair) { return pair.second->is_guest; }));
+}
+
+size_t Network::clients_in_state_count(bmp::State state) const {
+    auto clients = m_clients.synchronize();
+    return size_t(std::count_if(clients->begin(), clients->end(), [&state](const auto& pair) { return pair.second->state == state; }));
+}
+
+size_t Network::vehicle_count() const { return m_vehicles->size(); }
