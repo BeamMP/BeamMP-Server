@@ -15,6 +15,7 @@
     "rapidjson",
     "sol2",
     "toml11",
-    "zstd"
+    "zstd",
+    "glm"
   ]
 }

@@ -135,21 +135,15 @@ int BeamMPServerMain(MainArguments Arguments) {
         TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
     });
 
-    TServer Server(Arguments.List);
-
     auto LuaEngine = std::make_shared<TLuaEngine>();
-    LuaEngine->SetServer(&Server);
     Application::Console().InitializeLuaConsole(*LuaEngine);
 
     RegisterThread("Main");
 
     beammp_trace("Running in debug mode on a debug build");
-    TResourceManager ResourceManager;
-    TPPSMonitor PPSMonitor(Server);
-    THeartbeatThread Heartbeat(ResourceManager, Server);
-    TNetwork Network(Server, PPSMonitor, ResourceManager);
-    LuaEngine->SetNetwork(&Network);
-    PPSMonitor.SetNetwork(Network);
+    std::shared_ptr<Network> network = std::make_shared<Network>();
+    THeartbeatThread Heartbeat(network);
+    LuaEngine->SetNetwork(network);
     Application::CheckForUpdates();
 
     TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);

@@ -265,14 +265,15 @@ void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& 
         std::for_each(Name2.begin(), Name2.end(), [](char& c) { c = char(std::tolower(char(c))); });
         return StringStartsWith(Name1, Name2) || StringStartsWith(Name2, Name1);
     };
-    mLuaEngine->Server().ForEachClient([&](const std::shared_ptr<TClient>& Client) -> bool {
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*mLuaEngine->Server().ForEachClient([&](const std::shared_ptr<TClient>& Client) -> bool {
             if (NameCompare(Client->Name.get(), Name)) {
                 mLuaEngine->Network().ClientKick(*Client, Reason);
                 Kicked = true;
                 return false;
             }
         return true;
-    });
+    });*/
     if (!Kicked) {
         Application::Console().WriteRaw("Error: No player with name matching '" + Name + "' was found.");
     } else {
@@ -355,6 +356,9 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
     if (!EnsureArgsCount(args, 0)) {
         return;
     }
+    // Implement once running
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
     if (mLuaEngine->Server().ClientCount() == 0) {
         Application::Console().WriteRaw("No players online.");
     } else {
@@ -369,6 +373,7 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
         auto Str = ss.str();
         Application::Console().WriteRaw(Str.substr(0, Str.size() - 1));
     }
+*/
 }
 
 void TConsole::Command_Status(const std::string&, const std::vector<std::string>& args) {
@@ -376,26 +381,6 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
         return;
     }
     std::stringstream Status;
-
-    size_t CarCount = 0;
-    size_t ConnectedCount = 0;
-    size_t GuestCount = 0;
-    size_t SyncedCount = 0;
-    size_t SyncingCount = 0;
-    size_t MissedPacketQueueSum = 0;
-    int LargestSecondsSinceLastPing = 0;
-    mLuaEngine->Server().ForEachClient([&](std::shared_ptr<TClient> Client) -> bool {
-        CarCount += size_t(Client->GetCarCount());
-        ConnectedCount += Client->IsConnected ? 1 : 0;
-        GuestCount += Client->IsGuest ? 1 : 0;
-        SyncedCount += Client->IsSynced ? 1 : 0;
-        SyncingCount += Client->IsSyncing ? 1 : 0;
-        MissedPacketQueueSum += Client->MissedPacketsQueue->size();
-        if (Client->SecondsSinceLastPing() < LargestSecondsSinceLastPing) {
-            LargestSecondsSinceLastPing = Client->SecondsSinceLastPing();
-        }
-        return true;
-    });
 
     size_t SystemsStarting = 0;
     size_t SystemsGood = 0;
@@ -441,15 +426,21 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
     SystemsShuttingDownList = SystemsShuttingDownList.substr(0, SystemsShuttingDownList.size() - 2);
     SystemsShutdownList = SystemsShutdownList.substr(0, SystemsShutdownList.size() - 2);
 
-    auto ElapsedTime = mLuaEngine->Server().UptimeTimer.GetElapsedTime();
+    auto ElapsedTime = mUptimeTimer.GetElapsedTime();
+
+    auto network = mLuaEngine->Network();
+    auto clients = network->all_clients();
 
     Status << "BeamMP-Server Status:\n"
-           << "\tTotal Players:             " << mLuaEngine->Server().ClientCount() << "\n"
-           << "\tSyncing Players:           " << SyncingCount << "\n"
-           << "\tSynced Players:            " << SyncedCount << "\n"
-           << "\tConnected Players:         " << ConnectedCount << "\n"
-           << "\tGuests:                    " << GuestCount << "\n"
-           << "\tCars:                      " << CarCount << "\n"
+           << "\tTotal Players:             " << clients.size() << "\n"
+           << "\tPlayers identifying:       " << network->clients_in_state_count(bmp::State::Identification) << "\n"
+           << "\tPlayers authenticating:    " << network->clients_in_state_count(bmp::State::Authentication) << "\n"
+           << "\tPlayers downloading mods:  " << network->clients_in_state_count(bmp::State::ModDownload) << "\n"
+           << "\tPlayers spawning in:       " << network->clients_in_state_count(bmp::State::SessionSetup) << "\n"
+           << "\tPlayers playing:           " << network->clients_in_state_count(bmp::State::Playing) << "\n"
+           << "\tPlayers leaving:           " << network->clients_in_state_count(bmp::State::Leaving) << "\n"
+           << "\tGuests:                    " << network->guest_count() << "\n"
+           << "\tVehicles:                  " << network->vehicle_count() << "\n"
            << "\tUptime:                    " << ElapsedTime << "ms (~" << size_t(double(ElapsedTime) / 1000.0 / 60.0 / 60.0) << "h) \n"
            << "\tLua:\n"
            << "\t\tQueued results to check:     " << mLuaEngine->GetResultsToCheckSize() << "\n"

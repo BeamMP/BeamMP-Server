@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Cryptography.h"
+#include "TScopedTimer.h"
 #include "commandline.h"
 #include <atomic>
 #include <fstream>
@@ -69,4 +70,5 @@ private:
     const std::string mDefaultStateId = "BEAMMP_SERVER_CONSOLE";
     std::ofstream mLogFileStream;
     std::mutex mLogFileStreamMtx;
+    TScopedTimer mUptimeTimer{};
 };

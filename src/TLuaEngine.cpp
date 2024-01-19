@@ -31,7 +31,7 @@ TLuaEngine::TLuaEngine()
         }
         Application::SetSubsystemStatus("LuaEngine", Application::Status::Shutdown);
     });
-    IThreaded::Start();
+    mThread = boost::scoped_thread<>(&TLuaEngine::Start, this);
 }
 
 TEST_CASE("TLuaEngine ctor & dtor") {
@@ -40,7 +40,7 @@ TEST_CASE("TLuaEngine ctor & dtor") {
     Application::GracefullyShutdown();
 }
 
-void TLuaEngine::operator()() {
+void TLuaEngine::Start() {
     RegisterThread("LuaEngine");
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Good);
     // lua engine main thread
@@ -478,9 +478,9 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
-    auto MaybeClient = GetClient(mEngine->Server(), ID);
+    auto MaybeClient = mEngine->Network()->get_client(ClientID(ID), bmp::State::Authentication);
     if (MaybeClient) {
-        auto IDs = MaybeClient.value()->Identifiers.synchronize();
+        auto IDs = MaybeClient.value()->identifiers.synchronize();
         if (IDs->empty()) {
             return sol::lua_nil;
         }
@@ -495,24 +495,22 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
-    sol::table Result = mStateView.create_table();
-    mEngine->Server().ForEachClient([&](const std::shared_ptr<TClient>& Client) -> bool {
-        Result[Client->ID.get()] = Client->Name.get();
-        return true;
-    });
-    return Result;
+    sol::table result = mStateView.create_table();
+    auto clients = mEngine->Network()->authenticated_clients();
+    for (const auto& [id, client] : clients) {
+        result[client->id] = client->name.get();
+    }
+    return result;
 }
 
 int TLuaEngine::StateThreadData::Lua_GetPlayerIDByName(const std::string& Name) {
-    int Id = -1;
-    mEngine->mServer->ForEachClient([&Id, &Name](const std::shared_ptr<TClient>& Client) -> bool {
-        if (Client->Name.get() == Name) {
-            Id = Client->ID.get();
-            return false;
+    auto clients = mEngine->Network()->authenticated_clients();
+    for (const auto& [id, client] : clients) {
+        if (client->name.get() == Name) {
+            return int(client->id);
         }
-        return true;
-    });
-    return Id;
+    }
+    return -1;
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_FS_ListFiles(const std::string& Path) {
@@ -542,56 +540,51 @@ sol::table TLuaEngine::StateThreadData::Lua_FS_ListDirectories(const std::string
 }
 
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerName(int ID) {
-    auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient) {
-        return MaybeClient.value()->Name.get();
+    auto maybe_client = mEngine->Network()->get_client(ClientID(ID), bmp::State::Authentication);
+    if (maybe_client) {
+        return maybe_client.value()->name.get();
     } else {
         return "";
     }
 }
 
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayerVehicles(int ID) {
-    auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient) {
-        auto Client = MaybeClient.value();
-        auto VehicleData = Client->VehicleData.synchronize();
-        if (VehicleData->empty()) {
-            return sol::lua_nil;
-        }
-        sol::state_view StateView(mState);
-        sol::table Result = StateView.create_table();
-        for (const auto& v : *VehicleData) {
-            Result[v.ID()] = v.Data().substr(3);
-        }
-        return Result;
-    } else
+    auto vehicles = mEngine->Network()->get_vehicles_owned_by(ClientID(ID));
+    if (vehicles.empty()) {
         return sol::lua_nil;
+    }
+    sol::state_view state_view(mState);
+    sol::table result = state_view.create_table();
+    for (const auto& [vid, vehicle] : vehicles) {
+        result[vid] = vehicle->data.get();
+    }
+    return result;
 }
 
-std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetPositionRaw(int PID, int VID) {
-    std::pair<sol::table, std::string> Result;
-    auto MaybeClient = GetClient(mEngine->Server(), PID);
-    if (MaybeClient) {
-        auto Client = MaybeClient.value();
-        std::string VehiclePos = Client->GetCarPositionRaw(VID);
-
-        if (VehiclePos.empty()) {
-            // return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Vehicle not found"));
-            Result.second = "Vehicle not found";
-            return Result;
-        }
-
-        sol::table t = Lua_JsonDecode(VehiclePos);
-        if (t == sol::lua_nil) {
-            Result.second = "Packet decode failed";
-        }
-        // return std::make_tuple(Result, sol::make_object(StateView, sol::lua_nil));
-        Result.first = t;
-        return Result;
+std::pair<sol::table, std::string> TLuaEngine::StateThreadData::Lua_GetVehicleStatus(int VID) {
+    auto maybe_vehicle = mEngine->Network()->get_vehicle(VehicleID(VID));
+    if (maybe_vehicle) {
+        sol::state_view state_view(mState);
+        sol::table result = state_view.create_table();
+        auto veh = maybe_vehicle.value();
+        auto status = veh->get_status();
+        result["pos"]["x"] = status.pos.x;
+        result["pos"]["y"] = status.pos.y;
+        result["pos"]["z"] = status.pos.z;
+        result["vel"]["x"] = status.vel.x;
+        result["vel"]["y"] = status.vel.y;
+        result["vel"]["z"] = status.vel.z;
+        result["rvel"]["x"] = status.rvel.x;
+        result["rvel"]["y"] = status.rvel.y;
+        result["rvel"]["z"] = status.rvel.z;
+        result["rot"]["x"] = status.rot.x;
+        result["rot"]["y"] = status.rot.y;
+        result["rot"]["z"] = status.rot.z;
+        result["rot"]["w"] = status.rot.w;
+        result["time"] = status.time;
+        return { result, "" };
     } else {
-        // return std::make_tuple(sol::lua_nil, sol::make_object(StateView, "Client expired"));
-        Result.second = "No such player";
-        return Result;
+        return { sol::lua_nil, fmt::format("Vehicle {} not found", VID) };
     }
 }
 
@@ -753,8 +746,8 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("GetPlayerVehicles", [&](int ID) -> sol::table {
         return Lua_GetPlayerVehicles(ID);
     });
-    MPTable.set_function("GetPositionRaw", [&](int PID, int VID) -> std::pair<sol::table, std::string> {
-        return Lua_GetPositionRaw(PID, VID);
+    MPTable.set_function("GetVehicleStatus", [&](int VID) -> std::pair<sol::table, std::string> {
+        return Lua_GetVehicleStatus(VID);
     });
     MPTable.set_function("SendChatMessage", &LuaAPI::MP::SendChatMessage);
     MPTable.set_function("GetPlayers", [&]() -> sol::table {
@@ -855,7 +848,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     FSTable.set_function("ListDirectories", [this](const std::string& Path) {
         return Lua_FS_ListDirectories(Path);
     });
-    Start();
+    mThread = boost::scoped_thread<>(&StateThreadData::Start, this);
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLuaChunk& Script) {
@@ -901,7 +894,7 @@ void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, co
     mEngine->RegisterEvent(EventName, mStateId, FunctionName);
 }
 
-void TLuaEngine::StateThreadData::operator()() {
+void TLuaEngine::StateThreadData::Start() {
     RegisterThread("Lua:" + mStateId);
     while (!Application::IsShuttingDown()) {
         { // StateExecuteQueue Scope

@@ -1,7 +1,10 @@
 #pragma once
 
+#include "Common.h"
+#include "IThreaded.h"
 #include "Network.h"
 #include <any>
+#include <boost/thread/scoped_thread.hpp>
 #include <condition_variable>
 #include <filesystem>
 #include <initializer_list>
@@ -67,7 +70,7 @@ struct TLuaChunk {
     std::string PluginPath;
 };
 
-class TLuaEngine : public std::enable_shared_from_this<TLuaEngine>, IThreaded {
+class TLuaEngine : public std::enable_shared_from_this<TLuaEngine> {
 public:
     enum CallStrategy : int {
         BestEffort,
@@ -86,13 +89,11 @@ public:
         beammp_debug("Lua Engine terminated");
     }
 
-    void operator()() override;
+    void Start();
 
-    TNetwork& Network() { return *mNetwork; }
-    TServer& Server() { return *mServer; }
+    std::shared_ptr<::Network> Network() { return mNetwork; }
 
-    void SetNetwork(TNetwork* Network) { mNetwork = Network; }
-    void SetServer(TServer* Server) { mServer = Server; }
+    void SetNetwork(const std::shared_ptr<::Network>& network) { mNetwork = network; }
 
     size_t GetResultsToCheckSize() {
         std::unique_lock Lock(mResultsToCheckMutex);
@@ -200,7 +201,7 @@ private:
     void FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Config);
     size_t CalculateMemoryUsage();
 
-    class StateThreadData : IThreaded {
+    class StateThreadData {
     public:
         StateThreadData(const std::string& Name, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
@@ -210,7 +211,7 @@ private:
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
-        void operator()() override;
+        void Start();
         sol::state_view State() { return sol::state_view(mState); }
 
         std::vector<std::string> GetStateGlobalKeys();
@@ -219,7 +220,7 @@ private:
         // Debug functions, slow
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
         std::vector<TLuaEngine::QueuedFunction> Debug_GetStateFunctionQueue();
-        
+
         sol::table Lua_JsonDecode(const std::string& str);
 
     private:
@@ -229,7 +230,7 @@ private:
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
-        std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
+        std::pair<sol::table, std::string> Lua_GetVehicleStatus(int VID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
         int Lua_GetPlayerIDByName(const std::string& Name);
         sol::table Lua_FS_ListFiles(const std::string& Path);
@@ -238,7 +239,6 @@ private:
         std::string mName;
         TLuaStateId mStateId;
         lua_State* mState;
-        std::thread mThread;
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
         std::vector<QueuedFunction> mStateFunctionQueue;
@@ -250,6 +250,7 @@ private:
         std::recursive_mutex mPathsMutex;
         std::mt19937 mMersenneTwister;
         std::uniform_real_distribution<double> mUniformRealDistribution01;
+        boost::scoped_thread<> mThread;
     };
 
     struct TimedEvent {
@@ -262,8 +263,7 @@ private:
         void Reset();
     };
 
-    TNetwork* mNetwork;
-    TServer* mServer;
+    std::shared_ptr<::Network> mNetwork;
     const fs::path mResourceServerPath;
     std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
@@ -275,6 +275,7 @@ private:
     std::list<std::shared_ptr<TLuaResult>> mResultsToCheck;
     std::mutex mResultsToCheckMutex;
     std::condition_variable mResultsToCheckCond;
+    boost::scoped_thread<> mThread;
 };
 
 // std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

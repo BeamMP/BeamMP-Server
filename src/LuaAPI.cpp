@@ -113,24 +113,26 @@ TEST_CASE("LuaAPI::MP::GetServerVersion") {
 }
 
 static inline std::pair<bool, std::string> InternalTriggerClientEvent(int PlayerID, const std::string& EventName, const std::string& Data) {
-    std::string Packet = "E:" + EventName + ":" + Data;
-    if (PlayerID == -1) {
-        LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
-        return { true, "" };
-    } else {
-        auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
-        if (!MaybeClient) {
-            beammp_lua_errorf("TriggerClientEvent invalid Player ID '{}'", PlayerID);
-            return { false, "Invalid Player ID" };
-        }
-        auto c = MaybeClient.value();
-        if (!LuaAPI::MP::Engine->Network().Respond(*c, StringToVector(Packet), true)) {
-            beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
-            LuaAPI::MP::Engine->Network().Disconnect(*c);
-            return { false, "Respond failed, dropping client" };
-        }
-        return { true, "" };
-    }
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
+        std::string Packet = "E:" + EventName + ":" + Data;
+        if (PlayerID == -1) {
+            LuaAPI::MP::Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
+            return { true, "" };
+        } else {
+            auto MaybeClient = GetClient(LuaAPI::MP::Engine->Server(), PlayerID);
+            if (!MaybeClient) {
+                beammp_lua_errorf("TriggerClientEvent invalid Player ID '{}'", PlayerID);
+                return { false, "Invalid Player ID" };
+            }
+            auto c = MaybeClient.value();
+            if (!LuaAPI::MP::Engine->Network().Respond(*c, StringToVector(Packet), true)) {
+                beammp_lua_errorf("Respond failed, dropping client {}", PlayerID);
+                LuaAPI::MP::Engine->Network().Disconnect(*c);
+                return { false, "Respond failed, dropping client" };
+            }
+            return { true, "" };
+        }*/
 }
 
 std::pair<bool, std::string> LuaAPI::MP::TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& DataObj) {
@@ -139,6 +141,8 @@ std::pair<bool, std::string> LuaAPI::MP::TriggerClientEvent(int PlayerID, const 
 }
 
 std::pair<bool, std::string> LuaAPI::MP::DropPlayer(int ID, std::optional<std::string> MaybeReason) {
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (!MaybeClient) {
         beammp_lua_errorf("Tried to drop client with id {}, who doesn't exist", ID);
@@ -147,9 +151,12 @@ std::pair<bool, std::string> LuaAPI::MP::DropPlayer(int ID, std::optional<std::s
     auto c = MaybeClient.value();
     LuaAPI::MP::Engine->Network().ClientKick(*c, MaybeReason.value_or("No reason"));
     return { true, "" };
+    */
 }
 
 std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::string& Message) {
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
     std::pair<bool, std::string> Result;
     std::string Packet = "C:Server: " + Message;
     if (ID == -1) {
@@ -180,9 +187,12 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
         return Result;
     }
     return Result;
+    */
 }
 
 std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
     std::pair<bool, std::string> Result;
     auto MaybeClient = GetClient(Engine->Server(), PID);
     if (!MaybeClient) {
@@ -202,6 +212,7 @@ std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
         Result.second = "Vehicle does not exist";
     }
     return Result;
+    */
 }
 
 void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
@@ -273,21 +284,26 @@ void LuaAPI::MP::Sleep(size_t Ms) {
 }
 
 bool LuaAPI::MP::IsPlayerConnected(int ID) {
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (MaybeClient) {
         return MaybeClient.value()->IsConnected.get();
     } else {
         return false;
-    }
+    }*/
 }
 
 bool LuaAPI::MP::IsPlayerGuest(int ID) {
+    throw std::runtime_error(fmt::format("NOT IMPLEMENTED: {}", __func__));
+    /*
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (MaybeClient) {
         return MaybeClient.value()->IsGuest.get();
     } else {
         return false;
     }
+    */
 }
 
 void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
