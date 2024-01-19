@@ -16,6 +16,9 @@ char _getch();
 #include <termios.h>
 #include <unistd.h>
 char _getch();
+// macros 'major' and 'minor' need to be undefined on FreeBSD to avoid naming collision with system headers
+#undef major
+#undef minor
 #endif // freebsd
 
 // ======================= APPLE ========================
