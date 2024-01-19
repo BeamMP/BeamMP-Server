@@ -291,12 +291,6 @@ TEST_CASE("RegisterThread") {
     CHECK(threadNameMap.at(std::this_thread::get_id()) == "MyThread");
 }
 
-// macros below need to be undefined on FreeBSD as to avoid naming collision with system headers
-#ifdef BEAMMP_FREEBSD
-    #undef major
-    #undef minor
-#endif
-
 Version::Version(uint8_t major, uint8_t minor, uint8_t patch)
     : major(major)
     , minor(minor)
