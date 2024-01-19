@@ -72,7 +72,7 @@ You can build on **Windows, Linux** or other platforms by following these steps:
 
 When you make changes to the code, you only have to run step 4 again.
 ### Building for FreeBSD
-Building on FreeBSD is only supported for major release branches of FreeBSD that are currently not EOL. The build process is the same as with to Linux, although build dependencies can be universally installed from ports via pkg:
+Building is only supported for major release branches of FreeBSD that are currently not EOL. The build process is the same as on Linux, although build dependencies can be universally installed from ports via pkg:
 ```
 pkg install git cmake-core zip bash devel/ninja devel/pkgconf lua53
 ```
