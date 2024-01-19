@@ -9,7 +9,14 @@
 #include <termios.h>
 #include <unistd.h>
 char _getch();
-#endif // unix
+#endif // linux
+
+#ifdef BEAMMP_FREEBSD
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+char _getch();
+#endif // freebsd
 
 // ======================= APPLE ========================
 
