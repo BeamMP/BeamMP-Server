@@ -95,19 +95,22 @@ set(PRJ_LIBRARIES
     protocol
     ${LUA_LIBRARIES}
     zstd::libzstd_static
+    Boost::thread
+    glm::glm
 )
 
 # add dependency find_package calls and similar here
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(doctest CONFIG REQUIRED)
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS thread)
 find_package(httplib CONFIG REQUIRED)
 find_package(libzip CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(toml11 CONFIG REQUIRED)
 find_package(zstd CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 
 include_directories(include)
 
