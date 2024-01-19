@@ -274,7 +274,7 @@ void RegisterThread(const std::string& str) {
 #elif defined(BEAMMP_APPLE)
     ThreadId = std::to_string(getpid()); // todo: research if 'getpid()' is a valid, posix compliant alternative to 'gettid()'
 #elif defined(BEAMMP_LINUX)
-    ThreadId = std::to_string(gettid()); //todo: 'gettid()' may not produce the inted behavior, as tid's can be the same as pid's when the calling process only has one thread (according to this StackOverflow answer: https://stackoverflow.com/a/8787888). gettid is also a linux specific call (not in posix standard). consider to refactor this in a posix compliant way (maybe 'pthread_self()'?).
+    ThreadId = std::to_string(gettid()); //todo: 'gettid()' may not produce the intended behavior, as tid's can be the same as pid's when the calling process only has one thread (according to this StackOverflow answer: https://stackoverflow.com/a/8787888). 'gettid()' is also not POSIX compliant. consider to refactor this in a posix compliant way (maybe 'pthread_self()'?).
 #elif defined(BEAMMP_FREEBSD)
     ThreadId = std::to_string(getpid());
 #endif
