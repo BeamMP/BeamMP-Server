@@ -6,6 +6,8 @@
 #include "Sync.h"
 #include "Transport.h"
 #include <boost/asio.hpp>
+#include <boost/asio/execution_context.hpp>
+#include <boost/asio/thread_pool.hpp>
 #include <boost/thread/scoped_thread.hpp>
 #include <boost/thread/synchronized_value.hpp>
 #include <cstdint>
@@ -43,7 +45,7 @@ struct Client {
     /// conjunction with something else. Blocks other writes.
     void tcp_write_file_raw(const std::filesystem::path& path);
 
-    Client(ClientID id, class Network& network, ip::tcp::socket&& tcp_sockem_udp_endpointst);
+    Client(ClientID id, class Network& network, ip::tcp::socket&& tcp_socket);
     ~Client();
 
     ip::tcp::socket& tcp_socket() { return m_tcp_socket; }
@@ -56,6 +58,15 @@ struct Client {
     const uint64_t udp_magic;
 
 private:
+    /// Timeout used for typical tcp reads.
+    boost::chrono::seconds m_read_timeout { 5 };
+    /// Timeout used for typical tcp writes.
+    boost::chrono::seconds m_write_timeout { 5 };
+    /// Timeout used for mod download tcp writes.
+    /// This is typically orders of magnitude larger
+    /// to allow for slow downloads.
+    boost::chrono::seconds m_download_write_timeout { 5 };
+
     void tcp_main();
 
     std::mutex m_tcp_read_mtx;
@@ -65,6 +76,9 @@ private:
     ip::tcp::socket m_tcp_socket;
 
     boost::scoped_thread<> m_tcp_thread;
+    
+    std::vector<uint8_t> m_header { bmp::Header::SERIALIZED_SIZE };
+    bmp::Packet m_packet{};
 
     class Network& m_network;
 };
@@ -160,6 +174,14 @@ public:
 
     size_t vehicle_count() const;
 
+    /// To be called by accept() async handler once an accept() is completed.
+    void accept();
+
+    /// Gets the async i/o context of the network - can be used to "schedule" tasks on it.
+    boost::asio::thread_pool& context() {
+        return m_threadpool;
+    }
+
 private:
     void handle_packet(ClientID id, const bmp::Packet& packet);
 
@@ -170,6 +192,16 @@ private:
 
     void udp_read_main();
     void tcp_listen_main();
+
+    void handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
+
+    void handle_authentication(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
+
+    /// On failure, throws an exception with the error for the client.
+    static void authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client);
+
+    /// Called by accept() once completed (completion handler).
+    void handle_accept(const boost::system::error_code& ec);
 
     Sync<std::unordered_map<ClientID, Client::Ptr>> m_clients {};
     Sync<std::unordered_map<VehicleID, Vehicle::Ptr>> m_vehicles {};
@@ -184,18 +216,16 @@ private:
         return new_id;
     }
 
+    thread_pool m_threadpool { std::thread::hardware_concurrency() };
+    Sync<bool> m_shutdown { false };
+
+    ip::udp::socket m_udp_socket { m_threadpool };
+
+    ip::tcp::socket m_tcp_listener { m_threadpool };
+    ip::tcp::acceptor m_tcp_acceptor { m_threadpool };
+    /// This socket gets accepted into, and is then moved.
+    ip::tcp::socket m_temp_socket { m_threadpool };
+
     boost::scoped_thread<> m_tcp_listen_thread;
     boost::scoped_thread<> m_udp_read_thread;
-
-    io_context m_io {};
-    thread_pool m_threadpool {};
-    Sync<bool> m_shutdown { false };
-    ip::udp::socket m_udp_socket { m_io };
-
-    void handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
-
-    void handle_authentication(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
-
-    /// On failure, throws an exception with the error for the client.
-    static void authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client);
 };
