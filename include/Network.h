@@ -36,9 +36,6 @@ struct Client {
     Sync<std::string> role;
     Sync<bool> is_guest;
     Sync<std::unordered_map<std::string /* identifier */, std::string /* value */>> identifiers;
-
-    /// Reads a single packet from the TCP stream. Blocks all other reads (not writes).
-    bmp::Packet tcp_read();
     /// Writes the packet to the TCP stream. Blocks all other writes.
     void tcp_write(bmp::Packet& packet);
     /// Writes the specified to the TCP stream without a header or any metadata - use in
@@ -58,16 +55,25 @@ struct Client {
     const uint64_t udp_magic;
 
 private:
+    /// Call this when the client seems to have timed out. Will send a ping and set a flag.
+    /// Returns true if try-again, false if the connection was closed.
+    [[nodiscard]] bool handle_timeout();
+    bool m_timed_out { false };
+
     /// Timeout used for typical tcp reads.
-    boost::chrono::seconds m_read_timeout { 5 };
-    /// Timeout used for typical tcp writes.
-    boost::chrono::seconds m_write_timeout { 5 };
+    boost::posix_time::milliseconds m_read_timeout { 5000 };
+    /// Timeout used for typical tcp writes. Specified in milliseconds per byte.
+    /// For example, 10 mbit/s works out to 1250 B/ms, so a value of 1250 here would
+    /// cause clients with >10 mbit/s download speed to usually not time out.
+    /// This is done because a write is considered completed when all data is written,
+    /// and worst-case this could mean that we're limited by their download speed.
+    /// We're setting it to 50, which will drop clients who are below a download speed + ping
+    /// combination of 0.4 mbit/s.
+    double m_write_byte_timeout { 0.01 };
     /// Timeout used for mod download tcp writes.
     /// This is typically orders of magnitude larger
     /// to allow for slow downloads.
-    boost::chrono::seconds m_download_write_timeout { 5 };
-
-    void tcp_main();
+    boost::posix_time::milliseconds m_download_write_timeout { 60000 };
 
     std::mutex m_tcp_read_mtx;
     std::mutex m_tcp_write_mtx;
@@ -76,9 +82,9 @@ private:
     ip::tcp::socket m_tcp_socket;
 
     boost::scoped_thread<> m_tcp_thread;
-    
+
     std::vector<uint8_t> m_header { bmp::Header::SERIALIZED_SIZE };
-    bmp::Packet m_packet{};
+    bmp::Packet m_packet {};
 
     class Network& m_network;
 };
@@ -141,7 +147,7 @@ public:
 
     void disconnect(ClientID id, const std::string& msg);
 
-    void send_to(ClientID id, const bmp::Packet& packet);
+    void send_to(ClientID id, bmp::Packet& packet);
 
     /// Returns a map of <id, client> containing only clients which are
     /// fully connected, i.e. who have mods downloaded and everything spawned in.
@@ -196,6 +202,8 @@ private:
     void handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
 
     void handle_authentication(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
+
+    void handle_mod_download(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
 
     /// On failure, throws an exception with the error for the client.
     static void authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client);

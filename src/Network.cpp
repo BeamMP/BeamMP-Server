@@ -9,8 +9,15 @@
 #include "ProtocolVersion.h"
 #include "ServerInfo.h"
 #include "TLuaEngine.h"
+#include "Transport.h"
 #include "Util.h"
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/read.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/chrono/duration.hpp>
+#include <boost/system/detail/errc.hpp>
+#include <boost/system/is_error_condition_enum.hpp>
 #include <boost/thread/synchronized_value.hpp>
 #include <cstdlib>
 #include <nlohmann/json.hpp>
@@ -24,37 +31,176 @@
 #include <boost/iostreams/device/mapped_file.hpp>
 #endif
 
-#include <doctest/doctest.h>
+// ======================= Boost helpers =========================
 
-bmp::Packet Client::tcp_read() {
-    std::unique_lock lock(m_tcp_read_mtx);
-    bmp::Packet packet {};
-    std::vector<uint8_t> header_buffer(bmp::Header::SERIALIZED_SIZE);
-    read(m_tcp_socket, buffer(header_buffer));
-    bmp::Header hdr {};
-    hdr.deserialize_from(header_buffer);
-    // vector eaten up by now, recv again
-    packet.raw_data.resize(hdr.size);
-    read(m_tcp_socket, buffer(packet.raw_data));
-    packet.purpose = hdr.purpose;
-    packet.flags = hdr.flags;
-    return packet;
+/// Boost::asio + strands + timer magic to make writes timeout after some time.
+template <typename HandlerFn>
+static void async_write_timeout(ip::tcp::socket& stream, const_buffer&& sequence, boost::posix_time::milliseconds timeout_ms, HandlerFn&& handler) {
+    struct TimeoutHelper : std::enable_shared_from_this<TimeoutHelper> {
+        /// Given a socket (stream), buffer and a completion handler, constructs a state machine.
+        TimeoutHelper(ip::tcp::socket& stream, const_buffer buffer, HandlerFn handler)
+            : m_stream(stream)
+            , m_buffer(std::move(buffer))
+            , m_handler_fn(std::move(handler)) { }
+        /// Kicks off the timer and async_write, which race to cancel each other.
+        /// Whichever completes first gets to cancel the other one.
+        /// Effectively, the timer will finish before the write if the write is "timing out",
+        /// and if the write finishes beforehand the timeout resets.
+        void start(boost::posix_time::milliseconds timeout_ms) {
+            // setup the timer to expire in millis ms
+            m_timer.expires_from_now(timeout_ms);
+            // start waiting on the timer to expire. we give it ourselves (shared ptr via shared_from_this
+            // as a copy so that it can call the timeout handler on this object.
+            // the whole thing is wrapped in a strand to avoid this happening on two separate thwrites at the same time,
+            // i.e. the timer and write finish at the same time on separate thwrites, or other goofy stuff.
+            m_timer.async_wait(bind_executor(m_strand, [self = this->shared_from_this()](auto&& ec) {
+                self->handle_timeout(ec);
+            }));
+            // start the write on the same strand, again giving a copy of a shared_ptr to ourselves so the handler can be
+            // called.
+            boost::asio::async_write(m_stream, m_buffer, bind_executor(m_strand, [self = this->shared_from_this()](auto&& ec, auto size) {
+                self->handle_write(ec, size);
+            }));
+        }
+
+        /// Called when the timer times out.
+        void handle_timeout(boost::system::error_code const& ec) {
+            // not an error and write() hasn't finished means we need to cancel the stream's write (this can be done
+            // by just cancelling the stream, i guess).
+            if (not ec and not m_completed) {
+                // black-hole the error, because we don't care
+                boost::system::error_code sink;
+                m_stream.cancel(sink);
+            }
+        }
+
+        /// Called when the write finishes or errors. An error is considered a completion, and will
+        /// also cancel the timer. We don't really care why it completed, we just like that it did.
+        void handle_write(boost::system::error_code const& ec, std::size_t size) {
+            // this would be weird!
+            assert(not m_completed);
+            // blackhole the error of the timer cancel operation, we dont care
+            boost::system::error_code sink;
+            m_timer.cancel(sink);
+            // we're done
+            m_completed = true;
+            // call the original completion handler
+            m_handler_fn(ec, size);
+        }
+
+        ip::tcp::socket& m_stream;
+        const_buffer m_buffer;
+        HandlerFn m_handler_fn;
+        boost::asio::strand<ip::tcp::socket::executor_type> m_strand { m_stream.get_executor() };
+        boost::asio::deadline_timer m_timer { m_stream.get_executor() };
+        bool m_completed = false;
+    };
+
+    auto helper = std::make_shared<TimeoutHelper>(stream,
+        std::forward<const_buffer>(sequence),
+        std::forward<HandlerFn>(handler));
+    helper->start(timeout_ms);
 }
 
-void Network::send_to(ClientID id, const bmp::Packet& packet) {
+/// Boost::asio + strands + timer magic to make reads timeout after some time.
+template <typename HandlerFn>
+static void async_read_timeout(ip::tcp::socket& stream, mutable_buffer&& sequence, boost::posix_time::milliseconds timeout_ms, HandlerFn&& handler) {
+    struct TimeoutHelper : std::enable_shared_from_this<TimeoutHelper> {
+        /// Given a socket (stream), buffer and a completion handler, constructs a state machine.
+        TimeoutHelper(ip::tcp::socket& stream, mutable_buffer buffer, HandlerFn handler)
+            : m_stream(stream)
+            , m_buffer(std::move(buffer))
+            , m_handler_fn(std::move(handler)) {
+        }
+        /// Kicks off the timer and async_read, which race to cancel each other.
+        /// Whichever completes first gets to cancel the other one.
+        /// Effectively, the timer will finish before the read if the read is "timing out",
+        /// and if the read finishes beforehand the timeout resets.
+        void start(boost::posix_time::milliseconds timeout_ms) {
+            // setup the timer to expire in millis ms
+            m_timer.expires_from_now(timeout_ms);
+            // start waiting on the timer to expire. we give it ourselves (shared ptr via shared_from_this
+            // as a copy so that it can call the timeout handler on this object.
+            // the whole thing is wrapped in a strand to avoid this happening on two separate threads at the same time,
+            // i.e. the timer and read finish at the same time on separate threads, or other goofy stuff.
+            m_timer.async_wait(bind_executor(m_strand, [self = this->shared_from_this()](auto&& ec) {
+                self->handle_timeout(ec);
+            }));
+            // start the read on the same strand, again giving a copy of a shared_ptr to ourselves so the handler can be
+            // called.
+            boost::asio::async_read(m_stream, m_buffer, bind_executor(m_strand, [self = this->shared_from_this()](auto&& ec, auto size) {
+                self->handle_read(ec, size);
+            }));
+        }
+
+        /// Called when the timer times out.
+        void handle_timeout(boost::system::error_code const& ec) {
+            // not an error and read() hasn't finished means we need to cancel the stream's read (this can be done
+            // by just cancelling the stream, i guess).
+            if (not ec and not m_completed) {
+                // black-hole the error, because we don't care
+                boost::system::error_code sink;
+                m_stream.cancel(sink);
+            }
+        }
+
+        /// Called when the read finishes or errors. An error is considered a completion, and will
+        /// also cancel the timer. We don't really care why it completed, we just like that it did.
+        void handle_read(boost::system::error_code const& ec, std::size_t size) {
+            // this would be weird!
+            assert(not m_completed);
+            // blackhole the error of the timer cancel operation, we dont care
+            boost::system::error_code sink;
+            m_timer.cancel(sink);
+            // we're done
+            m_completed = true;
+            // call the original completion handler
+            m_handler_fn(ec, size);
+        }
+
+        ip::tcp::socket& m_stream;
+        mutable_buffer m_buffer;
+        HandlerFn m_handler_fn;
+        boost::asio::strand<ip::tcp::socket::executor_type> m_strand { m_stream.get_executor() };
+        boost::asio::deadline_timer m_timer { m_stream.get_executor() };
+        bool m_completed = false;
+    };
+
+    auto helper = std::make_shared<TimeoutHelper>(stream,
+        std::forward<mutable_buffer>(sequence),
+        std::forward<HandlerFn>(handler));
+    helper->start(timeout_ms);
+}
+
+// ======================= End of boost helpers =========================
+
+#include <doctest/doctest.h>
+
+void Network::send_to(ClientID id, bmp::Packet& packet) {
+    m_clients->at(id)->tcp_write(packet);
 }
 
 void Client::tcp_write(bmp::Packet& packet) {
+    beammp_tracef("Sending {} to {}", int(packet.purpose), id);
     // acquire a lock to avoid writing a header, then being interrupted by another write
     std::unique_lock lock(m_tcp_write_mtx);
     // finalize the packet (compress etc) and produce header
     auto header = packet.finalize();
-    // serialize header
-    std::vector<uint8_t> header_data(bmp::Header::SERIALIZED_SIZE);
-    header.serialize_to(header_data);
+    // data has to be a shared_ptr, because we pass it to the async write function which completes later,
+    // when this is already out of scope
+    auto data = std::make_shared<std::vector<uint8_t>>(bmp::Header::SERIALIZED_SIZE + header.size);
+    auto offset = header.serialize_to(*data);
+    std::copy(packet.raw_data.begin(), packet.raw_data.end(), data->begin() + long(offset));
+    // calculate timeout, which must be at least 500ms
+    auto timeout = boost::posix_time::milliseconds(std::max(size_t(500), size_t(std::ceil(double(data->size()) * m_write_byte_timeout))));
+    beammp_tracef("Packet of size {} B given a timeout of {}ms ({}s)", data->size(), timeout.total_milliseconds(), timeout.seconds());
     // write header and packet data
-    write(m_tcp_socket, buffer(header_data));
-    write(m_tcp_socket, buffer(packet.raw_data));
+    async_write_timeout(m_tcp_socket, buffer(*data), timeout, [data, this](const boost::system::error_code& ec, size_t) {
+        if (ec && ec.value() == boost::system::errc::operation_canceled) {
+            // write timeout is fatal
+            m_network.disconnect(id, "Write timeout");
+        }
+    });
 }
 
 void Client::tcp_write_file_raw(const std::filesystem::path& path) {
@@ -95,53 +241,106 @@ Client::Client(ClientID id, Network& network, ip::tcp::socket&& tcp_socket)
     beammp_debugf("Client {} created", id);
 }
 
+bool Client::handle_timeout() {
+    if (m_timed_out) {
+        m_network.disconnect(id, "Timed out and failed to respond to ping");
+        return false;
+    } else {
+        m_timed_out = true;
+        beammp_debugf("Sending ping to {} to confirm timeout", id);
+        bmp::Packet packet {
+            .purpose = bmp::Purpose::Ping,
+        };
+        tcp_write(packet);
+        return true;
+    }
+}
+
 void Client::start_tcp() {
     beammp_tracef("{}", __func__);
+    m_header.resize(bmp::Header::SERIALIZED_SIZE);
+    beammp_tracef("Header buffer size: {}", m_header.size());
+    async_read_timeout(m_tcp_socket, buffer(m_header), m_read_timeout, [this](const boost::system::error_code& ec, size_t) {
+        if (ec && ec.value() == boost::system::errc::operation_canceled) {
+            beammp_warnf("Client {} possibly timing out", id);
+            if (handle_timeout()) {
+                start_tcp();
+            }
+        } else if (ec) {
+            beammp_errorf("TCP read() failed: {}", ec.message());
+            m_network.disconnect(id, "read() failed");
+        } else {
+            if (m_timed_out) {
+                m_timed_out = false;
+            }
+            try {
+                bmp::Header hdr {};
+                hdr.deserialize_from(m_header);
+                beammp_tracef("Got header with purpose {}, size {} from {}", int(hdr.purpose), hdr.size, id);
+                // delete previous packet if any exists
+                m_packet = {};
+                m_packet.purpose = hdr.purpose;
+                m_packet.flags = hdr.flags;
+                m_packet.raw_data.resize(hdr.size);
+                beammp_tracef("Raw data buffer size: {}", m_packet.raw_data.size());
+                async_read_timeout(m_tcp_socket, buffer(m_packet.raw_data), m_read_timeout, [this](const boost::system::error_code& ec, size_t bytes) {
+                    if (ec && ec.value() == boost::system::errc::operation_canceled) {
+                        beammp_warnf("Client {} possibly timing out after sending header", id);
+                        if (handle_timeout()) {
+                            start_tcp();
+                        }
+                    } else if (ec) {
+                        beammp_errorf("TCP read() failed: {}", ec.message());
+                        m_network.disconnect(id, "read() failed");
+                    } else {
+                        if (m_timed_out) {
+                            m_timed_out = false;
+                        }
+                        beammp_tracef("Got body of size {} from {}", bytes, id);
+                        m_network.handle_packet(id, m_packet);
+                        // recv another packet!
+                        start_tcp();
+                    }
+                });
+            } catch (const std::exception& e) {
+                beammp_errorf("Error while processing TCP packet from client {}: {}", id, e.what());
+                m_network.disconnect(id, "Failed receive TCP or parse packet");
+            }
+        }
+    });
+    /*
     async_read(m_tcp_socket, buffer(m_header), [this](const auto& ec, size_t) {
         if (ec) {
             beammp_errorf("TCP read() failed: {}", ec.message());
             m_network.disconnect(id, "read() failed");
         } else {
             try {
-            bmp::Header hdr {};
-            hdr.deserialize_from(m_header);
-            beammp_tracef("Got header with purpose {}, size {} from {}", int(hdr.purpose), hdr.size, id);
-            // delete previous packet if any exists
-            m_packet = {};
-            m_packet.purpose = hdr.purpose;
-            m_packet.flags = hdr.flags;
-            m_packet.raw_data.resize(hdr.size);
-            async_read(m_tcp_socket, buffer(m_packet.raw_data), [this](const auto& ec, size_t bytes) {
-                if (ec) {
-                    beammp_errorf("TCP read() failed: {}", ec.message());
-                    m_network.disconnect(id, "read() failed");
-                } else {
-                    beammp_tracef("Got body of size {} from {}", bytes, id);
-                    m_network.handle_packet(id, m_packet);
-                    // recv another packet!
-                    start_tcp();
-                }
-            });
-            } catch(const std::exception& e) {
+                bmp::Header hdr {};
+                hdr.deserialize_from(m_header);
+                beammp_tracef("Got header with purpose {}, size {} from {}", int(hdr.purpose), hdr.size, id);
+                // delete previous packet if any exists
+                m_packet = {};
+                m_packet.purpose = hdr.purpose;
+                m_packet.flags = hdr.flags;
+                m_packet.raw_data.resize(hdr.size);
+                async_read(m_tcp_socket, buffer(m_packet.raw_data), [this](const auto& ec, size_t bytes) {
+                    if (ec) {
+                        beammp_errorf("TCP read() failed: {}", ec.message());
+                        m_network.disconnect(id, "read() failed");
+                    } else {
+                        beammp_tracef("Got body of size {} from {}", bytes, id);
+                        m_network.handle_packet(id, m_packet);
+                        // recv another packet!
+                        start_tcp();
+                    }
+                });
+            } catch (const std::exception& e) {
                 beammp_errorf("Error while processing TCP packet from client {}: {}", id, e.what());
-                m_network.disconnect(id, "Failed to understand");
+                m_network.disconnect(id, "Failed receive TCP or parse packet");
             }
         }
     });
-}
-
-void Client::tcp_main() {
-    beammp_debugf("TCP thread started for client {}", id);
-    try {
-        while (true) {
-            auto packet = tcp_read();
-            m_network.handle_packet(id, packet);
-        }
-    } catch (const std::exception& e) {
-        beammp_errorf("Error in tcp loop of client {}: {}", id, e.what());
-        m_network.disconnect(id, "error in tcp loop");
-    }
-    beammp_debugf("TCP thread stopped for client {}", id);
+    */
 }
 
 bmp::Packet Network::udp_read(ip::udp::endpoint& out_ep) {
@@ -151,6 +350,8 @@ bmp::Packet Network::udp_read(ip::udp::endpoint& out_ep) {
     bmp::Packet packet;
     bmp::Header header {};
     auto offset = header.deserialize_from(s_buffer);
+    packet.purpose = header.purpose;
+    packet.flags = header.flags;
     packet.raw_data.resize(header.size);
     std::copy(s_buffer.begin() + offset, s_buffer.begin() + offset + header.size, packet.raw_data.begin());
     return packet;
@@ -253,6 +454,7 @@ void Network::udp_read_main() {
         try {
             ip::udp::endpoint ep;
             auto packet = udp_read(ep);
+            beammp_tracef("UDP recv: {}", int(packet.purpose));
             // special case for new udp connections, only happens once
             if (packet.purpose == bmp::Purpose::StartUDP) [[unlikely]] {
                 auto all = boost::synchronize(m_clients, m_udp_endpoints, m_client_magics);
@@ -284,11 +486,23 @@ void Network::udp_read_main() {
                     endpoints->emplace(ep, id);
                     // now transfer them to the next state
                     beammp_debugf("Client {} successfully connected via UDP", client->id);
-                    bmp::Packet state_change {
-                        .purpose = bmp::Purpose::StateChangeModDownload,
-                    };
-                    client->tcp_write(state_change);
-                    client->state = bmp::State::ModDownload;
+                    // send state change and further stuff asynchronously - we dont really care here, just wanna
+                    // get out and do udp again!
+                    post(m_threadpool, [client, this] {
+                        beammp_debugf("Client {} starting mod download", client->id);
+                        bmp::Packet state_change {
+                            .purpose = bmp::Purpose::StateChangeModDownload,
+                        };
+                        client->tcp_write(state_change);
+                        client->state = bmp::State::ModDownload;
+                        // TODO: Get real mods info from *somewhere!*
+                        std::string mods = nlohmann::json::array().dump();
+                        bmp::Packet mods_info {
+                            .purpose = bmp::Purpose::ModsInfo,
+                            .raw_data = std::vector<uint8_t>(mods.begin(), mods.end()),
+                        };
+                        client->tcp_write(mods_info);
+                    });
                     continue;
                 } else {
                     beammp_warnf("Received magic for client who doesn't exist anymore: {}. Ignoring.", id);
@@ -372,6 +586,11 @@ void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
         client = clients->at(id);
     }
     beammp_tracef("Client {} is in state {}", int(id), int(client->state.get()));
+    // handle ping immediately if the player is authed
+    if (client->state.get() > bmp::State::Authentication && packet.purpose == bmp::Purpose::Ping) {
+        beammp_tracef("Got pong from {}", int(id));
+        return;
+    }
     switch (*client->state) {
     case bmp::State::None:
         // move to identification
@@ -385,6 +604,7 @@ void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
         handle_authentication(id, packet, client);
         break;
     case bmp::State::ModDownload:
+        handle_mod_download(id, packet, client);
         break;
     case bmp::State::SessionSetup:
         break;
@@ -502,6 +722,22 @@ void Network::authenticate_user(const std::string& public_key, std::shared_ptr<C
     } catch (const std::exception& e) {
         beammp_errorf("Client {} sent invalid key. Error was: {}", client->id, e.what());
         throw std::runtime_error("Invalid public key");
+    }
+}
+
+void Network::handle_mod_download(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
+    switch (packet.purpose) {
+    case bmp::Purpose::ModsSyncDone: {
+        beammp_debugf("Client {} is done with mods sync", id);
+        bmp::Packet state_change {
+            .purpose = bmp::Purpose::StateChangeSessionSetup,
+        };
+        client->tcp_write(state_change);
+        break;
+    }
+    default:
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state.get()));
+        disconnect(id, "invalid purpose in current state");
     }
 }
 
