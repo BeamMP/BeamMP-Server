@@ -2,12 +2,11 @@
 
 #include "Common.h"
 #include "IThreaded.h"
-#include "TResourceManager.h"
-#include "TServer.h"
+#include "Network.h"
 
 class THeartbeatThread : public IThreaded {
 public:
-    THeartbeatThread(TResourceManager& ResourceManager, TServer& Server);
+    THeartbeatThread(std::shared_ptr<Network> network);
     //~THeartbeatThread();
     void operator()() override;
 
@@ -15,6 +14,5 @@ private:
     std::string GenerateCall();
     std::string GetPlayers();
 
-    TResourceManager& mResourceManager;
-    TServer& mServer;
+    std::shared_ptr<Network> m_network;
 };

@@ -1,8 +1,7 @@
 #include "THeartbeatThread.h"
 
-#include "Client.h"
 #include "Http.h"
-//#include "SocketIO.h"
+// #include "SocketIO.h"
 #include <rapidjson/document.h>
 #include <rapidjson/rapidjson.h>
 #include <sstream>
@@ -121,7 +120,7 @@ std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
 
     Ret << "uuid=" << Application::Settings.Key
-        << "&players=" << mServer.ClientCount()
+        << "&players=" << m_network->authenticated_client_count()
         << "&maxplayers=" << Application::Settings.MaxPlayers
         << "&port=" << Application::Settings.Port
         << "&map=" << Application::Settings.MapName
@@ -130,17 +129,16 @@ std::string THeartbeatThread::GenerateCall() {
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
         << "&name=" << Application::Settings.ServerName
         << "&tags=" << Application::Settings.ServerTags
-        << "&modlist=" << mResourceManager.TrimmedList()
-        << "&modstotalsize=" << mResourceManager.MaxModSize()
-        << "&modstotal=" << mResourceManager.ModsLoaded()
+        << "&modlist=" << "-"//mResourceManager.TrimmedList()
+        << "&modstotalsize=" << 0 //mResourceManager.MaxModSize()
+        << "&modstotal=" << 0 // mResourceManager.ModsLoaded()
         << "&playerslist=" << GetPlayers()
         << "&desc=" << Application::Settings.ServerDesc
         << "&pass=" << (Application::Settings.Password.empty() ? "false" : "true");
     return Ret.str();
 }
-THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
-    : mResourceManager(ResourceManager)
-    , mServer(Server) {
+THeartbeatThread::THeartbeatThread(std::shared_ptr<Network> network)
+    : m_network(std::move(network)) {
     Application::SetSubsystemStatus("Heartbeat", Application::Status::Starting);
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("Heartbeat", Application::Status::ShuttingDown);
@@ -152,15 +150,10 @@ THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& S
     Start();
 }
 std::string THeartbeatThread::GetPlayers() {
-    std::string Return;
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        ReadLock Lock(mServer.GetClientMutex());
-        if (!ClientPtr.expired()) {
-            Return += ClientPtr.lock()->GetName() + ";";
-        }
-        return true;
-    });
-    return Return;
+    std::string players;
+    for (const auto& [id, client] : m_network->authenticated_clients()) {
+        players += client->name.get() + ";";
+    }
+    return players;
 }
-/*THeartbeatThread::~THeartbeatThread() {
-}*/
+

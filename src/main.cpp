@@ -6,12 +6,9 @@
 #include "TConfig.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
-#include "TNetwork.h"
-#include "TPPSMonitor.h"
 #include "TPluginMonitor.h"
-#include "TResourceManager.h"
-#include "TServer.h"
 
+#include <cstdlib>
 #include <iostream>
 #include <thread>
 
@@ -87,6 +84,9 @@ int BeamMPServerMain(MainArguments Arguments) {
         return 0;
     }
 
+    // badly seed C's rng - this is only because rand() is used here and there for unimportant stuff
+    std::srand(std::time(0));
+
     std::string ConfigPath = "ServerConfig.toml";
     if (Parser.FoundArgument({ "config" })) {
         auto MaybeConfigPath = Parser.GetValueOfArgument({ "config" });
@@ -106,7 +106,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
-    
+
     TConfig Config(ConfigPath);
 
     if (Config.Failed()) {
@@ -135,21 +135,15 @@ int BeamMPServerMain(MainArguments Arguments) {
         TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
     });
 
-    TServer Server(Arguments.List);
-
     auto LuaEngine = std::make_shared<TLuaEngine>();
-    LuaEngine->SetServer(&Server);
     Application::Console().InitializeLuaConsole(*LuaEngine);
 
     RegisterThread("Main");
 
     beammp_trace("Running in debug mode on a debug build");
-    TResourceManager ResourceManager;
-    TPPSMonitor PPSMonitor(Server);
-    THeartbeatThread Heartbeat(ResourceManager, Server);
-    TNetwork Network(Server, PPSMonitor, ResourceManager);
-    LuaEngine->SetNetwork(&Network);
-    PPSMonitor.SetNetwork(Network);
+    std::shared_ptr<Network> network = std::make_shared<Network>();
+    THeartbeatThread Heartbeat(network);
+    LuaEngine->SetNetwork(network);
     Application::CheckForUpdates();
 
     TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);

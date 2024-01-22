@@ -4,3 +4,6 @@
 [submodule "vcpkg"]
 	path = vcpkg
 	url = https://github.com/Microsoft/vcpkg.git
+[submodule "deps/BeamMP-Protocol"]
+	path = deps/BeamMP-Protocol
+	url = https://github.com/BeamMP/BeamMP-Protocol
