@@ -120,6 +120,8 @@ struct Vehicle {
         m_status_data = raw_packet;
     }
 
+    const std::vector<uint8_t>& get_raw_status() const { return m_status_data; }
+
 private:
     std::recursive_mutex m_mtx;
 
@@ -163,14 +165,10 @@ public:
 
     std::unordered_map<VehicleID, Vehicle::Ptr> get_vehicles_owned_by(ClientID id);
 
-    std::optional<Vehicle::Ptr> get_vehicle(VehicleID id) {
-        auto vehicles = m_vehicles.synchronize();
-        if (vehicles->contains(id)) {
-            return vehicles->at(id);
-        } else {
-            return std::nullopt;
-        }
-    }
+    std::optional<Vehicle::Ptr> get_vehicle(VehicleID id);
+
+    /// Builds the SessionSetup.PlayersInfo json which contains all player info and all vehicles.
+    nlohmann::json build_players_info();
 
     size_t authenticated_client_count() const;
 
@@ -199,11 +197,16 @@ private:
     void udp_read_main();
     void tcp_listen_main();
 
+    /// Handles all packets which are allowed during the Identification state.
     void handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
-
+    /// Handles all packets which are allowed during the Authentication state.
     void handle_authentication(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
-
+    /// Handles all packets which are allowed during the ModDownload state.
     void handle_mod_download(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
+    /// Handles all packets which are allowed during the SessionSetup state.
+    void handle_session_setup(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
+    /// Handles all packets which are allowed during the Playing state.
+    void handle_playing(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client);
 
     /// On failure, throws an exception with the error for the client.
     static void authenticate_user(const std::string& public_key, std::shared_ptr<Client>& client);
@@ -216,13 +219,7 @@ private:
     Sync<std::unordered_map<uint64_t, ClientID>> m_client_magics {};
     Sync<std::unordered_map<ip::udp::endpoint, ClientID>> m_udp_endpoints {};
 
-    ClientID new_client_id() {
-        static Sync<ClientID> s_id { 0 };
-        auto id = s_id.synchronize();
-        ClientID new_id = *id;
-        *id += 1;
-        return new_id;
-    }
+    ClientID new_client_id();
 
     thread_pool m_threadpool { std::thread::hardware_concurrency() };
     Sync<bool> m_shutdown { false };

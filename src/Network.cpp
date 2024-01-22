@@ -607,13 +607,41 @@ void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
         handle_mod_download(id, packet, client);
         break;
     case bmp::State::SessionSetup:
+        handle_session_setup(id, packet, client);
         break;
     case bmp::State::Playing:
+        handle_playing(id, packet, client);
         break;
     case bmp::State::Leaving:
         break;
     }
 }
+
+void Network::handle_playing(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
+    switch (packet.purpose) {
+
+    default:
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state.get()));
+        disconnect(id, "invalid purpose in current state");
+    }
+}
+
+void Network::handle_session_setup(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
+    switch (packet.purpose) {
+    case bmp::Purpose::SessionReady: {
+        beammp_infof("Client {} is synced", id);
+        bmp::Packet state_change {
+            .purpose = bmp::Purpose::StateChangePlaying,
+        };
+        client->tcp_write(state_change);
+        break;
+    }
+    default:
+        beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state.get()));
+        disconnect(id, "invalid purpose in current state");
+    }
+}
+
 void Network::handle_identification(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
     switch (packet.purpose) {
     case bmp::ProtocolVersion: {
@@ -733,6 +761,25 @@ void Network::handle_mod_download(ClientID id, const bmp::Packet& packet, std::s
             .purpose = bmp::Purpose::StateChangeSessionSetup,
         };
         client->tcp_write(state_change);
+
+        beammp_infof("Client {} starting session sync.", id);
+        beammp_debugf("Syncing {} client(s) and {} vehicle(s) to client {}", m_clients->size(), m_vehicles->size(), id);
+        // immediately start with the player+vehicle info
+        bmp::Packet players_info {
+            .purpose = bmp::Purpose::PlayersVehiclesInfo,
+            .raw_data = {},
+        };
+        try {
+            auto players_info_json = build_players_info();
+            beammp_tracef("Players and vehicles info: {}", players_info_json.dump(4));
+            auto serialized = players_info_json.dump();
+            players_info.raw_data = std::vector<uint8_t>(serialized.begin(), serialized.end());
+        } catch (const std::exception& e) {
+            beammp_errorf("Failed to construct players and vehicles info for session setup: {}. This is not recoverable, kicking client.", e.what());
+            disconnect(id, "Internal server error: Session setup failed to construct players and vehicles info object");
+            return;
+        }
+        client->tcp_write(players_info);
         break;
     }
     default:
@@ -928,3 +975,50 @@ size_t Network::clients_in_state_count(bmp::State state) const {
 }
 
 size_t Network::vehicle_count() const { return m_vehicles->size(); }
+nlohmann::json Network::build_players_info() {
+    auto all = boost::synchronize(m_clients, m_vehicles);
+    auto& clients = std::get<0>(all);
+    auto& vehicles = std::get<1>(all);
+    nlohmann::json info = nlohmann::json::array();
+    for (const auto& [id, client] : *clients) {
+        auto obj = nlohmann::json({
+            { "name", client->name.get() },
+            { "id", client->id },
+            { "role", client->role },
+        });
+        obj["vehicles"] = nlohmann::json::array();
+        // get all vehicles owned by this client
+        // cant use the helper function since that locks as well, that's not clean
+        for (const auto& [vid, vehicle] : *vehicles) {
+            if (vehicle->owner == id) {
+                // vehicle owned by client
+                auto data = vehicle->data.synchronize();
+                auto status = vehicle->get_raw_status();
+                obj["vehicles"] = nlohmann::json::object({
+                    { "id", vid },
+                    { "data", nlohmann::json::parse(data->begin(), data->end()) },
+                    { "status", nlohmann::json::parse(status.begin(), status.end()) },
+                });
+            }
+        }
+        info.push_back(std::move(obj));
+    }
+    return info;
+}
+
+std::optional<Vehicle::Ptr> Network::get_vehicle(VehicleID id) {
+    auto vehicles = m_vehicles.synchronize();
+    if (vehicles->contains(id)) {
+        return vehicles->at(id);
+    } else {
+        return std::nullopt;
+    }
+}
+
+ClientID Network::new_client_id() {
+    static Sync<ClientID> s_id { 0 };
+    auto id = s_id.synchronize();
+    ClientID new_id = *id;
+    *id += 1;
+    return new_id;
+}
