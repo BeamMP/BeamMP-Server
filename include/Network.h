@@ -5,6 +5,7 @@
 #include "State.h"
 #include "Sync.h"
 #include "Transport.h"
+#include "Util.h"
 #include <boost/asio.hpp>
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/thread_pool.hpp>
@@ -54,6 +55,9 @@ struct Client {
     /// but better than simply using the ID like the old protocol.
     const uint64_t udp_magic;
 
+    const ip::udp::endpoint& udp_endpoint() const { return m_udp_endpoint; }
+    void set_udp_endpoint(const ip::udp::endpoint& ep) { m_udp_endpoint = ep; }
+
 private:
     /// Call this when the client seems to have timed out. Will send a ping and set a flag.
     /// Returns true if try-again, false if the connection was closed.
@@ -86,6 +90,8 @@ private:
     std::vector<uint8_t> m_header { bmp::Header::SERIALIZED_SIZE };
     bmp::Packet m_packet {};
 
+    ip::udp::endpoint m_udp_endpoint;
+
     class Network& m_network;
 };
 
@@ -93,6 +99,14 @@ struct Vehicle {
     using Ptr = std::shared_ptr<Vehicle>;
     Sync<ClientID> owner;
     Sync<std::vector<uint8_t>> data;
+
+    Vehicle(std::span<uint8_t> raw_data)
+        : data(std::vector<uint8_t>(raw_data.begin(), raw_data.end())) {
+        reset_status(data.get());
+    }
+
+    /// Resets all status fields to zero and reads any statuses present in the data into the fields.
+    void reset_status(std::span<const uint8_t> status_data);
 
     struct Status {
         glm::vec3 rvel {};
@@ -102,23 +116,9 @@ struct Vehicle {
         float time {};
     };
 
-    Status get_status() {
-        std::unique_lock lock(m_mtx);
-        refresh_cache(lock);
-        return {
-            .rvel = m_rvel,
-            .rot = m_rot,
-            .vel = m_vel,
-            .pos = m_pos,
-            .time = m_time,
-        };
-    }
+    Status get_status();
 
-    void update_status(const std::vector<uint8_t>& raw_packet) {
-        std::unique_lock lock(m_mtx);
-        m_needs_refresh = true;
-        m_status_data = raw_packet;
-    }
+    void update_status(std::span<const uint8_t> raw_packet);
 
     const std::vector<uint8_t>& get_raw_status() const { return m_status_data; }
 
@@ -132,7 +132,7 @@ private:
     /// Parses the status_data on request sets needs_refresh = false.
     void refresh_cache(std::unique_lock<std::recursive_mutex>& lock);
 
-    bool m_needs_refresh = true;
+    bool m_needs_refresh = false;
     glm::vec3 m_rvel {};
     glm::vec4 m_rot {};
     glm::vec3 m_vel {};
@@ -178,6 +178,12 @@ public:
 
     size_t vehicle_count() const;
 
+    /// Creates a Playing state packet from uncompressed data.
+    bmp::Packet make_playing_packet(bmp::Purpose purpose, ClientID from_id, VehicleID veh_id, const std::vector<uint8_t>& data);
+
+    /// Sends a <System> or <Server> chat message to all or only one client(s).
+    void send_system_chat_message(const std::string& msg, ClientID to = 0xffffffff);
+
     /// To be called by accept() async handler once an accept() is completed.
     void accept();
 
@@ -192,7 +198,7 @@ private:
     /// Reads a packet from the given UDP socket, returning the client's endpoint as an out-argument.
     bmp::Packet udp_read(ip::udp::endpoint& out_ep);
     /// Sends a packet to the specified UDP endpoint via the UDP socket.
-    void udp_write(bmp::Packet& packet, const ip::udp::endpoint& to_ep);
+    void udp_write(bmp::Packet& packet, const ip::udp::endpoint& ep);
 
     void udp_read_main();
     void tcp_listen_main();
@@ -220,6 +226,7 @@ private:
     Sync<std::unordered_map<ip::udp::endpoint, ClientID>> m_udp_endpoints {};
 
     ClientID new_client_id();
+    VehicleID new_vehicle_id();
 
     thread_pool m_threadpool { std::thread::hardware_concurrency() };
     Sync<bool> m_shutdown { false };

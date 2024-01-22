@@ -357,12 +357,12 @@ bmp::Packet Network::udp_read(ip::udp::endpoint& out_ep) {
     return packet;
 }
 
-void Network::udp_write(bmp::Packet& packet, const ip::udp::endpoint& to_ep) {
+void Network::udp_write(bmp::Packet& packet, const ip::udp::endpoint& ep) {
     auto header = packet.finalize();
     std::vector<uint8_t> data(header.size + bmp::Header::SERIALIZED_SIZE);
     auto offset = header.serialize_to(data);
     std::copy(packet.raw_data.begin(), packet.raw_data.end(), data.begin() + static_cast<long>(offset));
-    m_udp_socket.send_to(buffer(data), to_ep, {});
+    m_udp_socket.send_to(buffer(data), ep, {});
 }
 
 Network::Network()
@@ -484,6 +484,7 @@ void Network::udp_read_main() {
                     }
                     // not yet set! nice! set!
                     endpoints->emplace(ep, id);
+                    client->set_udp_endpoint(ep);
                     // now transfer them to the next state
                     beammp_debugf("Client {} successfully connected via UDP", client->id);
                     // send state change and further stuff asynchronously - we dont really care here, just wanna
@@ -618,11 +619,132 @@ void Network::handle_packet(ClientID id, const bmp::Packet& packet) {
 }
 
 void Network::handle_playing(ClientID id, const bmp::Packet& packet, std::shared_ptr<Client>& client) {
-    switch (packet.purpose) {
+    auto decompressed = packet.get_readable_data();
+    uint16_t vid;
+    auto offset = bmp::deserialize(vid, decompressed);
+    // use this to operate on ;)
+    std::span<uint8_t> data(decompressed.begin() + long(offset), decompressed.end());
 
+    // kick?? if vehicle is not owned by this player
+    // TODO: What's the best course of action here?
+    if (vid != 0xffff && m_vehicles->at(vid)->owner != id) {
+        disconnect(id, fmt::format("Tried to change vehicle {}, but owner is {}", vid, id));
+        return;
+    }
+
+    switch (packet.purpose) {
+    case bmp::Purpose::VehicleSpawn: {
+        // TODO: Check vehicle spawn limit
+        auto vehicles = m_vehicles.synchronize();
+        // overwrite the vid since it's definitely invalid anyways
+        vid = new_vehicle_id();
+        auto vehicle = std::make_shared<Vehicle>(data);
+        vehicles->emplace(vid, vehicle);
+        beammp_debugf("Client {} spawned vehicle {}", id, vid);
+        break;
+    }
+    case bmp::Purpose::VehicleDelete: {
+        auto vehicles = m_vehicles.synchronize();
+        vehicles->erase(vid);
+        beammp_debugf("Client {} deleted vehicle {}", id, vid);
+        break;
+    }
+    case bmp::Purpose::VehicleReset: {
+        auto vehicles = m_vehicles.synchronize();
+        vehicles->at(vid)->reset_status(data);
+        beammp_debugf("Client {} reset vehicle {}", id, vid);
+        break;
+    }
+    case bmp::Purpose::VehicleEdited: {
+        auto vehicles = m_vehicles.synchronize();
+        auto veh_data = vehicles->at(vid)->data.synchronize();
+        veh_data->resize(data.size());
+        std::copy(data.begin(), data.end(), veh_data->begin());
+        beammp_debugf("Client {} edited vehicle {}", id, vid);
+        break;
+    }
+    case bmp::Purpose::VehicleCouplerChanged: {
+        break;
+    }
+    case bmp::Purpose::SpectatorSwitched: {
+        break;
+    }
+    case bmp::Purpose::ApplyInput: {
+        break;
+    }
+    case bmp::Purpose::ApplyElectrics: {
+        break;
+    }
+    case bmp::Purpose::ApplyNodes: {
+        break;
+    }
+    case bmp::Purpose::ApplyBreakgroups: {
+        break;
+    }
+    case bmp::Purpose::ApplyPowertrain: {
+        break;
+    }
+    case bmp::Purpose::ApplyPosition: {
+        auto vehicles = m_vehicles.synchronize();
+        vehicles->at(vid)->update_status(data);
+        break;
+    }
+    case bmp::Purpose::ChatMessage: {
+        std::string msg(data.begin(), data.end());
+        LogChatMessage(client->name.get(), int(client->id), msg);
+        break;
+    }
+    case bmp::Purpose::Event: {
+        break;
+    }
+    case bmp::Purpose::StateChangeLeaving: {
+        beammp_infof("Client {} leaving", id);
+        // TODO: Not implemented properly, change to state and leave cleanly instead.
+        disconnect(id, "Leaving");
+        break;
+    }
     default:
         beammp_errorf("Got 0x{:x} in state {}. This is not allowed. Disconnecting the client", uint16_t(packet.purpose), int(client->state.get()));
         disconnect(id, "invalid purpose in current state");
+        break;
+    }
+    auto clients = playing_clients();
+    bmp::Packet broadcast {
+        .purpose = packet.purpose,
+        .flags = packet.flags,
+        .raw_data = {},
+    };
+    // 4 extra bytes for the pid header
+    broadcast.raw_data.resize(packet.raw_data.size() + 4);
+    // write pid
+    offset = bmp::serialize(uint32_t(id), broadcast.raw_data);
+    // write all raw data from the original - this is ok because we also copied the flags,
+    // so if this is compressed, we send it as compressed and don't try to compress it again.
+    std::copy(packet.raw_data.begin(), packet.raw_data.end(), broadcast.raw_data.begin() + long(offset));
+    // add playing header
+
+    // broadcast packets to clients based on their category
+    switch (bmp::category_of(packet.purpose)) {
+    case bmp::Category::Position:
+        for (auto& [this_id, this_client] : clients) {
+            udp_write(broadcast, this_client->udp_endpoint());
+        }
+        break;
+    case bmp::Category::None:
+        beammp_warnf("Category 'None' for packet purpose {} in state {} is unexpected", int(packet.purpose), int(client->state.get()));
+        break;
+    case bmp::Category::Nodes:
+    case bmp::Category::Vehicle:
+    case bmp::Category::Input:
+    case bmp::Category::Electrics:
+    case bmp::Category::Powertrain:
+    case bmp::Category::Chat:
+    case bmp::Category::Event:
+    default:
+        for (auto& [this_id, this_client] : clients) {
+            this_client->tcp_write(broadcast);
+        }
+        break;
     }
 }
 
@@ -1021,4 +1143,115 @@ ClientID Network::new_client_id() {
     ClientID new_id = *id;
     *id += 1;
     return new_id;
+}
+
+VehicleID Network::new_vehicle_id() {
+    static Sync<VehicleID> s_id { 0 };
+    auto id = s_id.synchronize();
+    VehicleID new_id = *id;
+    *id += 1;
+    return new_id;
+}
+
+void Network::send_system_chat_message(const std::string& msg, ClientID to) {
+    auto packet = make_playing_packet(bmp::Purpose::ChatMessage, 0xffffffff, 0xffff, std::vector<uint8_t>(msg.begin(), msg.end()));
+    auto clients = playing_clients();
+    if (to != 0xffffffff) {
+        for (auto& [this_id, this_client] : clients) {
+            this_client->tcp_write(packet);
+        }
+        LogChatMessage("<System>", -1, msg);
+    } else {
+        for (auto& [this_id, this_client] : clients) {
+            if (this_id == to) {
+                this_client->tcp_write(packet);
+                break;
+            }
+        }
+        LogChatMessage(fmt::format("<System to {}>", to), -1, msg);
+    }
+}
+
+bmp::Packet Network::make_playing_packet(bmp::Purpose purpose, ClientID from_id, VehicleID veh_id, const std::vector<uint8_t>& data) {
+    bmp::Packet packet {
+        .purpose = purpose,
+        .raw_data = {},
+    };
+    packet.raw_data.resize(data.size() + 6);
+    auto offset = bmp::serialize(uint32_t(from_id), packet.raw_data);
+    offset += bmp::serialize(uint16_t(veh_id), std::span<uint8_t>(packet.raw_data.begin() + long(offset), packet.raw_data.end()));
+    std::copy(data.begin(), data.end(), packet.raw_data.begin() + long(offset));
+    return packet;
+}
+void Vehicle::reset_status(std::span<const uint8_t> status_data) {
+    auto json = nlohmann::json::parse(status_data.data());
+    if (json["rvel"].is_array()) {
+        auto array = json["rvel"].get<std::vector<float>>();
+        m_rvel = {
+            array.at(0),
+            array.at(1),
+            array.at(2)
+        };
+    } else {
+        m_rvel = {};
+    }
+
+    if (json["rot"].is_array()) {
+        auto array = json["rot"].get<std::vector<float>>();
+        m_rot = {
+            array.at(0),
+            array.at(1),
+            array.at(2),
+            array.at(3),
+        };
+    } else {
+        m_rot = {};
+    }
+
+    if (json["vel"].is_array()) {
+        auto array = json["vel"].get<std::vector<float>>();
+        m_vel = {
+            array.at(0),
+            array.at(1),
+            array.at(2)
+        };
+    } else {
+        m_vel = {};
+    }
+
+    if (json["pos"].is_array()) {
+        auto array = json["pos"].get<std::vector<float>>();
+        m_pos = {
+            array.at(0),
+            array.at(1),
+            array.at(2)
+        };
+    } else {
+        m_pos = {};
+    }
+
+    if (json["tim"].is_number()) {
+        m_time = json["tim"].get<float>();
+    } else {
+        m_time = {};
+    }
+}
+
+Vehicle::Status Vehicle::get_status() {
+    std::unique_lock lock(m_mtx);
+    refresh_cache(lock);
+    return {
+        .rvel = m_rvel,
+        .rot = m_rot,
+        .vel = m_vel,
+        .pos = m_pos,
+        .time = m_time,
+    };
+}
+
+void Vehicle::update_status(std::span<const uint8_t> raw_packet) {
+    std::unique_lock lock(m_mtx);
+    m_needs_refresh = true;
+    m_status_data.resize(raw_packet.size());
+    std::copy(raw_packet.begin(), raw_packet.end(), m_status_data.begin());
 }
