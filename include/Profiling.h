@@ -45,6 +45,9 @@ struct UnitProfileCollection {
     /// Returns the number of elements the moving average is calculated over.
     size_t measurement_count(const std::string& unit);
 
+    /// Returns the averages for all stored units.
+    std::unordered_map<std::string, double> all_average_durations();
+
 private:
     boost::synchronized_value<std::unordered_map<std::string, UnitExecutionTime>> m_map;
 };

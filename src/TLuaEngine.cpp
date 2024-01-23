@@ -21,11 +21,13 @@
 #include "CustomAssert.h"
 #include "Http.h"
 #include "LuaAPI.h"
+#include "Profiling.h"
 #include "TLuaPlugin.h"
 #include "sol/object.hpp"
 
 #include <chrono>
 #include <condition_variable>
+#include <fmt/core.h>
 #include <nlohmann/json.hpp>
 #include <random>
 #include <thread>
@@ -847,6 +849,15 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     UtilTable.set_function("RandomIntRange", [this](int64_t min, int64_t max) -> int64_t {
         return std::uniform_int_distribution(min, max)(mMersenneTwister);
     });
+    UtilTable.set_function("DebugExecutionTime", [this]() -> sol::table {
+        sol::state_view StateView(mState);
+        sol::table Result = StateView.create_table();
+        auto durs = mProfile.all_average_durations();
+        for (const auto& [name, dur] : durs) {
+            Result[name] = dur;
+        }
+        return Result;
+    });
 
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
@@ -984,6 +995,7 @@ void TLuaEngine::StateThreadData::operator()() {
                 std::chrono::milliseconds(500),
                 [&]() -> bool { return !mStateFunctionQueue.empty(); });
             if (NotExpired) {
+                auto ProfStart = prof::now();
                 auto TheQueuedFunction = std::move(mStateFunctionQueue.front());
                 mStateFunctionQueue.erase(mStateFunctionQueue.begin());
                 Lock.unlock();
@@ -1042,6 +1054,9 @@ void TLuaEngine::StateThreadData::operator()() {
                     Result->ErrorMessage = BeamMPFnNotFoundError; // special error kind that we can ignore later
                     Result->MarkAsReady();
                 }
+                auto ProfEnd = prof::now();
+                auto ProfDuration = prof::duration(ProfStart, ProfEnd);
+                mProfile.add_sample(FnName, ProfDuration);
             }
         }
     }
@@ -1101,7 +1116,7 @@ void TLuaResult::MarkAsReady() {
 void TLuaResult::WaitUntilReady() {
     std::unique_lock readyLock(*this->ReadyMutex);
     // wait if not ready yet
-    if(!this->Ready)
+    if (!this->Ready)
         this->ReadyCondition->wait(readyLock);
 }
 

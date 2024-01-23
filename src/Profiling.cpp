@@ -36,6 +36,15 @@ void prof::UnitExecutionTime::add_sample(const Duration& dur) {
 }
 
 prof::UnitExecutionTime::UnitExecutionTime()
-    : m_measurements(boost::circular_buffer<Duration>(16)) {
+    : m_measurements(boost::circular_buffer<Duration>(100)) {
+}
+
+std::unordered_map<std::string, double> prof::UnitProfileCollection::all_average_durations() {
+    auto map = m_map.synchronize();
+    std::unordered_map<std::string, double> result {};
+    for (const auto& [name, time] : *map) {
+        result[name] = time.average_duration().count();
+    }
+    return result;
 }
 
