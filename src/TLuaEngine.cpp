@@ -852,9 +852,13 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     UtilTable.set_function("DebugExecutionTime", [this]() -> sol::table {
         sol::state_view StateView(mState);
         sol::table Result = StateView.create_table();
-        auto durs = mProfile.all_average_durations();
-        for (const auto& [name, dur] : durs) {
-            Result[name] = dur;
+        auto stats = mProfile.all_stats();
+        for (const auto& [name, stat] : stats) {
+            Result[name] = StateView.create_table();
+            Result[name]["mean"] = stat.mean;
+            Result[name]["stddev"] = stat.stddev;
+            Result[name]["min"] = stat.min;
+            Result[name]["max"] = stat.max;
         }
         return Result;
     });

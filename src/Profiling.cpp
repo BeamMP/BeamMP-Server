@@ -1,4 +1,5 @@
 #include "Profiling.h"
+#include <limits>
 
 prof::Duration prof::duration(const TimePoint& start, const TimePoint& end) {
     return end - start;
@@ -6,8 +7,8 @@ prof::Duration prof::duration(const TimePoint& start, const TimePoint& end) {
 prof::TimePoint prof::now() {
     return std::chrono::high_resolution_clock::now();
 }
-prof::Duration prof::UnitProfileCollection::average_duration(const std::string& unit) {
-    return m_map->operator[](unit).average_duration();
+prof::Stats prof::UnitProfileCollection::stats(const std::string& unit) {
+    return m_map->operator[](unit).stats();
 }
 
 size_t prof::UnitProfileCollection::measurement_count(const std::string& unit) {
@@ -22,13 +23,35 @@ size_t prof::UnitExecutionTime::measurement_count() {
     return m_measurements->size();
 }
 
-prof::Duration prof::UnitExecutionTime::average_duration() const {
+prof::Stats prof::UnitExecutionTime::stats() const {
+    Stats result {};
+    // calculate sum
     auto measurements = m_measurements.synchronize();
+    if (measurements->size() == 0) {
+        return result;
+    }
+    result.max = std::numeric_limits<double>::min();
+    result.min = std::numeric_limits<double>::max();
     Duration sum {};
     for (const auto& measurement : *measurements) {
+        if (measurement.count() > result.max) {
+            result.max = measurement.count();
+        }
+        if (measurement.count() < result.min) {
+            result.min = measurement.count();
+        }
         sum += measurement;
     }
-    return sum / measurements->size();
+    // calculate mean
+    result.mean = (sum / measurements->size()).count();
+    // calculate stddev
+    result.stddev = 0;
+    for (const auto& measurement : *measurements) {
+        // (measurements[i] - mean)^2
+        result.stddev += std::pow(measurement.count() - result.mean, 2);
+    }
+    result.stddev = std::sqrt(result.stddev / double(measurements->size()));
+    return result;
 }
 
 void prof::UnitExecutionTime::add_sample(const Duration& dur) {
@@ -39,12 +62,11 @@ prof::UnitExecutionTime::UnitExecutionTime()
     : m_measurements(boost::circular_buffer<Duration>(100)) {
 }
 
-std::unordered_map<std::string, double> prof::UnitProfileCollection::all_average_durations() {
+std::unordered_map<std::string, prof::Stats> prof::UnitProfileCollection::all_stats() {
     auto map = m_map.synchronize();
-    std::unordered_map<std::string, double> result {};
+    std::unordered_map<std::string, Stats> result {};
     for (const auto& [name, time] : *map) {
-        result[name] = time.average_duration().count();
+        result[name] = time.stats();
     }
     return result;
 }
-

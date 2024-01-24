@@ -16,6 +16,13 @@ TimePoint now();
 /// Returns a sub-millisecond resolution duration between start and end.
 Duration duration(const TimePoint& start, const TimePoint& end);
 
+struct Stats {
+    double mean;
+    double stddev;
+    double min;
+    double max;
+};
+
 /// Calculates and stores the moving average over K samples of execution time data
 /// for some single unit of code. Threadsafe.
 struct UnitExecutionTime {
@@ -24,8 +31,9 @@ struct UnitExecutionTime {
     /// Adds a sample to the collection, overriding the oldest sample if needed.
     void add_sample(const Duration& dur);
 
-    /// Calculates the average duration over the `measurement_count()` measurements.
-    Duration average_duration() const;
+    /// Calculates the mean duration over the `measurement_count()` measurements,
+    /// as well as the standard deviation.
+    Stats stats() const;
 
     /// Returns the number of elements the moving average is calculated over.
     size_t measurement_count();
@@ -39,14 +47,15 @@ struct UnitProfileCollection {
     /// Adds a sample to the collection, overriding the oldest sample if needed.
     void add_sample(const std::string& unit, const Duration& duration);
 
-    /// Calculates the average duration over the `measurement_count()` measurements.
-    Duration average_duration(const std::string& unit);
+    /// Calculates the mean duration over the `measurement_count()` measurements,
+    /// as well as the standard deviation.
+    Stats stats(const std::string& unit);
 
     /// Returns the number of elements the moving average is calculated over.
     size_t measurement_count(const std::string& unit);
 
-    /// Returns the averages for all stored units.
-    std::unordered_map<std::string, double> all_average_durations();
+    /// Returns the stats for all stored units.
+    std::unordered_map<std::string, Stats> all_stats();
 
 private:
     boost::synchronized_value<std::unordered_map<std::string, UnitExecutionTime>> m_map;
