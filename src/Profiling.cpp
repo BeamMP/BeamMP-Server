@@ -30,6 +30,7 @@ prof::Stats prof::UnitExecutionTime::stats() const {
     if (measurements->size() == 0) {
         return result;
     }
+    result.n = measurements->size();
     result.max = std::numeric_limits<double>::min();
     result.min = std::numeric_limits<double>::max();
     Duration sum {};

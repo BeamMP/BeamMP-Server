@@ -859,8 +859,19 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
             Result[name]["stddev"] = stat.stddev;
             Result[name]["min"] = stat.min;
             Result[name]["max"] = stat.max;
+            Result[name]["n"] = stat.n;
         }
         return Result;
+    });
+    UtilTable.set_function("DebugStartProfile", [this](const std::string& name) {
+        mProfileStarts[name] = prof::now();
+    });
+    UtilTable.set_function("DebugStopProfile", [this](const std::string& name) {
+        if (!mProfileStarts.contains(name)) {
+            beammp_lua_errorf("DebugStopProfile('{}') failed, because a profile for '{}' wasn't started", name, name);
+            return;
+        }
+        mProfile.add_sample(name, prof::duration(mProfileStarts.at(name), prof::now()));
     });
 
     auto HttpTable = StateView.create_named_table("Http");

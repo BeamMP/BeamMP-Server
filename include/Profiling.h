@@ -21,6 +21,7 @@ struct Stats {
     double stddev;
     double min;
     double max;
+    size_t n;
 };
 
 /// Calculates and stores the moving average over K samples of execution time data

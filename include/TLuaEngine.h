@@ -256,6 +256,7 @@ private:
         sol::table Lua_FS_ListDirectories(const std::string& Path);
 
         prof::UnitProfileCollection mProfile {};
+        std::unordered_map<std::string, prof::TimePoint> mProfileStarts;
 
         std::string mName;
         TLuaStateId mStateId;
