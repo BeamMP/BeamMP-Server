@@ -313,39 +313,6 @@ void Client::start_tcp() {
             }
         }
     });
-    /*
-    async_read(m_tcp_socket, buffer(m_header), [this](const auto& ec, size_t) {
-        if (ec) {
-            beammp_errorf("TCP read() failed: {}", ec.message());
-            m_network.disconnect(id, "read() failed");
-        } else {
-            try {
-                bmp::Header hdr {};
-                hdr.deserialize_from(m_header);
-                beammp_tracef("Got header with purpose {}, size {} from {}", int(hdr.purpose), hdr.size, id);
-                // delete previous packet if any exists
-                m_packet = {};
-                m_packet.purpose = hdr.purpose;
-                m_packet.flags = hdr.flags;
-                m_packet.raw_data.resize(hdr.size);
-                async_read(m_tcp_socket, buffer(m_packet.raw_data), [this](const auto& ec, size_t bytes) {
-                    if (ec) {
-                        beammp_errorf("TCP read() failed: {}", ec.message());
-                        m_network.disconnect(id, "read() failed");
-                    } else {
-                        beammp_tracef("Got body of size {} from {}", bytes, id);
-                        m_network.handle_packet(id, m_packet);
-                        // recv another packet!
-                        start_tcp();
-                    }
-                });
-            } catch (const std::exception& e) {
-                beammp_errorf("Error while processing TCP packet from client {}: {}", id, e.what());
-                m_network.disconnect(id, "Failed receive TCP or parse packet");
-            }
-        }
-    });
-    */
 }
 
 bmp::Packet Network::udp_read(ip::udp::endpoint& out_ep) {
@@ -894,8 +861,8 @@ void Network::handle_mod_download(ClientID id, const bmp::Packet& packet, std::s
         bmp::Packet state_change {
             .purpose = bmp::Purpose::StateChangeSessionSetup,
         };
+        *client->state = bmp::State::SessionSetup;
         client->tcp_write(state_change);
-
         beammp_infof("Client {} starting session sync.", id);
         beammp_debugf("Syncing {} client(s) and {} vehicle(s) to client {}", m_clients->size(), m_vehicles->size(), id);
         // immediately start with the player+vehicle info
