@@ -29,7 +29,9 @@ using VehicleID = uint16_t;
 using namespace boost::asio;
 
 struct Client {
+    using StrandPtr = std::shared_ptr<boost::asio::strand<ip::tcp::socket::executor_type>>;
     using Ptr = std::shared_ptr<Client>;
+
     ClientID id;
     Sync<bmp::State> state { bmp::State::None };
 
@@ -93,6 +95,8 @@ private:
     ip::udp::endpoint m_udp_endpoint;
 
     class Network& m_network;
+
+    StrandPtr m_tcp_strand;
 };
 
 struct Vehicle {
