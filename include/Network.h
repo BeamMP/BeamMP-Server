@@ -28,7 +28,7 @@ using VehicleID = uint16_t;
 
 using namespace boost::asio;
 
-struct Client {
+struct Client : std::enable_shared_from_this<Client> {
     using StrandPtr = std::shared_ptr<boost::asio::strand<ip::tcp::socket::executor_type>>;
     using Ptr = std::shared_ptr<Client>;
 
@@ -45,7 +45,8 @@ struct Client {
     /// conjunction with something else. Blocks other writes.
     void tcp_write_file_raw(const std::filesystem::path& path);
 
-    Client(ClientID id, class Network& network, ip::tcp::socket&& tcp_socket);
+    /// Ensures no client is ever created as a non-shared-ptr, so that enable_shared_from_this works.
+    static Client::Ptr make_ptr(ClientID new_id, class Network& network, ip::tcp::socket&& tcp_socket);
     ~Client();
 
     ip::tcp::socket& tcp_socket() { return m_tcp_socket; }
@@ -61,6 +62,8 @@ struct Client {
     void set_udp_endpoint(const ip::udp::endpoint& ep) { m_udp_endpoint = ep; }
 
 private:
+    /// Ctor must be private to ensure all clients are constructed as shared_ptr to enable_shared_from_this.
+    Client(ClientID id, class Network& network, ip::tcp::socket&& tcp_socket);
     /// Call this when the client seems to have timed out. Will send a ping and set a flag.
     /// Returns true if try-again, false if the connection was closed.
     [[nodiscard]] bool handle_timeout();
