@@ -131,6 +131,9 @@ Error LuaPlugin::initialize_libraries() {
     glob["MP"]["GetPluginPath"] = [this] {
         return std::filesystem::absolute(m_path).string();
     };
+    glob["MP"]["RegisterEvent"] = [this] (const std::string& event_name, const std::string& handler) {
+
+    };
 
     glob["MP"]["ScheduleCallRepeat"] = [this](size_t ms, sol::function fn, sol::variadic_args args) {
         return l_mp_schedule_call_repeat(ms, fn, args);

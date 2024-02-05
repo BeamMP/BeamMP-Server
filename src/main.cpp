@@ -170,6 +170,11 @@ int BeamMPServerMain(MainArguments Arguments) {
     PluginManager PluginManager;
     (void)PluginManager.add_plugin(Plugin::make_pointer<LuaPlugin>("Resources/Server/Test"));
 
+    PluginManager.trigger_event("onInit", std::make_shared<Value>(HashMap<std::string, Value> {
+                                              { "big", "balls" },
+                                              { "longer", "falls" },
+                                          }));
+
     if (Application::Settings.HTTPServerEnabled) {
         Http::Server::THttpServerInstance HttpServerInstance {};
     }

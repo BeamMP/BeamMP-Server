@@ -10,6 +10,7 @@
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
 #include <boost/thread/scoped_thread.hpp>
 #include <boost/thread/synchronized_value.hpp>
+#include <sol/forward.hpp>
 #include <sol/variadic_args.hpp>
 #include <spdlog/logger.h>
 
@@ -92,6 +93,11 @@ private:
     boost::scoped_thread<> m_thread;
     /// This asio context schedules all tasks. It's run in the m_thread thread.
     boost::asio::io_context m_io;
+
+    /// Event handlers which are legacy-style (by name)
+    HashMap<std::string, std::string> m_event_handlers_named {};
+    /// Event handlers which are functions (v4 style)
+    HashMap<std::string, sol::protected_function> m_event_handlers {};
 
     /// Main (and usually only) lua state of this plugin.
     /// ONLY access this from the m_thread thread.
