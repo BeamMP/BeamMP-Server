@@ -20,84 +20,13 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "TLuaEngine.h"
+#include "Value.h"
 
 #include <nlohmann/json.hpp>
+#include <sol/types.hpp>
 
 #define SOL_ALL_SAFETIES_ON 1
 #include <sol/sol.hpp>
-
-std::string LuaAPI::LuaToString(const sol::object Value, size_t Indent, bool QuoteStrings) {
-    if (Indent > 80) {
-        return "[[possible recursion, refusing to keep printing]]";
-    }
-    switch (Value.get_type()) {
-    case sol::type::userdata: {
-        std::stringstream ss;
-        ss << "[[userdata: " << Value.as<sol::userdata>().pointer() << "]]";
-        return ss.str();
-    }
-    case sol::type::thread: {
-        std::stringstream ss;
-        ss << "[[thread: " << Value.as<sol::thread>().pointer() << "]] {"
-           << "\n";
-        for (size_t i = 0; i < Indent; ++i) {
-            ss << "\t";
-        }
-        ss << "status: " << std::to_string(int(Value.as<sol::thread>().status())) << "\n}";
-        return ss.str();
-    }
-    case sol::type::lightuserdata: {
-        std::stringstream ss;
-        ss << "[[lightuserdata: " << Value.as<sol::lightuserdata>().pointer() << "]]";
-        return ss.str();
-    }
-    case sol::type::string:
-        if (QuoteStrings) {
-            return "\"" + Value.as<std::string>() + "\"";
-        } else {
-            return Value.as<std::string>();
-        }
-    case sol::type::number: {
-        std::stringstream ss;
-        ss << Value.as<float>();
-        return ss.str();
-    }
-    case sol::type::lua_nil:
-    case sol::type::none:
-        return "<nil>";
-    case sol::type::boolean:
-        return Value.as<bool>() ? "true" : "false";
-    case sol::type::table: {
-        std::stringstream Result;
-        auto Table = Value.as<sol::table>();
-        Result << "[[table: " << Table.pointer() << "]]: {";
-        if (!Table.empty()) {
-            for (const auto& Entry : Table) {
-                Result << "\n";
-                for (size_t i = 0; i < Indent; ++i) {
-                    Result << "\t";
-                }
-                Result << LuaToString(Entry.first, Indent + 1) << ": " << LuaToString(Entry.second, Indent + 1, true) << ",";
-            }
-            Result << "\n";
-        }
-        for (size_t i = 0; i < Indent - 1; ++i) {
-            Result << "\t";
-        }
-        Result << "}";
-        return Result.str();
-    }
-    case sol::type::function: {
-        std::stringstream ss;
-        ss << "[[function: " << Value.as<sol::function>().pointer() << "]]";
-        return ss.str();
-    }
-    case sol::type::poly:
-        return "<poly>";
-    default:
-        return "<unprintable type>";
-    }
-}
 
 std::string LuaAPI::MP::GetOSName() {
 #if WIN32
@@ -111,15 +40,6 @@ std::string LuaAPI::MP::GetOSName() {
 
 std::tuple<int, int, int> LuaAPI::MP::GetServerVersion() {
     return { Application::ServerVersion().major, Application::ServerVersion().minor, Application::ServerVersion().patch };
-}
-
-void LuaAPI::Print(sol::variadic_args Args) {
-    std::string ToPrint = "";
-    for (const auto& Arg : Args) {
-        ToPrint += LuaToString(static_cast<const sol::object>(Arg));
-        ToPrint += "\t";
-    }
-    luaprint(ToPrint);
 }
 
 TEST_CASE("LuaAPI::MP::GetServerVersion") {
@@ -322,17 +242,6 @@ bool LuaAPI::MP::IsPlayerGuest(int ID) {
         return false;
     }
     */
-}
-
-void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
-    std::string ToPrint = "";
-    for (const auto& Arg : Args) {
-        ToPrint += LuaToString(static_cast<const sol::object>(Arg));
-        ToPrint += "\t";
-    }
-#ifdef DOCTEST_CONFIG_DISABLE
-    Application::Console().WriteRaw(ToPrint);
-#endif
 }
 
 int LuaAPI::PanicHandler(lua_State* State) {
@@ -633,22 +542,27 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
     }
 }
 
-std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
-    nlohmann::json json;
-    // table
-    bool is_array = true;
-    for (const auto& pair : object.as<sol::table>()) {
-        if (pair.first.get_type() != sol::type::number) {
-            is_array = false;
-        }
+static std::string lua_to_json_impl(const sol::object& args) {
+    // used as the invalid value provider in sol_obj_to_value.
+    auto special_stringifier = [](const sol::object& object) -> Result<Value> {
+        beammp_lua_debugf("Cannot convert from type {} to json, ignoring (using null)", sol::to_string(object.get_type()));
+        return { Null };
+    };
+    auto maybe_val = sol_obj_to_value(obj, special_stringifier);
+    if (maybe_val) {
+        auto result = boost::apply_visitor(ValueToJsonVisitor(ValueToStringVisitor::Flag::NONE), maybe_val.move());
+        return result.dump();
+    } else {
+        beammp_lua_errorf("Failed to convert an argument to json: {}", maybe_val.error);
+        return "";
     }
-    for (const auto& entry : object) {
-        JsonEncodeRecursive(json, entry.first, entry.second, is_array);
-    }
-    return json.dump();
 }
 
-std::string LuaAPI::MP::JsonDiff(const std::string& a, const std::string& b) {
+std::string LuaAPI::Util::JsonEncode(const sol::object& object) {
+    return lua_to_json_impl(object);
+}
+
+std::string LuaAPI::Util::JsonDiff(const std::string& a, const std::string& b) {
     if (!nlohmann::json::accept(a)) {
         beammp_lua_error("JsonDiff first argument is not valid json: `" + a + "`");
         return "";
@@ -662,7 +576,7 @@ std::string LuaAPI::MP::JsonDiff(const std::string& a, const std::string& b) {
     return nlohmann::json::diff(a_json, b_json).dump();
 }
 
-std::string LuaAPI::MP::JsonDiffApply(const std::string& data, const std::string& patch) {
+std::string LuaAPI::Util::JsonDiffApply(const std::string& data, const std::string& patch) {
     if (!nlohmann::json::accept(data)) {
         beammp_lua_error("JsonDiffApply first argument is not valid json: `" + data + "`");
         return "";
@@ -677,7 +591,7 @@ std::string LuaAPI::MP::JsonDiffApply(const std::string& data, const std::string
     return a_json.dump();
 }
 
-std::string LuaAPI::MP::JsonPrettify(const std::string& json) {
+std::string LuaAPI::Util::JsonPrettify(const std::string& json) {
     if (!nlohmann::json::accept(json)) {
         beammp_lua_error("JsonPrettify argument is not valid json: `" + json + "`");
         return "";
@@ -685,7 +599,7 @@ std::string LuaAPI::MP::JsonPrettify(const std::string& json) {
     return nlohmann::json::parse(json).dump(4);
 }
 
-std::string LuaAPI::MP::JsonMinify(const std::string& json) {
+std::string LuaAPI::Util::JsonMinify(const std::string& json) {
     if (!nlohmann::json::accept(json)) {
         beammp_lua_error("JsonMinify argument is not valid json: `" + json + "`");
         return "";
@@ -693,7 +607,7 @@ std::string LuaAPI::MP::JsonMinify(const std::string& json) {
     return nlohmann::json::parse(json).dump(-1);
 }
 
-std::string LuaAPI::MP::JsonFlatten(const std::string& json) {
+std::string LuaAPI::Util::JsonFlatten(const std::string& json) {
     if (!nlohmann::json::accept(json)) {
         beammp_lua_error("JsonFlatten argument is not valid json: `" + json + "`");
         return "";
@@ -701,7 +615,7 @@ std::string LuaAPI::MP::JsonFlatten(const std::string& json) {
     return nlohmann::json::parse(json).flatten().dump(-1);
 }
 
-std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
+std::string LuaAPI::Util::JsonUnflatten(const std::string& json) {
     if (!nlohmann::json::accept(json)) {
         beammp_lua_error("JsonUnflatten argument is not valid json: `" + json + "`");
         return "";
@@ -711,4 +625,100 @@ std::string LuaAPI::MP::JsonUnflatten(const std::string& json) {
 
 std::pair<bool, std::string> LuaAPI::MP::TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data) {
     return InternalTriggerClientEvent(PlayerID, EventName, JsonEncode(Data));
+}
+size_t LuaAPI::MP::GetPlayerCount() { return Engine->Server().ClientCount(); }
+
+static void JsonDecodeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
+    switch (right.type()) {
+    case nlohmann::detail::value_t::null:
+        return;
+    case nlohmann::detail::value_t::object: {
+        auto value = table.create();
+        value.clear();
+        for (const auto& entry : right.items()) {
+            JsonDecodeRecursive(StateView, value, entry.key(), entry.value());
+        }
+        AddToTable(table, left, value);
+        break;
+    }
+    case nlohmann::detail::value_t::array: {
+        auto value = table.create();
+        value.clear();
+        for (const auto& entry : right.items()) {
+            JsonDecodeRecursive(StateView, value, "", entry.value());
+        }
+        AddToTable(table, left, value);
+        break;
+    }
+    case nlohmann::detail::value_t::string:
+        AddToTable(table, left, right.get<std::string>());
+        break;
+    case nlohmann::detail::value_t::boolean:
+        AddToTable(table, left, right.get<bool>());
+        break;
+    case nlohmann::detail::value_t::number_integer:
+        AddToTable(table, left, right.get<int64_t>());
+        break;
+    case nlohmann::detail::value_t::number_unsigned:
+        AddToTable(table, left, right.get<uint64_t>());
+        break;
+    case nlohmann::detail::value_t::number_float:
+        AddToTable(table, left, right.get<double>());
+        break;
+    case nlohmann::detail::value_t::binary:
+        beammp_lua_error("JsonDecode can't handle binary blob in json, ignoring");
+        return;
+    case nlohmann::detail::value_t::discarded:
+        return;
+    default:
+        beammp_assert_not_reachable();
+    }
+}
+
+sol::table LuaAPI::Util::JsonDecode(sol::this_state s, const std::string& string) {
+    sol::state_view StateView(s);
+    auto table = StateView.create_tab if (!nlohmann::json::accept(str)) {
+        beammp_lua_error("string given to JsonDecode is not valid json: `" + str + "`");
+        return sol::lua_nil;
+    }
+    nlohmann::json json = nlohmann::json::parse(str);
+    if (json.is_object()) {
+        for (const auto& entry : json.items()) {
+            JsonDecodeRecursive(StateView, table, entry.key(), entry.value());
+        }
+    } else if (json.is_array()) {
+        for (const auto& entry : json) {
+            JsonDecodeRecursive(StateView, table, "", entry);
+        }
+    } else {
+        beammp_lua_error("JsonDecode expected array or object json, instead got " + std::string(json.type_name()));
+        return sol::lua_nil;
+    }
+    return table;
+}
+
+sol::table LuaAPI::FS::ListDirectories(sol::this_state s, const std::string& path) {
+    if (!std::filesystem::exists(Path)) {
+        return sol::lua_nil;
+    }
+    auto table = s.create_table();
+    for (const auto& entry : std::filesystem::directory_iterator(Path)) {
+        if (entry.is_directory()) {
+            table[table.size() + 1] = entry.path().lexically_relative(Path).string();
+        }
+    }
+    return table;
+}
+
+sol::table LuaAPI::FS::ListFiles(sol::this_state s, const std::string& path) {
+    if (!std::filesystem::exists(Path)) {
+        return sol::lua_nil;
+    }
+    auto table = s.create_table();
+    for (const auto& entry : std::filesystem::directory_iterator(Path)) {
+        if (entry.is_regular_file() || entry.is_symlink()) {
+            table[table.size() + 1] = entry.path().lexically_relative(Path).string();
+        }
+    }
+    return table;
 }

@@ -65,7 +65,7 @@ public:
         std::string Resource { "Resources" };
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};
-        std::string Password{};
+        std::string Password {};
         std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
         std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
         bool HTTPServerEnabled { false };
@@ -218,6 +218,16 @@ void RegisterThread(const std::string& str);
         do {                                                                                 \
             Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
         } while (false)
+    #define beammp_lua_info(x)                                                               \
+        do {                                                                                 \
+            Application::Console().Write(_this_location + std::string("[LUA INFO] ") + (x)); \
+        } while (false)
+    #define beammp_lua_debug(x)                                                               \
+        do {                                                                                  \
+            if (Application::Settings.DebugModeEnabled) {                                     \
+            Application::Console().Write(_this_location + std::string("[LUA DEBUG] ") + (x)); \
+        }                                                                                     \
+        } while (false)
     #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
     #define beammp_debug(x)                                                                   \
         do {                                                                                  \
@@ -248,8 +258,6 @@ void RegisterThread(const std::string& str);
     #define beammp_debugf(...) beammp_debug(fmt::format(__VA_ARGS__))
     #define beammp_warnf(...) beammp_warn(fmt::format(__VA_ARGS__))
     #define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
-    #define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
-    #define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
 
 #else // DOCTEST_CONFIG_DISABLE
 

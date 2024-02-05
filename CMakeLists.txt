@@ -22,7 +22,7 @@ add_subdirectory(deps/BeamMP-Protocol)
 ### SETTINGS ###
 
 # add all headers (.h, .hpp) to this
-set(PRJ_HEADERS 
+set(PRJ_HEADERS
     include/ArgsParser.h
     include/BoostAliases.h
     include/Common.h
@@ -31,21 +31,22 @@ set(PRJ_HEADERS
     include/CustomAssert.h
     include/Defer.h
     include/Environment.h
+    include/FileWatcher.h
     include/Http.h
     include/IThreaded.h
     include/Json.h
     include/LuaAPI.h
+    include/LuaPlugin.h
+    include/Plugin.h
+    include/PluginManager.h
     include/RWMutex.h
     include/SignalHandling.h
     include/TConfig.h
     include/TConsole.h
     include/THeartbeatThread.h
-    include/TLuaEngine.h
-    include/TLuaPlugin.h
-    include/TPluginMonitor.h
     include/TScopedTimer.h
+    include/Value.h
     include/VehicleData.h
-    include/Env.h
     include/Network.h
 )
 # add all source files (.cpp) to this, except the one with main()
@@ -53,18 +54,17 @@ set(PRJ_SOURCES
     src/ArgsParser.cpp
     src/Common.cpp
     src/Compat.cpp
+    src/FileWatcher.cpp
     src/Http.cpp
     src/LuaAPI.cpp
+    src/LuaPlugin.cpp
     src/SignalHandling.cpp
     src/TConfig.cpp
     src/TConsole.cpp
     src/THeartbeatThread.cpp
-    src/TLuaEngine.cpp
-    src/TLuaPlugin.cpp
-    src/TPluginMonitor.cpp
     src/TScopedTimer.cpp
+    src/Value.cpp
     src/VehicleData.cpp
-    src/Env.cpp
     src/Network.cpp
 )
 
