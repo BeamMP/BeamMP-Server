@@ -24,9 +24,9 @@ public:
     /// so try not to wait on these futures without a timeout.
     ///
     /// This function should not block.
-    std::vector<std::shared_future<std::optional<Value>>> trigger_event(const std::string& event_name, const std::shared_ptr<Value>& args) {
+    std::vector<std::shared_future<std::vector<Value>>> trigger_event(const std::string& event_name, const std::shared_ptr<Value>& args) {
         // results will go in here
-        std::vector<std::shared_future<std::optional<Value>>> results;
+        std::vector<std::shared_future<std::vector<Value>>> results;
         // synchronize practically grabs a lock to the mutex, this is (as the name suggests)
         // a synchronization point. technically, it could dead-lock if something that is called
         // in this locked context tries to lock the m_plugins mutex.
@@ -40,9 +40,9 @@ public:
             (void)name; // ignore the name
             // propagates the event to the plugin, this returns a future
             // we assume that at this point no plugin-specific code has executed
-            auto maybe_result = plugin->handle_event(event_name, args);
+            auto result = plugin->handle_event(event_name, args);
             // if the plugin had no handler, this result has no value, and we can ignore it
-            results.push_back(maybe_result);
+            results.push_back(std::move(result));
         }
         return results;
     }
@@ -67,4 +67,3 @@ private:
     /// All plugins as pointers to allow inheritance.
     SynchronizedHashMap<std::string, Plugin::Pointer> m_plugins;
 };
-

@@ -34,11 +34,11 @@ static int lua_panic_handler(lua_State* state) {
     return 1;
 }
 
-#define beammp_lua_debugf(...) beammp_debugf("[lua:{}] {}", name(), fmt::format(__VA_ARGS__))
-#define beammp_lua_infof(...) beammp_infof("[lua:{}] {}", name(), fmt::format(__VA_ARGS__))
-#define beammp_lua_warnf(...) beammp_warnf("[lua:{}] {}", name(), fmt::format(__VA_ARGS__))
-#define beammp_lua_errorf(...) beammp_errorf("[lua:{}] {}", name(), fmt::format(__VA_ARGS__))
-#define beammp_lua_tracef(...) beammp_tracef("[lua:{}] {}", name(), fmt::format(__VA_ARGS__))
+#define beammp_lua_debugf(...) beammp_debugf("[{}] {}", name(), fmt::format(__VA_ARGS__))
+#define beammp_lua_infof(...) beammp_infof("[{}] {}", name(), fmt::format(__VA_ARGS__))
+#define beammp_lua_warnf(...) beammp_warnf("[{}] {}", name(), fmt::format(__VA_ARGS__))
+#define beammp_lua_errorf(...) beammp_errorf("[{}] {}", name(), fmt::format(__VA_ARGS__))
+#define beammp_lua_tracef(...) beammp_tracef("[{}] {}", name(), fmt::format(__VA_ARGS__))
 
 static constexpr const char* ERR_HANDLER = "__beammp_lua_error_handler";
 
@@ -131,10 +131,59 @@ Error LuaPlugin::initialize_libraries() {
     glob["MP"]["GetPluginPath"] = [this] {
         return std::filesystem::absolute(m_path).string();
     };
-    glob["MP"]["RegisterEvent"] = [this] (const std::string& event_name, const std::string& handler) {
-
+    glob["MP"]["RegisterEvent"] = [this](const std::string& event_name, const sol::object& handler) {
+        if (handler.get_type() == sol::type::string) {
+            m_event_handlers_named[event_name].push_back(handler.as<std::string>());
+        } else if (handler.get_type() == sol::type::function) {
+            auto fn = handler.as<sol::protected_function>();
+            fn.set_error_handler(m_state.globals()[ERR_HANDLER]);
+            m_event_handlers[event_name].push_back(fn);
+        } else {
+            beammp_lua_errorf("Invalid call to MP.RegisterEvent for event '{}': Expected string or function as second argument", event_name);
+        }
     };
-
+    glob["MP"]["Post"] = [this](const sol::protected_function& fn) {
+        boost::asio::post(m_io, [fn] {
+            fn();
+        });
+    };
+    glob["MP"]["TriggerLocalEvent"] = [this](const std::string& event_name, sol::variadic_args args) -> sol::table {
+        std::vector<sol::object> args_vec(args.begin(), args.end());
+        ValueTuple values {};
+        values.reserve(args_vec.size());
+        for (const auto& obj : args_vec) {
+            auto res = sol_obj_to_value(obj);
+            if (res) [[likely]] {
+                values.emplace_back(res.move());
+            } else {
+                beammp_lua_errorf("Can't serialize an argument across boundaries (for passing to a MP.TriggerLocalEvent): {}", res.error);
+                values.emplace_back(Null {});
+            }
+        }
+        auto results = handle_event(event_name, std::make_shared<Value>(std::move(values)));
+        auto result = m_state.create_table();
+        result["__INTERNAL"] = results;
+        // waits for a specific number of milliseconds for a result to be available, returns false if timed out, true if ready.
+        result["WaitForMS"] = [](const sol::object& self, int milliseconds) {
+            std::shared_future<std::vector<Value>> future = self.as<sol::table>()["__INTERNAL"];
+            auto status = future.wait_for(std::chrono::milliseconds(milliseconds));
+            return status == std::future_status::ready;
+        };
+        // waits indefinitely for all results to be available
+        result["Wait"] = [](const sol::table& self) {
+            std::shared_future<std::vector<Value>> future = self["__INTERNAL"];
+            future.wait();
+        };
+        // waits indefinitely for all results to be available, then returns them
+        result["Results"] = [this](const sol::table& self) -> sol::table {
+            std::shared_future<std::vector<Value>> future = self["__INTERNAL"];
+            future.wait();
+            Value results = future.get();
+            auto lua_res = boost::apply_visitor(ValueToLuaVisitor(m_state), results);
+            return lua_res;
+        };
+        return result;
+    };
     glob["MP"]["ScheduleCallRepeat"] = [this](size_t ms, sol::function fn, sol::variadic_args args) {
         return l_mp_schedule_call_repeat(ms, fn, args);
     };
@@ -145,7 +194,7 @@ Error LuaPlugin::initialize_libraries() {
         // this has to be post()-ed, otherwise the call will not cancel (not sure why)
         boost::asio::post(m_io, [this, timer] {
             if (!timer) {
-                beammp_lua_errorf("uct.cancel_scheduled_call: timer already cancelled");
+                beammp_lua_errorf("MP.cancel_scheduled_call: timer already cancelled");
                 return;
             }
             beammp_lua_debugf("Cancelling timer");
@@ -156,8 +205,8 @@ Error LuaPlugin::initialize_libraries() {
     };
 
     glob["MP"]["GetOSName"] = &LuaAPI::MP::GetOSName;
-    //glob["MP"]["GetTimeMS"] = &LuaAPI::MP::GetTimeMS;
-    //glob["MP"]["GetTimeS"] = &LuaAPI::MP::GetTimeS;
+    // glob["MP"]["GetTimeMS"] = &LuaAPI::MP::GetTimeMS;
+    // glob["MP"]["GetTimeS"] = &LuaAPI::MP::GetTimeS;
 
     glob.create_named("Util");
     glob["Util"]["JsonEncode"] = &LuaAPI::Util::JsonEncode;
@@ -420,40 +469,70 @@ std::filesystem::path LuaPlugin::path() const {
     return m_path;
 }
 
-std::shared_future<std::optional<Value>> LuaPlugin::handle_event(const std::string& event_name, const std::shared_ptr<Value>& args) {
-    std::shared_ptr<std::promise<std::optional<Value>>> promise = std::make_shared<std::promise<std::optional<Value>>>();
-    std::shared_future<std::optional<Value>> future { promise->get_future() };
-    boost::asio::post(m_io, [this, event_name, args, promise, future] {
-        try {
-            if (m_state.globals()[event_name].valid() && m_state.globals()[event_name].get_type() == sol::type::function) {
-                auto fn = m_state.globals().get<sol::protected_function>(event_name);
-                fn.set_error_handler(m_state.globals()[ERR_HANDLER]);
-                auto lua_args = boost::apply_visitor(ValueToLuaVisitor(m_state), *args);
-                sol::protected_function_result res;
+std::shared_future<std::vector<Value>> LuaPlugin::handle_event(const std::string& event_name, const std::shared_ptr<Value>& args) {
+    std::shared_ptr<std::promise<std::vector<Value>>> promise = std::make_shared<std::promise<std::vector<Value>>>();
+    std::shared_future<std::vector<Value>> futures { promise->get_future() };
+    boost::asio::post(m_io, [this, event_name, args, promise, futures] {
+        std::vector<Value> results {};
+        if (m_event_handlers_named.contains(event_name)) {
+            auto handler_names = m_event_handlers_named.at(event_name);
+            for (const auto& handler_name : handler_names) {
+                try {
+                    if (m_state.globals()[handler_name].valid() && m_state.globals()[handler_name].get_type() == sol::type::function) {
+                        auto fn = m_state.globals().get<sol::protected_function>(handler_name);
+                        fn.set_error_handler(m_state.globals()[ERR_HANDLER]);
+                        auto lua_args = boost::apply_visitor(ValueToLuaVisitor(m_state), *args);
+                        sol::protected_function_result res;
 
-                if (args->which() == VALUE_TYPE_IDX_TUPLE) {
-                    res = fn(sol::as_args(lua_args.as<std::vector<sol::object>>()));
-                } else {
-                    res = fn(lua_args);
-                }
-                if (res.valid()) {
-                    auto maybe_res = sol_obj_to_value(res.get<sol::object>());
-                    if (maybe_res) {
-                        promise->set_value(maybe_res.move());
-                        return;
+                        if (args->which() == VALUE_TYPE_IDX_TUPLE) {
+                            res = fn(sol::as_args(lua_args.as<std::vector<sol::object>>()));
+                        } else {
+                            res = fn(lua_args);
+                        }
+                        if (res.valid()) {
+                            auto maybe_res = sol_obj_to_value(res.get<sol::object>());
+                            if (maybe_res) {
+                                results.emplace_back(maybe_res.move());
+                            } else {
+                                beammp_lua_errorf("Error using return value from event handler '{}' for event '{}': {}", handler_name, event_name, maybe_res.error);
+                            }
+                        }
                     } else {
-                        beammp_lua_errorf("Error using return value from event handler '{}': {}", event_name, maybe_res.error);
+                        beammp_lua_errorf("Invalid event handler '{}' for event '{}': Handler either doesn't exist or isn't a global function", handler_name, event_name);
                     }
+                } catch (const std::exception& e) {
+                    beammp_lua_errorf("Error finding and running event handler for event '{}': {}. It was called with argument(s): {}", event_name, e.what(), boost::apply_visitor(ValueToStringVisitor(), *args));
                 }
-            } else { // TODO: CONTINUE HERE
-                beammp_lua_tracef("No handler for event '{}'", event_name);
             }
-        } catch (const std::exception& e) {
-            beammp_lua_errorf("Error finding and running event handler for event '{}': {}. It was called with argument(s): {}", event_name, e.what(), boost::apply_visitor(ValueToStringVisitor(), *args));
         }
-        promise->set_value(std::nullopt);
+        if (m_event_handlers.contains(event_name)) {
+            auto handlers = m_event_handlers.at(event_name);
+            for (const auto& fn : handlers) {
+                try {
+                    auto lua_args = boost::apply_visitor(ValueToLuaVisitor(m_state), *args);
+                    sol::protected_function_result res;
+
+                    if (args->which() == VALUE_TYPE_IDX_TUPLE) {
+                        res = fn(sol::as_args(lua_args.as<std::vector<sol::object>>()));
+                    } else {
+                        res = fn(lua_args);
+                    }
+                    if (res.valid()) {
+                        auto maybe_res = sol_obj_to_value(res.get<sol::object>());
+                        if (maybe_res) {
+                            results.emplace_back(maybe_res.move());
+                        } else {
+                            beammp_lua_errorf("Error using return value from event handler '<<lua function {:p}>>' for event '{}': {}", fn.pointer(), event_name, maybe_res.error);
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    beammp_lua_errorf("Error finding and running event handler for event '{}': {}. It was called with argument(s): {}", event_name, e.what(), boost::apply_visitor(ValueToStringVisitor(), *args));
+                }
+            }
+        }
+        promise->set_value(std::move(results));
     });
-    return future;
+    return futures;
 }
 
 size_t LuaPlugin::memory_usage() const {
@@ -486,7 +565,7 @@ void LuaPlugin::l_print(const sol::variadic_args& args) {
 
 void LuaPlugin::l_mp_schedule_call_helper(const boost::system::error_code& err, std::shared_ptr<Timer> timer, const sol::function& fn, std::shared_ptr<ValueTuple> args) {
     if (err) {
-        beammp_lua_debugf("uct.schedule_call_repeat: {}", err.what());
+        beammp_lua_debugf("MP.schedule_call_repeat: {}", err.what());
         return;
     }
     timer->timer.expires_from_now(timer->interval);
@@ -513,13 +592,13 @@ void LuaPlugin::l_mp_schedule_call_once(size_t ms, const sol::function& fn, sol:
         if (res) [[likely]] {
             tuple->emplace_back(res.move());
         } else {
-            beammp_lua_errorf("Can't serialize an argument across boundaries (for passing to a uct.schedule_call_* later): ", res.error);
+            beammp_lua_errorf("Can't serialize an argument across boundaries (for passing to a MP.schedule_call_* later): ", res.error);
             tuple->emplace_back(Null {});
         }
     }
     timer->timer.async_wait([this, timer, fn, tuple](const auto& err) {
         if (err) {
-            beammp_lua_debugf("uct.schedule_call_once: {}", err.what());
+            beammp_lua_debugf("MP.schedule_call_once: {}", err.what());
             return;
         }
         sol::protected_function prot(fn);
@@ -546,7 +625,7 @@ std::shared_ptr<Timer> LuaPlugin::l_mp_schedule_call_repeat(size_t ms, const sol
         if (res) [[likely]] {
             tuple->emplace_back(res.move());
         } else {
-            beammp_lua_errorf("Can't serialize an argument across boundaries (for passing to a uct.schedule_call_* later): ", res.error);
+            beammp_lua_errorf("Can't serialize an argument across boundaries (for passing to a MP.schedule_call_* later): ", res.error);
             tuple->emplace_back(Null {});
         }
     }

@@ -1,4 +1,5 @@
 #include "Value.h"
+#include "Common.h"
 #include "boost/json/value_from.hpp"
 #include "sol/as_args.hpp"
 #include "sol/types.hpp"
@@ -185,7 +186,12 @@ TEST_CASE("ValueToStringVisitor") {
     }
 }
 
-Result<Value> sol_obj_to_value(const sol::object& obj, const std::function<Result<Value>(const sol::object&)>& invalid_provider) {
+static Result<Value> sol_obj_to_value_impl(const sol::object& obj, const std::function<Result<Value>(const sol::object&)>& invalid_provider, size_t max_depth, size_t depth) {
+    if (depth == max_depth) {
+        beammp_errorf("Maximum depth reached for sol_obj_to_value_impl, assuming recursion and returning null for this branch");
+        return { Null {} };
+    }
+    ++depth;
     switch (obj.get_type()) {
     case sol::type::none:
     case sol::type::lua_nil:
@@ -262,7 +268,7 @@ Result<Value> sol_obj_to_value(const sol::object& obj, const std::function<Resul
                 } else {
                     return Result<Value>("Failed to construct hash-map: Can't use non-string and non-number object as key for table{}", "");
                 }
-                auto maybe_val = sol_obj_to_value(v, invalid_provider);
+                auto maybe_val = sol_obj_to_value_impl(v, invalid_provider, max_depth, depth);
                 if (maybe_val) [[likely]] {
                     map.emplace(key, maybe_val.move());
                 } else {
@@ -277,7 +283,7 @@ Result<Value> sol_obj_to_value(const sol::object& obj, const std::function<Resul
                 if (size_t(i) >= array.size()) {
                     array.resize(size_t(i) + 1, Null {});
                 }
-                auto maybe_val = sol_obj_to_value(v, invalid_provider);
+                auto maybe_val = sol_obj_to_value_impl(v, invalid_provider, max_depth, depth);
                 if (maybe_val) [[likely]] {
                     array[size_t(i)] = maybe_val.move();
                 } else {
@@ -297,6 +303,10 @@ Result<Value> sol_obj_to_value(const sol::object& obj, const std::function<Resul
         break;
     }
     return Result<Value>("Unknown type, can't convert to value.{}", "");
+}
+
+Result<Value> sol_obj_to_value(const sol::object& obj, const std::function<Result<Value>(const sol::object&)>& invalid_provider, size_t max_depth) {
+    return sol_obj_to_value_impl(obj, invalid_provider, max_depth, 0);
 }
 
 TEST_CASE("sol_obj_to_value") {
@@ -467,4 +477,3 @@ sol::object ValueToLuaVisitor::operator()(const HashMap<std::string, Value>& map
     }
     return table;
 }
-

@@ -82,7 +82,7 @@ public:
     /// Path to the folder containing this lua plugin.
     virtual std::filesystem::path path() const override;
     /// Dispatches the event to the thread which runs all lua.
-    virtual std::shared_future<std::optional<Value>> handle_event(const std::string& event_name, const std::shared_ptr<Value>& args) override;
+    virtual std::shared_future<std::vector<Value>> handle_event(const std::string& event_name, const std::shared_ptr<Value>& args) override;
     /// Returns the memory usage of this thread, updated at the slowest every 5 seconds.
     virtual size_t memory_usage() const override;
 
@@ -95,9 +95,9 @@ private:
     boost::asio::io_context m_io;
 
     /// Event handlers which are legacy-style (by name)
-    HashMap<std::string, std::string> m_event_handlers_named {};
+    HashMap<std::string, std::vector<std::string>> m_event_handlers_named {};
     /// Event handlers which are functions (v4 style)
-    HashMap<std::string, sol::protected_function> m_event_handlers {};
+    HashMap<std::string, std::vector<sol::protected_function>> m_event_handlers {};
 
     /// Main (and usually only) lua state of this plugin.
     /// ONLY access this from the m_thread thread.

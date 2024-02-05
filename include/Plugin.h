@@ -58,7 +58,7 @@ public:
     /// Instructs the plugin to handle the given event, with the given arguments.
     /// Returns a future with a result if this event will be handled by the plugin, otherwise must return
     /// std::nullopt.
-    virtual std::shared_future<std::optional<Value>> handle_event(const std::string& event_name, const std::shared_ptr<Value>& args) = 0;
+    virtual std::shared_future<std::vector<Value>> handle_event(const std::string& event_name, const std::shared_ptr<Value>& args) = 0;
 
     /// Returns how much memory this state thinks it uses.
     ///
