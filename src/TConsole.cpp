@@ -22,7 +22,6 @@
 
 #include "CustomAssert.h"
 #include "LuaAPI.h"
-#include "TLuaEngine.h"
 
 #include <ctime>
 #include <mutex>
@@ -154,6 +153,7 @@ void TConsole::StartLoggingToFile() {
 
 void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
     if (!mIsLuaConsole) {
+        /*
         if (!mLuaEngine) {
             beammp_error("Lua engine not initialized yet, please wait and try again");
             return;
@@ -170,6 +170,7 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
         }
         mCachedRegularHistory = mCommandline->history();
         mCommandline->set_history(mCachedLuaHistory);
+        */
     }
 }
 
@@ -222,11 +223,13 @@ void TConsole::Command_Lua(const std::string&, const std::vector<std::string>& a
     if (args.size() == 1) {
         auto NewStateId = args.at(0);
         beammp_assert(!NewStateId.empty());
+        /*
         if (mLuaEngine->HasState(NewStateId)) {
             ChangeToLuaConsole(NewStateId);
         } else {
             Application::Console().WriteRaw("Lua state '" + NewStateId + "' is not a known state. Didn't switch to Lua.");
         }
+        */
     } else if (args.size() == 0) {
         ChangeToLuaConsole(mDefaultStateId);
     }
@@ -446,6 +449,7 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
 
     auto ElapsedTime = mUptimeTimer.GetElapsedTime();
 
+    /*
     auto network = mLuaEngine->Network();
     auto clients = network->all_clients();
 
@@ -473,12 +477,13 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
            << "\t\tBad:                         [ " << SystemsBadList << " ]\n"
            << "\t\tShutting down:               [ " << SystemsShuttingDownList << " ]\n"
            << "\t\tShut down:                   [ " << SystemsShutdownList << " ]\n"
-           << "";
+           << "";*/
 
     Application::Console().WriteRaw(Status.str());
 }
 
 void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
+    /*
     auto FutureIsNonNil =
         [](const std::shared_ptr<TLuaResult>& Future) {
             if (!Future->Error && Future->Result.valid()) {
@@ -522,9 +527,11 @@ void TConsole::RunAsCommand(const std::string& cmd, bool IgnoreNotACommand) {
         }
         Application::Console().WriteRaw(Reply.str());
     }
+    */
 }
 
 void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
+    /*
     if (cmd == "exit") {
         ChangeToRegularConsole();
     } else if (cmd == "queued") {
@@ -574,6 +581,7 @@ Commands
     } else {
         beammp_error("internal command '" + cmd + "' is not known");
     }
+        */
 }
 
 TConsole::TConsole() {
@@ -592,6 +600,7 @@ void TConsole::InitializeCommandline() {
             auto [cmd, args] = ParseCommand(TrimmedCmd);
             mCommandline->write(mCommandline->prompt() + TrimmedCmd);
             if (mIsLuaConsole) {
+                    /*
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
                 } else if (!cmd.empty() && cmd.at(0) == ':') {
@@ -603,7 +612,9 @@ void TConsole::InitializeCommandline() {
                         beammp_lua_error("error in " + mStateId + ": " + Future->ErrorMessage);
                     }
                 }
+                    */
             } else {
+                /*
                 if (!mLuaEngine) {
                     beammp_error("Attempted to run a command before Lua engine started. Please wait and try again.");
                 } else if (cmd == "exit") {
@@ -619,7 +630,7 @@ void TConsole::InitializeCommandline() {
                     } else {
                         RunAsCommand(TrimmedCmd);
                     }
-                }
+                }*/
             }
         } catch (const std::exception& e) {
             beammp_error("Console died with: " + std::string(e.what()) + ". This could be a fatal error and could cause the server to terminate.");
@@ -629,6 +640,7 @@ void TConsole::InitializeCommandline() {
         std::vector<std::string> suggestions;
         try {
             if (mIsLuaConsole) { // if lua
+                /*
                 if (!mLuaEngine) {
                     beammp_info("Lua not started yet, please try again in a second");
                 } else {
@@ -650,7 +662,6 @@ void TConsole::InitializeCommandline() {
                     if (stub.rfind('.') != stub.size() - 1 && !tablekeys.empty()) {
                         tablekeys.pop_back();
                     }
-
                     auto keys = mLuaEngine->GetStateTableKeysForState(mStateId, tablekeys);
 
                     for (const auto& key : keys) { // go through each bottom-level key
@@ -666,17 +677,18 @@ void TConsole::InitializeCommandline() {
                             suggestions.push_back(prefix + before_last_atom + key);
                         }
                     }
-                }
+                }*/
             } else { // if not lua
                 if (stub.find("lua") == 0) { // starts with "lua" means we should suggest state names
                     std::string after_prefix = TrimString(stub.substr(3));
-                    auto stateNames = mLuaEngine->GetLuaStateNames();
+                    /*auto stateNames = mLuaEngine->GetLuaStateNames();
 
                     for (const auto& name : stateNames) {
                         if (name.find(after_prefix) == 0) {
                             suggestions.push_back("lua " + name);
                         }
                     }
+                    */
                 } else {
                     for (const auto& [cmd_name, cmd_fn] : mCommandMap) {
                         if (cmd_name.find(stub) == 0) {
@@ -712,6 +724,8 @@ void TConsole::WriteRaw(const std::string& str) {
     }
 }
 
+/*
 void TConsole::InitializeLuaConsole(TLuaEngine& Engine) {
     mLuaEngine = &Engine;
 }
+*/

@@ -2,6 +2,7 @@
 
 #include "Error.h"
 #include "Value.h"
+#include <filesystem>
 #include <future>
 #include <utility>
 #include <variant>
@@ -17,7 +18,7 @@ public:
     /// Self-managing pointer type of this plugin.
     using Pointer = std::unique_ptr<Plugin>;
     /// Allocates a Plugin of the specific derived plugin type.
-    template<typename T, typename... Args>
+    template <typename T, typename... Args>
     static Pointer make_pointer(Args&&... args) {
         return std::unique_ptr<Plugin>(new T(std::forward<Args>(args)...));
     }
@@ -65,4 +66,3 @@ public:
     /// should be returned regardless.
     virtual size_t memory_usage() const = 0;
 };
-

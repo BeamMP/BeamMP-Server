@@ -40,18 +40,18 @@ void FileWatcher::on_tick(const boost::system::error_code& err) {
     timer->expires_at(timer->expires_at() + *m_seconds);
 
     if (err) {
-        l::error("FileWatcher encountered error: {}", err.message());
+        beammp_errorf("FileWatcher encountered error: {}", err.message());
         // TODO: Should any further action be taken?
     } else {
         try {
             check_files();
         } catch (const std::exception& e) {
-            l::error("FileWatcher exception while checking files: {}", e.what());
+            beammp_errorf("FileWatcher exception while checking files: {}", e.what());
         }
         try {
             check_directories();
         } catch (const std::exception& e) {
-            l::error("FileWatcher exception while checking directories: {}", e.what());
+            beammp_errorf("FileWatcher exception while checking directories: {}", e.what());
         }
     }
     // finally start the timer again, deadline has already been set at the beginning

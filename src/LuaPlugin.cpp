@@ -11,10 +11,6 @@
 #include <cctype>
 #include <chrono>
 #include <filesystem>
-#include <fmt/chrono.h>
-#include <fmt/ostream.h>
-#include <fmt/ranges.h>
-#include <fmt/std.h>
 #include <functional>
 #include <lauxlib.h>
 #include <lua.h>
@@ -157,8 +153,8 @@ Error LuaPlugin::initialize_libraries() {
     };
 
     glob["MP"]["GetOSName"] = &LuaAPI::MP::GetOSName;
-    glob["MP"]["GetTimeMS"] = &LuaAPI::MP::GetTimeMS;
-    glob["MP"]["GetTimeS"] = &LuaAPI::MP::GetTimeS;
+    //glob["MP"]["GetTimeMS"] = &LuaAPI::MP::GetTimeMS;
+    //glob["MP"]["GetTimeS"] = &LuaAPI::MP::GetTimeS;
 
     glob.create_named("Util");
     glob["Util"]["JsonEncode"] = &LuaAPI::Util::JsonEncode;

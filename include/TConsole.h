@@ -30,8 +30,6 @@
 #include <unordered_map>
 #include <vector>
 
-class TLuaEngine;
-
 class TConsole {
 public:
     TConsole();
@@ -41,7 +39,7 @@ public:
 
     void Write(const std::string& str);
     void WriteRaw(const std::string& str);
-    void InitializeLuaConsole(TLuaEngine& Engine);
+//    void InitializeLuaConsole(TLuaEngine& Engine);
     void BackupOldLog();
     void StartLoggingToFile();
     Commandline& Internal() { return *mCommandline; }
@@ -81,7 +79,6 @@ private:
     std::unique_ptr<Commandline> mCommandline { nullptr };
     std::vector<std::string> mCachedLuaHistory;
     std::vector<std::string> mCachedRegularHistory;
-    TLuaEngine* mLuaEngine { nullptr };
     bool mIsLuaConsole { false };
     bool mFirstTime { true };
     std::string mStateId;

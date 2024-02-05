@@ -415,7 +415,7 @@ boost::json::value ValueToJsonVisitor::operator()(const HashMap<std::string, Val
     auto jo = boost::json::object();
     for (const auto& [key, val] : map) {
         auto json_val = boost::apply_visitor(ValueToJsonVisitor(), val);
-        jo.emplace(key, json_val);
+        jo.emplace(std::string(key), json_val);
     }
     return jo;
 }

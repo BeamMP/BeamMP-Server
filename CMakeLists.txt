@@ -48,6 +48,7 @@ set(PRJ_HEADERS
     include/Value.h
     include/VehicleData.h
     include/Network.h
+    include/Env.h
 )
 # add all source files (.cpp) to this, except the one with main()
 set(PRJ_SOURCES
@@ -66,6 +67,7 @@ set(PRJ_SOURCES
     src/Value.cpp
     src/VehicleData.cpp
     src/Network.cpp
+    src/Env.cpp
 )
 
 find_package(Lua REQUIRED)
@@ -96,6 +98,7 @@ set(PRJ_LIBRARIES
     ${LUA_LIBRARIES}
     zstd::libzstd_static
     Boost::thread
+    Boost::json
     glm::glm
 )
 
@@ -103,7 +106,7 @@ set(PRJ_LIBRARIES
 find_package(fmt CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(doctest CONFIG REQUIRED)
-find_package(Boost REQUIRED COMPONENTS thread)
+find_package(Boost REQUIRED COMPONENTS thread json)
 find_package(httplib CONFIG REQUIRED)
 find_package(libzip CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)

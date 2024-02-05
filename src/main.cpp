@@ -20,12 +20,12 @@
 #include "Common.h"
 #include "Http.h"
 #include "LuaAPI.h"
+#include "LuaPlugin.h"
+#include "Plugin.h"
+#include "PluginManager.h"
 #include "SignalHandling.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
-#include "TLuaEngine.h"
-#include "TPluginMonitor.h"
-
 #include <cstdlib>
 #include <iostream>
 #include <thread>
@@ -148,23 +148,27 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
         Shutdown = true;
     });
+    /*
     Application::RegisterShutdownHandler([] {
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
         TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
     });
 
-    auto LuaEngine = std::make_shared<TLuaEngine>();
     Application::Console().InitializeLuaConsole(*LuaEngine);
+
+    */
 
     RegisterThread("Main");
 
     beammp_trace("Running in debug mode on a debug build");
     std::shared_ptr<Network> network = std::make_shared<Network>();
     THeartbeatThread Heartbeat(network);
-    LuaEngine->SetNetwork(network);
+    // LuaEngine->SetNetwork(network);
     Application::CheckForUpdates();
 
-    TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
+    // TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
+    PluginManager PluginManager;
+    (void)PluginManager.add_plugin(Plugin::make_pointer<LuaPlugin>("Resources/Server/Test"));
 
     if (Application::Settings.HTTPServerEnabled) {
         Http::Server::THttpServerInstance HttpServerInstance {};

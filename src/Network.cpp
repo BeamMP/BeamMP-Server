@@ -8,7 +8,6 @@
 #include "Packet.h"
 #include "ProtocolVersion.h"
 #include "ServerInfo.h"
-#include "TLuaEngine.h"
 #include "Transport.h"
 #include "Util.h"
 #include <boost/asio/buffer.hpp>
@@ -920,7 +919,7 @@ void Network::handle_authentication(ClientID id, const bmp::Packet& packet, std:
             disconnect(id, err);
             return;
         }
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", "", client->name.get(), client->role.get(), client->is_guest.get(), client->identifiers.get());
+        /* auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", "", client->name.get(), client->role.get(), client->is_guest.get(), client->identifiers.get());
         TLuaEngine::WaitForAll(Futures);
         bool NotAllowed = std::any_of(Futures.begin(), Futures.end(),
             [](const std::shared_ptr<TLuaResult>& Result) {
@@ -935,6 +934,10 @@ void Network::handle_authentication(ClientID id, const bmp::Packet& packet, std:
                 }
                 return false;
             });
+        */
+        std::string Reason {};
+        bool NotAllowed = false;
+        bool NotAllowedWithReason = false;
 
         if (NotAllowed) {
             bmp::Packet auth_fail_packet {

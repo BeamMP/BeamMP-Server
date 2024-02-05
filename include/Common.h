@@ -23,7 +23,11 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <fmt/chrono.h>
 #include <fmt/format.h>
+#include <fmt/ostream.h>
+#include <fmt/ranges.h>
+#include <fmt/std.h>
 #include <functional>
 #include <memory>
 #include <mutex>
