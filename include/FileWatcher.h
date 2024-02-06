@@ -6,6 +6,7 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/signals2.hpp>
 #include <boost/system/detail/error_code.hpp>
 #include <boost/thread/scoped_thread.hpp>
 #include <boost/thread/synchronized_value.hpp>
@@ -44,6 +45,8 @@ public:
     /// Add a directory to watch. If any file in the directory, or any subdirectories, change,
     /// FileWatcher::sig_file_changed is triggered.
     void watch_files_in(const std::filesystem::path& dir);
+
+    boost::signals2::signal<void(const std::filesystem::path&)> sig_file_changed {};
 
 private:
     /// Entry point for the timer thread.
@@ -87,4 +90,3 @@ private:
     /// Thread on which all watching and timing work runs.
     boost::scoped_thread<> m_thread;
 };
-

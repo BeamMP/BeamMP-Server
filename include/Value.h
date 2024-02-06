@@ -265,5 +265,5 @@ private:
 /// "invalid provider" means "provider of values for invalid sol values". If nullptr, then
 /// any invalid value (such as a function) will be resolved to an error instead and the function will
 /// fail.
-Result<Value> sol_obj_to_value(const sol::object&, const std::function<Result<Value>(const sol::object&)>& invalid_provider = nullptr, size_t max_depth = 500);
+Result<Value> sol_obj_to_value(const sol::object&, const std::function<Result<Value>(const sol::object&)>& invalid_provider = nullptr, size_t max_depth = 50);
 

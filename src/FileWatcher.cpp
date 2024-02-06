@@ -93,9 +93,9 @@ void FileWatcher::check_file(const std::filesystem::path& file) {
         } else {
             if (m_file_mod_times.at(file) != time) {
                 beammp_tracef("File changed: {}", file);
+                sig_file_changed(file);;
                 m_file_mod_times.at(file) = time;
             }
         }
     }
 }
-

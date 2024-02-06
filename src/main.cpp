@@ -169,6 +169,10 @@ int BeamMPServerMain(MainArguments Arguments) {
     // TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
     PluginManager PluginManager;
     (void)PluginManager.add_plugin(Plugin::make_pointer<LuaPlugin>("Resources/Server/Test"));
+    auto console = Plugin::make_pointer<LuaPlugin>(BEAMMP_MEMORY_STATE);
+    (void)PluginManager.add_plugin(console);
+
+    dynamic_cast<LuaPlugin&>(*console).run_raw_lua(R"(local n = 12; return n)");
 
     PluginManager.trigger_event("onInit", std::make_shared<Value>(HashMap<std::string, Value> {
                                               { "big", "balls" },

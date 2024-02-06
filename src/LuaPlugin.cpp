@@ -113,19 +113,19 @@ Error LuaPlugin::initialize_libraries() {
     glob["MP"]["GetStateMemoryUsage"] = [this]() { return size_t(m_state.memory_used()); };
     glob["MP"]["GetPluginMemoryUsage"] = [this] { return memory_usage(); };
     glob["MP"]["LogError"] = [this](const sol::variadic_args& args) {
-        auto result = print_impl(args);
+        auto result = print_impl({ args.begin(), args.end() });
         beammp_lua_errorf("[out] {}", result);
     };
     glob["MP"]["LogWarn"] = [this](const sol::variadic_args& args) {
-        auto result = print_impl(args);
+        auto result = print_impl({ args.begin(), args.end() });
         beammp_lua_warnf("[out] {}", result);
     };
     glob["MP"]["LogInfo"] = [this](const sol::variadic_args& args) {
-        auto result = print_impl(args);
+        auto result = print_impl({ args.begin(), args.end() });
         beammp_lua_infof("[out] {}", result);
     };
     glob["MP"]["LogDebug"] = [this](const sol::variadic_args& args) {
-        auto result = print_impl(args);
+        auto result = print_impl({ args.begin(), args.end() });
         beammp_lua_debugf("[out] {}", result);
     };
     glob["MP"]["GetPluginPath"] = [this] {
@@ -256,9 +256,7 @@ Error LuaPlugin::load_files() {
         m_extensions_watcher.watch_files_in(extensions_folder);
         // set up callback for when an extension changes.
         // we simply reload the extension as if nothing happened :)
-        // TODO
-        /*
-        m_extensions_watch_conn = m_extensions_watcher.sig_file_changed.connect_scoped(
+        m_extensions_watch_conn = m_extensions_watcher.sig_file_changed.connect(
             [this, extensions_folder](const std::filesystem::path& path) {
                 if (path.extension() != ".lua") {
                     return; // ignore
@@ -272,23 +270,24 @@ Error LuaPlugin::load_files() {
                     load_extension(path, rel);
                 }
             });
-        */
     } else {
         beammp_lua_debugf("Plugin '{}' has no extensions.", name());
     }
-    auto main_lua = m_path / "main.lua";
-    if (std::filesystem::exists(main_lua)) {
-        // TODO: Check that it's a regular file or symlink
-        beammp_lua_debugf("Found main.lua: {}", main_lua.string());
-        boost::asio::post(m_io, [this, main_lua] {
-            try {
-                m_state.safe_script_file(main_lua.string());
-            } catch (const std::exception& e) {
-                beammp_lua_errorf("Error running '{}': {}", main_lua.string(), e.what());
-            }
-        });
-    } else {
-        beammp_lua_warnf("No 'main.lua' found, a plugin should have a 'main.lua'.");
+    if (m_path != BEAMMP_MEMORY_STATE) {
+        auto main_lua = m_path / "main.lua";
+        if (std::filesystem::exists(main_lua)) {
+            // TODO: Check that it's a regular file or symlink
+            beammp_lua_debugf("Found main.lua: {}", main_lua.string());
+            boost::asio::post(m_io, [this, main_lua] {
+                try {
+                    m_state.safe_script_file(main_lua.string());
+                } catch (const std::exception& e) {
+                    beammp_lua_errorf("Error running '{}': {}", main_lua.string(), e.what());
+                }
+            });
+        } else {
+            beammp_lua_warnf("No 'main.lua' found, a plugin should have a 'main.lua'.");
+        }
     }
     return {};
 }
@@ -559,7 +558,7 @@ void LuaPlugin::cancel_timer(const std::shared_ptr<Timer>& timer) {
 }
 
 void LuaPlugin::l_print(const sol::variadic_args& args) {
-    auto result = print_impl(args);
+    auto result = print_impl({ args.begin(), args.end() });
     beammp_lua_infof("{}", result);
 }
 
@@ -635,8 +634,7 @@ std::shared_ptr<Timer> LuaPlugin::l_mp_schedule_call_repeat(size_t ms, const sol
     return timer;
 }
 
-std::string LuaPlugin::print_impl(const sol::variadic_args& args) {
-    auto obj_args = std::vector<sol::object>(args.begin(), args.end());
+std::string LuaPlugin::print_impl(const std::vector<sol::object>& obj_args) {
     std::string result {};
     result.reserve(500);
 
@@ -677,4 +675,29 @@ std::string LuaPlugin::print_impl(const sol::variadic_args& args) {
         }
     }
     return result;
+}
+void LuaPlugin::run_raw_lua(const std::string& raw) {
+    if (raw.empty()) {
+        return;
+    }
+    std::string id = "";
+    if (raw.size() < 5) {
+        id = raw;
+    } else {
+        id = raw.substr(0, 5) + "...";
+    }
+    boost::asio::post(m_io, [this, raw, id] {
+        try {
+            beammp_debugf("Running '{}'", raw);
+            auto res = m_state.safe_script(raw, id);
+            if (res.valid()) {
+                std::vector<sol::object> args;
+                args.push_back(res.get<sol::object>());
+                auto str = print_impl(args);
+                Application::Console().WriteRaw(fmt::format("=> {}", str));
+            }
+        } catch (const sol::error& err) {
+            beammp_lua_errorf("Error: {}", err.what());
+        }
+    });
 }

@@ -48,7 +48,7 @@ public:
     }
 
     /// Adds the plugin, calls Plugin::initialize(), and so on
-    [[nodiscard]] Error add_plugin(Plugin::Pointer&& plugin) {
+    [[nodiscard]] Error add_plugin(Plugin::Pointer plugin) {
         auto plugins = m_plugins.synchronize();
         if (plugins->contains(plugin->name())) {
             return Error("Plugin with the name '{}' already exists, refusing to replace it.", plugin->name());
@@ -61,6 +61,10 @@ public:
             }
             return {};
         }
+    }
+
+    HashMap<std::string, Plugin::Pointer> get_plugins() {
+        return *m_plugins;
     }
 
 private:

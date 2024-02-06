@@ -169,8 +169,7 @@ void TConsole::ChangeToLuaConsole(const std::string& LuaStateId) {
             mCommandline->set_prompt("lua> ");
         }
         mCachedRegularHistory = mCommandline->history();
-        mCommandline->set_history(mCachedLuaHistory);
-        */
+        mCommandline->set_history(mCachedLuaHistory);*/
     }
 }
 
@@ -223,6 +222,7 @@ void TConsole::Command_Lua(const std::string&, const std::vector<std::string>& a
     if (args.size() == 1) {
         auto NewStateId = args.at(0);
         beammp_assert(!NewStateId.empty());
+        // TODO: This must be implemented
         /*
         if (mLuaEngine->HasState(NewStateId)) {
             ChangeToLuaConsole(NewStateId);
@@ -232,6 +232,7 @@ void TConsole::Command_Lua(const std::string&, const std::vector<std::string>& a
         */
     } else if (args.size() == 0) {
         ChangeToLuaConsole(mDefaultStateId);
+        // CONTINUE HERE
     }
 }
 

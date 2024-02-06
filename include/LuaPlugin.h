@@ -8,6 +8,7 @@
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/date_time/posix_time/posix_time_duration.hpp>
+#include <boost/signals2.hpp>
 #include <boost/thread/scoped_thread.hpp>
 #include <boost/thread/synchronized_value.hpp>
 #include <sol/forward.hpp>
@@ -23,6 +24,8 @@ struct Timer {
     boost::asio::deadline_timer timer;
     boost::posix_time::milliseconds interval;
 };
+
+static constexpr const char* BEAMMP_MEMORY_STATE = ":console:";
 
 class LuaPlugin : public Plugin {
 public:
@@ -45,6 +48,10 @@ public:
             }
         });
     }
+
+    /// Dangerous: Only use this on a special memory state.
+    /// Results are *printed to stdout*.
+    void run_raw_lua(const std::string& raw);
 
 private:
     /// Initializes the error handlers for panic and exceptions.
@@ -117,6 +124,8 @@ private:
 
     FileWatcher m_extensions_watcher { 2 };
 
+    boost::signals2::connection m_extensions_watch_conn;
+
     std::vector<std::shared_ptr<Timer>> m_timers {};
 
     std::shared_ptr<Timer> make_timer(size_t ms);
@@ -131,5 +140,5 @@ private:
     void l_mp_schedule_call_helper(const boost::system::error_code& err, std::shared_ptr<Timer> timer, const sol::function& fn, std::shared_ptr<ValueTuple> args);
     void l_mp_schedule_call_once(size_t ms, const sol::function& fn, sol::variadic_args args);
 
-    std::string print_impl(const sol::variadic_args&);
+    std::string print_impl(const std::vector<sol::object>&);
 };

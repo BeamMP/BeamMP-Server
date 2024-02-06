@@ -188,7 +188,6 @@ TEST_CASE("ValueToStringVisitor") {
 
 static Result<Value> sol_obj_to_value_impl(const sol::object& obj, const std::function<Result<Value>(const sol::object&)>& invalid_provider, size_t max_depth, size_t depth) {
     if (depth == max_depth) {
-        beammp_errorf("Maximum depth reached for sol_obj_to_value_impl, assuming recursion and returning null for this branch");
         return { Null {} };
     }
     ++depth;

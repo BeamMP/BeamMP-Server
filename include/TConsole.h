@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Cryptography.h"
+#include "LuaPlugin.h"
 #include "TScopedTimer.h"
 #include "commandline.h"
 #include <atomic>
@@ -82,7 +83,7 @@ private:
     bool mIsLuaConsole { false };
     bool mFirstTime { true };
     std::string mStateId;
-    const std::string mDefaultStateId = "BEAMMP_SERVER_CONSOLE";
+    const std::string mDefaultStateId = BEAMMP_MEMORY_STATE;
     std::ofstream mLogFileStream;
     std::mutex mLogFileStreamMtx;
     TScopedTimer mUptimeTimer{};

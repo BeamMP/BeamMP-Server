@@ -16,11 +16,11 @@
 class Plugin {
 public:
     /// Self-managing pointer type of this plugin.
-    using Pointer = std::unique_ptr<Plugin>;
+    using Pointer = std::shared_ptr<Plugin>;
     /// Allocates a Plugin of the specific derived plugin type.
     template <typename T, typename... Args>
     static Pointer make_pointer(Args&&... args) {
-        return std::unique_ptr<Plugin>(new T(std::forward<Args>(args)...));
+        return std::shared_ptr<Plugin>(new T(std::forward<Args>(args)...));
     }
 
     /// Default constructor to enable derived classes to default-construct.
