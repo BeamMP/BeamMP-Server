@@ -58,6 +58,7 @@ private:
     void Command_Status(const std::string& cmd, const std::vector<std::string>& args);
     void Command_Settings(const std::string& cmd, const std::vector<std::string>& args);
     void Command_Clear(const std::string&, const std::vector<std::string>& args);
+    void Command_Version(const std::string& cmd, const std::vector<std::string>& args);
 
     void Command_Say(const std::string& FullCommand);
     bool EnsureArgsCount(const std::vector<std::string>& args, size_t n);
@@ -75,6 +76,7 @@ private:
         { "settings", [this](const auto& a, const auto& b) { Command_Settings(a, b); } },
         { "clear", [this](const auto& a, const auto& b) { Command_Clear(a, b); } },
         { "say", [this](const auto&, const auto&) { Command_Say(""); } }, // shouldn't actually be called
+        { "version", [this](const auto& a, const auto& b) { Command_Version(a, b); } },
     };
 
     std::unique_ptr<Commandline> mCommandline { nullptr };

@@ -247,7 +247,8 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
         lua [state id]          switches to lua, optionally into a specific state id's lua
         settings [command]      sets or gets settings for the server, run `settings help` for more info
         status                  how the server is doing and what it's up to
-        clear                   clears the console window)";
+        clear                   clears the console window
+        version                 displays the server version)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
@@ -265,6 +266,14 @@ void TConsole::Command_Clear(const std::string&, const std::vector<std::string>&
         return;
     }
     mCommandline->write("\x1b[;H\x1b[2J");
+}
+
+void TConsole::Command_Version(const std::string& cmd, const std::vector<std::string>& args) {
+    if (!EnsureArgsCount(args, 0)) {
+        return;
+    }
+
+    Application::Console().WriteRaw("Current version: v" + Application::ServerVersionString());
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
