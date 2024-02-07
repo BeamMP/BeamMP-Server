@@ -273,7 +273,7 @@ void TConsole::Command_Version(const std::string& cmd, const std::vector<std::st
         return;
     }
 
-    Application::Console().WriteRaw("Current version: " + Application::ServerVersionString());
+    Application::Console().WriteRaw("Current version: v" + Application::ServerVersionString());
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
