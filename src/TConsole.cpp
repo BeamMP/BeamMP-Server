@@ -248,7 +248,7 @@ void TConsole::Command_Help(const std::string&, const std::vector<std::string>& 
         settings [command]      sets or gets settings for the server, run `settings help` for more info
         status                  how the server is doing and what it's up to
         clear                   clears the console window
-        version                 return current version to console)";
+        version                 displays the server version)";
     Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
 }
 
@@ -273,7 +273,7 @@ void TConsole::Command_Version(const std::string& cmd, const std::vector<std::st
         return;
     }
 
-    mCommandline->write("Current version: " + Application::ServerVersionString());
+    Application::Console().WriteRaw("Current version: " + Application::ServerVersionString());
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {
