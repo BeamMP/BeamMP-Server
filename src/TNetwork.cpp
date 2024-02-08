@@ -630,6 +630,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
 }
 
 int TNetwork::OpenID() {
+    std::unique_lock OpenIDLock(mOpenIDMutex);
     int ID = 0;
     bool found;
     do {
