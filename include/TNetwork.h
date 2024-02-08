@@ -55,6 +55,7 @@ private:
     TResourceManager& mResourceManager;
     std::thread mUDPThread;
     std::thread mTCPThread;
+    std::mutex mOpenIDMutex;
 
     std::vector<uint8_t> UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint);
     void HandleDownload(TConnection&& TCPSock);
