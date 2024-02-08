@@ -1,6 +1,25 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include "TPluginMonitor.h"
 
 #include "TLuaEngine.h"
+#include <filesystem>
 
 TPluginMonitor::TPluginMonitor(const fs::path& Path, std::shared_ptr<TLuaEngine> Engine)
     : mEngine(Engine)
@@ -9,7 +28,7 @@ TPluginMonitor::TPluginMonitor(const fs::path& Path, std::shared_ptr<TLuaEngine>
     if (!fs::exists(mPath)) {
         fs::create_directories(mPath);
     }
-    for (const auto& Entry : fs::recursive_directory_iterator(mPath)) {
+    for (const auto& Entry : fs::recursive_directory_iterator(mPath, fs::directory_options::follow_directory_symlink)) {
         // TODO: trigger an event when a subfolder file changes
         if (Entry.is_regular_file()) {
             mFileTimes[Entry.path().string()] = fs::last_write_time(Entry.path());

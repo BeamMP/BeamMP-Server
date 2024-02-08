@@ -1,3 +1,21 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include "Client.h"
 
 #include "CustomAssert.h"
@@ -53,9 +71,9 @@ std::string TClient::GetCarPositionRaw(int Ident) {
     try {
         return mVehiclePosition.at(size_t(Ident));
     } catch (const std::out_of_range& oor) {
+        beammp_debugf("Failed to get vehicle position for {}: {}", Ident, oor.what());
         return "";
     }
-    return "";
 }
 
 void TClient::Disconnect(std::string_view Reason) {
@@ -146,6 +164,8 @@ std::optional<std::weak_ptr<TClient>> GetClient(TServer& Server, int ID) {
                 MaybeClient = CPtr;
                 return false;
             }
+        } else {
+            beammp_debugf("Found an expired client while looking for id {}", ID);
         }
         return true;
     });

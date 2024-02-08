@@ -1,3 +1,21 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #pragma once
 
 #include <array>
@@ -43,6 +61,7 @@ public:
     struct TSettings {
         std::string ServerName { "BeamMP Server" };
         std::string ServerDesc { "BeamMP Default Description" };
+        std::string ServerTags { "Freeroam" };
         std::string Resource { "Resources" };
         std::string MapName { "/levels/gridmap_v2/info.json" };
         std::string Key {};
@@ -133,8 +152,10 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 1, 3 };
+    static inline Version mVersion { 3, 2, 2 };
 };
+
+void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);
 
 std::string ThreadName(bool DebugModeOverride = false);
 void RegisterThread(const std::string& str);

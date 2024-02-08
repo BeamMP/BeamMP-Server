@@ -1,3 +1,21 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include "THeartbeatThread.h"
 
 #include "Client.h"
@@ -129,6 +147,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&version=" << Application::ServerVersionString()
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
         << "&name=" << Application::Settings.ServerName
+        << "&tags=" << Application::Settings.ServerTags
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()

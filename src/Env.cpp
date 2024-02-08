@@ -16,24 +16,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#pragma once
+#include "Env.h"
+#include <optional>
 
-#include "Common.h"
+std::optional<std::string> Env::Get(Env::Key key) {
+    auto StrKey = ToString(key);
+    auto Value = std::getenv(StrKey.data());
+    if (!Value || std::string_view(Value).empty()) {
+        return std::nullopt;
+    }
+    return Value;
+}
 
-class TResourceManager {
-public:
-    TResourceManager();
-
-    [[nodiscard]] size_t MaxModSize() const { return mMaxModSize; }
-    [[nodiscard]] std::string FileList() const { return mFileList; }
-    [[nodiscard]] std::string TrimmedList() const { return mTrimmedList; }
-    [[nodiscard]] std::string FileSizes() const { return mFileSizes; }
-    [[nodiscard]] int ModsLoaded() const { return mModsLoaded; }
-
-private:
-    size_t mMaxModSize = 0;
-    std::string mFileSizes;
-    std::string mFileList;
-    std::string mTrimmedList;
-    int mModsLoaded = 0;
-};
+std::string_view Env::ToString(Env::Key key) {
+    switch (key) {
+    case Key::PROVIDER_UPDATE_MESSAGE:
+        return "BEAMMP_PROVIDER_UPDATE_MESSAGE";
+        break;
+    }
+    return "";
+}

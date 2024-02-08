@@ -1,3 +1,21 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include "TConsole.h"
 #include "Common.h"
 #include "Compat.h"
@@ -50,17 +68,6 @@ TEST_CASE("TrimString") {
     CHECK(TrimString("  ") == "");
     CHECK(TrimString(" \t\n\r ") == "");
     CHECK(TrimString("") == "");
-}
-
-// TODO: add unit tests to SplitString
-static inline void SplitString(std::string const& str, const char delim, std::vector<std::string>& out) {
-    size_t start;
-    size_t end = 0;
-
-    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
-        end = str.find(delim, start);
-        out.push_back(str.substr(start, end - start));
-    }
 }
 
 static std::string GetDate() {

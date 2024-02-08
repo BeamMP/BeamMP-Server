@@ -42,7 +42,7 @@ We only allow building unmodified (original) source code for public use. `master
 
 ## Supported Operating Systems
 
-The code itself supports (latest stable) Linux and Windows. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
+The code itself supports (latest stable) Linux, Windows and FreeBSD. In terms of actual build support, for now we usually only distribute Windows binaries and Linux. For any other distro or OS, you just have to find the same libraries listed in [Runtime Dependencies](#runtime-dependencies) further down the page, and it should build fine.
 
 Recommended compilers: MSVC, GCC, CLANG. 
 
@@ -52,23 +52,33 @@ You can find precompiled binaries under [Releases](https://github.com/BeamMP/Bea
 
 On Linux, you need some dependencies to **build** the server (on Windows, you don't):
 
-For Debian, Ubuntu and others you can find scripts that do this in `scripts/`.
-
 ```
 liblua5.3-dev curl zip unzip tar cmake make git g++
 ```
 
-The names of each package may change depending on your platform. See in `scripts/` or use a search engine to find out what they're called for you.
+You can install these with your distribution's package manager. You will need sudo or need root for ONLY this step.
+
+The names of each package may change depending on your platform.
+
+If you are building for ARM (like aarch64), you need to run `export VCPKG_FORCE_SYSTEM_BINARIES=1` before the following commands.
 
 You can build on **Windows, Linux** or other platforms by following these steps:
 
 1. Check out the repository with git: `git clone --recursive https://github.com/BeamMP/BeamMP-Server`.
 2. Go into the directory `cd BeamMP-Server`.
 3. Run CMake `cmake -S . -B bin -DCMAKE_BUILD_TYPE=Release` - this can take a few minutes and may take a lot of disk space and bandwidth.
-4. Build via `cmake --build bin --parallel -t BeamMP-Server`.
+4. Build via `cmake --build bin --parallel --config Release -t BeamMP-Server`.
 5. Your executable can be found in `bin/`.
 
 When you make changes to the code, you only have to run step 4 again.
+### Building for FreeBSD
+Building is only supported for major release branches of FreeBSD that are currently not EOL. The build process is the same as on Linux, although build dependencies can be universally installed from ports via pkg:
+```
+pkg install git cmake-core zip bash devel/ninja devel/pkgconf lua53
+```
+After installing the necessary build dependencies, follow the Linux build instructions beginning from step 3. Beware that running the initial cmake command will compile vcpkg from source, as vcpkg has no native FreeBSD port - this may take some time.
+
+On systems with a single logical CPU core, `make` may fail to build the server when using the `--parallel` option when calling CMake. If you see error messages related to make, simply omit the `--parallel` from the command: `cmake --build bin --config Release -t BeamMP-Server`.
 
 ### Runtime Dependencies
 
@@ -82,9 +92,3 @@ Windows: No libraries.
 
 ## Support
 The BeamMP project is supported by community donations via our [Patreon](https://www.patreon.com/BeamMP). This brings perks such as Patreon-only channels on our Discord, early access to new updates, and more server keys. 
-
-## Copyright
-
-Copyright (c) 2019-present Anonymous275 (@Anonymous-275), Lion Kortlepel (@lionkor).
-BeamMP-Server code is not in the public domain and is not free software. One must be granted explicit permission by the copyright holder(s) in order to modify or distribute any part of the source or binaries. Special permission to modify the source-code is implicitly granted only for the purpose of upstreaming those changes directly to github.com/BeamMP/BeamMP-Server via a GitHub pull-request.
-Commercial usage is prohibited, unless explicit permission has been granted prior to usage.

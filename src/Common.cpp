@@ -1,8 +1,28 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include "Common.h"
 
+#include "Env.h"
 #include "TConsole.h"
 #include <array>
 #include <charconv>
+#include <fmt/core.h>
 #include <iostream>
 #include <map>
 #include <regex>
@@ -201,8 +221,11 @@ void Application::CheckForUpdates() {
             auto MyVersion = ServerVersion();
             auto RemoteVersion = Version(VersionStrToInts(Response));
             if (IsOutdated(MyVersion, RemoteVersion)) {
-                std::string RealVersionString = RemoteVersion.AsString();
-                beammp_warn(std::string(ANSI_YELLOW_BOLD) + "NEW VERSION IS OUT! Please update to the new version (v" + RealVersionString + ") of the BeamMP-Server! Download it here: https://beammp.com/! For a guide on how to update, visit: https://wiki.beammp.com/en/home/server-maintenance#updating-the-server" + std::string(ANSI_RESET));
+                std::string RealVersionString = std::string("v") + RemoteVersion.AsString();
+                const std::string DefaultUpdateMsg = "NEW VERSION IS OUT! Please update to the new version ({}) of the BeamMP-Server! Download it here: https://beammp.com/! For a guide on how to update, visit: https://wiki.beammp.com/en/home/server-maintenance#updating-the-server";
+                auto UpdateMsg = Env::Get(Env::Key::PROVIDER_UPDATE_MESSAGE).value_or(DefaultUpdateMsg);
+                UpdateMsg = fmt::vformat(std::string_view(UpdateMsg), fmt::make_format_args(RealVersionString));
+                beammp_warnf("{}{}{}", ANSI_YELLOW_BOLD, UpdateMsg, ANSI_RESET);
             } else {
                 if (FirstTime) {
                     beammp_info("Server up-to-date!");
@@ -270,6 +293,8 @@ void RegisterThread(const std::string& str) {
     ThreadId = std::to_string(getpid()); // todo: research if 'getpid()' is a valid, posix compliant alternative to 'gettid()'
 #elif defined(BEAMMP_LINUX)
     ThreadId = std::to_string(gettid());
+#elif defined(BEAMMP_FREEBSD)
+    ThreadId = std::to_string(getpid());
 #endif
     if (Application::Settings.DebugModeEnabled) {
         std::ofstream ThreadFile(".Threads.log", std::ios::app);
@@ -347,4 +372,15 @@ std::string GetPlatformAgnosticErrorString() {
 #else
     return "(no human-readable errors on this platform)";
 #endif
+}
+
+// TODO: add unit tests to SplitString
+void SplitString(const std::string& str, const char delim, std::vector<std::string>& out) {
+    size_t start;
+    size_t end = 0;
+
+    while ((start = str.find_first_not_of(delim, end)) != std::string::npos) {
+        end = str.find(delim, start);
+        out.push_back(str.substr(start, end - start));
+    }
 }

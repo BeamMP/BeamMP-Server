@@ -1,6 +1,25 @@
+// BeamMP, the BeamNG.drive multiplayer mod.
+// Copyright (C) 2024 BeamMP Ltd., BeamMP team and contributors.
+//
+// BeamMP Ltd. can be contacted by electronic mail via contact@beammp.com.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #include "Common.h"
 
 #include "TConfig.h"
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <istream>
@@ -8,30 +27,35 @@
 
 // General
 static constexpr std::string_view StrDebug = "Debug";
+static constexpr std::string_view EnvStrDebug = "BEAMMP_DEBUG";
 static constexpr std::string_view StrPrivate = "Private";
+static constexpr std::string_view EnvStrPrivate = "BEAMMP_PRIVATE";
 static constexpr std::string_view StrPort = "Port";
+static constexpr std::string_view EnvStrPort = "BEAMMP_PORT";
 static constexpr std::string_view StrMaxCars = "MaxCars";
+static constexpr std::string_view EnvStrMaxCars = "BEAMMP_MAX_CARS";
 static constexpr std::string_view StrMaxPlayers = "MaxPlayers";
+static constexpr std::string_view EnvStrMaxPlayers = "BEAMMP_MAX_PLAYERS";
 static constexpr std::string_view StrMap = "Map";
+static constexpr std::string_view EnvStrMap = "BEAMMP_MAP";
 static constexpr std::string_view StrName = "Name";
+static constexpr std::string_view EnvStrName = "BEAMMP_NAME";
 static constexpr std::string_view StrDescription = "Description";
+static constexpr std::string_view EnvStrDescription = "BEAMMP_DESCRIPTION";
+static constexpr std::string_view StrTags = "Tags";
+static constexpr std::string_view EnvStrTags = "BEAMMP_TAGS";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
+static constexpr std::string_view EnvStrResourceFolder = "BEAMMP_RESOURCE_FOLDER";
 static constexpr std::string_view StrAuthKey = "AuthKey";
+static constexpr std::string_view EnvStrAuthKey = "BEAMMP_AUTH_KEY";
 static constexpr std::string_view StrLogChat = "LogChat";
+static constexpr std::string_view EnvStrLogChat = "BEAMMP_LOG_CHAT";
 static constexpr std::string_view StrPassword = "Password";
 
 // Misc
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
-
-// HTTP
-static constexpr std::string_view StrHTTPServerEnabled = "HTTPServerEnabled";
-static constexpr std::string_view StrHTTPServerUseSSL = "UseSSL";
-static constexpr std::string_view StrSSLKeyPath = "SSLKeyPath";
-static constexpr std::string_view StrSSLCertPath = "SSLCertPath";
-static constexpr std::string_view StrHTTPServerPort = "HTTPServerPort";
-static constexpr std::string_view StrHTTPServerIP = "HTTPServerIP";
 
 TEST_CASE("TConfig::TConfig") {
     const std::string CfgFile = "beammp_server_testconfig.toml";
@@ -56,7 +80,6 @@ TEST_CASE("TConfig::TConfig") {
     const auto table = toml::parse(CfgFile);
     CHECK(table.at("General").is_table());
     CHECK(table.at("Misc").is_table());
-    CHECK(table.at("HTTP").is_table());
 
     fs::remove(CfgFile);
 }
@@ -102,6 +125,8 @@ void TConfig::FlushToFile() {
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
     data["General"][StrName.data()] = Application::Settings.ServerName;
+    SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
+    data["General"][StrTags.data()] = Application::Settings.ServerTags;
     data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
     data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
     data["General"][StrMap.data()] = Application::Settings.MapName;
@@ -113,23 +138,13 @@ void TConfig::FlushToFile() {
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
     data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
-    SetComment(data["Misc"][StrSendErrors.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
+    SetComment(data["Misc"][StrSendErrors.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
     data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
-    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
-    // HTTP
-    data["HTTP"][StrSSLKeyPath.data()] = Application::Settings.SSLKeyPath;
-    data["HTTP"][StrSSLCertPath.data()] = Application::Settings.SSLCertPath;
-    data["HTTP"][StrHTTPServerPort.data()] = Application::Settings.HTTPServerPort;
-    SetComment(data["HTTP"][StrHTTPServerIP.data()].comments(), " Which IP to listen on. Pick 0.0.0.0 for a public-facing server with no specific IP, and 127.0.0.1 or 'localhost' for a local server.");
-    data["HTTP"][StrHTTPServerIP.data()] = Application::Settings.HTTPServerIP;
-    data["HTTP"][StrHTTPServerUseSSL.data()] = Application::Settings.HTTPServerUseSSL;
-    SetComment(data["HTTP"][StrHTTPServerUseSSL.data()].comments(), " Recommended to have enabled for servers which face the internet. With SSL the server will serve https and requires valid key and cert files");
-    data["HTTP"][StrHTTPServerEnabled.data()] = Application::Settings.HTTPServerEnabled;
-    SetComment(data["HTTP"][StrHTTPServerEnabled.data()].comments(), " Enables the internal HTTP server");
+    SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     std::stringstream Ss;
     Ss << "# This is the BeamMP-Server config file.\n"
           "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
-          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://beammp.com/k/dashboard` on the left under \"Keys\"\n"
+          "# IMPORTANT: Fill in the AuthKey with the key you got from `https://keymaster.beammp.com/` on the left under \"Keys\"\n"
        << data;
     auto File = std::fopen(mConfigFileName.c_str(), "w+");
     if (!File) {
@@ -159,19 +174,38 @@ void TConfig::CreateConfigFile() {
     FlushToFile();
 }
 
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, std::string& OutValue) {
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue) {
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+            OutValue = std::string(envp);
+            return;
+        }
+    }
     if (Table[Category.c_str()][Key.data()].is_string()) {
         OutValue = Table[Category.c_str()][Key.data()].as_string();
     }
 }
 
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, bool& OutValue) {
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue) {
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+            auto Str = std::string(envp);
+            OutValue = Str == "1" || Str == "true";
+            return;
+        }
+    }
     if (Table[Category.c_str()][Key.data()].is_boolean()) {
         OutValue = Table[Category.c_str()][Key.data()].as_boolean();
     }
 }
 
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, int& OutValue) {
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue) {
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+            OutValue = int(std::strtol(envp, nullptr, 10));
+            return;
+        }
+    }
     if (Table[Category.c_str()][Key.data()].is_integer()) {
         OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
     }
@@ -181,29 +215,23 @@ void TConfig::ParseFromFile(std::string_view name) {
     try {
         toml::value data = toml::parse<toml::preserve_comments>(name.data());
         // GENERAL
-        TryReadValue(data, "General", StrDebug, Application::Settings.DebugModeEnabled);
-        TryReadValue(data, "General", StrPrivate, Application::Settings.Private);
-        TryReadValue(data, "General", StrPort, Application::Settings.Port);
-        TryReadValue(data, "General", StrMaxCars, Application::Settings.MaxCars);
-        TryReadValue(data, "General", StrMaxPlayers, Application::Settings.MaxPlayers);
-        TryReadValue(data, "General", StrMap, Application::Settings.MapName);
-        TryReadValue(data, "General", StrName, Application::Settings.ServerName);
-        TryReadValue(data, "General", StrDescription, Application::Settings.ServerDesc);
-        TryReadValue(data, "General", StrResourceFolder, Application::Settings.Resource);
-        TryReadValue(data, "General", StrAuthKey, Application::Settings.Key);
-        TryReadValue(data, "General", StrLogChat, Application::Settings.LogChat);
-        TryReadValue(data, "General", StrPassword, Application::Settings.Password);
+        TryReadValue(data, "General", StrDebug, EnvStrDebug, Application::Settings.DebugModeEnabled);
+        TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Application::Settings.Private);
+        TryReadValue(data, "General", StrPort, EnvStrPort, Application::Settings.Port);
+        TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Application::Settings.MaxCars);
+        TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Application::Settings.MaxPlayers);
+        TryReadValue(data, "General", StrMap, EnvStrMap, Application::Settings.MapName);
+        TryReadValue(data, "General", StrName, EnvStrName, Application::Settings.ServerName);
+        TryReadValue(data, "General", StrDescription, EnvStrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrTags, EnvStrTags, Application::Settings.ServerTags);
+        TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
+        TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
+        TryReadValue(data, "General", StrPassword, "", Application::Settings.Password);
         // Misc
-        TryReadValue(data, "Misc", StrSendErrors, Application::Settings.SendErrors);
-        TryReadValue(data, "Misc", StrHideUpdateMessages, Application::Settings.HideUpdateMessages);
-        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, Application::Settings.SendErrorsMessageEnabled);
-        // HTTP
-        TryReadValue(data, "HTTP", StrSSLKeyPath, Application::Settings.SSLKeyPath);
-        TryReadValue(data, "HTTP", StrSSLCertPath, Application::Settings.SSLCertPath);
-        TryReadValue(data, "HTTP", StrHTTPServerPort, Application::Settings.HTTPServerPort);
-        TryReadValue(data, "HTTP", StrHTTPServerIP, Application::Settings.HTTPServerIP);
-        TryReadValue(data, "HTTP", StrHTTPServerEnabled, Application::Settings.HTTPServerEnabled);
-        TryReadValue(data, "HTTP", StrHTTPServerUseSSL, Application::Settings.HTTPServerUseSSL);
+        TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;
@@ -236,12 +264,9 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
     beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
-    beammp_debug(std::string(StrSSLKeyPath) + ": \"" + Application::Settings.SSLKeyPath + "\"");
-    beammp_debug(std::string(StrSSLCertPath) + ": \"" + Application::Settings.SSLCertPath + "\"");
-    beammp_debug(std::string(StrHTTPServerPort) + ": \"" + std::to_string(Application::Settings.HTTPServerPort) + "\"");
-    beammp_debug(std::string(StrHTTPServerIP) + ": \"" + Application::Settings.HTTPServerIP + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
     beammp_debug("Password Protected: " + std::string(Application::Settings.Password.empty() ? "false" : "true"));
@@ -298,4 +323,14 @@ void TConfig::ParseOldFormat() {
         }
         Str >> std::ws;
     }
+}
+std::string TConfig::TagsAsPrettyArray() const {
+    std::vector<std::string> TagsArray = {};
+    SplitString(Application::Settings.ServerTags, ',', TagsArray);
+    std::string Pretty = {};
+    for (size_t i = 0; i < TagsArray.size() - 1; ++i) {
+        Pretty += '\"' + TagsArray[i] + "\", ";
+    }
+    Pretty += '\"' + TagsArray.at(TagsArray.size() - 1) + "\"";
+    return Pretty;
 }
