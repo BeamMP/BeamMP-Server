@@ -120,7 +120,15 @@ void TClient::SetCarData(int Ident, const std::string& Data) {
     DeleteCar(Ident);
 }
 
+// TODO: count unicycles and vehicles different #246    sla-ppy
+// PROPOSAL: separate unicycles completely from vehicles???
 int TClient::GetCarCount() const {
+    std::unique_lock lock(mVehicleDataMutex);
+    for (auto& v : mVehicleData) {
+        if (v.ID() == mUnicycleID) {
+            return int(mVehicleData.size() - 1); // dont keep track of unicycles
+        }
+    }
     return int(mVehicleData.size());
 }
 
