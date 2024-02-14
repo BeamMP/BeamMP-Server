@@ -120,13 +120,13 @@ void TClient::SetCarData(int Ident, const std::string& Data) {
     DeleteCar(Ident);
 }
 
-// TODO: count unicycles and vehicles different #246    sla-ppy
-// PROPOSAL: separate unicycles completely from vehicles???
 int TClient::GetCarCount() const {
+    // mVechileData holds both unicycle and cars which both count towards the maximum car count
+    // spawning a unicycle meant reaching the max, hence being unable to spawn car. this dirty fixes the problem for now.
     std::unique_lock lock(mVehicleDataMutex);
     for (auto& v : mVehicleData) {
         if (v.ID() == mUnicycleID) {
-            return int(mVehicleData.size() - 1); // dont keep track of unicycles
+            return int(mVehicleData.size() - 1);
         }
     }
     return int(mVehicleData.size());
