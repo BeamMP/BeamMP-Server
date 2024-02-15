@@ -2,8 +2,10 @@ name: Windows
 
 on:
   push:
+    branches:
+      - 'develop'
+      - 'minor'
   pull_request:
-    types: [ready_for_review, opened, reopened]
 
 env:
   VCPKG_DEFAULT_TRIPLET: x64-windows-static

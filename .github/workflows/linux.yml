@@ -2,8 +2,10 @@ name: Linux
 
 on:
   push:
+    branches:
+      - 'develop'
+      - 'minor'
   pull_request:
-    types: [ready_for_review, opened, reopened]
 
 env: 
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
