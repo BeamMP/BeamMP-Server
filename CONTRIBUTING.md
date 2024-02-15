@@ -53,11 +53,28 @@ Do **NOT** pull with merge. This is the default git behavior for `git pull`, but
 
 The only acceptable merge commits are those which actually merge functionally different branches into each other, for example for merging one feature branch into another.
 
+## Workflow
+
+### Making an issue and fixing it
+
+1. Create an issue detailing the feature or bug.
+2. Assign a milestone to the issue, or wait for a maintainer to add a milestone to your issue.
+3. Fork the repository and base your work on the branch mentioned in the milestone attached to your issue (e.g. `v3.0.0 (develop)` -> `develop`).
+4. Program your feature or bug fix.
+5. Open a PR that references the issue by number in the format: `#12345`.
+6. Someone will review your PR and merge it, or ask for changes.
+
+### Fixing an existing issue
+
+1. Fork the repository and base your work on the branch mentioned in the milestone attached to your issue (e.g. `v3.0.0 (develop)` -> `develop`).
+2. Program your feature or bug fix.
+3. Open a PR that references the issue by number in the format: `#12345`.
+4. Someone will review your PR and merge it, or ask for changes.
+
 ## Branches
 
-### Which branch should I base my work on?
-
-Each *feature* or *bug-fix* is implemented on a new Git branch, branched off of the branch it should be based on. The `master` branch is usually stable, so we don't do development on it. It is always a safe bet to branch off of `master`, but it may be more work to merge later. Branches to base your work on are usually branches like `rc-v3.3.0`, when the latest public version is `3.2.0`, for example. These can often be found in Pull-Requests on GitHub which are tagged `Release Candidate`.
+- `minor`: Minor releases, like `v1.2.3` -> `v1.3.0` or `v1.2.3` -> `v1.2.4`.
+- `develop`: Major releases, like `v1.2.3` -> `v2.0.0`, and larger feature/minor releases.
 
 ## Unit tests & CI/CD
 
