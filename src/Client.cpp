@@ -121,6 +121,14 @@ void TClient::SetCarData(int Ident, const std::string& Data) {
 }
 
 int TClient::GetCarCount() const {
+    // mVechileData holds both unicycle and cars which both count towards the maximum car count
+    // spawning a unicycle meant reaching the max, hence being unable to spawn car. this dirty fixes the problem for now.
+    std::unique_lock lock(mVehicleDataMutex);
+    for (auto& v : mVehicleData) {
+        if (v.ID() == mUnicycleID) {
+            return int(mVehicleData.size() - 1);
+        }
+    }
     return int(mVehicleData.size());
 }
 
