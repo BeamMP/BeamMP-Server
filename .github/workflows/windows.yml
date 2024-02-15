@@ -1,6 +1,9 @@
 name: Windows
 
-on: [push]
+on:
+  push:
+  pull_request:
+    types: [ready_for_review, opened, reopened]
 
 env:
   VCPKG_DEFAULT_TRIPLET: x64-windows-static
