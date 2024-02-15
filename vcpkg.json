@@ -17,6 +17,8 @@
     "toml11",
     "zstd",
     "glm",
-    "libzip"
+    "libzip",
+    "spdlog",
+    "readline"
   ]
 }

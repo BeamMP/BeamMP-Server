@@ -10,6 +10,9 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 #include <thread>
 
 static const std::string sCommandlineArguments = R"(
@@ -64,6 +67,31 @@ int main(int argc, char** argv) {
     std::exit(MainRet);
 }
 
+static std::shared_ptr<spdlog::logger> default_logger;
+
+static void setup_logger() {
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_pattern("[%H:%M:%S] [%^%l%$] %v");
+    if (Application::Settings.DebugModeEnabled) {
+        console_sink->set_level(spdlog::level::debug);
+    } else {
+        console_sink->set_level(spdlog::level::info);
+    }
+
+    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>("Launcher.log", 1024 * 1024, 3, true);
+    file_sink->set_level(spdlog::level::trace);
+    file_sink->set_pattern("[%H:%M:%S.%e] [%t] [%l] %v");
+
+    default_logger = std::make_shared<spdlog::logger>(spdlog::logger("default", { console_sink, file_sink }));
+
+    default_logger->set_level(spdlog::level::trace);
+    default_logger->flush_on(spdlog::level::trace);
+
+    spdlog::set_default_logger(default_logger);
+
+    spdlog::debug("Logger initialized");
+}
+
 int BeamMPServerMain(MainArguments Arguments) {
     setlocale(LC_ALL, "C");
     ArgsParser Parser;
@@ -92,9 +120,10 @@ int BeamMPServerMain(MainArguments Arguments) {
         auto MaybeConfigPath = Parser.GetValueOfArgument({ "config" });
         if (MaybeConfigPath.has_value()) {
             ConfigPath = MaybeConfigPath.value();
-            beammp_info("Custom config requested via commandline arguments: '" + ConfigPath + "'");
+            // beammp_info("Custom config requested via commandline arguments: '" + ConfigPath + "'");
         }
     }
+    setup_logger();
     if (Parser.FoundArgument({ "working-directory" })) {
         auto MaybeWorkingDirectory = Parser.GetValueOfArgument({ "working-directory" });
         if (MaybeWorkingDirectory.has_value()) {

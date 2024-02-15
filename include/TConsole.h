@@ -11,6 +11,30 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <boost/container/deque.hpp>
+#include <boost/thread/scoped_thread.hpp>
+#include <boost/thread/synchronized_value.hpp>
+#include <memory>
+#include <optional>
+#include <span>
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/sinks/base_sink.h>
+#include <spdlog/sinks/sink.h>
+#include <string>
+#include <string_view>
+
+class TConsole;
+
+class ConsoleSink : public spdlog::sinks::base_sink<spdlog::details::null_mutex> {
+public:
+    ConsoleSink(TConsole& console);
+
+private:
+    void sink_it_(const spdlog::details::log_msg& msg) override;
+    void flush_() override;
+
+    TConsole* m_console;
+};
 
 class TLuaEngine;
 
