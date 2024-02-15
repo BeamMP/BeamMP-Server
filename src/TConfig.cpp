@@ -143,7 +143,7 @@ void TConfig::FlushToFile() {
     SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     std::stringstream Ss;
     Ss << "# This is the BeamMP-Server config file.\n"
-          "# Help & Documentation: `https://wiki.beammp.com/en/home/server-maintenance`\n"
+          "# Help & Documentation: `https://docs.beammp.com/server/server-maintenance/`\n"
           "# IMPORTANT: Fill in the AuthKey with the key you got from `https://keymaster.beammp.com/` on the left under \"Keys\"\n"
        << data;
     auto File = std::fopen(mConfigFileName.c_str(), "w+");
