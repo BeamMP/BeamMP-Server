@@ -16,6 +16,7 @@
     "sol2",
     "toml11",
     "zstd",
-    "glm"
+    "glm",
+    "libzip"
   ]
 }
