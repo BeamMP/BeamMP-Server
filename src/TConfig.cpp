@@ -253,6 +253,26 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
         TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
         TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
+
+        // Read into new Settings Singleton
+        TryReadValue(data, "General", StrDebug, EnvStrDebug, Application::Settings.DebugModeEnabled);
+        TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Application::Settings.Private);
+        TryReadValue(data, "General", StrPort, EnvStrPort, Application::Settings.Port);
+        TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Application::Settings.MaxCars);
+        TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Application::Settings.MaxPlayers);
+        TryReadValue(data, "General", StrMap, EnvStrMap, Application::Settings.MapName);
+        TryReadValue(data, "General", StrName, EnvStrName, Application::Settings.ServerName);
+        TryReadValue(data, "General", StrDescription, EnvStrDescription, Application::Settings.ServerDesc);
+        TryReadValue(data, "General", StrTags, EnvStrTags, Application::Settings.ServerTags);
+        TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
+        TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
+        TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
+        TryReadValue(data, "General", StrPassword, "", Application::Settings.Password);
+        // Misc
+        TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
+
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
         mFailed = true;

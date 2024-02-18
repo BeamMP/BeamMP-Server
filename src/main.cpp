@@ -29,6 +29,7 @@
 #include "TPluginMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
+#include "TSettings.h"
 
 #include <cstdint>
 #include <iostream>
@@ -164,6 +165,10 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
 
     SetupSignalHandlers();
+
+    Settings settings {};
+    settings.SettingsMap.emplace(Settings::Key::General_Name, Settings::SettingsTypeVariant { "Your mom" });
+    beammp_infof("Server name set in new impl: {}", settings.getAsString(Settings::Key::General_Name));
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {
