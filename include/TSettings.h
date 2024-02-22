@@ -49,7 +49,21 @@ struct Settings {
         General_Debug
     };
 
-    std::unordered_map<Key, SettingsTypeVariant> SettingsMap {};
+    std::unordered_map<Key, SettingsTypeVariant> SettingsMap {
+        { General_Description, "BeamMP Default Description" },
+        { General_Tags, "Freeroam" },
+        { General_MaxPlayers, 8 },
+        { General_Name, "BeamMP Server" },
+        { General_Map, "/levels/gridmap_v2/info.json" },
+        { General_AuthKey, "" },
+        { General_Private, true },
+        { General_Port, 30814 },
+        { General_MaxCars, 1 },
+        { General_LogChat, true },
+        { General_ResourceFolder, "Resources" },
+        { General_Debug, false }
+
+    };
 
     std::string getAsString(Key key) {
         if (!SettingsMap.contains(key)) {
@@ -70,6 +84,13 @@ struct Settings {
             throw std::logic_error { "Undefined key accessed in Settings::getAsBool" };
         }
         return std::get<bool>(SettingsMap.at(key));
+    }
+
+    SettingsTypeVariant get(Key key) {
+        if (!SettingsMap.contains(key)) {
+            throw std::logic_error { "Undefined setting key accessed in Settings::get" };
+        }
+        return SettingsMap.at(key);
     }
 
     void set(Key key, std::string value) {

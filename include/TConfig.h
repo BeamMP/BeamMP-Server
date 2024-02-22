@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Common.h"
+#include "TSettings.h"
 
 #include <atomic>
 #include <filesystem>
@@ -43,6 +44,7 @@ private:
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue);
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue);
     void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue);
+    void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, Settings::Key key);
 
     void ParseOldFormat();
     std::string TagsAsPrettyArray() const;

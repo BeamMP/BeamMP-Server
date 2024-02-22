@@ -181,6 +181,7 @@ void TConfig::CreateConfigFile() {
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue) {
     if (!Env.empty()) {
+        // If this environment variable exists, return a C-String and check if it's empty or not
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
             OutValue = std::string(envp);
             return;
@@ -196,6 +197,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue) {
     if (!Env.empty()) {
+        // If this environment variable exists, return a C-String and check if it's empty or not
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
             auto Str = std::string(envp);
             OutValue = Str == "1" || Str == "true";
@@ -212,6 +214,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue) {
     if (!Env.empty()) {
+        // If this environment variable exists, return a C-String and check if it's empty or not
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
             OutValue = int(std::strtol(envp, nullptr, 10));
             return;
@@ -222,6 +225,60 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
     }
     if (Table[Category.c_str()][Key.data()].is_integer()) {
         OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
+    }
+}
+
+// This arcane template magic is needed for using lambdas as overloaded visitors
+// See https://en.cppreference.com/w/cpp/utility/variant/visit for reference
+template <class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
+void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, Settings::Key key) {
+
+    if (!Env.empty()) {
+        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+
+            std::visit(
+                overloaded {
+                    [&envp, &key](std::string) {
+                        Application::SettingsSingleton.set(key, std::string(envp));
+                    },
+                    [&envp, &key](int) {
+                        Application::SettingsSingleton.set(key, int(std::strtol(envp, nullptr, 10)));
+                    },
+                    [&envp, &key](bool) {
+                        auto Str = std::string(envp);
+                        Application::SettingsSingleton.set(key, bool(Str == "1" || Str == "true"));
+                    } },
+                Application::SettingsSingleton.get(key));
+        }
+    } else {
+
+        std::visit(
+            overloaded {
+                [&Table, &Category, &Key, &key](std::string) {
+                    if (Table[Category.c_str()][Key.data()].is_string())
+                        Application::SettingsSingleton.set(key, Table[Category.c_str()][Key.data()].as_string());
+                    else
+                        beammp_warnf("Value '{}.{}' has unexpected type, expected type 'string'", Category, Key);
+                },
+                [&Table, &Category, &Key, &key](int) {
+                    if (Table[Category.c_str()][Key.data()].is_integer())
+                        Application::SettingsSingleton.set(key, int(Table[Category.c_str()][Key.data()].as_integer()));
+                    else
+                        beammp_warnf("Value '{}.{}' has unexpected type, expected type 'integer'", Category, Key);
+                },
+                [&Table, &Category, &Key, &key](bool) {
+                    if (Table[Category.c_str()][Key.data()].is_boolean())
+                        Application::SettingsSingleton.set(key, Table[Category.c_str()][Key.data()].as_boolean());
+                    else
+                        beammp_warnf("Value '{}.{}' has unexpected type, expected type 'boolean'", Category, Key);
+                } },
+            Application::SettingsSingleton.get(key));
     }
 }
 
@@ -255,23 +312,22 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
 
         // Read into new Settings Singleton
-        TryReadValue(data, "General", StrDebug, EnvStrDebug, Application::Settings.DebugModeEnabled);
-        TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Application::Settings.Private);
-        TryReadValue(data, "General", StrPort, EnvStrPort, Application::Settings.Port);
-        TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Application::Settings.MaxCars);
-        TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Application::Settings.MaxPlayers);
-        TryReadValue(data, "General", StrMap, EnvStrMap, Application::Settings.MapName);
-        TryReadValue(data, "General", StrName, EnvStrName, Application::Settings.ServerName);
-        TryReadValue(data, "General", StrDescription, EnvStrDescription, Application::Settings.ServerDesc);
-        TryReadValue(data, "General", StrTags, EnvStrTags, Application::Settings.ServerTags);
-        TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
-        TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
-        TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
-        TryReadValue(data, "General", StrPassword, "", Application::Settings.Password);
+        TryReadValue(data, "General", StrDebug, EnvStrDebug, Settings::Key::General_Debug);
+        TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Settings::Key::General_Private);
+        TryReadValue(data, "General", StrPort, EnvStrPort, Settings::Key::General_Port);
+        TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Settings::Key::General_MaxCars);
+        TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Settings::Key::General_MaxPlayers);
+        TryReadValue(data, "General", StrMap, EnvStrMap, Settings::Key::General_Map);
+        TryReadValue(data, "General", StrName, EnvStrName, Settings::Key::General_Name);
+        TryReadValue(data, "General", StrDescription, EnvStrDescription, Settings::Key::General_Description);
+        TryReadValue(data, "General", StrTags, EnvStrTags, Settings::Key::General_Tags);
+        TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Settings::Key::General_ResourceFolder);
+        TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Settings::Key::General_AuthKey);
+        TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Settings::Key::General_LogChat);
         // Misc
-        TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
-        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
-        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
+        TryReadValue(data, "Misc", StrSendErrors, "", Settings::Key::Misc_SendErrors);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Settings::Misc_ImScaredOfUpdates);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Settings::Misc_SendErrorsShowMessage);
 
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
