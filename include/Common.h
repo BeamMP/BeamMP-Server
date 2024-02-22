@@ -103,7 +103,7 @@ public:
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
     static TSettings Settings;
-    static struct Settings SettingsSingleton;
+    static inline struct Settings SettingsSingleton { };
 
     static std::vector<std::string> GetBackendUrlsInOrder() {
         return {
