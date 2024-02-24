@@ -1,6 +1,11 @@
 name: Windows
 
-on: [push]
+on:
+  push:
+    branches:
+      - 'develop'
+      - 'minor'
+  pull_request:
 
 env:
   VCPKG_DEFAULT_TRIPLET: x64-windows-static
