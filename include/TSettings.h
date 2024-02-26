@@ -171,6 +171,70 @@ struct Settings {
         }
         SettingsMap.at(key) = value;
     }
+
+    const std::unordered_map<std::string, SettingsAccessControl>& getACLMap() const {
+        return InputAccessMapping;
+    }
+    SettingsAccessControl getConsoleInputAccessMapping(const std::string& keyName) {
+        if (!InputAccessMapping.contains(keyName)) {
+            throw std::logic_error { "Unknown key name accessed in Settings::getConsoleInputAccessMapping" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+        }
+        return InputAccessMapping.at(keyName);
+    }
+
+    void setConsoleInputAccessMapping(const std::string& keyName, std::string value) {
+        if (!InputAccessMapping.contains(keyName)) {
+            throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
+            throw std::logic_error { "Key " + keyName + " is not writeable from within the runtime!" };
+        }
+
+        Key key = InputAccessMapping.at(keyName).first;
+
+        if (!std::holds_alternative<std::string>(SettingsMap.at(key))) {
+            throw std::logic_error { "Wrong value type in Settings::setConsoleInputAccessMapping: expected std::string" };
+        }
+
+        SettingsMap.at(key) = value;
+    }
+    void setConsoleInputAccessMapping(const std::string& keyName, int value) {
+        if (!InputAccessMapping.contains(keyName)) {
+            throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
+            throw std::logic_error { "Key " + keyName + " is not writeable from within the runtime!" };
+        }
+
+        Key key = InputAccessMapping.at(keyName).first;
+
+        if (!std::holds_alternative<int>(SettingsMap.at(key))) {
+            throw std::logic_error { "Wrong value type in Settings::setConsoleInputAccessMapping: expected int" };
+        }
+
+        SettingsMap.at(key) = value;
+    }
+    void setConsoleInputAccessMapping(const std::string& keyName, bool value) {
+        if (!InputAccessMapping.contains(keyName)) {
+            throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
+            throw std::logic_error { "Key " + keyName + " is not writeable from within the runtime!" };
+        }
+
+        Key key = InputAccessMapping.at(keyName).first;
+
+        if (!std::holds_alternative<bool>(SettingsMap.at(key))) {
+            throw std::logic_error { "Wrong value type in Settings::setConsoleInputAccessMapping: expected bool" };
+        }
+
+        SettingsMap.at(key) = value;
+    }
 };
 
 /*struct TSettings {
