@@ -61,7 +61,11 @@ struct Settings {
         { General_MaxCars, 1 },
         { General_LogChat, true },
         { General_ResourceFolder, "Resources" },
-        { General_Debug, false }
+        { General_Debug, false },
+        { Misc_SendErrorsShowMessage, true },
+        { Misc_SendErrors, true },
+        { Misc_ImScaredOfUpdates, true }
+    };
 
     enum SettingsAccessMask {
         read, // Value can be read from console
