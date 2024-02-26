@@ -29,6 +29,7 @@
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 
 static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
@@ -465,7 +466,36 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             return;
         }
 
-    } else {
+    }else if(args.front() == "list"){
+        //std::unordered_map<std::string, Settings::SettingsAccessControl> 
+        for(const auto& [keyName, keyACL] : Application::SettingsSingleton.getACLMap()){
+            // even though we have the value, we want to ignore it in order to make use of access
+            // control checks
+            
+            try{
+                
+            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(keyName);
+            Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
+
+            std::visit(
+                overloaded {
+                    [&keyName](std::string keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", keyName, keyValue));
+                    },
+                    [&keyName](int keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", keyName, keyValue));
+                    },
+                    [&keyName](bool keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", keyName, keyValue));
+                    }
+
+                },
+                keyType);
+            }catch(std::logic_error& e){
+                beammp_errorf("Error when getting key: {}", e.what());
+            }
+        }
+    }else {
         beammp_errorf("Unknown argument for cammand 'settings': {}", args.front());
 
         Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
