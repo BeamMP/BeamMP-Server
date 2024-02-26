@@ -28,6 +28,7 @@
 #include <ctime>
 #include <mutex>
 #include <sstream>
+#include <stdexcept>
 
 static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
@@ -366,8 +367,108 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
     return { Command, Args };
 }
 
+template <class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
 void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
-    if (!EnsureArgsCount(args, 1, 2)) {
+
+    for (const std::string& arg : args)
+        beammp_infof("Argument: {}", arg);
+
+    static constexpr const char* sHelpString = R"(
+    Settings:
+        settings help                       displays this help
+        settings list                       lists all settings
+        settings get <setting>              prints current value of specified setting
+        settings set <setting> <value>      sets specified setting to value
+        )";
+
+    if (args.size() == 0) {
+        beammp_errorf("No arguments specified for command 'settings'!");
+        Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+        return;
+    }
+
+    if (args.front() == "help") {
+
+        Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+        return;
+    } else if (args.front() == "get") {
+        if (args.size() == 1) {
+            beammp_errorf("'settings get' needs at least one argument!");
+
+            Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+            return;
+        }
+
+        try {
+            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(args.at(1));
+            Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
+
+            std::visit(
+                overloaded {
+                    [&args](std::string keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), keyValue));
+                    },
+                    [&args](int keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), keyValue));
+                    },
+                    [&args](bool keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), keyValue));
+                    }
+
+                },
+                keyType);
+
+        } catch (std::logic_error& e) {
+            beammp_errorf("Error when getting key: {}", e.what());
+            return;
+        }
+    } else if (args.front() == "set") {
+        if (args.size() == 1) {
+            beammp_errorf("'settings set' needs at least two arguments!");
+
+            Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+            return;
+        }
+
+        try {
+
+            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(args.at(1));
+            Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
+
+            std::visit(
+                overloaded {
+                    [&args](std::string keyValue) {
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(args.at(1), std::string(args.at(2)));
+                        Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), std::string(args.at(2))));
+                    },
+                    [&args](int keyValue) {
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(args.at(1), std::stoi(args.at(2)));
+                        Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), std::stoi(args.at(2))));
+                    },
+                    [&args](bool keyValue) {
+                        // todo: implement other way to convert from string to bool
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(args.at(1), std::stoi(args.at(2)));
+                        Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), std::stoi(args.at(2))));
+                    }
+
+                },
+                keyType);
+
+        } catch (std::logic_error& e) {
+            beammp_errorf("Error when setting key: {}", e.what());
+            return;
+        }
+
+    } else {
+        beammp_errorf("Unknown argument for cammand 'settings': {}", args.front());
+
+        Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
         return;
     }
 }
