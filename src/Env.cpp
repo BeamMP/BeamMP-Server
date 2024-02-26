@@ -33,6 +33,9 @@ std::string_view Env::ToString(Env::Key key) {
     case Key::PROVIDER_UPDATE_MESSAGE:
         return "BEAMMP_PROVIDER_UPDATE_MESSAGE";
         break;
+    case Key::PROVIDER_DISABLE_CONFIG:
+        return "BEAMMP_PROVIDER_DISABLE_CONFIG";
+        break;
     }
     return "";
 }

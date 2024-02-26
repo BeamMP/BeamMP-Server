@@ -48,5 +48,6 @@ private:
     std::string TagsAsPrettyArray() const;
     bool IsDefault();
     bool mFailed { false };
+    bool mDisableConfig { false };
     std::string mConfigFileName;
 };

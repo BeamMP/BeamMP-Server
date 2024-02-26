@@ -18,6 +18,7 @@
 
 #include "Common.h"
 
+#include "Env.h"
 #include "TConfig.h"
 #include <cstdlib>
 #include <fstream>
@@ -87,7 +88,9 @@ TEST_CASE("TConfig::TConfig") {
 TConfig::TConfig(const std::string& ConfigFileName)
     : mConfigFileName(ConfigFileName) {
     Application::SetSubsystemStatus("Config", Application::Status::Starting);
-    if (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName)) {
+    auto DisableConfig = Env::Get(Env::Key::PROVIDER_DISABLE_CONFIG).value_or("false");
+    mDisableConfig = DisableConfig == "true" || DisableConfig == "1";
+    if (!mDisableConfig && (!fs::exists(mConfigFileName) || !fs::is_regular_file(mConfigFileName))) {
         beammp_info("No config file found! Generating one...");
         CreateConfigFile();
     }
@@ -161,7 +164,9 @@ void TConfig::FlushToFile() {
 
 void TConfig::CreateConfigFile() {
     // build from old config Server.cfg
-
+    if (mDisableConfig) {
+        return;
+    }
     try {
         if (fs::exists("Server.cfg")) {
             // parse it (this is weird and bad and should be removed in some future version)
@@ -181,6 +186,9 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
             return;
         }
     }
+    if (mDisableConfig) {
+        return;
+    }
     if (Table[Category.c_str()][Key.data()].is_string()) {
         OutValue = Table[Category.c_str()][Key.data()].as_string();
     }
@@ -194,6 +202,9 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
             return;
         }
     }
+    if (mDisableConfig) {
+        return;
+    }
     if (Table[Category.c_str()][Key.data()].is_boolean()) {
         OutValue = Table[Category.c_str()][Key.data()].as_boolean();
     }
@@ -206,6 +217,9 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
             return;
         }
     }
+    if (mDisableConfig) {
+        return;
+    }
     if (Table[Category.c_str()][Key.data()].is_integer()) {
         OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
     }
@@ -213,7 +227,10 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 
 void TConfig::ParseFromFile(std::string_view name) {
     try {
-        toml::value data = toml::parse<toml::preserve_comments>(name.data());
+        toml::value data {};
+        if (!mDisableConfig) {
+            data = toml::parse<toml::preserve_comments>(name.data());
+        }
         // GENERAL
         TryReadValue(data, "General", StrDebug, EnvStrDebug, Application::Settings.DebugModeEnabled);
         TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Application::Settings.Private);
@@ -241,10 +258,16 @@ void TConfig::ParseFromFile(std::string_view name) {
     PrintDebug();
 
     // Update in any case
-    FlushToFile();
+    if (!mDisableConfig) {
+        FlushToFile();
+    }
     // all good so far, let's check if there's a key
     if (Application::Settings.Key.empty()) {
-        beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        if (mDisableConfig) {
+            beammp_error("No AuthKey specified in the environment.");
+        } else {
+            beammp_error("No AuthKey specified in the \"" + std::string(mConfigFileName) + "\" file. Please get an AuthKey, enter it into the config file, and restart this server.");
+        }
         Application::SetSubsystemStatus("Config", Application::Status::Bad);
         mFailed = true;
         return;
@@ -256,6 +279,9 @@ void TConfig::ParseFromFile(std::string_view name) {
 }
 
 void TConfig::PrintDebug() {
+    if (mDisableConfig) {
+        beammp_debug("Provider turned off the generation and parsing of the ServerConfig.toml");
+    }
     beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
     beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
     beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
