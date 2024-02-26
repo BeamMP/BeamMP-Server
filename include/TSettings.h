@@ -63,8 +63,53 @@ struct Settings {
         { General_ResourceFolder, "Resources" },
         { General_Debug, false }
 
+    enum SettingsAccessMask {
+        read, // Value can be read from console
+        write, // Value can be read and written to from console
+        noaccess // Value is inaccessible from console (no read OR write)
     };
 
+    using SettingsAccessControl = std::pair<
+        Key, // The Key's corresponding enum encoding
+        SettingsAccessMask // Console read/write permissions
+        >;
+
+    std::unordered_map<std::string, SettingsAccessControl> InputAccessMapping {
+        { "Description", { General_Description, write } },
+        { "Tags", { General_Tags, write } },
+        { "MaxPlayers", { General_MaxPlayers, write } },
+        { "Name", { General_Name, write } },
+        { "Map", { General_Map, read } },
+        { "AuthKey", { General_AuthKey, noaccess } },
+        { "Private", { General_Private, read } },
+        { "Port", { General_Port, read } },
+        { "MaxCars", { General_MaxCars, write } },
+        { "LogChat", { General_LogChat, read } },
+        { "Resourcefolder", { General_ResourceFolder, read } },
+        { "Debug", { General_Debug, noaccess } },
+        { "SendErrorsShowMessage", { Misc_SendErrorsShowMessage, noaccess } },
+        { "SendErrors", { Misc_SendErrors, noaccess } },
+        { "ImScaredOfUpdates", { Misc_ImScaredOfUpdates, noaccess } }
+    };
+    /*
+        std::unordered_map<std::string, Key> InputKeyMapping{
+            {"Description", General_Description},
+            {"Tags", General_Tags},
+            {"MaxPlayers", General_MaxPlayers},
+            {"Name", General_Name},
+            {"Map", General_Map},
+            {"AuthKey", General_AuthKey},
+            {"Private", General_Private},
+            {"Port", General_Port},
+            {"MaxCars", General_MaxCars},
+            {"LogChat", General_LogChat},
+            {"Resourcefolder", General_ResourceFolder},
+            {"Debug", General_Debug},
+            {"SendErrorsShowMessage", Misc_SendErrorsShowMessage},
+            {"SendErrors", Misc_SendErrors},
+            {"ImScaredOfUpdates", Misc_ImScaredOfUpdates}
+        }
+    */
     std::string getAsString(Key key) {
         if (!SettingsMap.contains(key)) {
             throw std::logic_error { "Undefined key accessed in Settings::getAsString" };
