@@ -20,6 +20,7 @@
 
 #include "TNetwork.h"
 #include "TServer.h"
+#include "Http.h"
 #include <any>
 #include <condition_variable>
 #include <filesystem>
@@ -43,12 +44,13 @@ namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>>;
+using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>, sol::nil_t>;
 static constexpr size_t TLuaArgTypes_String = 0;
 static constexpr size_t TLuaArgTypes_Int = 1;
 static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
 static constexpr size_t TLuaArgTypes_Bool = 3;
 static constexpr size_t TLuaArgTypes_StringStringMap = 4;
+static constexpr size_t TLuaArgTypes_Nil = 5;
 
 class TLuaPlugin;
 
@@ -98,6 +100,7 @@ public:
         std::shared_ptr<TLuaResult> Result;
         std::vector<TLuaArgTypes> Args;
         std::string EventName; // optional, may be empty
+        std::shared_ptr<sol::reference> FunctionRef;
     };
 
     TLuaEngine();
@@ -226,6 +229,7 @@ private:
         virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(std::shared_ptr<sol::reference> FunctionRef, const std::vector<TLuaArgTypes>& Args);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
@@ -248,6 +252,10 @@ private:
         sol::table Lua_GetPlayerVehicles(int ID);
         std::pair<sol::table, std::string> Lua_GetPositionRaw(int PID, int VID);
         sol::table Lua_HttpCreateConnection(const std::string& host, uint16_t port);
+        void Lua_HttpGet(const std::string& host, const std::string& path, const sol::table& headers, const sol::function& cb);
+        void Lua_HttpPost(const std::string& host, const std::string& path, const sol::table& body, const sol::table& headers, const sol::function& cb);
+        void Lua_HttpPost(const std::string& host, const std::string& path, const std::string& body, const std::string& content_type, const sol::table& headers, const sol::function& cb);
+        void Lua_HttpCallCallback(httplib::Result& response, std::shared_ptr<sol::reference> cb);
         sol::table Lua_JsonDecode(const std::string& str);
         int Lua_GetPlayerIDByName(const std::string& Name);
         sol::table Lua_FS_ListFiles(const std::string& Path);
@@ -293,6 +301,7 @@ private:
     std::list<std::shared_ptr<TLuaResult>> mResultsToCheck;
     std::mutex mResultsToCheckMutex;
     std::condition_variable mResultsToCheckCond;
+    boost::asio::thread_pool http_pool;
 };
 
 // std::any TriggerLuaEvent(const std::string& Event, bool local, TLuaPlugin* Caller, std::shared_ptr<TLuaArg> arg, bool Wait);

@@ -25,6 +25,7 @@ mono_crash.*
 
 #VS Files
 out/
+.vscode/
 
 #Clion Files
 cmake-build-debug/
