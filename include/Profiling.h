@@ -22,6 +22,7 @@ struct Stats {
     double min;
     double max;
     size_t n;
+    size_t total_calls;
 };
 
 /// Calculates and stores the moving average over K samples of execution time data
@@ -41,6 +42,7 @@ struct UnitExecutionTime {
 
 private:
     boost::synchronized_value<boost::circular_buffer<Duration>> m_measurements;
+    size_t m_total_calls {};
 };
 
 /// Holds profiles for multiple units by name. Threadsafe.

@@ -52,11 +52,13 @@ prof::Stats prof::UnitExecutionTime::stats() const {
         result.stddev += std::pow(measurement.count() - result.mean, 2);
     }
     result.stddev = std::sqrt(result.stddev / double(measurements->size()));
+    result.total_calls = m_total_calls;
     return result;
 }
 
 void prof::UnitExecutionTime::add_sample(const Duration& dur) {
     m_measurements->push_back(dur);
+    ++m_total_calls;
 }
 
 prof::UnitExecutionTime::UnitExecutionTime()
