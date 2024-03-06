@@ -19,50 +19,28 @@ void prof::UnitProfileCollection::add_sample(const std::string& unit, const Dura
     m_map->operator[](unit).add_sample(duration);
 }
 
-size_t prof::UnitExecutionTime::measurement_count() {
-    return m_measurements->size();
-}
-
 prof::Stats prof::UnitExecutionTime::stats() const {
     Stats result {};
     // calculate sum
-    auto measurements = m_measurements.synchronize();
-    if (measurements->size() == 0) {
-        return result;
-    }
-    result.n = measurements->size();
-    result.max = std::numeric_limits<double>::min();
-    result.min = std::numeric_limits<double>::max();
-    Duration sum {};
-    for (const auto& measurement : *measurements) {
-        if (measurement.count() > result.max) {
-            result.max = measurement.count();
-        }
-        if (measurement.count() < result.min) {
-            result.min = measurement.count();
-        }
-        sum += measurement;
-    }
-    // calculate mean
-    result.mean = (sum / measurements->size()).count();
-    // calculate stddev
-    result.stddev = 0;
-    for (const auto& measurement : *measurements) {
-        // (measurements[i] - mean)^2
-        result.stddev += std::pow(measurement.count() - result.mean, 2);
-    }
-    result.stddev = std::sqrt(result.stddev / double(measurements->size()));
-    result.total_calls = m_total_calls;
+    result.n = m_total_calls;
+    result.max = m_min;
+    result.min = m_max;
+    // calculate mean: mean = sum_x / n
+    result.mean = m_sum / double(m_total_calls);
+    // calculate stdev: stdev = sqrt((sum_x2 / n) - (mean * mean))
+    result.stdev = std::sqrt((m_measurement_sqr_sum / double(result.n)) - (result.mean * result.mean));
     return result;
 }
 
 void prof::UnitExecutionTime::add_sample(const Duration& dur) {
-    m_measurements->push_back(dur);
+    m_sum += dur.count();
+    m_measurement_sqr_sum += dur.count() * dur.count();
+    m_min = std::min(dur.count(), m_min);
+    m_max = std::max(dur.count(), m_max);
     ++m_total_calls;
 }
 
-prof::UnitExecutionTime::UnitExecutionTime()
-    : m_measurements(boost::circular_buffer<Duration>(100)) {
+prof::UnitExecutionTime::UnitExecutionTime() {
 }
 
 std::unordered_map<std::string, prof::Stats> prof::UnitProfileCollection::all_stats() {

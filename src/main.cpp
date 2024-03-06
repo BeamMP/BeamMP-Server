@@ -20,6 +20,7 @@
 #include "Common.h"
 #include "Http.h"
 #include "LuaAPI.h"
+#include "Profiling.h"
 #include "SignalHandling.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
@@ -30,6 +31,7 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 
+#include <chrono>
 #include <iostream>
 #include <thread>
 
@@ -124,7 +126,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
-    
+
     TConfig Config(ConfigPath);
 
     if (Config.Failed()) {
@@ -175,6 +177,17 @@ int BeamMPServerMain(MainArguments Arguments) {
     if (Application::Settings.HTTPServerEnabled) {
         Http::Server::THttpServerInstance HttpServerInstance {};
     }
+
+    prof::UnitExecutionTime t {};
+    for (size_t i = 0; i < 10'000'000; ++i) {
+        t.add_sample(std::chrono::seconds(1));
+        t.add_sample(std::chrono::seconds(2));
+        t.add_sample(std::chrono::seconds(3));
+    }
+    auto stats = t.stats();
+    beammp_errorf("mean: {}, stdev: {}, min: {}, max: {}, n: {}", stats.mean, stats.stdev, stats.min, stats.max, stats.n);
+
+    exit(69);
 
     Application::SetSubsystemStatus("Main", Application::Status::Good);
     RegisterThread("Main(Waiting)");

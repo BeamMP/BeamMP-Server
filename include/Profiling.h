@@ -4,6 +4,7 @@
 #include <boost/thread/synchronized_value.hpp>
 #include <chrono>
 #include <cstddef>
+#include <limits>
 
 namespace prof {
 
@@ -18,7 +19,7 @@ Duration duration(const TimePoint& start, const TimePoint& end);
 
 struct Stats {
     double mean;
-    double stddev;
+    double stdev;
     double min;
     double max;
     size_t n;
@@ -38,11 +39,15 @@ struct UnitExecutionTime {
     Stats stats() const;
 
     /// Returns the number of elements the moving average is calculated over.
-    size_t measurement_count();
+    size_t measurement_count() const { return m_total_calls; }
 
 private:
-    boost::synchronized_value<boost::circular_buffer<Duration>> m_measurements;
     size_t m_total_calls {};
+    double m_sum {};
+    // sum of measurements squared (for running stdev)
+    double m_measurement_sqr_sum {};
+    double m_min { std::numeric_limits<double>::max() };
+    double m_max { std::numeric_limits<double>::min() };
 };
 
 /// Holds profiles for multiple units by name. Threadsafe.

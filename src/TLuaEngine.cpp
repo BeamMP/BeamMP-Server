@@ -856,7 +856,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         for (const auto& [name, stat] : stats) {
             Result[name] = StateView.create_table();
             Result[name]["mean"] = stat.mean;
-            Result[name]["stddev"] = stat.stddev;
+            Result[name]["stdev"] = stat.stdev;
             Result[name]["min"] = stat.min;
             Result[name]["max"] = stat.max;
             Result[name]["n"] = stat.n;
