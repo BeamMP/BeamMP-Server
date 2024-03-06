@@ -23,7 +23,6 @@ struct Stats {
     double min;
     double max;
     size_t n;
-    size_t total_calls;
 };
 
 /// Calculates and stores the moving average over K samples of execution time data

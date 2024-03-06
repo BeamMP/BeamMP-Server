@@ -860,7 +860,6 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
             Result[name]["min"] = stat.min;
             Result[name]["max"] = stat.max;
             Result[name]["n"] = stat.n;
-            Result[name]["total_calls"] = stat.total_calls;
         }
         return Result;
     });
