@@ -20,6 +20,7 @@ void prof::UnitProfileCollection::add_sample(const std::string& unit, const Dura
 }
 
 prof::Stats prof::UnitExecutionTime::stats() const {
+    std::unique_lock lock(m_mtx);
     Stats result {};
     // calculate sum
     result.n = m_total_calls;
@@ -33,6 +34,7 @@ prof::Stats prof::UnitExecutionTime::stats() const {
 }
 
 void prof::UnitExecutionTime::add_sample(const Duration& dur) {
+    std::unique_lock lock(m_mtx);
     m_sum += dur.count();
     m_measurement_sqr_sum += dur.count() * dur.count();
     m_min = std::min(dur.count(), m_min);
@@ -51,3 +53,8 @@ std::unordered_map<std::string, prof::Stats> prof::UnitProfileCollection::all_st
     }
     return result;
 }
+size_t prof::UnitExecutionTime::measurement_count() const {
+    std::unique_lock lock(m_mtx);
+    return m_total_calls;
+}
+

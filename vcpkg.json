@@ -6,7 +6,6 @@
     "boost-spirit",
     "boost-uuid",
     "boost-variant",
-    "boost-circular-buffer",
     "cpp-httplib",
     "doctest",
     "fmt",

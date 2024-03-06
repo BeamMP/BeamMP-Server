@@ -1,10 +1,10 @@
 #pragma once
 
-#include <boost/circular_buffer.hpp>
 #include <boost/thread/synchronized_value.hpp>
 #include <chrono>
 #include <cstddef>
 #include <limits>
+#include <unordered_map>
 
 namespace prof {
 
@@ -38,9 +38,10 @@ struct UnitExecutionTime {
     Stats stats() const;
 
     /// Returns the number of elements the moving average is calculated over.
-    size_t measurement_count() const { return m_total_calls; }
+    size_t measurement_count() const;
 
 private:
+    std::mutex m_mtx {};
     size_t m_total_calls {};
     double m_sum {};
     // sum of measurements squared (for running stdev)

@@ -20,7 +20,6 @@
 #include "Common.h"
 #include "Http.h"
 #include "LuaAPI.h"
-#include "Profiling.h"
 #include "SignalHandling.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
@@ -31,7 +30,6 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 
-#include <chrono>
 #include <iostream>
 #include <thread>
 
