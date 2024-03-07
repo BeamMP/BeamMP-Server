@@ -124,7 +124,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
-    
+
     TConfig Config(ConfigPath);
 
     if (Config.Failed()) {
