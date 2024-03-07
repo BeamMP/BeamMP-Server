@@ -41,7 +41,7 @@ struct UnitExecutionTime {
     size_t measurement_count() const;
 
 private:
-    std::mutex m_mtx {};
+    mutable std::mutex m_mtx {};
     size_t m_total_calls {};
     double m_sum {};
     // sum of measurements squared (for running stdev)
