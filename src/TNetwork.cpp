@@ -31,6 +31,63 @@
 
 typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
 
+#include <iostream>
+#include <unordered_map>
+#include <fstream>
+#include <chrono>
+#include <mutex>
+
+std::unordered_map<std::string, std::vector<std::chrono::time_point<std::chrono::high_resolution_clock>>> connectionAttempts;
+std::mutex connectionAttemptsMutex;
+
+bool WatchingConnecting::IsConnectionAllowed(const std::string& clientAddress) {
+        // we check if there is an IP in the blocked list
+        if (WatchingConnecting::IsIPBlocked(clientAddress)) {
+            return false;
+        }
+        std::lock_guard<std::mutex> lock(connectionAttemptsMutex);
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        auto& violations = connectionAttempts[clientAddress];
+
+        // Deleting old violations (older than 5 seconds)
+        violations.erase(std::remove_if(violations.begin(), violations.end(),
+                             [&](const auto& timestamp) {
+                                 return std::chrono::duration_cast<std::chrono::seconds>(currentTime - timestamp).count() > 5;
+                             }), violations.end());
+
+        // Adding the current violation
+        violations.push_back(currentTime);
+
+        // We check the number of violations
+        if (violations.size() >= 4) {
+            WatchingConnecting::BlockIP(clientAddress);
+            beammp_errorf("[DOS] Blocked IP: {}", clientAddress);
+            return false;
+        }
+
+        return true; // We allow the connection
+    }
+
+void WatchingConnecting::BlockIP(const std::string& clientAddress) {
+        std::ofstream blockFile("blocked_ips.txt", std::ios::app);
+        if (blockFile.is_open()) {
+            blockFile << clientAddress << std::endl;
+        }
+    }
+
+bool WatchingConnecting::IsIPBlocked(const std::string& clientAddress) {
+        std::ifstream blockFile("blocked_ips.txt");
+        std::unordered_set<std::string> blockedIPs;
+
+        if (blockFile.is_open()) {
+            std::string line;
+            while (std::getline(blockFile, line)) {
+                blockedIPs.insert(line);
+            }
+        }
+        return blockedIPs.find(clientAddress) != blockedIPs.end();
+};
+
 std::vector<uint8_t> StringToVector(const std::string& Str) {
     return std::vector<uint8_t>(Str.data(), Str.data() + Str.size());
 }
@@ -196,10 +253,16 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
         return;
     }
+    std::string clientAddress = RawConnection.SockAddr.address().to_string();
     std::shared_ptr<TClient> Client { nullptr };
+    WatchingConnecting connectionManager;
     try {
-        if (Code == 'C') {
-            Client = Authentication(std::move(RawConnection));
+        if (Code == 'C') { 
+             if (connectionManager.IsConnectionAllowed(clientAddress)) {
+                Client = Authentication(std::move(RawConnection));
+             } else {
+                RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
+             }
         } else if (Code == 'D') {
             HandleDownload(std::move(RawConnection));
         } else if (Code == 'P') {
