@@ -214,6 +214,10 @@ void RegisterThread(const std::string& str);
         do {                                                                                  \
             Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x)); \
         } while (false)
+    #define beammp_lua_log(level, plugin, x)                                                               \
+        do {                                                                                 \
+            Application::Console().Write(_this_location + fmt::format("[{}] [{}] ", plugin, level) + (x)); \
+        } while (false)
     #define beammp_lua_warn(x)                                                               \
         do {                                                                                 \
             Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
