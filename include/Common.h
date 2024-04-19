@@ -273,6 +273,7 @@ void RegisterThread(const std::string& str);
     #define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
     #define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
     #define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
+    #define beammp_lua_log(level, plugin, x) /* x */
 
 #endif // DOCTEST_CONFIG_DISABLE
 
