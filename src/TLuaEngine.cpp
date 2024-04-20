@@ -830,6 +830,16 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("Set", &LuaAPI::MP::Set);
 
     auto UtilTable = StateView.create_named_table("Util");
+    UtilTable.set_function("LogDebug", [this](sol::variadic_args args) {
+        std::string ToPrint = "";
+        for (const auto& arg : args) {
+            ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
+            ToPrint += "\t";
+        }
+        if (Application::Settings.DebugModeEnabled) {
+            beammp_lua_log("DEBUG", mStateId, ToPrint);
+        }
+    });
     UtilTable.set_function("LogInfo", [this](sol::variadic_args args) {
         std::string ToPrint = "";
         for (const auto& arg : args) {
@@ -1126,7 +1136,7 @@ void TLuaResult::MarkAsReady() {
 void TLuaResult::WaitUntilReady() {
     std::unique_lock readyLock(*this->ReadyMutex);
     // wait if not ready yet
-    if(!this->Ready)
+    if (!this->Ready)
         this->ReadyCondition->wait(readyLock);
 }
 
