@@ -106,8 +106,6 @@ public:
     static std::vector<std::string> GetBackendUrlsInOrder() {
         return {
             "backend.beammp.com",
-            "backup1.beammp.com",
-            "backup2.beammp.com"
         };
     }
 
