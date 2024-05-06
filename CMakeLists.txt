@@ -195,6 +195,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE ${PRJ_DEFINITIONS} ${PRJ_WARN
 )
 
 if(MSVC)
+    target_compile_options(${PROJECT_NAME} PUBLIC "/bigobj")
     target_link_options(${PROJECT_NAME} PRIVATE "/SUBSYSTEM:CONSOLE")
 endif(MSVC)
 

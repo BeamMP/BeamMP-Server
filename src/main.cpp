@@ -30,6 +30,7 @@
 #include "TResourceManager.h"
 #include "TServer.h"
 
+#include <cstdint>
 #include <iostream>
 #include <thread>
 
@@ -40,6 +41,9 @@ USAGE:
 ARGUMENTS:
     --help              
                         Displays this help and exits.
+    --port=1234
+                        Sets the server's listening TCP and
+                        UDP port. Overrides ENV and ServerConfig.
     --config=/path/to/ServerConfig.toml
                         Absolute or relative path to the 
                         Server Config file, including the
@@ -91,6 +95,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "config" }, ArgsParser::HAS_VALUE);
+    Parser.RegisterArgument({ "port" }, ArgsParser::HAS_VALUE);
     Parser.RegisterArgument({ "working-directory" }, ArgsParser::HAS_VALUE);
     Parser.Parse(Arguments.List);
     if (!Parser.Verify()) {
@@ -124,7 +129,7 @@ int BeamMPServerMain(MainArguments Arguments) {
             }
         }
     }
-    
+
     TConfig Config(ConfigPath);
 
     if (Config.Failed()) {
@@ -135,6 +140,24 @@ int BeamMPServerMain(MainArguments Arguments) {
         }
         return 1;
     }
+
+    // override port if provided via arguments
+    if (Parser.FoundArgument({ "port" })) {
+        auto Port = Parser.GetValueOfArgument({ "port" });
+        if (Port.has_value()) {
+            auto P = int(std::strtoul(Port.value().c_str(), nullptr, 10));
+            if (P == 0 || P < 0 || P > UINT16_MAX) {
+                beammp_errorf("Custom port requested via --port is invalid: '{}'", Port.value());
+                return 1;
+            } else {
+                Application::Settings.Port = P;
+                beammp_info("Custom port requested via commandline arguments: " + Port.value());
+            }
+        }
+    }
+
+    Config.PrintDebug();
+
     Application::InitializeConsole();
     Application::Console().StartLoggingToFile();
 
