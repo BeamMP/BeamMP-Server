@@ -24,6 +24,7 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include "Sync.h"
 
 struct ComposedKey {
     std::string Category;
@@ -82,7 +83,7 @@ struct Settings {
         General_Debug
     };
 
-    std::unordered_map<Key, SettingsTypeVariant> SettingsMap {
+    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap =  std::unordered_map<Key, SettingsTypeVariant>{
         { General_Description, "BeamMP Default Description" },
         { General_Tags, "Freeroam" },
         { General_MaxPlayers, 8 },
@@ -111,7 +112,7 @@ struct Settings {
         SettingsAccessMask // Console read/write permissions
         >;
 
-    std::unordered_map<ComposedKey, SettingsAccessControl> InputAccessMapping {
+    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping =  std::unordered_map<ComposedKey, SettingsAccessControl>{
         { { "General", "Description" }, { General_Description, write } },
         { { "General", "Tags" }, { General_Tags, write } },
         { { "General", "MaxPlayers" }, { General_MaxPlayers, write } },
@@ -149,125 +150,136 @@ struct Settings {
         }
     */
     std::string getAsString(Key key) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined key accessed in Settings::getAsString" };
         }
-        return std::get<std::string>(SettingsMap.at(key));
+        return std::get<std::string>(map->at(key));
     }
 
     int getAsInt(Key key) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined key accessed in Settings::getAsInt" };
         }
-        return std::get<int>(SettingsMap.at(key));
+        return std::get<int>(map->at(key));
     }
 
     bool getAsBool(Key key) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined key accessed in Settings::getAsBool" };
         }
-        return std::get<bool>(SettingsMap.at(key));
+        return std::get<bool>(map->at(key));
     }
 
     SettingsTypeVariant get(Key key) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::get" };
         }
-        return SettingsMap.at(key);
+        return map->at(key);
     }
 
     void set(Key key, std::string value) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::getAsString" };
         }
-        if (!std::holds_alternative<std::string>(SettingsMap.at(key))) {
+        if (!std::holds_alternative<std::string>(map->at(key))) {
             throw std::logic_error { "Wrong value type in Settings::get: std::string" };
         }
-        SettingsMap.at(key) = value;
+        map->at(key) = value;
     }
 
     void set(Key key, int value) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::getAsString" };
         }
-        if (!std::holds_alternative<int>(SettingsMap.at(key))) {
+        if (!std::holds_alternative<int>(map->at(key))) {
             throw std::logic_error { "Wrong value type in Settings::get: std::string" };
         }
-        SettingsMap.at(key) = value;
+        map->at(key) = value;
     }
 
     void set(Key key, bool value) {
-        if (!SettingsMap.contains(key)) {
+        auto map = SettingsMap.synchronize();
+        if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::getAsString" };
         }
-        if (!std::holds_alternative<bool>(SettingsMap.at(key))) {
+        if (!std::holds_alternative<bool>(map->at(key))) {
             throw std::logic_error { "Wrong value type in Settings::get: std::string" };
         }
-        SettingsMap.at(key) = value;
+        map->at(key) = value;
     }
 
-    const std::unordered_map<ComposedKey, SettingsAccessControl>& getACLMap() const {
-        return InputAccessMapping;
+    const std::unordered_map<ComposedKey, SettingsAccessControl> getACLMap() const {
+        return *InputAccessMapping;
     }
     SettingsAccessControl getConsoleInputAccessMapping(const ComposedKey& keyName) {
-        if (!InputAccessMapping.contains(keyName)) {
+        auto acl_map = InputAccessMapping.synchronize();
+        if (!acl_map->contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::getConsoleInputAccessMapping" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::noaccess) {
             throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
         }
-        return InputAccessMapping.at(keyName);
+        return acl_map->at(keyName);
     }
 
     void setConsoleInputAccessMapping(const ComposedKey& keyName, std::string value) {
-        if (!InputAccessMapping.contains(keyName)) {
+        auto [map, acl_map] = boost::synchronize(SettingsMap, InputAccessMapping);
+        if (!acl_map->contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::noaccess) {
             throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::read) {
             throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
         }
 
-        Key key = InputAccessMapping.at(keyName).first;
+        Key key = acl_map->at(keyName).first;
 
-        if (!std::holds_alternative<std::string>(SettingsMap.at(key))) {
+        if (!std::holds_alternative<std::string>(map->at(key))) {
             throw std::logic_error { "Wrong value type in Settings::setConsoleInputAccessMapping: expected std::string" };
         }
 
-        SettingsMap.at(key) = value;
+        map->at(key) = value;
     }
     void setConsoleInputAccessMapping(const ComposedKey& keyName, int value) {
-        if (!InputAccessMapping.contains(keyName)) {
+        auto [map, acl_map] = boost::synchronize(SettingsMap, InputAccessMapping);
+        if (!acl_map->contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::noaccess) {
             throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::read) {
             throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
         }
 
-        Key key = InputAccessMapping.at(keyName).first;
+        Key key = acl_map->at(keyName).first;
 
-        if (!std::holds_alternative<int>(SettingsMap.at(key))) {
+        if (!std::holds_alternative<int>(map->at(key))) {
             throw std::logic_error { "Wrong value type in Settings::setConsoleInputAccessMapping: expected int" };
         }
 
-        SettingsMap.at(key) = value;
+        map->at(key) = value;
     }
     void setConsoleInputAccessMapping(const ComposedKey& keyName, bool value) {
-        if (!InputAccessMapping.contains(keyName)) {
+        auto [map, acl_map] = boost::synchronize(SettingsMap, InputAccessMapping);
+        if (!acl_map->contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::noaccess) {
             throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
-        } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
+        } else if (acl_map->at(keyName).second == SettingsAccessMask::read) {
             throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
         }
 
-        Key key = InputAccessMapping.at(keyName).first;
+        Key key = acl_map->at(keyName).first;
 
-        if (!std::holds_alternative<bool>(SettingsMap.at(key))) {
+        if (!std::holds_alternative<bool>(map->at(key))) {
             throw std::logic_error { "Wrong value type in Settings::setConsoleInputAccessMapping: expected bool" };
         }
 
-        SettingsMap.at(key) = value;
+        map->at(key) = value;
     }
 };
 
