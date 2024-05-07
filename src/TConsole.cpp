@@ -382,10 +382,10 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
 
     static constexpr const char* sHelpString = R"(
     Settings:
-        settings help                       displays this help
-        settings list                       lists all settings
-        settings get <setting>              prints current value of specified setting
-        settings set <setting> <value>      sets specified setting to value
+        settings help                               displays this help
+        settings list                               lists all settings
+        settings get <category> <setting>           prints current value of specified setting
+        settings set <categoty> <setting> <value>   sets specified setting to value
         )";
 
     if (args.size() == 0) {
@@ -399,27 +399,28 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
         Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
         return;
     } else if (args.front() == "get") {
-        if (args.size() == 1) {
-            beammp_errorf("'settings get' needs at least one argument!");
+        if (args.size() < 3) {
+            beammp_errorf("'settings get' needs at least two arguments!");
 
             Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
             return;
         }
+            
 
         try {
-            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(args.at(1));
+            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)));
             Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
 
             std::visit(
                 overloaded {
                     [&args](std::string keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), keyValue));
+                        Application::Console().WriteRaw(fmt::format("'{} > {}' = {}", args.at(1), args.at(2), keyValue));
                     },
                     [&args](int keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), keyValue));
+                        Application::Console().WriteRaw(fmt::format("'{} > {}' = {}", args.at(1), args.at(2), keyValue));
                     },
                     [&args](bool keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", args.at(1), keyValue));
+                        Application::Console().WriteRaw(fmt::format("'{} > {}' = {}", args.at(1), args.at(2), keyValue));
                     }
 
                 },
@@ -439,23 +440,23 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
 
         try {
 
-            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(args.at(1));
+            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)));
             Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
 
             std::visit(
                 overloaded {
                     [&args](std::string keyValue) {
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(args.at(1), std::string(args.at(2)));
-                        Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), std::string(args.at(2))));
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::string(args.at(2)));
+                        Application::Console().WriteRaw(fmt::format("{} > {} := {}", args.at(1), args.at(2), std::string(args.at(2))));
                     },
                     [&args](int keyValue) {
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(args.at(1), std::stoi(args.at(2)));
-                        Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), std::stoi(args.at(2))));
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(2)));
+                        Application::Console().WriteRaw(fmt::format("{} > {} := {}", args.at(1),args.at(2), std::stoi(args.at(2))));
                     },
                     [&args](bool keyValue) {
                         // todo: implement other way to convert from string to bool
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(args.at(1), std::stoi(args.at(2)));
-                        Application::Console().WriteRaw(fmt::format("{} := {}", args.at(1), std::stoi(args.at(2))));
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(2)));
+                        Application::Console().WriteRaw(fmt::format("{} > {} := {}", args.at(1), args.at(2), std::stoi(args.at(2))));
                     }
 
                 },
@@ -468,25 +469,25 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
 
     }else if(args.front() == "list"){
         //std::unordered_map<std::string, Settings::SettingsAccessControl> 
-        for(const auto& [keyName, keyACL] : Application::SettingsSingleton.getACLMap()){
+        for(const auto& [composedKey, keyACL] : Application::SettingsSingleton.getACLMap()){
             // even though we have the value, we want to ignore it in order to make use of access
             // control checks
             
             try{
                 
-            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(keyName);
+            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(composedKey);
             Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
 
             std::visit(
                 overloaded {
-                    [&keyName](std::string keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", keyName, keyValue));
+                    [&composedKey](std::string keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
                     },
-                    [&keyName](int keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", keyName, keyValue));
+                    [&composedKey](int keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
                     },
-                    [&keyName](bool keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", keyName, keyValue));
+                    [&composedKey](bool keyValue) {
+                        Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
                     }
 
                 },

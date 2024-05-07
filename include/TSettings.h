@@ -17,10 +17,43 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
+#include <cstdint>
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <variant>
+
+struct ComposedKey {
+    std::string Category;
+    std::string Key;
+
+    bool operator==(const ComposedKey& rhs) const {
+        return (this->Category == rhs.Category && this->Key == rhs.Key);
+    }
+};
+
+template <>
+struct fmt::formatter<ComposedKey> : formatter<std::string> {
+    auto format(ComposedKey key, format_context& ctx) const;
+};
+
+inline auto fmt::formatter<ComposedKey>::format(ComposedKey key, fmt::format_context& ctx) const {
+    std::string key_metadata = fmt::format("{}::{}", key.Category, key.Key);
+    return formatter<std::string>::format(key_metadata, ctx);
+}
+
+namespace std {
+template <>
+class hash<ComposedKey> {
+public:
+    std::uint64_t operator()(const ComposedKey& key) const {
+        std::hash<std::string> hash_fn;
+        return hash_fn(key.Category + key.Key);
+    }
+};
+}
 
 struct Settings {
     using SettingsTypeVariant = std::variant<std::string, bool, int>;
@@ -78,23 +111,24 @@ struct Settings {
         SettingsAccessMask // Console read/write permissions
         >;
 
-    std::unordered_map<std::string, SettingsAccessControl> InputAccessMapping {
-        { "Description", { General_Description, write } },
-        { "Tags", { General_Tags, write } },
-        { "MaxPlayers", { General_MaxPlayers, write } },
-        { "Name", { General_Name, write } },
-        { "Map", { General_Map, read } },
-        { "AuthKey", { General_AuthKey, noaccess } },
-        { "Private", { General_Private, read } },
-        { "Port", { General_Port, read } },
-        { "MaxCars", { General_MaxCars, write } },
-        { "LogChat", { General_LogChat, read } },
-        { "Resourcefolder", { General_ResourceFolder, read } },
-        { "Debug", { General_Debug, noaccess } },
-        { "SendErrorsShowMessage", { Misc_SendErrorsShowMessage, noaccess } },
-        { "SendErrors", { Misc_SendErrors, noaccess } },
-        { "ImScaredOfUpdates", { Misc_ImScaredOfUpdates, noaccess } }
+    std::unordered_map<ComposedKey, SettingsAccessControl> InputAccessMapping {
+        { { "General", "Description" }, { General_Description, write } },
+        { { "General", "Tags" }, { General_Tags, write } },
+        { { "General", "MaxPlayers" }, { General_MaxPlayers, write } },
+        { { "General", "Name" }, { General_Name, write } },
+        { { "General", "Map" }, { General_Map, read } },
+        { { "General", "AuthKey" }, { General_AuthKey, noaccess } },
+        { { "General", "Private" }, { General_Private, read } },
+        { { "General", "Port" }, { General_Port, read } },
+        { { "General", "MaxCars" }, { General_MaxCars, write } },
+        { { "General", "LogChat" }, { General_LogChat, read } },
+        { { "General", "ResourceFolder" }, { General_ResourceFolder, read } },
+        { { "General", "Debug" }, { General_Debug, noaccess } },
+        { { "Misc", "SendErrorsShowMessage" }, { Misc_SendErrorsShowMessage, noaccess } },
+        { { "Misc", "SendErrors" }, { Misc_SendErrors, noaccess } },
+        { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, noaccess } }
     };
+
     /*
         std::unordered_map<std::string, Key> InputKeyMapping{
             {"Description", General_Description},
@@ -172,25 +206,25 @@ struct Settings {
         SettingsMap.at(key) = value;
     }
 
-    const std::unordered_map<std::string, SettingsAccessControl>& getACLMap() const {
+    const std::unordered_map<ComposedKey, SettingsAccessControl>& getACLMap() const {
         return InputAccessMapping;
     }
-    SettingsAccessControl getConsoleInputAccessMapping(const std::string& keyName) {
+    SettingsAccessControl getConsoleInputAccessMapping(const ComposedKey& keyName) {
         if (!InputAccessMapping.contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::getConsoleInputAccessMapping" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
-            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+            throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
         }
         return InputAccessMapping.at(keyName);
     }
 
-    void setConsoleInputAccessMapping(const std::string& keyName, std::string value) {
+    void setConsoleInputAccessMapping(const ComposedKey& keyName, std::string value) {
         if (!InputAccessMapping.contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
-            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+            throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
-            throw std::logic_error { "Key " + keyName + " is not writeable from within the runtime!" };
+            throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
         }
 
         Key key = InputAccessMapping.at(keyName).first;
@@ -201,13 +235,13 @@ struct Settings {
 
         SettingsMap.at(key) = value;
     }
-    void setConsoleInputAccessMapping(const std::string& keyName, int value) {
+    void setConsoleInputAccessMapping(const ComposedKey& keyName, int value) {
         if (!InputAccessMapping.contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
-            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+            throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
-            throw std::logic_error { "Key " + keyName + " is not writeable from within the runtime!" };
+            throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
         }
 
         Key key = InputAccessMapping.at(keyName).first;
@@ -218,13 +252,13 @@ struct Settings {
 
         SettingsMap.at(key) = value;
     }
-    void setConsoleInputAccessMapping(const std::string& keyName, bool value) {
+    void setConsoleInputAccessMapping(const ComposedKey& keyName, bool value) {
         if (!InputAccessMapping.contains(keyName)) {
             throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::noaccess) {
-            throw std::logic_error { "Key " + keyName + " is not accessible from within the runtime!" };
+            throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
         } else if (InputAccessMapping.at(keyName).second == SettingsAccessMask::read) {
-            throw std::logic_error { "Key " + keyName + " is not writeable from within the runtime!" };
+            throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
         }
 
         Key key = InputAccessMapping.at(keyName).first;
