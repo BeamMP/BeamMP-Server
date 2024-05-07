@@ -452,8 +452,15 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
                     },
                     [&args](bool keyValue) {
                         // todo: implement other way to convert from string to bool
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(3)));
-                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::stoi(args.at(3))));
+                        if(args.at(3) == "true"){
+                            Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), true);
+                            Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "true"));
+                        }else if(args.at(3) == "false"){
+                            Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), false);
+                            Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "false"));
+                        }else{
+                            beammp_errorf("Error when setting key: {}::{} : Unknown literal, use either 'true', or 'false' to set boolean values.", args.at(1), args.at(2));
+                        }
                     }
 
                 },
