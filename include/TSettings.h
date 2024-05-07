@@ -123,7 +123,7 @@ struct Settings {
         { { "General", "MaxCars" }, { General_MaxCars, write } },
         { { "General", "LogChat" }, { General_LogChat, read } },
         { { "General", "ResourceFolder" }, { General_ResourceFolder, read } },
-        { { "General", "Debug" }, { General_Debug, noaccess } },
+        { { "General", "Debug" }, { General_Debug, write } },
         { { "Misc", "SendErrorsShowMessage" }, { Misc_SendErrorsShowMessage, noaccess } },
         { { "Misc", "SendErrors" }, { Misc_SendErrors, noaccess } },
         { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, noaccess } }
