@@ -377,9 +377,6 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
 
-    for (const std::string& arg : args)
-        beammp_infof("Argument: {}", arg);
-
     static constexpr const char* sHelpString = R"(
     Settings:
         settings help                               displays this help
@@ -473,6 +470,8 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             // even though we have the value, we want to ignore it in order to make use of access
             // control checks
             
+            if(keyACL.second != Settings::SettingsAccessMask::noaccess){
+            
             try{
                 
             Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(composedKey);
@@ -494,6 +493,7 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
                 keyType);
             }catch(std::logic_error& e){
                 beammp_errorf("Error when getting key: {}", e.what());
+            }
             }
         }
     }else {
