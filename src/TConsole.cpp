@@ -446,17 +446,17 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             std::visit(
                 overloaded {
                     [&args](std::string keyValue) {
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::string(args.at(2)));
-                        Application::Console().WriteRaw(fmt::format("{} > {} := {}", args.at(1), args.at(2), std::string(args.at(2))));
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::string(args.at(3)));
+                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::string(args.at(3))));
                     },
                     [&args](int keyValue) {
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(2)));
-                        Application::Console().WriteRaw(fmt::format("{} > {} := {}", args.at(1),args.at(2), std::stoi(args.at(2))));
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(3)));
+                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1),args.at(2), std::stoi(args.at(3))));
                     },
                     [&args](bool keyValue) {
                         // todo: implement other way to convert from string to bool
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(2)));
-                        Application::Console().WriteRaw(fmt::format("{} > {} := {}", args.at(1), args.at(2), std::stoi(args.at(2))));
+                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(3)));
+                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::stoi(args.at(3))));
                     }
 
                 },
