@@ -238,7 +238,6 @@ template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, Settings::Key key) {
-    beammp_infof("SettingsSingletonMap Size: {}", Application::SettingsSingleton.SettingsMap.size());
     if (!Env.empty()) {
         if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
 

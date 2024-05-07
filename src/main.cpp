@@ -167,7 +167,6 @@ int BeamMPServerMain(MainArguments Arguments) {
     SetupSignalHandlers();
 
     Settings settings {};
-    settings.SettingsMap.emplace(Settings::Key::General_Name, Settings::SettingsTypeVariant { "Your mom" });
     beammp_infof("Server name set in new impl: {}", settings.getAsString(Settings::Key::General_Name));
 
     bool Shutdown = false;
