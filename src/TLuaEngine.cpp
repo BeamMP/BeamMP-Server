@@ -360,16 +360,30 @@ void TLuaEngine::CollectAndInitPlugins() {
     if (!fs::exists(mResourceServerPath)) {
         fs::create_directories(mResourceServerPath);
     }
-    for (const auto& Dir : fs::directory_iterator(mResourceServerPath)) {
+
+    std::vector<fs::path> PluginsEntries;
+    for (const auto& Entry : fs::directory_iterator(mResourceServerPath)) {
+        if (Entry.is_directory()) {
+            PluginsEntries.push_back(Entry);
+        } else {
+            beammp_error("\"" + Entry.path().string() + "\" is not a directory, skipping");
+        }
+    }
+
+    std::sort(PluginsEntries.begin(), PluginsEntries.end(), [](const fs::path& first, const fs::path& second) {
+        auto firstStr = first.string();
+        auto secondStr = second.string();
+        std::transform(firstStr.begin(), firstStr.end(), firstStr.begin(), ::tolower);
+        std::transform(secondStr.begin(), secondStr.end(), secondStr.begin(), ::tolower);
+        return firstStr < secondStr;
+    });
+
+    for (const auto& Dir : PluginsEntries) {
         auto Path = Dir.path();
         Path = fs::relative(Path);
-        if (!Dir.is_directory()) {
-            beammp_error("\"" + Dir.path().string() + "\" is not a directory, skipping");
-        } else {
-            TLuaPluginConfig Config { Path.stem().string() };
-            FindAndParseConfig(Path, Config);
-            InitializePlugin(Path, Config);
-        }
+        TLuaPluginConfig Config { Path.stem().string() };
+        FindAndParseConfig(Path, Config);
+        InitializePlugin(Path, Config);
     }
 }
 
