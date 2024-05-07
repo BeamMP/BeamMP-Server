@@ -18,6 +18,7 @@
 
 #include "TLuaEngine.h"
 #include "Client.h"
+#include "Common.h"
 #include "CustomAssert.h"
 #include "Http.h"
 #include "LuaAPI.h"
@@ -867,6 +868,40 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     MPTable.set_function("Set", &LuaAPI::MP::Set);
 
     auto UtilTable = StateView.create_named_table("Util");
+    UtilTable.set_function("LogDebug", [this](sol::variadic_args args) {
+        std::string ToPrint = "";
+        for (const auto& arg : args) {
+            ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
+            ToPrint += "\t";
+        }
+        if (Application::Settings.DebugModeEnabled) {
+            beammp_lua_log("DEBUG", mStateId, ToPrint);
+        }
+    });
+    UtilTable.set_function("LogInfo", [this](sol::variadic_args args) {
+        std::string ToPrint = "";
+        for (const auto& arg : args) {
+            ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
+            ToPrint += "\t";
+        }
+        beammp_lua_log("INFO", mStateId, ToPrint);
+    });
+    UtilTable.set_function("LogWarn", [this](sol::variadic_args args) {
+        std::string ToPrint = "";
+        for (const auto& arg : args) {
+            ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
+            ToPrint += "\t";
+        }
+        beammp_lua_log("WARN", mStateId, ToPrint);
+    });
+    UtilTable.set_function("LogError", [this](sol::variadic_args args) {
+        std::string ToPrint = "";
+        for (const auto& arg : args) {
+            ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
+            ToPrint += "\t";
+        }
+        beammp_lua_log("ERROR", mStateId, ToPrint);
+    });
     UtilTable.set_function("JsonEncode", &LuaAPI::MP::JsonEncode);
     UtilTable.set_function("JsonDecode", [this](const std::string& str) {
         return Lua_JsonDecode(str);
@@ -1141,7 +1176,7 @@ void TLuaResult::MarkAsReady() {
 void TLuaResult::WaitUntilReady() {
     std::unique_lock readyLock(*this->ReadyMutex);
     // wait if not ready yet
-    if(!this->Ready)
+    if (!this->Ready)
         this->ReadyCondition->wait(readyLock);
 }
 

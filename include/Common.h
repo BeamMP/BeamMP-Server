@@ -106,8 +106,6 @@ public:
     static std::vector<std::string> GetBackendUrlsInOrder() {
         return {
             "backend.beammp.com",
-            "backup1.beammp.com",
-            "backup2.beammp.com"
         };
     }
 
@@ -152,7 +150,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 2, 2 };
+    static inline Version mVersion { 3, 3, 0 };
 };
 
 void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);
@@ -214,6 +212,10 @@ void RegisterThread(const std::string& str);
         do {                                                                                  \
             Application::Console().Write(_this_location + std::string("[LUA ERROR] ") + (x)); \
         } while (false)
+    #define beammp_lua_log(level, plugin, x)                                                               \
+        do {                                                                                 \
+            Application::Console().Write(_this_location + fmt::format("[{}] [{}] ", plugin, level) + (x)); \
+        } while (false)
     #define beammp_lua_warn(x)                                                               \
         do {                                                                                 \
             Application::Console().Write(_this_location + std::string("[LUA WARN] ") + (x)); \
@@ -269,6 +271,7 @@ void RegisterThread(const std::string& str);
     #define beammp_tracef(...) beammp_trace(fmt::format(__VA_ARGS__))
     #define beammp_lua_errorf(...) beammp_lua_error(fmt::format(__VA_ARGS__))
     #define beammp_lua_warnf(...) beammp_lua_warn(fmt::format(__VA_ARGS__))
+    #define beammp_lua_log(level, plugin, x) /* x */
 
 #endif // DOCTEST_CONFIG_DISABLE
 
