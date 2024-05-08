@@ -353,7 +353,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const
     return mLuaStates.at(StateID)->EnqueueScript(Script);
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args) {
     std::unique_lock Lock(mLuaStatesMutex);
     return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args);
 }
@@ -446,13 +446,50 @@ std::set<std::string> TLuaEngine::GetEventHandlersForState(const std::string& Ev
     return mLuaEvents[EventName][StateId];
 }
 
+std::vector<sol::object> TLuaEngine::StateThreadData::JsonStringToArray(JsonString Str) {
+    auto LocalTable = Lua_JsonDecode(Str.value).as<std::vector<sol::object>>();
+    for (auto& value : LocalTable) {
+        if (value.is<std::string>() && value.as<std::string>() == BEAMMP_INTERNAL_NIL) {
+            value = sol::object {};
+        }
+    }
+    return LocalTable;
+}
+
 sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
-    auto Return = mEngine->TriggerEvent(EventName, mStateId, EventArgs);
+    auto Table = mStateView.create_table();
+    for (const sol::stack_proxy& Arg : EventArgs) {
+        switch (Arg.get_type()) {
+        case sol::type::none:
+        case sol::type::userdata:
+        case sol::type::lightuserdata:
+        case sol::type::thread:
+        case sol::type::function:
+        case sol::type::poly:
+            Table.add(BEAMMP_INTERNAL_NIL);
+            beammp_warnf("Passed a value of type '{}' to TriggerGlobalEvent(\"{}\", ...). This type can not be serialized, and cannot be passed between states. It will arrive as <nil> in handlers.", sol::type_name(EventArgs.lua_state(), Arg.get_type()), EventName);
+            break;
+        case sol::type::lua_nil:
+            Table.add(BEAMMP_INTERNAL_NIL);
+            break;
+        case sol::type::string:
+        case sol::type::number:
+        case sol::type::boolean:
+        case sol::type::table:
+            Table.add(Arg);
+            break;
+        }
+    }
+    JsonString Str { LuaAPI::MP::JsonEncode(Table) };
+    beammp_debugf("json: {}", Str.value);
+    auto Return = mEngine->TriggerEvent(EventName, mStateId, Str);
     auto MyHandlers = mEngine->GetEventHandlersForState(EventName, mStateId);
+
+    sol::variadic_results LocalArgs = JsonStringToArray(Str);
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
         if (Fn.valid()) {
-            auto LuaResult = Fn(EventArgs);
+            auto LuaResult = Fn(LocalArgs);
             auto Result = std::make_shared<TLuaResult>();
             if (LuaResult.valid()) {
                 Result->Error = false;
@@ -674,6 +711,7 @@ static void AddToTable(sol::table& table, const std::string& left, const T& valu
 static void JsonDecodeRecursive(sol::state_view& StateView, sol::table& table, const std::string& left, const nlohmann::json& right) {
     switch (right.type()) {
     case nlohmann::detail::value_t::null:
+        AddToTable(table, left, sol::lua_nil_t {});
         return;
     case nlohmann::detail::value_t::object: {
         auto value = table.create();
@@ -968,7 +1006,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLu
     return Result;
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy) {
     // TODO: Document all this
     decltype(mStateFunctionQueue)::iterator Iter = mStateFunctionQueue.end();
     if (Strategy == CallStrategy::BestEffort) {
@@ -990,7 +1028,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFrom
     }
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args) {
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
     Result->Function = FunctionName;
@@ -1076,19 +1114,21 @@ void TLuaEngine::StateThreadData::operator()() {
                             continue;
                         }
                         switch (Arg.index()) {
-                        case TLuaArgTypes_String:
+                        case TLuaType::String:
                             LuaArgs.push_back(sol::make_object(StateView, std::get<std::string>(Arg)));
                             break;
-                        case TLuaArgTypes_Int:
+                        case TLuaType::Int:
                             LuaArgs.push_back(sol::make_object(StateView, std::get<int>(Arg)));
                             break;
-                        case TLuaArgTypes_VariadicArgs:
-                            LuaArgs.push_back(sol::make_object(StateView, std::get<sol::variadic_args>(Arg)));
+                        case TLuaType::Json: {
+                            auto LocalArgs = JsonStringToArray(std::get<JsonString>(Arg));
+                            LuaArgs.insert(LuaArgs.end(), LocalArgs.begin(), LocalArgs.end());
                             break;
-                        case TLuaArgTypes_Bool:
+                        }
+                        case TLuaType::Bool:
                             LuaArgs.push_back(sol::make_object(StateView, std::get<bool>(Arg)));
                             break;
-                        case TLuaArgTypes_StringStringMap: {
+                         case TLuaType::StringStringMap: {
                             auto Map = std::get<std::unordered_map<std::string, std::string>>(Arg);
                             auto Table = StateView.create_table();
                             for (const auto& [k, v] : Map) {
