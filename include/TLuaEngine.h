@@ -18,9 +18,11 @@
 
 #pragma once
 
+#include "Profiling.h"
 #include "TNetwork.h"
 #include "TServer.h"
 #include <any>
+#include <chrono>
 #include <condition_variable>
 #include <filesystem>
 #include <initializer_list>
@@ -252,6 +254,9 @@ private:
         int Lua_GetPlayerIDByName(const std::string& Name);
         sol::table Lua_FS_ListFiles(const std::string& Path);
         sol::table Lua_FS_ListDirectories(const std::string& Path);
+
+        prof::UnitProfileCollection mProfile {};
+        std::unordered_map<std::string, prof::TimePoint> mProfileStarts;
 
         std::string mName;
         TLuaStateId mStateId;

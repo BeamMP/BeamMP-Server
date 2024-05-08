@@ -22,11 +22,13 @@
 #include "CustomAssert.h"
 #include "Http.h"
 #include "LuaAPI.h"
+#include "Profiling.h"
 #include "TLuaPlugin.h"
 #include "sol/object.hpp"
 
 #include <chrono>
 #include <condition_variable>
+#include <fmt/core.h>
 #include <nlohmann/json.hpp>
 #include <random>
 #include <thread>
@@ -895,6 +897,30 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     UtilTable.set_function("RandomIntRange", [this](int64_t min, int64_t max) -> int64_t {
         return std::uniform_int_distribution(min, max)(mMersenneTwister);
     });
+    UtilTable.set_function("DebugExecutionTime", [this]() -> sol::table {
+        sol::state_view StateView(mState);
+        sol::table Result = StateView.create_table();
+        auto stats = mProfile.all_stats();
+        for (const auto& [name, stat] : stats) {
+            Result[name] = StateView.create_table();
+            Result[name]["mean"] = stat.mean;
+            Result[name]["stdev"] = stat.stdev;
+            Result[name]["min"] = stat.min;
+            Result[name]["max"] = stat.max;
+            Result[name]["n"] = stat.n;
+        }
+        return Result;
+    });
+    UtilTable.set_function("DebugStartProfile", [this](const std::string& name) {
+        mProfileStarts[name] = prof::now();
+    });
+    UtilTable.set_function("DebugStopProfile", [this](const std::string& name) {
+        if (!mProfileStarts.contains(name)) {
+            beammp_lua_errorf("DebugStopProfile('{}') failed, because a profile for '{}' wasn't started", name, name);
+            return;
+        }
+        mProfile.add_sample(name, prof::duration(mProfileStarts.at(name), prof::now()));
+    });
 
     auto HttpTable = StateView.create_named_table("Http");
     HttpTable.set_function("CreateConnection", [this](const std::string& host, uint16_t port) {
@@ -1032,6 +1058,7 @@ void TLuaEngine::StateThreadData::operator()() {
                 std::chrono::milliseconds(500),
                 [&]() -> bool { return !mStateFunctionQueue.empty(); });
             if (NotExpired) {
+                auto ProfStart = prof::now();
                 auto TheQueuedFunction = std::move(mStateFunctionQueue.front());
                 mStateFunctionQueue.erase(mStateFunctionQueue.begin());
                 Lock.unlock();
@@ -1090,6 +1117,9 @@ void TLuaEngine::StateThreadData::operator()() {
                     Result->ErrorMessage = BeamMPFnNotFoundError; // special error kind that we can ignore later
                     Result->MarkAsReady();
                 }
+                auto ProfEnd = prof::now();
+                auto ProfDuration = prof::duration(ProfStart, ProfEnd);
+                mProfile.add_sample(FnName, ProfDuration);
             }
         }
     }
