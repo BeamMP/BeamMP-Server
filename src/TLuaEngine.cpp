@@ -379,8 +379,7 @@ void TLuaEngine::CollectAndInitPlugins() {
     });
 
     for (const auto& Dir : PluginsEntries) {
-        auto Path = Dir.path();
-        Path = fs::relative(Path);
+        auto Path = fs::relative(Dir);
         TLuaPluginConfig Config { Path.stem().string() };
         FindAndParseConfig(Path, Config);
         InitializePlugin(Path, Config);
