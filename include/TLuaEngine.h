@@ -39,6 +39,9 @@
 #include <vector>
 
 #define SOL_ALL_SAFETIES_ON 1
+#define SOL_USER_C_ASSERT SOL_ON
+#define SOL_C_ASSERT(...) \
+    beammp_lua_errorf("SOL2 assertion failure: Assertion `{}` failed in {}:{}. This *should* be a fatal error, but BeamMP Server overrides it to not be fatal. This may cause the Lua Engine to crash, or cause other issues.", #__VA_ARGS__, __FILE__, __LINE__)
 #include <sol/sol.hpp>
 
 struct JsonString {
