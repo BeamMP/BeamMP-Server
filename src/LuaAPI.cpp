@@ -60,7 +60,11 @@ std::string LuaAPI::LuaToString(const sol::object Value, size_t Indent, bool Quo
         }
     case sol::type::number: {
         std::stringstream ss;
-        ss << Value.as<float>();
+        if (Value.is<int>()) {
+            ss << Value.as<int>();
+        } else {
+            ss << Value.as<float>();
+        }
         return ss.str();
     }
     case sol::type::lua_nil:
@@ -561,7 +565,11 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
         key = left.as<std::string>();
         break;
     case sol::type::number:
-        key = std::to_string(left.as<double>());
+        if (left.is<int>()) {
+            key = std::to_string(left.as<int>());
+        } else {
+            key = std::to_string(left.as<double>());
+        }
         break;
     default:
         beammp_assert_not_reachable();
@@ -589,21 +597,30 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
     case sol::type::string:
         value = right.as<std::string>();
         break;
-    case sol::type::number:
-        value = right.as<double>();
+    case sol::type::number: {
+        if (right.is<int>()) {
+            value = right.as<int>();
+        } else {
+            value = right.as<double>();
+        }
         break;
+    }
     case sol::type::function:
         beammp_lua_warn("unsure what to do with function in JsonEncode, ignoring");
         return;
     case sol::type::table: {
-        bool local_is_array = true;
-        for (const auto& pair : right.as<sol::table>()) {
-            if (pair.first.get_type() != sol::type::number) {
-                local_is_array = false;
+        if (right.as<sol::table>().empty()) {
+            value = nlohmann::json::object();
+        } else {
+            bool local_is_array = true;
+            for (const auto& pair : right.as<sol::table>()) {
+                if (pair.first.get_type() != sol::type::number) {
+                    local_is_array = false;
+                }
             }
-        }
-        for (const auto& pair : right.as<sol::table>()) {
-            JsonEncodeRecursive(value, pair.first, pair.second, local_is_array, depth + 1);
+            for (const auto& pair : right.as<sol::table>()) {
+                JsonEncodeRecursive(value, pair.first, pair.second, local_is_array, depth + 1);
+            }
         }
         break;
     }
@@ -620,14 +637,18 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
 std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
     nlohmann::json json;
     // table
-    bool is_array = true;
-    for (const auto& pair : object.as<sol::table>()) {
-        if (pair.first.get_type() != sol::type::number) {
-            is_array = false;
+    if (object.as<sol::table>().empty()) {
+        json = nlohmann::json::object();
+    } else {
+        bool is_array = true;
+        for (const auto& pair : object.as<sol::table>()) {
+            if (pair.first.get_type() != sol::type::number) {
+                is_array = false;
+            }
         }
-    }
-    for (const auto& entry : object) {
-        JsonEncodeRecursive(json, entry.first, entry.second, is_array);
+        for (const auto& entry : object) {
+            JsonEncodeRecursive(json, entry.first, entry.second, is_array);
+        }
     }
     return json.dump();
 }
