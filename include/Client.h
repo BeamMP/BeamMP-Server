@@ -128,7 +128,7 @@ private:
     std::string mRole;
     std::string mDID;
     int mID = -1;
-    std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime;
+    std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime = std::chrono::high_resolution_clock::now();
 };
 
 std::optional<std::weak_ptr<TClient>> GetClient(class TServer& Server, int ID);
