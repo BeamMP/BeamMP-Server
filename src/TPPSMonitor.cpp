@@ -76,7 +76,7 @@ void TPPSMonitor::operator()() {
             return true;
         });
         for (auto& ClientToKick : TimedOutClients) {
-            Network().ClientKick(*ClientToKick, "Timeout (no ping for way too long)");
+            ClientToKick->Disconnect("Timeout");
         }
         TimedOutClients.clear();
         if (C == 0 || mInternalPPS == 0) {
