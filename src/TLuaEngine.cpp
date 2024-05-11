@@ -458,7 +458,8 @@ std::vector<sol::object> TLuaEngine::StateThreadData::JsonStringToArray(JsonStri
 
 sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
     auto Table = mStateView.create_table();
-    for (const sol::stack_proxy& Arg : EventArgs) {
+    int i = 1;
+    for (auto Arg : EventArgs) {
         switch (Arg.get_type()) {
         case sol::type::none:
         case sol::type::userdata:
@@ -466,19 +467,20 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
         case sol::type::thread:
         case sol::type::function:
         case sol::type::poly:
-            Table.add(BEAMMP_INTERNAL_NIL);
+            Table.set(i, BEAMMP_INTERNAL_NIL);
             beammp_warnf("Passed a value of type '{}' to TriggerGlobalEvent(\"{}\", ...). This type can not be serialized, and cannot be passed between states. It will arrive as <nil> in handlers.", sol::type_name(EventArgs.lua_state(), Arg.get_type()), EventName);
             break;
         case sol::type::lua_nil:
-            Table.add(BEAMMP_INTERNAL_NIL);
+            Table.set(i, BEAMMP_INTERNAL_NIL);
             break;
         case sol::type::string:
         case sol::type::number:
         case sol::type::boolean:
         case sol::type::table:
-            Table.add(Arg);
+            Table.set(i, Arg);
             break;
         }
+        ++i;
     }
     JsonString Str { LuaAPI::MP::JsonEncode(Table) };
     beammp_debugf("json: {}", Str.value);
@@ -520,11 +522,13 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
             sol::state_view StateView(mState);
             sol::table Result = StateView.create_table();
             auto Vector = Self.get<std::vector<std::shared_ptr<TLuaResult>>>("ReturnValueImpl");
+            int i = 1;
             for (const auto& Value : Vector) {
                 if (!Value->Ready) {
                     return sol::lua_nil;
                 }
-                Result.add(Value->Result);
+                Result.set(i, Value->Result);
+                ++i;
             }
             return Result;
         });
@@ -534,12 +538,14 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
 sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs) {
     // TODO: make asynchronous?
     sol::table Result = mStateView.create_table();
+    int i = 1;
     for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
         auto Fn = mStateView[Handler];
         if (Fn.valid() && Fn.get_type() == sol::type::function) {
             auto FnRet = Fn(EventArgs);
             if (FnRet.valid()) {
-                Result.add(FnRet);
+                Result.set(i, FnRet);
+                ++i;
             } else {
                 sol::error Err = FnRet;
                 beammp_lua_error(std::string("TriggerLocalEvent: ") + Err.what());
