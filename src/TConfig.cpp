@@ -170,62 +170,13 @@ void TConfig::CreateConfigFile() {
     try {
         if (fs::exists("Server.cfg")) {
             // parse it (this is weird and bad and should be removed in some future version)
-            ParseOldFormat();
+            // ParseOldFormat();
         }
     } catch (const std::exception& e) {
         beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
     }
 
     FlushToFile();
-}
-
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue) {
-    if (!Env.empty()) {
-        // If this environment variable exists, return a C-String and check if it's empty or not
-        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
-            OutValue = std::string(envp);
-            return;
-        }
-    }
-    if (mDisableConfig) {
-        return;
-    }
-    if (Table[Category.c_str()][Key.data()].is_string()) {
-        OutValue = Table[Category.c_str()][Key.data()].as_string();
-    }
-}
-
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue) {
-    if (!Env.empty()) {
-        // If this environment variable exists, return a C-String and check if it's empty or not
-        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
-            auto Str = std::string(envp);
-            OutValue = Str == "1" || Str == "true";
-            return;
-        }
-    }
-    if (mDisableConfig) {
-        return;
-    }
-    if (Table[Category.c_str()][Key.data()].is_boolean()) {
-        OutValue = Table[Category.c_str()][Key.data()].as_boolean();
-    }
-}
-
-void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue) {
-    if (!Env.empty()) {
-        // If this environment variable exists, return a C-String and check if it's empty or not
-        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
-            OutValue = int(std::strtol(envp, nullptr, 10));
-            return;
-        }
-    }
-    if (mDisableConfig) {
-        return;
-    }
-    if (Table[Category.c_str()][Key.data()].is_integer()) {
-        OutValue = int(Table[Category.c_str()][Key.data()].as_integer());
-    }
 }
 
 // This arcane template magic is needed for using lambdas as overloaded visitors

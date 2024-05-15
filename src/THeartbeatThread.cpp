@@ -54,9 +54,6 @@ void THeartbeatThread::operator()() {
 
         Last = Body;
         LastNormalUpdateTime = Now;
-        if (!Application::Settings.CustomIP.empty()) {
-            Body += "&ip=" + Application::Settings.CustomIP;
-        }
 
         auto Target = "/heartbeat";
         unsigned int ResponseCode = 0;

@@ -123,17 +123,6 @@ TEST_CASE("GetPidVid") {
 TServer::TServer(const std::vector<std::string_view>& Arguments) {
     beammp_info("BeamMP Server v" + Application::ServerVersionString());
     Application::SetSubsystemStatus("Server", Application::Status::Starting);
-    if (Arguments.size() > 1) {
-        Application::Settings.CustomIP = Arguments[0];
-        size_t n = std::count(Application::Settings.CustomIP.begin(), Application::Settings.CustomIP.end(), '.');
-        auto p = Application::Settings.CustomIP.find_first_not_of(".0123456789");
-        if (p != std::string::npos || n != 3 || Application::Settings.CustomIP.substr(0, 3) == "127") {
-            Application::Settings.CustomIP.clear();
-            beammp_warn("IP Specified is invalid! Ignoring");
-        } else {
-            beammp_info("server started with custom IP");
-        }
-    }
     Application::SetSubsystemStatus("Server", Application::Status::Good);
 }
 

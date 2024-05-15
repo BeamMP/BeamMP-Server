@@ -334,22 +334,6 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    if(!Application::Settings.Password.empty()) { // ask password
-        if(!TCPSend(*Client, StringToVector("S"))) {
-            // TODO: handle
-        }
-        beammp_info("Waiting for password");
-        Data = TCPRcv(*Client);
-        std::string Pass = std::string(reinterpret_cast<const char*>(Data.data()), Data.size());
-        if(Pass != HashPassword(Application::Settings.Password)) {
-            beammp_debug(Client->GetName() + " attempted to connect with a wrong password");
-            ClientKick(*Client, "Wrong password!");
-            return {};
-        } else {
-            beammp_debug(Client->GetName() + " used the correct password");
-        }
-    }
-
     beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> Cl;
