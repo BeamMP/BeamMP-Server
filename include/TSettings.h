@@ -213,6 +213,11 @@ struct Settings {
         }
         map->at(key) = value;
     }
+    // Additional set overload for const char*, to avoid implicit conversions when set is
+    // invoked with string literals rather than std::strings
+    void set(Key key, const char* value){
+        set(key, std::string(value));
+    }
 
     const std::unordered_map<ComposedKey, SettingsAccessControl> getACLMap() const {
         return *InputAccessMapping;
