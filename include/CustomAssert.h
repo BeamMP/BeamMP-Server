@@ -32,6 +32,7 @@
 #include <thread>
 
 #include "Common.h"
+#include "Compat.h"
 
 static const char* const ANSI_RESET = "\u001b[0m";
 
@@ -56,7 +57,7 @@ static const char* const ANSI_WHITE_BOLD = "\u001b[37;1m";
 static const char* const ANSI_BOLD = "\u001b[1m";
 static const char* const ANSI_UNDERLINE = "\u001b[4m";
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(BEAMMP_FREEBSD)
 #include <iostream>
 inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const char* function, [[maybe_unused]] unsigned line,
     [[maybe_unused]] const char* condition_string, [[maybe_unused]] bool result) {
@@ -81,8 +82,8 @@ inline void _assert([[maybe_unused]] const char* file, [[maybe_unused]] const ch
             beammp_errorf("Assertion failed in '{}:{}': {}.", __func__, _line, #cond); \
         }                                                                              \
     } while (false)
-#define beammp_assert_not_reachable()                                                      \
-    do {                                                                                   \
+#define beammp_assert_not_reachable()                                                                                                                           \
+    do {                                                                                                                                                        \
         beammp_errorf("Assertion failed in '{}:{}': Unreachable code reached. This may result in a crash or undefined state of the program.", __func__, _line); \
     } while (false)
 #endif // DEBUG
