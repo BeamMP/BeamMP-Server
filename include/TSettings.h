@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
+#include "Sync.h"
 #include <cstdint>
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -24,7 +25,6 @@
 #include <string>
 #include <unordered_map>
 #include <variant>
-#include "Sync.h"
 
 struct ComposedKey {
     std::string Category;
@@ -83,9 +83,9 @@ struct Settings {
         General_Debug
     };
 
-    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap =  std::unordered_map<Key, SettingsTypeVariant>{
-        { General_Description, "BeamMP Default Description" },
-        { General_Tags, "Freeroam" },
+    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap = std::unordered_map<Key, SettingsTypeVariant> {
+        { General_Description, std::string("BeamMP Default Description") },
+        { General_Tags, std::string("Freeroam") },
         { General_MaxPlayers, 8 },
         { General_Name, "BeamMP Server" },
         { General_Map, "/levels/gridmap_v2/info.json" },
@@ -112,7 +112,7 @@ struct Settings {
         SettingsAccessMask // Console read/write permissions
         >;
 
-    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping =  std::unordered_map<ComposedKey, SettingsAccessControl>{
+    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping = std::unordered_map<ComposedKey, SettingsAccessControl> {
         { { "General", "Description" }, { General_Description, write } },
         { { "General", "Tags" }, { General_Tags, write } },
         { { "General", "MaxPlayers" }, { General_MaxPlayers, write } },

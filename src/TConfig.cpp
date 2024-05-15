@@ -20,11 +20,14 @@
 
 #include "Env.h"
 #include "TConfig.h"
+#include "TSettings.h"
 #include <cstdlib>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <istream>
 #include <sstream>
+#include <type_traits>
 
 // General
 static constexpr std::string_view StrDebug = "Debug";
@@ -120,29 +123,29 @@ void SetComment(CommentsT& Comments, const std::string& Comment) {
 void TConfig::FlushToFile() {
     // auto data = toml::parse<toml::preserve_comments>(mConfigFileName);
     auto data = toml::value {};
-    data["General"][StrAuthKey.data()] = Application::Settings.Key;
+    data["General"][StrAuthKey.data()] = Application::Settings.getAsString(Settings::Key::General_AuthKey);
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
-    data["General"][StrLogChat.data()] = Application::Settings.LogChat;
+    data["General"][StrLogChat.data()] = Application::Settings.getAsBool(Settings::Key::General_LogChat);
     SetComment(data["General"][StrLogChat.data()].comments(), " Whether to log chat messages in the console / log");
-    data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
-    data["General"][StrPrivate.data()] = Application::Settings.Private;
-    data["General"][StrPort.data()] = Application::Settings.Port;
-    data["General"][StrName.data()] = Application::Settings.ServerName;
+    data["General"][StrDebug.data()] = Application::Settings.getAsBool(Settings::Key::General_Debug);
+    data["General"][StrPrivate.data()] = Application::Settings.getAsBool(Settings::Key::General_Private);
+    data["General"][StrPort.data()] = Application::Settings.getAsInt(Settings::Key::General_Port);
+    data["General"][StrName.data()] = Application::Settings.getAsString(Settings::Key::General_Name);
     SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
-    data["General"][StrTags.data()] = Application::Settings.ServerTags;
-    data["General"][StrMaxCars.data()] = Application::Settings.MaxCars;
-    data["General"][StrMaxPlayers.data()] = Application::Settings.MaxPlayers;
-    data["General"][StrMap.data()] = Application::Settings.MapName;
-    data["General"][StrDescription.data()] = Application::Settings.ServerDesc;
-    data["General"][StrResourceFolder.data()] = Application::Settings.Resource;
+    data["General"][StrTags.data()] = Application::Settings.getAsString(Settings::Key::General_Tags);
+    data["General"][StrMaxCars.data()] = Application::Settings.getAsInt(Settings::Key::General_MaxCars);
+    data["General"][StrMaxPlayers.data()] = Application::Settings.getAsInt(Settings::Key::General_MaxCars);
+    data["General"][StrMap.data()] = Application::Settings.getAsString(Settings::Key::General_Map);
+    data["General"][StrDescription.data()] = Application::Settings.getAsString(Settings::Key::General_Description);
+    data["General"][StrResourceFolder.data()] = Application::Settings.getAsString(Settings::Key::General_ResourceFolder);
     // data["General"][StrPassword.data()] = Application::Settings.Password;
     // SetComment(data["General"][StrPassword.data()].comments(), " Sets a password on this server, which restricts people from joining. To join, a player must enter this exact password. Leave empty ("") to disable the password.");
     // Misc
-    data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
+    data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates);
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
-    data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
+    data["Misc"][StrSendErrors.data()] = Application::Settings.getAsBool(Settings::Key::Misc_SendErrors);
     SetComment(data["Misc"][StrSendErrors.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
-    data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
+    data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.getAsBool(Settings::Key::Misc_SendErrorsShowMessage);
     SetComment(data["Misc"][StrSendErrorsMessageEnabled.data()].comments(), " You can turn on/off the SendErrors message you get on startup here");
     std::stringstream Ss;
     Ss << "# This is the BeamMP-Server config file.\n"
@@ -190,76 +193,59 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 void TConfig::TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, Settings::Key key) {
     if (!Env.empty()) {
-        if (const char* envp = std::getenv(Env.data()); envp != nullptr && std::strcmp(envp, "") != 0) {
+        if (const char* envp = std::getenv(Env.data());
+            envp != nullptr && std::strcmp(envp, "") != 0) {
 
             std::visit(
                 overloaded {
                     [&envp, &key](std::string) {
-                        Application::SettingsSingleton.set(key, std::string(envp));
+                        Application::Settings.set(key, std::string(envp));
                     },
                     [&envp, &key](int) {
-                        Application::SettingsSingleton.set(key, int(std::strtol(envp, nullptr, 10)));
+                        Application::Settings.set(key, int(std::strtol(envp, nullptr, 10)));
                     },
                     [&envp, &key](bool) {
                         auto Str = std::string(envp);
-                        Application::SettingsSingleton.set(key, bool(Str == "1" || Str == "true"));
+                        Application::Settings.set(key, bool(Str == "1" || Str == "true"));
                     } },
-                Application::SettingsSingleton.get(key));
-        }
-    } else {
 
-        std::visit(
-            overloaded {
-                [&Table, &Category, &Key, &key](std::string) {
-                    if (Table[Category.c_str()][Key.data()].is_string())
-                        Application::SettingsSingleton.set(key, Table[Category.c_str()][Key.data()].as_string());
-                    else
-                        beammp_warnf("Value '{}.{}' has unexpected type, expected type 'string'", Category, Key);
-                },
-                [&Table, &Category, &Key, &key](int) {
-                    if (Table[Category.c_str()][Key.data()].is_integer())
-                        Application::SettingsSingleton.set(key, int(Table[Category.c_str()][Key.data()].as_integer()));
-                    else
-                        beammp_warnf("Value '{}.{}' has unexpected type, expected type 'integer'", Category, Key);
-                },
-                [&Table, &Category, &Key, &key](bool) {
-                    if (Table[Category.c_str()][Key.data()].is_boolean())
-                        Application::SettingsSingleton.set(key, Table[Category.c_str()][Key.data()].as_boolean());
-                    else
-                        beammp_warnf("Value '{}.{}' has unexpected type, expected type 'boolean'", Category, Key);
-                } },
-            Application::SettingsSingleton.get(key));
+                Application::Settings.get(key));
+            return;
+        }
     }
+
+    std::visit([&Table, &Category, &Key, &key](auto&& arg) {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, std::string>) {
+            if (Table[Category.c_str()][Key.data()].is_string())
+                Application::Settings.set(key, Table[Category.c_str()][Key.data()].as_string());
+            else
+                beammp_warnf("Value '{}.{}' has unexpected type, expected type 'string'", Category, Key);
+        } else if constexpr (std::is_same_v<T, int>) {
+            if (Table[Category.c_str()][Key.data()].is_integer())
+                Application::Settings.set(key, int(Table[Category.c_str()][Key.data()].as_integer()));
+            else
+                beammp_warnf("Value '{}.{}' has unexpected type, expected type 'integer'", Category, Key);
+        } else if constexpr (std::is_same_v<T, bool>) {
+            if (Table[Category.c_str()][Key.data()].is_boolean())
+                Application::Settings.set(key, Table[Category.c_str()][Key.data()].as_boolean());
+            else
+                beammp_warnf("Value '{}.{}' has unexpected type, expected type 'boolean'", Category, Key);
+        } else {
+            throw std::logic_error { "Invalid type for config value during read attempt" };
+        }
+    },
+        Application::Settings.get(key));
 }
 
 void TConfig::ParseFromFile(std::string_view name) {
     try {
         toml::value data {};
-        if (!mDisableConfig) {
+        if (!mDisableConfig) { // todo: rename mDisableCofig to configEnabled
             data = toml::parse<toml::preserve_comments>(name.data());
         }
+
         // GENERAL
-        TryReadValue(data, "General", StrDebug, EnvStrDebug, Application::Settings.DebugModeEnabled);
-        TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Application::Settings.Private);
-        if (Env::Get(Env::Key::PROVIDER_PORT_ENV).has_value()) {
-            TryReadValue(data, "General", StrPort, Env::Get(Env::Key::PROVIDER_PORT_ENV).value(), Application::Settings.Port);
-        } else {
-            TryReadValue(data, "General", StrPort, EnvStrPort, Application::Settings.Port);
-        }
-        TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Application::Settings.MaxCars);
-        TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Application::Settings.MaxPlayers);
-        TryReadValue(data, "General", StrMap, EnvStrMap, Application::Settings.MapName);
-        TryReadValue(data, "General", StrName, EnvStrName, Application::Settings.ServerName);
-        TryReadValue(data, "General", StrDescription, EnvStrDescription, Application::Settings.ServerDesc);
-        TryReadValue(data, "General", StrTags, EnvStrTags, Application::Settings.ServerTags);
-        TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
-        TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
-        TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
-        TryReadValue(data, "General", StrPassword, "", Application::Settings.Password);
-        // Misc
-        TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
-        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
-        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
 
         // Read into new Settings Singleton
         TryReadValue(data, "General", StrDebug, EnvStrDebug, Settings::Key::General_Debug);
@@ -291,7 +277,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         FlushToFile();
     }
     // all good so far, let's check if there's a key
-    if (Application::Settings.Key.empty()) {
+    if (Application::Settings.getAsString(Settings::Key::General_AuthKey).empty()) {
         if (mDisableConfig) {
             beammp_error("No AuthKey specified in the environment.");
         } else {
@@ -302,7 +288,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         return;
     }
     Application::SetSubsystemStatus("Config", Application::Status::Good);
-    if (Application::Settings.Key.size() != 36) {
+    if (Application::Settings.getAsString(Settings::Key::General_AuthKey).size() != 36) {
         beammp_warn("AuthKey specified is the wrong length and likely isn't valid.");
     }
 }
@@ -311,77 +297,24 @@ void TConfig::PrintDebug() {
     if (mDisableConfig) {
         beammp_debug("Provider turned off the generation and parsing of the ServerConfig.toml");
     }
-    beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.DebugModeEnabled ? "true" : "false"));
-    beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.Private ? "true" : "false"));
-    beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.Port));
-    beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.MaxCars));
-    beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.MaxPlayers));
-    beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.MapName + "\"");
-    beammp_debug(std::string(StrName) + ": \"" + Application::Settings.ServerName + "\"");
-    beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
+    beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_Debug) ? "true" : "false"));
+    beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false"));
+    beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)));
+    beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxCars)));
+    beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)));
+    beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.getAsString(Settings::Key::General_Map) + "\"");
+    beammp_debug(std::string(StrName) + ": \"" + Application::Settings.getAsString(Settings::Key::General_Name) + "\"");
+    beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.getAsString(Settings::Key::General_Description) + "\"");
     beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
-    beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
-    beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
+    beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.getAsBool(Settings::Key::General_LogChat) ? "true" : "false") + "\"");
+    beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.getAsString(Settings::Key::General_ResourceFolder) + "\"");
     // special!
-    beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
-    beammp_debug("Password Protected: " + std::string(Application::Settings.Password.empty() ? "false" : "true"));
+    beammp_debug("Key Length: " + std::to_string(Application::Settings.getAsString(Settings::Key::General_AuthKey).length()) + "");
 }
 
-void TConfig::ParseOldFormat() {
-    std::ifstream File("Server.cfg");
-    // read all, strip comments
-    std::string Content;
-    for (;;) {
-        std::string Line;
-        std::getline(File, Line);
-        if (!Line.empty() && Line.at(0) != '#') {
-            Line = Line.substr(0, Line.find_first_of('#'));
-            Content += Line + "\n";
-        }
-        if (!File.good()) {
-            break;
-        }
-    }
-    std::stringstream Str(Content);
-    std::string Key, Ignore, Value;
-    for (;;) {
-        Str >> Key >> std::ws >> Ignore >> std::ws;
-        std::getline(Str, Value);
-        if (Str.eof()) {
-            break;
-        }
-        std::stringstream ValueStream(Value);
-        ValueStream >> std::ws; // strip leading whitespace if any
-        Value = ValueStream.str();
-        if (Key == "Debug") {
-            Application::Settings.DebugModeEnabled = Value.find("true") != std::string::npos;
-        } else if (Key == "Private") {
-            Application::Settings.Private = Value.find("true") != std::string::npos;
-        } else if (Key == "Port") {
-            ValueStream >> Application::Settings.Port;
-        } else if (Key == "Cars") {
-            ValueStream >> Application::Settings.MaxCars;
-        } else if (Key == "MaxPlayers") {
-            ValueStream >> Application::Settings.MaxPlayers;
-        } else if (Key == "Map") {
-            Application::Settings.MapName = Value.substr(1, Value.size() - 3);
-        } else if (Key == "Name") {
-            Application::Settings.ServerName = Value.substr(1, Value.size() - 3);
-        } else if (Key == "Desc") {
-            Application::Settings.ServerDesc = Value.substr(1, Value.size() - 3);
-        } else if (Key == "use") {
-            Application::Settings.Resource = Value.substr(1, Value.size() - 3);
-        } else if (Key == "AuthKey") {
-            Application::Settings.Key = Value.substr(1, Value.size() - 3);
-        } else {
-            beammp_warn("unknown key in old auth file (ignored): " + Key);
-        }
-        Str >> std::ws;
-    }
-}
 std::string TConfig::TagsAsPrettyArray() const {
     std::vector<std::string> TagsArray = {};
-    SplitString(Application::Settings.ServerTags, ',', TagsArray);
+    SplitString(Application::Settings.getAsString(Settings::General_Tags), ',', TagsArray);
     std::string Pretty = {};
     for (size_t i = 0; i < TagsArray.size() - 1; ++i) {
         Pretty += '\"' + TagsArray[i] + "\", ";

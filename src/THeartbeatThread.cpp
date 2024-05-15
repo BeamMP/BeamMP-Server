@@ -64,7 +64,7 @@ void THeartbeatThread::operator()() {
             T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
-                if (!Application::Settings.Private) {
+                if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
                     beammp_trace("Backend response failed to parse as valid json");
                     beammp_trace("Response was: `" + T + "`");
                 }
@@ -104,12 +104,12 @@ void THeartbeatThread::operator()() {
                 beammp_error("Missing/invalid json members in backend response");
             }
         } else {
-            if (!Application::Settings.Private) {
+            if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
                 beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
             }
         }
 
-        if (Ok && !isAuth && !Application::Settings.Private) {
+        if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
             if (Status == "2000") {
                 beammp_info(("Authenticated! " + Message));
                 isAuth = true;
@@ -123,10 +123,10 @@ void THeartbeatThread::operator()() {
                 beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
         }
-        if (isAuth || Application::Settings.Private) {
+        if (isAuth || Application::Settings.getAsBool(Settings::Key::General_Private)) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
-        if (!Application::Settings.HideUpdateMessages && UpdateReminderCounter % 5) {
+        if (!Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates) && UpdateReminderCounter % 5) {
             Application::CheckForUpdates();
         }
     }
@@ -135,22 +135,21 @@ void THeartbeatThread::operator()() {
 std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
 
-    Ret << "uuid=" << Application::Settings.Key
+    Ret << "uuid=" << Application::Settings.getAsString(Settings::Key::General_AuthKey)
         << "&players=" << mServer.ClientCount()
-        << "&maxplayers=" << Application::Settings.MaxPlayers
-        << "&port=" << Application::Settings.Port
-        << "&map=" << Application::Settings.MapName
-        << "&private=" << (Application::Settings.Private ? "true" : "false")
+        << "&maxplayers=" << Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)
+        << "&port=" << Application::Settings.getAsInt(Settings::Key::General_Port)
+        << "&map=" << Application::Settings.getAsString(Settings::Key::General_Map)
+        << "&private=" << (Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false")
         << "&version=" << Application::ServerVersionString()
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
-        << "&name=" << Application::Settings.ServerName
-        << "&tags=" << Application::Settings.ServerTags
+        << "&name=" << Application::Settings.getAsString(Settings::Key::General_Name)
+        << "&tags=" << Application::Settings.getAsString(Settings::Key::General_Tags)
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()
         << "&playerslist=" << GetPlayers()
-        << "&desc=" << Application::Settings.ServerDesc
-        << "&pass=" << (Application::Settings.Password.empty() ? "false" : "true");
+        << "&desc=" << Application::Settings.getAsString(Settings::Key::General_Description);
     return Ret.str();
 }
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)

@@ -61,7 +61,7 @@ TEST_CASE("init and reset termios") {
         CHECK_EQ(current.c_lflag, original.c_lflag);
 #ifndef BEAMMP_FREEBSD // The 'c_line' attribute seems to only exist on Linux, so we need to omit it on other platforms
         CHECK_EQ(current.c_line, original.c_line);
-#endif 
+#endif
         CHECK_EQ(current.c_oflag, original.c_oflag);
         CHECK_EQ(current.c_ospeed, original.c_ospeed);
     }

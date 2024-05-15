@@ -78,7 +78,7 @@ static std::string GetDate() {
     auto local_tm = std::localtime(&tt);
     char buf[30];
     std::string date;
-    if (Application::Settings.DebugModeEnabled) {
+    if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {
         std::strftime(buf, sizeof(buf), "[%d/%m/%y %T.", local_tm);
         date += buf;
         auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
@@ -402,11 +402,10 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
             return;
         }
-            
 
         try {
-            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)));
-            Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
+            Settings::SettingsAccessControl acl = Application::Settings.getConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)));
+            Settings::SettingsTypeVariant keyType = Application::Settings.get(acl.first);
 
             std::visit(
                 overloaded {
@@ -437,28 +436,28 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
 
         try {
 
-            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)));
-            Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
+            Settings::SettingsAccessControl acl = Application::Settings.getConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)));
+            Settings::SettingsTypeVariant keyType = Application::Settings.get(acl.first);
 
             std::visit(
                 overloaded {
                     [&args](std::string keyValue) {
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::string(args.at(3)));
+                        Application::Settings.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::string(args.at(3)));
                         Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::string(args.at(3))));
                     },
                     [&args](int keyValue) {
-                        Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(3)));
-                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1),args.at(2), std::stoi(args.at(3))));
+                        Application::Settings.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), std::stoi(args.at(3)));
+                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::stoi(args.at(3))));
                     },
                     [&args](bool keyValue) {
                         // todo: implement other way to convert from string to bool
-                        if(args.at(3) == "true"){
-                            Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), true);
+                        if (args.at(3) == "true") {
+                            Application::Settings.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), true);
                             Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "true"));
-                        }else if(args.at(3) == "false"){
-                            Application::SettingsSingleton.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), false);
+                        } else if (args.at(3) == "false") {
+                            Application::Settings.setConsoleInputAccessMapping(ComposedKey(args.at(1), args.at(2)), false);
                             Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "false"));
-                        }else{
+                        } else {
                             beammp_errorf("Error when setting key: {}::{} : Unknown literal, use either 'true', or 'false' to set boolean values.", args.at(1), args.at(2));
                         }
                     }
@@ -471,39 +470,39 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             return;
         }
 
-    }else if(args.front() == "list"){
-        //std::unordered_map<std::string, Settings::SettingsAccessControl> 
-        for(const auto& [composedKey, keyACL] : Application::SettingsSingleton.getACLMap()){
+    } else if (args.front() == "list") {
+        // std::unordered_map<std::string, Settings::SettingsAccessControl>
+        for (const auto& [composedKey, keyACL] : Application::Settings.getACLMap()) {
             // even though we have the value, we want to ignore it in order to make use of access
             // control checks
-            
-            if(keyACL.second != Settings::SettingsAccessMask::noaccess){
-            
-            try{
-                
-            Settings::SettingsAccessControl acl = Application::SettingsSingleton.getConsoleInputAccessMapping(composedKey);
-            Settings::SettingsTypeVariant keyType = Application::SettingsSingleton.get(acl.first);
 
-            std::visit(
-                overloaded {
-                    [&composedKey](std::string keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
-                    },
-                    [&composedKey](int keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
-                    },
-                    [&composedKey](bool keyValue) {
-                        Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
-                    }
+            if (keyACL.second != Settings::SettingsAccessMask::noaccess) {
 
-                },
-                keyType);
-            }catch(std::logic_error& e){
-                beammp_errorf("Error when getting key: {}", e.what());
-            }
+                try {
+
+                    Settings::SettingsAccessControl acl = Application::Settings.getConsoleInputAccessMapping(composedKey);
+                    Settings::SettingsTypeVariant keyType = Application::Settings.get(acl.first);
+
+                    std::visit(
+                        overloaded {
+                            [&composedKey](std::string keyValue) {
+                                Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
+                            },
+                            [&composedKey](int keyValue) {
+                                Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
+                            },
+                            [&composedKey](bool keyValue) {
+                                Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
+                            }
+
+                        },
+                        keyType);
+                } catch (std::logic_error& e) {
+                    beammp_errorf("Error when getting key: {}", e.what());
+                }
             }
         }
-    }else {
+    } else {
         beammp_errorf("Unknown argument for cammand 'settings': {}", args.front());
 
         Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
@@ -515,7 +514,7 @@ void TConsole::Command_Say(const std::string& FullCmd) {
     if (FullCmd.size() > 3) {
         auto Message = FullCmd.substr(4);
         LuaAPI::MP::SendChatMessage(-1, Message);
-        if (!Application::Settings.LogChat) {
+        if (!Application::Settings.getAsBool(Settings::Key::General_LogChat)) {
             Application::Console().WriteRaw("Chat message sent!");
         }
     }

@@ -286,7 +286,7 @@ bool TServer::ShouldSpawn(TClient& c, const std::string& CarJson, int ID) {
         c.SetUnicycleID(ID);
         return true;
     } else {
-        return c.GetCarCount() < Application::Settings.MaxCars;
+        return c.GetCarCount() < Application::Settings.getAsInt(Settings::Key::General_MaxCars);
     }
 }
 

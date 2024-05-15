@@ -102,8 +102,7 @@ public:
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
-    static TSettings Settings;
-    static inline struct Settings SettingsSingleton { };
+    static inline struct Settings Settings { };
 
     static std::vector<std::string> GetBackendUrlsInOrder() {
         return {
@@ -225,13 +224,13 @@ void RegisterThread(const std::string& str);
     #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
     #define beammp_debug(x)                                                                   \
         do {                                                                                  \
-            if (Application::Settings.DebugModeEnabled) {                                     \
+            if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {                                     \
                 Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
             }                                                                                 \
         } while (false)
     #define beammp_event(x)                                                                   \
         do {                                                                                  \
-            if (Application::Settings.DebugModeEnabled) {                                     \
+            if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {                                     \
                 Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
             }                                                                                 \
         } while (false)
@@ -239,7 +238,7 @@ void RegisterThread(const std::string& str);
     #if defined(DEBUG)
         #define beammp_trace(x)                                                                   \
             do {                                                                                  \
-                if (Application::Settings.DebugModeEnabled) {                                     \
+                if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {                                     \
                     Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
                 }                                                                                 \
             } while (false)
