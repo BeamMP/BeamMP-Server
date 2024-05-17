@@ -630,12 +630,20 @@ static httplib::Headers table_to_headers(const sol::table& headers) {
             if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
                 http_headers.insert(std::pair(pair.first.as<std::string>(), pair.second.as<std::string>()));
             } else {
-                beammp_lua_error("Http:Get: Expected string-string pairs for headers, got something else, ignoring that header");
+                beammp_lua_error("HTTP Error: Expected string-string pairs for headers, got something else, ignoring that header");
             }
         }
     }
 
     return http_headers;
+}
+
+static std::string trim_host(const std::string& host) {
+    if (host.back() == '/') {
+        return host.substr(0, host.size() - 1);
+    } else {
+        return host;
+    }
 }
 
 void TLuaEngine::StateThreadData::Lua_HttpCallCallback(httplib::Result& response, std::shared_ptr<sol::reference> cb_ref) {
@@ -668,7 +676,7 @@ void TLuaEngine::StateThreadData::Lua_HttpGet(const std::string& host, const std
     // to derefence this pointer inside the http thread pool
     auto cb_ref = std::make_shared<sol::reference>(cb);
     boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref]() {
-        auto client = httplib::Client(host);
+        auto client = httplib::Client(trim_host(host));
         client.set_follow_location(true);
         auto response = client.Get(path, http_headers);
         this->Lua_HttpCallCallback(response, cb_ref);
@@ -688,7 +696,7 @@ void TLuaEngine::StateThreadData::Lua_HttpPost(const std::string& host, const st
 
     auto cb_ref = std::make_shared<sol::reference>(cb);
     boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref, params]() {
-        auto client = httplib::Client(host);
+        auto client = httplib::Client(trim_host(host));
         client.set_follow_location(true);
         auto response = client.Post(path, http_headers, params);
         this->Lua_HttpCallCallback(response, cb_ref);
@@ -700,7 +708,7 @@ void TLuaEngine::StateThreadData::Lua_HttpPost(const std::string& host, const st
 
     auto cb_ref = std::make_shared<sol::reference>(cb);
     boost::asio::post(this->mEngine->http_pool, [this, host, path, http_headers, cb_ref, body = std::move(body), content_type = std::move(content_type)]() {
-        auto client = httplib::Client(host);
+        auto client = httplib::Client(trim_host(host));
         client.set_follow_location(true);
         auto response = client.Post(path, http_headers, body.c_str(), body.length(), content_type);
         this->Lua_HttpCallCallback(response, cb_ref);
@@ -1010,7 +1018,7 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(con
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(std::shared_ptr<sol::reference> FunctionRef, const std::vector<TLuaArgTypes>& Args) {
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
-    Result->Function = "anonymous";
+    Result->Function = fmt::format("[[function_ref {:p}]]", FunctionRef->pointer());
     std::unique_lock Lock(mStateFunctionQueueMutex);
     mStateFunctionQueue.push_back({ "anonymous", Result, Args, "", FunctionRef });
     mStateFunctionQueueCond.notify_all();
