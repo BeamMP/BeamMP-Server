@@ -18,7 +18,9 @@
 
 #pragma once
 #include "Sync.h"
+#include <concepts>
 #include <cstdint>
+#include <doctest/doctest.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include <stdexcept>
@@ -84,8 +86,8 @@ struct Settings {
     };
 
     Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap = std::unordered_map<Key, SettingsTypeVariant> {
-        { General_Description, std::string("BeamMP Default Description") },
-        { General_Tags, std::string("Freeroam") },
+        { General_Description, "BeamMP Default Description" },
+        { General_Tags, "Freeroam" },
         { General_MaxPlayers, 8 },
         { General_Name, "BeamMP Server" },
         { General_Map, "/levels/gridmap_v2/info.json" },
@@ -181,7 +183,8 @@ struct Settings {
         return map->at(key);
     }
 
-    void set(Key key, std::string value) {
+    template <std::constructible_from<std::string> StringLike>
+    void set(Key key, const StringLike& value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::set(std::string)" };
@@ -215,7 +218,7 @@ struct Settings {
     }
     // Additional set overload for const char*, to avoid implicit conversions when set is
     // invoked with string literals rather than std::strings
-    void set(Key key, const char* value){
+    void set(Key key, const char* value) {
         set(key, std::string(value));
     }
 
@@ -319,3 +322,14 @@ bool HideUpdateMessages { false };
 
 
 }*/
+
+TEST_CASE("settings variant functions") {
+    Settings settings;
+    settings.set(Settings::General_Name, "hello, world");
+    CHECK_EQ(settings.getAsString(Settings::General_Name), "hello, world");
+    settings.set(Settings::General_Name, std::string("hello, world"));
+    CHECK_EQ(settings.getAsString(Settings::General_Name), "hello, world");
+    
+    CHECK_THROWS(settings.set(Settings::General_Debug, "hello, world"));
+    CHECK_NOTHROW(settings.set(Settings::General_Debug, false));
+}
