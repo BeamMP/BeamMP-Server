@@ -183,8 +183,7 @@ struct Settings {
         return map->at(key);
     }
 
-    template <std::constructible_from<std::string> StringLike>
-    void set(Key key, const StringLike& value) {
+    void set(Key key, const std::string& value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::set(std::string)" };
@@ -194,8 +193,8 @@ struct Settings {
         }
         map->at(key) = value;
     }
-
-    void set(Key key, int value) {
+    template<std::same_as<int> T>
+    void set(Key key, T value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::set(int)" };
@@ -205,8 +204,8 @@ struct Settings {
         }
         map->at(key) = value;
     }
-
-    void set(Key key, bool value) {
+    template<std::same_as<bool> T>
+    void set(Key key, T value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::set(bool)" };
@@ -215,11 +214,6 @@ struct Settings {
             throw std::logic_error { fmt::format("Wrong value type in Settings::set(bool): index {}", map->at(key).index()) };
         }
         map->at(key) = value;
-    }
-    // Additional set overload for const char*, to avoid implicit conversions when set is
-    // invoked with string literals rather than std::strings
-    void set(Key key, const char* value) {
-        set(key, std::string(value));
     }
 
     const std::unordered_map<ComposedKey, SettingsAccessControl> getACLMap() const {
@@ -329,6 +323,8 @@ TEST_CASE("settings variant functions") {
     CHECK_EQ(settings.getAsString(Settings::General_Name), "hello, world");
     settings.set(Settings::General_Name, std::string("hello, world"));
     CHECK_EQ(settings.getAsString(Settings::General_Name), "hello, world");
+    settings.set(Settings::General_MaxPlayers, 12);
+    CHECK_EQ(settings.getAsInt(Settings::General_MaxPlayers), 12);
     
     CHECK_THROWS(settings.set(Settings::General_Debug, "hello, world"));
     CHECK_NOTHROW(settings.set(Settings::General_Debug, false));
