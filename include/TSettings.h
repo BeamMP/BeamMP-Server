@@ -184,10 +184,10 @@ struct Settings {
     void set(Key key, std::string value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
-            throw std::logic_error { "Undefined setting key accessed in Settings::getAsString" };
+            throw std::logic_error { "Undefined setting key accessed in Settings::set(std::string)" };
         }
         if (!std::holds_alternative<std::string>(map->at(key))) {
-            throw std::logic_error { "Wrong value type in Settings::get: std::string" };
+            throw std::logic_error { fmt::format("Wrong value type in Settings::set(std::string): index {}", map->at(key).index()) };
         }
         map->at(key) = value;
     }
@@ -195,10 +195,10 @@ struct Settings {
     void set(Key key, int value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
-            throw std::logic_error { "Undefined setting key accessed in Settings::getAsString" };
+            throw std::logic_error { "Undefined setting key accessed in Settings::set(int)" };
         }
         if (!std::holds_alternative<int>(map->at(key))) {
-            throw std::logic_error { "Wrong value type in Settings::get: std::string" };
+            throw std::logic_error { fmt::format("Wrong value type in Settings::set(int): index {}", map->at(key).index()) };
         }
         map->at(key) = value;
     }
@@ -206,10 +206,10 @@ struct Settings {
     void set(Key key, bool value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
-            throw std::logic_error { "Undefined setting key accessed in Settings::getAsString" };
+            throw std::logic_error { "Undefined setting key accessed in Settings::set(bool)" };
         }
         if (!std::holds_alternative<bool>(map->at(key))) {
-            throw std::logic_error { "Wrong value type in Settings::get: std::string" };
+            throw std::logic_error { fmt::format("Wrong value type in Settings::set(bool): index {}", map->at(key).index()) };
         }
         map->at(key) = value;
     }
