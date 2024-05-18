@@ -173,6 +173,11 @@ add_library(commandline_static
     deps/commandline/src/backends/BufferedBackend.cpp
     deps/commandline/src/backends/BufferedBackend.h
 )
+
+# Ensure the commandline library uses C++11
+set_target_properties(commandline_static PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES)
+
+
 if (WIN32)
     target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
 else ()
@@ -217,3 +222,7 @@ if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
     endif(MSVC)
 endif()
 
+# Specific AppleClang options to suppress C++11 extension warnings - probably optional because it could hinder trouble shooting
+if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    add_compile_options(-Wno-c++11-extensions)
+endif ()
