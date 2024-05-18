@@ -268,7 +268,7 @@ std::vector<std::string> TLuaEngine::StateThreadData::GetStateTableKeys(const st
 
     for (size_t i = 0; i < keys.size(); ++i) {
         auto obj = current.get<sol::object>(keys.at(i));
-        if (obj.get_type() == sol::type::none) {
+        if (obj.get_type() == sol::type::lua_nil) {
             // error
             break;
         } else if (i == keys.size() - 1) {
