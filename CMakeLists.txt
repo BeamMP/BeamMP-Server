@@ -221,8 +221,3 @@ if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
         target_link_options(${PROJECT_NAME}-tests PRIVATE "/SUBSYSTEM:CONSOLE")
     endif(MSVC)
 endif()
-
-# Specific AppleClang options to suppress C++11 extension warnings - probably optional because it could hinder trouble shooting
-if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-    add_compile_options(-Wno-c++11-extensions)
-endif ()
