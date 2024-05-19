@@ -173,6 +173,11 @@ add_library(commandline_static
     deps/commandline/src/backends/BufferedBackend.cpp
     deps/commandline/src/backends/BufferedBackend.h
 )
+
+# Ensure the commandline library uses C++11
+set_target_properties(commandline_static PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES)
+
+
 if (WIN32)
     target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
 else ()
@@ -216,4 +221,3 @@ if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
         target_link_options(${PROJECT_NAME}-tests PRIVATE "/SUBSYSTEM:CONSOLE")
     endif(MSVC)
 endif()
-
