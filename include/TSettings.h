@@ -193,8 +193,9 @@ struct Settings {
         }
         map->at(key) = value;
     }
-    template<std::same_as<int> T>
-    void set(Key key, T value) {
+
+    template<typename Integer, std::enable_if_t<std::is_same_v<Integer, int>, bool> = true>
+    void set(Key key, Integer value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::set(int)" };
@@ -204,8 +205,8 @@ struct Settings {
         }
         map->at(key) = value;
     }
-    template<std::same_as<bool> T>
-    void set(Key key, T value) {
+    template<typename Boolean, std::enable_if_t<std::is_same_v<bool, Boolean>, bool> = true>
+    void set(Key key, Boolean value) {
         auto map = SettingsMap.synchronize();
         if (!map->contains(key)) {
             throw std::logic_error { "Undefined setting key accessed in Settings::set(bool)" };
