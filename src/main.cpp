@@ -29,7 +29,7 @@
 #include "TPluginMonitor.h"
 #include "TResourceManager.h"
 #include "TServer.h"
-#include "TSettings.h"
+#include "Settings.h"
 
 #include <cstdint>
 #include <iostream>

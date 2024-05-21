@@ -49,6 +49,7 @@ set(PRJ_HEADERS
     include/TServer.h
     include/VehicleData.h
     include/Env.h
+    include/Settings.h
 )
 # add all source files (.cpp) to this, except the one with main()
 set(PRJ_SOURCES
@@ -72,6 +73,7 @@ set(PRJ_SOURCES
     src/TServer.cpp
     src/VehicleData.cpp
     src/Env.cpp
+    src/Settings.cpp
 )
 
 find_package(Lua REQUIRED)

@@ -385,7 +385,7 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
         settings set <categoty> <setting> <value>   sets specified setting to value
         )";
 
-    if (args.size() == 0) {
+    if (EnsureArgsCount(args, 0)) {
         beammp_errorf("No arguments specified for command 'settings'!");
         Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
         return;
@@ -472,11 +472,11 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
 
     } else if (args.front() == "list") {
         // std::unordered_map<std::string, Settings::SettingsAccessControl>
-        for (const auto& [composedKey, keyACL] : Application::Settings.getACLMap()) {
+        for (const auto& [composedKey, keyACL] : Application::Settings.getAccessControlMap()) {
             // even though we have the value, we want to ignore it in order to make use of access
             // control checks
 
-            if (keyACL.second != Settings::SettingsAccessMask::noaccess) {
+            if (keyACL.second != Settings::SettingsAccessMask::NO_ACCESS) {
 
                 try {
 

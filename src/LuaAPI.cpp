@@ -21,7 +21,7 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "TLuaEngine.h"
-#include "TSettings.h"
+#include "Settings.h"
 
 #include <nlohmann/json.hpp>
 

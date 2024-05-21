@@ -20,7 +20,7 @@
 
 #include "Env.h"
 #include "TConfig.h"
-#include "TSettings.h"
+#include "Settings.h"
 #include <cstdlib>
 #include <exception>
 #include <fstream>
