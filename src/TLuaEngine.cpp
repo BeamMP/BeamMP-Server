@@ -66,6 +66,7 @@ void TLuaEngine::operator()() {
     RegisterThread("LuaEngine");
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Good);
     // lua engine main thread
+    beammp_infof("Lua v{}.{}.{}", LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE);
     CollectAndInitPlugins();
     // now call all onInit's
     auto Futures = TriggerEvent("onInit", "");
