@@ -86,17 +86,18 @@ struct Settings {
     };
 
     Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap = std::unordered_map<Key, SettingsTypeVariant> {
-        { General_Description, "BeamMP Default Description" },
-        { General_Tags, "Freeroam" },
+        // All entries which contain std::strings must be explicitly constructed, otherwise they become 'bool'
+        { General_Description, std::string("BeamMP Default Description") },
+        { General_Tags, std::string("Freeroam") },
         { General_MaxPlayers, 8 },
-        { General_Name, "BeamMP Server" },
-        { General_Map, "/levels/gridmap_v2/info.json" },
-        { General_AuthKey, "" },
+        { General_Name, std::string("BeamMP Server") },
+        { General_Map, std::string("/levels/gridmap_v2/info.json") },
+        { General_AuthKey, std::string("") },
         { General_Private, true },
         { General_Port, 30814 },
         { General_MaxCars, 1 },
         { General_LogChat, true },
-        { General_ResourceFolder, "Resources" },
+        { General_ResourceFolder, std::string("Resources") },
         { General_Debug, false },
         { Misc_SendErrorsShowMessage, true },
         { Misc_SendErrors, true },
@@ -183,7 +184,7 @@ TEST_CASE("settings get/set") {
     CHECK_EQ(settings.getAsInt(Settings::General_MaxPlayers), 12);
 }
 
-TEST_CASE("settings check for exception on wrong input type"){
+TEST_CASE("settings check for exception on wrong input type") {
     Settings settings;
     CHECK_THROWS(settings.set(Settings::General_Debug, "hello, world"));
     CHECK_NOTHROW(settings.set(Settings::General_Debug, false));
