@@ -50,6 +50,7 @@ set(PRJ_HEADERS
     include/VehicleData.h
     include/Env.h
     include/Profiling.h
+    include/ChronoWrapper.h
 )
 # add all source files (.cpp) to this, except the one with main()
 set(PRJ_SOURCES
@@ -74,6 +75,7 @@ set(PRJ_SOURCES
     src/VehicleData.cpp
     src/Env.cpp
     src/Profiling.cpp
+    src/ChronoWrapper.cpp
 )
 
 find_package(Lua REQUIRED)

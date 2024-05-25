@@ -57,6 +57,7 @@ static constexpr std::string_view StrPassword = "Password";
 static constexpr std::string_view StrSendErrors = "SendErrors";
 static constexpr std::string_view StrSendErrorsMessageEnabled = "SendErrorsShowMessage";
 static constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
+static constexpr std::string_view StrUpdateReminderTime = "UpdateReminderTime";
 
 TEST_CASE("TConfig::TConfig") {
     const std::string CfgFile = "beammp_server_testconfig.toml";
@@ -140,6 +141,8 @@ void TConfig::FlushToFile() {
     // Misc
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.HideUpdateMessages;
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
+    data["Misc"][StrUpdateReminderTime.data()] = Application::Settings.UpdateReminderTime;
+    SetComment(data["Misc"][StrUpdateReminderTime.data()].comments(), " Specifies the time between update reminders. You can use any of \"s, min, h, d\" at the end to specify the units seconds, minutes, hours or days. So 30d or 5min will print the update message every 30 days or 5 minutes.");
     data["Misc"][StrSendErrors.data()] = Application::Settings.SendErrors;
     SetComment(data["Misc"][StrSendErrors.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
     data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.SendErrorsMessageEnabled;
@@ -252,6 +255,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         // Misc
         TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
         TryReadValue(data, "Misc", StrHideUpdateMessages, "", Application::Settings.HideUpdateMessages);
+        TryReadValue(data, "Misc", StrUpdateReminderTime, "", Application::Settings.UpdateReminderTime);
         TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Application::Settings.SendErrorsMessageEnabled);
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));

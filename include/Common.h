@@ -83,6 +83,7 @@ public:
         std::string HTTPServerIP { "127.0.0.1" };
         bool HTTPServerUseSSL { false };
         bool HideUpdateMessages { false };
+        std::string UpdateReminderTime { "3h" };
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
 
@@ -151,7 +152,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 5, 0 };
+    static inline Version mVersion { 4, 5, 0 };
 };
 
 void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);

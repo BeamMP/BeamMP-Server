@@ -20,6 +20,7 @@
 
 #include "Client.h"
 #include "Http.h"
+#include "ChronoWrapper.h"
 //#include "SocketIO.h"
 #include <rapidjson/document.h>
 #include <rapidjson/rapidjson.h>
@@ -36,15 +37,17 @@ void THeartbeatThread::operator()() {
     static std::string Last;
 
     static std::chrono::high_resolution_clock::time_point LastNormalUpdateTime = std::chrono::high_resolution_clock::now();
+    static std::chrono::high_resolution_clock::time_point LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
-    size_t UpdateReminderCounter = 0;
+    std::chrono::high_resolution_clock::duration UpdateReminderTimePassed;
+    auto UpdateReminderTimeout = ChronoWrapper::TimeFromStringWithLiteral(Application::Settings.UpdateReminderTime);
     while (!Application::IsShuttingDown()) {
-        ++UpdateReminderCounter;
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
         bool Unchanged = Last == Body;
         auto TimePassed = (Now - LastNormalUpdateTime);
+        UpdateReminderTimePassed = (Now - LastUpdateReminderTime);
         auto Threshold = Unchanged ? 30 : 5;
         if (TimePassed < std::chrono::seconds(Threshold)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -129,7 +132,9 @@ void THeartbeatThread::operator()() {
         if (isAuth || Application::Settings.Private) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
-        if (!Application::Settings.HideUpdateMessages && UpdateReminderCounter % 5) {
+        // beammp_debugf("Update reminder time passed: {}, Update reminder time: {}", UpdateReminderTimePassed.count(), UpdateReminderTimeout.count());
+        if (!Application::Settings.HideUpdateMessages && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
+            LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
             Application::CheckForUpdates();
         }
     }
