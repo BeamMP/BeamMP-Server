@@ -302,8 +302,6 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             { "client_ip", ClientIp }
         };
 
-        beammp_debugf("IF YOU SEE THIS AND IT DISPLAYS PROPER INFO, THE FEATURE WORKS: {}", to_string(AuthReq));
-
         auto Target = "/pkToUser";
 
         unsigned int ResponseCode = 0;
