@@ -209,7 +209,7 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         } else {
             beammp_errorf("Invalid code got in Identify: '{}'", Code);
         }
-    } catch(const std::exception& e) {
+    } catch (const std::exception& e) {
         beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket", Code);
         boost::system::error_code ec;
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
@@ -278,7 +278,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    if (!TCPSend(*Client, StringToVector("A"))) { //changed to A for Accepted version
+    if (!TCPSend(*Client, StringToVector("A"))) { // changed to A for Accepted version
         // TODO: handle
     }
 
@@ -289,16 +289,21 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    std::string key(reinterpret_cast<const char*>(Data.data()), Data.size());
-
-    nlohmann::json AuthReq{};
-    std::string AuthResStr{};
+    std::string Key(reinterpret_cast<const char*>(Data.data()), Data.size());
+    std::string AuthKey = Application::Settings.Key;
+    std::string ClientIp = Client->GetIdentifiers().at("ip");
+    
+    nlohmann::json AuthReq {};
+    std::string AuthResStr {};
     try {
         AuthReq = nlohmann::json {
-            { "key", key }
+            { "key", Key },
+            { "auth_key", AuthKey },
+            { "client_ip", ClientIp }
         };
 
         auto Target = "/pkToUser";
+
         unsigned int ResponseCode = 0;
         AuthResStr = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, AuthReq.dump(), "application/json", &ResponseCode);
 
@@ -334,14 +339,14 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    if(!Application::Settings.Password.empty()) { // ask password
-        if(!TCPSend(*Client, StringToVector("S"))) {
+    if (!Application::Settings.Password.empty()) { // ask password
+        if (!TCPSend(*Client, StringToVector("S"))) {
             // TODO: handle
         }
         beammp_info("Waiting for password");
         Data = TCPRcv(*Client);
         std::string Pass = std::string(reinterpret_cast<const char*>(Data.data()), Data.size());
-        if(Pass != HashPassword(Application::Settings.Password)) {
+        if (Pass != HashPassword(Application::Settings.Password)) {
             beammp_debug(Client->GetName() + " attempted to connect with a wrong password");
             ClientKick(*Client, "Wrong password!");
             return {};
