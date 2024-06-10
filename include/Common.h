@@ -77,6 +77,7 @@ public:
         int Port { 30814 };
         std::string CustomIP {};
         bool LogChat { true };
+        bool AllowGuests { true };
         bool SendErrors { true };
         bool SendErrorsMessageEnabled { true };
         int HTTPServerPort { 8080 };

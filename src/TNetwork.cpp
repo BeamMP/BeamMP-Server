@@ -389,6 +389,12 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             return false;
         });
 
+    beammp_debugf("\t NotAllowedWithReason: {} \t AllowGuests: {} \t IsGuest: {}", NotAllowedWithReason, Application::Settings.AllowGuests, Client->IsGuest());
+    if (!NotAllowedWithReason && !Application::Settings.AllowGuests && Client->IsGuest()) { //!NotAllowedWithReason because this message has the lowest priority
+        NotAllowedWithReason = true;
+        Reason = "No guests are allowed on this server! To join, sign up at; forum.beammp.com.";
+    }
+
     if (NotAllowed) {
         ClientKick(*Client, "you are not allowed on the server!");
         return {};
