@@ -52,7 +52,7 @@ static constexpr std::string_view EnvStrAuthKey = "BEAMMP_AUTH_KEY";
 static constexpr std::string_view StrLogChat = "LogChat";
 static constexpr std::string_view EnvStrLogChat = "BEAMMP_LOG_CHAT";
 static constexpr std::string_view StrAllowGuests = "AllowGuests";
-static constexpr std::string_view EnvStrAllowGuests = "BEAMMP_NO_GUESTS";
+static constexpr std::string_view EnvStrAllowGuests = "BEAMMP_ALLOW_GUESTS";
 static constexpr std::string_view StrPassword = "Password";
 
 // Misc
