@@ -83,6 +83,7 @@ public:
         std::string HTTPServerIP { "127.0.0.1" };
         bool HTTPServerUseSSL { false };
         bool HideUpdateMessages { false };
+        std::string UpdateReminderTime { "30s" };
         [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
     };
 
