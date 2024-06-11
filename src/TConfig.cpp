@@ -51,6 +51,8 @@ static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view EnvStrAuthKey = "BEAMMP_AUTH_KEY";
 static constexpr std::string_view StrLogChat = "LogChat";
 static constexpr std::string_view EnvStrLogChat = "BEAMMP_LOG_CHAT";
+static constexpr std::string_view StrAllowGuests = "AllowGuests";
+static constexpr std::string_view EnvStrAllowGuests = "BEAMMP_ALLOW_GUESTS";
 static constexpr std::string_view StrPassword = "Password";
 
 // Misc
@@ -125,6 +127,8 @@ void TConfig::FlushToFile() {
     SetComment(data["General"][StrAuthKey.data()].comments(), " AuthKey has to be filled out in order to run the server");
     data["General"][StrLogChat.data()] = Application::Settings.LogChat;
     SetComment(data["General"][StrLogChat.data()].comments(), " Whether to log chat messages in the console / log");
+    data["General"][StrAllowGuests.data()] = Application::Settings.AllowGuests;
+    SetComment(data["General"][StrAllowGuests.data()].comments(), " Whether to allow guests");
     data["General"][StrDebug.data()] = Application::Settings.DebugModeEnabled;
     data["General"][StrPrivate.data()] = Application::Settings.Private;
     data["General"][StrPort.data()] = Application::Settings.Port;
@@ -251,6 +255,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Application::Settings.Resource);
         TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Application::Settings.Key);
         TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Application::Settings.LogChat);
+        TryReadValue(data, "General", StrAllowGuests, EnvStrAllowGuests, Application::Settings.AllowGuests);
         TryReadValue(data, "General", StrPassword, "", Application::Settings.Password);
         // Misc
         TryReadValue(data, "Misc", StrSendErrors, "", Application::Settings.SendErrors);
@@ -299,6 +304,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrDescription) + ": \"" + Application::Settings.ServerDesc + "\"");
     beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.LogChat ? "true" : "false") + "\"");
+    beammp_debug(std::string(StrAllowGuests) + ": \"" + (Application::Settings.AllowGuests ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.Resource + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.Key.length()) + "");
