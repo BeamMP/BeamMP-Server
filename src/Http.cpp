@@ -29,20 +29,20 @@
 #include <stdexcept>
 
 using json = nlohmann::json;
-struct connection {
+struct Connection {
     std::string host{};
     int port{};
-    connection() = default;
-    connection(std::string host, int port)
+    Connection() = default;
+    Connection(std::string host, int port)
         : host(host)
         , port(port) {};
 };
 constexpr uint8_t CONNECTION_AMOUNT = 10;
 static thread_local uint8_t write_index = 0;
-static thread_local std::array<connection, CONNECTION_AMOUNT> connections;
+static thread_local std::array<Connection, CONNECTION_AMOUNT> connections;
 static thread_local std::array<std::shared_ptr<httplib::SSLClient>, CONNECTION_AMOUNT> clients;
 
-[[nodiscard]] static std::shared_ptr<httplib::SSLClient> getClient(connection connectionInfo) {
+[[nodiscard]] static std::shared_ptr<httplib::SSLClient> getClient(Connection connectionInfo) {
     for (uint8_t i = 0; i < CONNECTION_AMOUNT; i++) {
         if (connectionInfo.host == connections[i].host
             && connectionInfo.port == connections[i].port) {
