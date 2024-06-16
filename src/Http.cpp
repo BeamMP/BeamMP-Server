@@ -28,15 +28,43 @@
 #include <random>
 #include <stdexcept>
 
-// TODO: Add sentry error handling back
-
 using json = nlohmann::json;
+struct connection {
+    std::string host{};
+    int port{};
+    connection() = default;
+    connection(std::string host, int port)
+        : host(host)
+        , port(port) {};
+};
+constexpr uint8_t CONNECTION_AMOUNT = 10;
+static thread_local uint8_t write_index = 0;
+static thread_local std::array<connection, CONNECTION_AMOUNT> connections;
+static thread_local std::array<std::shared_ptr<httplib::SSLClient>, CONNECTION_AMOUNT> clients;
+
+[[nodiscard]] static std::shared_ptr<httplib::SSLClient> getClient(connection connectionInfo) {
+    for (uint8_t i = 0; i < CONNECTION_AMOUNT; i++) {
+        if (connectionInfo.host == connections[i].host
+            && connectionInfo.port == connections[i].port) {
+            beammp_tracef("Old client reconnected, with ip {} and port {}", connectionInfo.host, connectionInfo.port);
+            return clients[i];
+        }
+    }
+    uint8_t i = write_index;
+    write_index++;
+    write_index %= CONNECTION_AMOUNT;
+    clients[i] = std::make_shared<httplib::SSLClient>(connectionInfo.host, connectionInfo.port);
+    connections[i] = {connectionInfo.host, connectionInfo.port};
+    beammp_tracef("New client connected, with ip {} and port {}", connectionInfo.host, connectionInfo.port);
+    return clients[i];
+}
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
-    httplib::SSLClient client(host, port);
-    client.enable_server_certificate_verification(false);
-    client.set_address_family(AF_INET);
-    auto res = client.Get(target.c_str());
+    std::shared_ptr<httplib::SSLClient> client;
+    client = getClient({host, port});
+    client->enable_server_certificate_verification(false);
+    client->set_address_family(AF_INET);
+    auto res = client->Get(target.c_str());
     if (res) {
         if (status) {
             *status = res->status;
@@ -48,12 +76,13 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
 }
 
 std::string Http::POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status, const httplib::Headers& headers) {
-    httplib::SSLClient client(host, port);
-    client.set_read_timeout(std::chrono::seconds(10));
-    beammp_assert(client.is_valid());
-    client.enable_server_certificate_verification(false);
-    client.set_address_family(AF_INET);
-    auto res = client.Post(target.c_str(), headers, body.c_str(), body.size(), ContentType.c_str());
+    std::shared_ptr<httplib::SSLClient> client;
+    client = getClient({host, port});
+    client->set_read_timeout(std::chrono::seconds(10));
+    beammp_assert(client->is_valid());
+    client->enable_server_certificate_verification(false);
+    client->set_address_family(AF_INET);
+    auto res = client->Post(target.c_str(), headers, body.c_str(), body.size(), ContentType.c_str());
     if (res) {
         if (status) {
             *status = res->status;
