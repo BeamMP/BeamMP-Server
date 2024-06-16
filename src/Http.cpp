@@ -60,8 +60,7 @@ static thread_local std::array<std::shared_ptr<httplib::SSLClient>, CONNECTION_A
 }
 
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
-    std::shared_ptr<httplib::SSLClient> client;
-    client = getClient({host, port});
+    std::shared_ptr<httplib::SSLClient> client = getClient({host, port});
     client->enable_server_certificate_verification(false);
     client->set_address_family(AF_INET);
     auto res = client->Get(target.c_str());
