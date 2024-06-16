@@ -75,8 +75,7 @@ std::string Http::GET(const std::string& host, int port, const std::string& targ
 }
 
 std::string Http::POST(const std::string& host, int port, const std::string& target, const std::string& body, const std::string& ContentType, unsigned int* status, const httplib::Headers& headers) {
-    std::shared_ptr<httplib::SSLClient> client;
-    client = getClient({host, port});
+    std::shared_ptr<httplib::SSLClient> client = getClient({host, port});
     client->set_read_timeout(std::chrono::seconds(10));
     beammp_assert(client->is_valid());
     client->enable_server_certificate_verification(false);
