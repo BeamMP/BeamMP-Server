@@ -322,7 +322,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     // TODO: handle
                 }
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(CarID);
-                //LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), CarID)); //uncomment if this packet is sent to everyone instead of to the client that spawned too many vehicles
+                LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), CarID));
                 if (!Network.Respond(c, StringToVector(Destroy), true)) {
                     // TODO: handle
                 }
