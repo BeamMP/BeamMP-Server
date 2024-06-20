@@ -27,14 +27,6 @@
 
 struct TConnection;
 
-class WatchingConnecting{
-public:
-    bool IsConnectionAllowed(const std::string& clientAddress);
-private:
-    void BlockIP(const std::string& clientAddress);
-    bool IsIPBlocked(const std::string& clientAddress);
-};
-
 class TNetwork {
 public:
     TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager);
