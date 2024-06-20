@@ -20,6 +20,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "LuaAPI.h"
+#include "RateLimiter.h"
 #include "TLuaEngine.h"
 #include "nlohmann/json.hpp"
 #include <CustomAssert.h>
@@ -196,10 +197,18 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
         return;
     }
-    std::shared_ptr<TClient> Client { nullptr };
+    std::string client_address = RawConnection.SockAddr.address().to_string();
+    std::shared_ptr<TClient> client { nullptr };
+    RateLimiter ddos_protection;
     try {
         if (Code == 'C') {
-            Client = Authentication(std::move(RawConnection));
+            if (ddos_protection.isConnectionAllowed(client_address)) {
+                beammp_infof("[DoS Protection] Client: [{}] is authorized to connect to the server", client_address);
+                client = Authentication(std::move(RawConnection));
+            } else {
+                beammp_infof("[DoS Protection] Client: [{}] has been denied access to the server", client_address);
+                RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
+            }
         } else if (Code == 'D') {
             HandleDownload(std::move(RawConnection));
         } else if (Code == 'P') {
@@ -292,7 +301,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     std::string Key(reinterpret_cast<const char*>(Data.data()), Data.size());
     std::string AuthKey = Application::Settings.Key;
     std::string ClientIp = Client->GetIdentifiers().at("ip");
-    
+
     nlohmann::json AuthReq {};
     std::string AuthResStr {};
     try {
@@ -389,7 +398,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             return false;
         });
 
-    if (!NotAllowedWithReason && !Application::Settings.AllowGuests && Client->IsGuest()) { //!NotAllowedWithReason because this message has the lowest priority
+    if (!NotAllowedWithReason && !Application::Settings.AllowGuests && Client->IsGuest()) { //! NotAllowedWithReason because this message has the lowest priority
         NotAllowedWithReason = true;
         Reason = "No guests are allowed on this server! To join, sign up at: forum.beammp.com.";
     }
