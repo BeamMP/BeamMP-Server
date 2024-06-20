@@ -35,6 +35,7 @@ set(PRJ_HEADERS
     include/Json.h
     include/LuaAPI.h
     include/RWMutex.h
+    include/RateLimiter.h
     include/SignalHandling.h
     include/TConfig.h
     include/TConsole.h
@@ -72,6 +73,7 @@ set(PRJ_SOURCES
     src/TResourceManager.cpp
     src/TScopedTimer.cpp
     src/TServer.cpp
+    src/RateLimiter.cpp
     src/VehicleData.cpp
     src/Env.cpp
     src/Profiling.cpp
