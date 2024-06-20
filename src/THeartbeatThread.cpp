@@ -153,7 +153,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
         << "&name=" << Application::Settings.ServerName
         << "&tags=" << Application::Settings.ServerTags
-        << "&allowguests=" << (Application::Settings.AllowGuests ? "true" : "false")
+        << "&guests=" << (Application::Settings.AllowGuests ? "true" : "false")
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()
