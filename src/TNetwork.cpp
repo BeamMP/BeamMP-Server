@@ -882,7 +882,7 @@ bool TNetwork::SendLarge(TClient& c, std::vector<uint8_t> Data, bool isSync) {
 
 bool TNetwork::Respond(TClient& c, const std::vector<uint8_t>& MSG, bool Rel, bool isSync) {
     char C = MSG.at(0);
-    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E') {
+    if (Rel || C == 'W' || C == 'Y' || C == 'V' || C == 'E' || compressBound(MSG.size()) > 1024) {
         if (C == 'O' || C == 'T' || MSG.size() > 1000) {
             return SendLarge(c, MSG, isSync);
         } else {
