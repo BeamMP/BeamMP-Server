@@ -403,13 +403,21 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         }
         return;
     }
-    case 't':
+    case 't': {
         beammp_trace(std::string(("got 'Ot' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        auto MaybePidVid = GetPidVid(Data.substr(0, Data.find(':', 1)));
+        if (MaybePidVid) {
+            std::tie(PID, VID) = MaybePidVid.value();
+        }
+        if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            Network.SendToAll(&c, StringToVector(Packet), false, true);
+        }
+        return;
+    }
+    case 'm': {
         Network.SendToAll(&c, StringToVector(Packet), false, true);
         return;
-    case 'm':
-        Network.SendToAll(&c, StringToVector(Packet), true, true);
-        return;
+    }
     default:
         beammp_trace(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
         return;
