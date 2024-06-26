@@ -177,15 +177,6 @@ void TConfig::CreateConfigFile() {
     if (mDisableConfig) {
         return;
     }
-    try {
-        if (fs::exists("Server.cfg")) {
-            // parse it (this is weird and bad and should be removed in some future version)
-            // ParseOldFormat();
-        }
-    } catch (const std::exception& e) {
-        beammp_error("an error occurred and was ignored during config transfer: " + std::string(e.what()));
-    }
-
     FlushToFile();
 }
 
