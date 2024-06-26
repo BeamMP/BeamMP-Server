@@ -50,6 +50,8 @@ set(PRJ_HEADERS
     include/VehicleData.h
     include/Env.h
     include/Settings.h
+    include/Profiling.h
+    include/ChronoWrapper.h
 )
 # add all source files (.cpp) to this, except the one with main()
 set(PRJ_SOURCES
@@ -74,6 +76,8 @@ set(PRJ_SOURCES
     src/VehicleData.cpp
     src/Env.cpp
     src/Settings.cpp
+    src/Profiling.cpp
+    src/ChronoWrapper.cpp
 )
 
 find_package(Lua REQUIRED)
@@ -173,6 +177,11 @@ add_library(commandline_static
     deps/commandline/src/backends/BufferedBackend.cpp
     deps/commandline/src/backends/BufferedBackend.h
 )
+
+# Ensure the commandline library uses C++11
+set_target_properties(commandline_static PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES)
+
+
 if (WIN32)
     target_compile_definitions(commandline_static PRIVATE -DPLATFORM_WINDOWS=1)
 else ()
@@ -216,4 +225,3 @@ if(${PROJECT_NAME}_ENABLE_UNIT_TESTING)
         target_link_options(${PROJECT_NAME}-tests PRIVATE "/SUBSYSTEM:CONSOLE")
     endif(MSVC)
 endif()
-

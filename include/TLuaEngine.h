@@ -18,9 +18,11 @@
 
 #pragma once
 
+#include "Profiling.h"
 #include "TNetwork.h"
 #include "TServer.h"
 #include <any>
+#include <chrono>
 #include <condition_variable>
 #include <filesystem>
 #include <initializer_list>
@@ -28,6 +30,7 @@
 #include <lua.hpp>
 #include <memory>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <queue>
 #include <random>
 #include <set>
@@ -36,19 +39,34 @@
 #include <vector>
 
 #define SOL_ALL_SAFETIES_ON 1
+#define SOL_USER_C_ASSERT SOL_ON
+#define SOL_C_ASSERT(...) \
+    beammp_lua_errorf("SOL2 assertion failure: Assertion `{}` failed in {}:{}. This *should* be a fatal error, but BeamMP Server overrides it to not be fatal. This may cause the Lua Engine to crash, or cause other issues.", #__VA_ARGS__, __FILE__, __LINE__)
 #include <sol/sol.hpp>
+
+struct JsonString {
+    std::string value;
+};
+
+// value used to keep nils in a table or array, across serialization boundaries like
+// JsonEncode, so that the nil stays at the same index and isn't treated like a special
+// value (e.g. one that can be ignored or discarded).
+const inline std::string BEAMMP_INTERNAL_NIL = "BEAMMP_SERVER_INTERNAL_NIL_VALUE";
 
 using TLuaStateId = std::string;
 namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaArgTypes = std::variant<std::string, int, sol::variadic_args, bool, std::unordered_map<std::string, std::string>>;
-static constexpr size_t TLuaArgTypes_String = 0;
-static constexpr size_t TLuaArgTypes_Int = 1;
-static constexpr size_t TLuaArgTypes_VariadicArgs = 2;
-static constexpr size_t TLuaArgTypes_Bool = 3;
-static constexpr size_t TLuaArgTypes_StringStringMap = 4;
+using TLuaValue = std::variant<std::string, int, JsonString, bool, std::unordered_map<std::string, std::string>, float>;
+enum TLuaType {
+    String = 0,
+    Int = 1,
+    Json = 2,
+    Bool = 3,
+    StringStringMap = 4,
+    Float = 5,
+};
 
 class TLuaPlugin;
 
@@ -96,7 +114,7 @@ public:
     struct QueuedFunction {
         std::string FunctionName;
         std::shared_ptr<TLuaResult> Result;
-        std::vector<TLuaArgTypes> Args;
+        std::vector<TLuaValue> Args;
         std::string EventName; // optional, may be empty
     };
 
@@ -149,7 +167,7 @@ public:
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     /**
@@ -169,7 +187,7 @@ public:
         }
 
         std::vector<std::shared_ptr<TLuaResult>> Results;
-        std::vector<TLuaArgTypes> Arguments { TLuaArgTypes { std::forward<ArgsT>(Args) }... };
+        std::vector<TLuaValue> Arguments { TLuaValue { std::forward<ArgsT>(Args) }... };
 
         for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
@@ -188,7 +206,7 @@ public:
             return {};
         }
         std::vector<std::shared_ptr<TLuaResult>> Results;
-        std::vector<TLuaArgTypes> Arguments { TLuaArgTypes { std::forward<ArgsT>(Args) }... };
+        std::vector<TLuaValue> Arguments { TLuaValue { std::forward<ArgsT>(Args) }... };
         const auto Handlers = GetEventHandlersForState(EventName, StateId);
         for (const auto& Handler : Handlers) {
             Results.push_back(EnqueueFunctionCall(StateId, Handler, Arguments));
@@ -225,8 +243,8 @@ private:
         StateThreadData(const StateThreadData&) = delete;
         virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaArgTypes>& Args, const std::string& EventName, CallStrategy Strategy);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
@@ -253,6 +271,9 @@ private:
         sol::table Lua_FS_ListFiles(const std::string& Path);
         sol::table Lua_FS_ListDirectories(const std::string& Path);
 
+        prof::UnitProfileCollection mProfile {};
+        std::unordered_map<std::string, prof::TimePoint> mProfileStarts;
+
         std::string mName;
         TLuaStateId mStateId;
         lua_State* mState;
@@ -268,6 +289,7 @@ private:
         std::recursive_mutex mPathsMutex;
         std::mt19937 mMersenneTwister;
         std::uniform_real_distribution<double> mUniformRealDistribution01;
+        std::vector<sol::object> JsonStringToArray(JsonString Str);
     };
 
     struct TimedEvent {

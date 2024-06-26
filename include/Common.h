@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -59,6 +60,7 @@ using SparseArray = std::unordered_map<size_t, T>;
 class Application final {
 public:
     // types
+
 
 
     using TShutdownHandler = std::function<void()>;
@@ -126,7 +128,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 3, 0 };
+    static inline Version mVersion { 3, 5, 0 };
 };
 
 void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);

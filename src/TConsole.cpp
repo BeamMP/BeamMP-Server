@@ -26,7 +26,9 @@
 #include "TLuaEngine.h"
 
 #include <ctime>
+#include <lua.hpp>
 #include <mutex>
+#include <openssl/opensslv.h>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
@@ -240,7 +242,25 @@ void TConsole::Command_Version(const std::string& cmd, const std::vector<std::st
         return;
     }
 
-    Application::Console().WriteRaw("Current version: v" + Application::ServerVersionString());
+    std::string platform;
+#if defined(BEAMMP_WINDOWS)
+    platform = "Windows";
+#elif defined(BEAMMP_LINUX)
+    platform = "Linux";
+#elif defined(BEAMMP_FREEBSD)
+    platform = "FreeBSD";
+#elif defined(BEAMMP_APPLE)
+    platform = "Apple";
+#else
+    platform = "Unknown";
+#endif
+
+    Application::Console().WriteRaw("Platform: " + platform);
+    Application::Console().WriteRaw("Server:   v" + Application::ServerVersionString());
+    std::string lua_version = fmt::format("Lua:      v{}.{}.{}", LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE);
+    Application::Console().WriteRaw(lua_version);
+    std::string openssl_version = fmt::format("OpenSSL:  v{}.{}.{}", OPENSSL_VERSION_MAJOR, OPENSSL_VERSION_MINOR, OPENSSL_VERSION_PATCH);
+    Application::Console().WriteRaw(openssl_version);
 }
 
 void TConsole::Command_Kick(const std::string&, const std::vector<std::string>& args) {

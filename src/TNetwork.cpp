@@ -209,7 +209,7 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         } else {
             beammp_errorf("Invalid code got in Identify: '{}'", Code);
         }
-    } catch(const std::exception& e) {
+    } catch (const std::exception& e) {
         beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket", Code);
         boost::system::error_code ec;
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
@@ -278,7 +278,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    if (!TCPSend(*Client, StringToVector("A"))) { //changed to A for Accepted version
+    if (!TCPSend(*Client, StringToVector("A"))) { // changed to A for Accepted version
         // TODO: handle
     }
 
@@ -289,16 +289,21 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    std::string key(reinterpret_cast<const char*>(Data.data()), Data.size());
-
-    nlohmann::json AuthReq{};
-    std::string AuthResStr{};
+    std::string Key(reinterpret_cast<const char*>(Data.data()), Data.size());
+    std::string AuthKey = Application::Settings.Key;
+    std::string ClientIp = Client->GetIdentifiers().at("ip");
+    
+    nlohmann::json AuthReq {};
+    std::string AuthResStr {};
     try {
         AuthReq = nlohmann::json {
-            { "key", key }
+            { "key", Key },
+            { "auth_key", AuthKey },
+            { "client_ip", ClientIp }
         };
 
         auto Target = "/pkToUser";
+
         unsigned int ResponseCode = 0;
         AuthResStr = Http::POST(Application::GetBackendUrlForAuth(), 443, Target, AuthReq.dump(), "application/json", &ResponseCode);
 
@@ -367,6 +372,11 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             }
             return false;
         });
+
+    if (!NotAllowedWithReason && !Application::Settings.AllowGuests && Client->IsGuest()) { //!NotAllowedWithReason because this message has the lowest priority
+        NotAllowedWithReason = true;
+        Reason = "No guests are allowed on this server! To join, sign up at: forum.beammp.com.";
+    }
 
     if (NotAllowed) {
         ClientKick(*Client, "you are not allowed on the server!");
