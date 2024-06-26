@@ -116,7 +116,7 @@ Settings::SettingsAccessControl Settings::getConsoleInputAccessMapping(const Com
     if (!acl_map->contains(keyName)) {
         throw std::logic_error { "Unknown key name accessed in Settings::getConsoleInputAccessMapping" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::NO_ACCESS) {
-        throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
+        throw std::logic_error { "Setting '" + keyName.Category + "::" + keyName.Key + "' is not accessible from within the runtime!" };
     }
     return acl_map->at(keyName);
 }
@@ -126,9 +126,9 @@ void Settings::setConsoleInputAccessMapping(const ComposedKey& keyName, const st
     if (!acl_map->contains(keyName)) {
         throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::NO_ACCESS) {
-        throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
+        throw std::logic_error { "Setting '" + keyName.Category + "::" + keyName.Key + "' is not accessible from within the runtime!" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::READ_ONLY) {
-        throw std::logic_error { "Setting '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
+        throw std::logic_error { "Setting '" + keyName.Category + "::" + keyName.Key + "' is not writeable from within the runtime!" };
     }
 
     Key key = acl_map->at(keyName).first;
@@ -145,9 +145,9 @@ void Settings::setConsoleInputAccessMapping(const ComposedKey& keyName, int valu
     if (!acl_map->contains(keyName)) {
         throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::NO_ACCESS) {
-        throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
+        throw std::logic_error { "Key '" + keyName.Category + "::" + keyName.Key + "' is not accessible from within the runtime!" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::READ_ONLY) {
-        throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
+        throw std::logic_error { "Key '" + keyName.Category + "::" + keyName.Key + "' is not writeable from within the runtime!" };
     }
 
     Key key = acl_map->at(keyName).first;
@@ -164,9 +164,9 @@ void Settings::setConsoleInputAccessMapping(const ComposedKey& keyName, bool val
     if (!acl_map->contains(keyName)) {
         throw std::logic_error { "Unknown key name accessed in Settings::setConsoleInputAccessMapping" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::NO_ACCESS) {
-        throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not accessible from within the runtime!" };
+        throw std::logic_error { "Key '" + keyName.Category + "::" + keyName.Key + "' is not accessible from within the runtime!" };
     } else if (acl_map->at(keyName).second == SettingsAccessMask::READ_ONLY) {
-        throw std::logic_error { "Key '" + keyName.Category + " > " + keyName.Key + "' is not writeable from within the runtime!" };
+        throw std::logic_error { "Key '" + keyName.Category + "::" + keyName.Key + "' is not writeable from within the runtime!" };
     }
 
     Key key = acl_map->at(keyName).first;
