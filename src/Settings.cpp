@@ -48,7 +48,7 @@ Settings::Settings(){
         { { "General", "MaxPlayers" }, { General_MaxPlayers, READ_WRITE } },
         { { "General", "Name" }, { General_Name, READ_WRITE } },
         { { "General", "Map" }, { General_Map, READ_WRITE } },
-        { { "General", "AuthKey" }, { General_AuthKey, READ_WRITE } },
+        { { "General", "AuthKey" }, { General_AuthKey, NO_ACCESS } },
         { { "General", "Private" }, { General_Private, READ_ONLY } },
         { { "General", "Port" }, { General_Port, READ_ONLY } },
         { { "General", "MaxCars" }, { General_MaxCars, READ_WRITE } },
