@@ -375,13 +375,13 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             std::visit(
                 overloaded {
                     [&args](std::string keyValue) {
-                        Application::Console().WriteRaw(fmt::format("'{} > {}' = {}", args.at(1), args.at(2), keyValue));
+                        Application::Console().WriteRaw(fmt::format("'{}::{}' = {}", args.at(1), args.at(2), keyValue));
                     },
                     [&args](int keyValue) {
-                        Application::Console().WriteRaw(fmt::format("'{} > {}' = {}", args.at(1), args.at(2), keyValue));
+                        Application::Console().WriteRaw(fmt::format("'{}::{}' = {}", args.at(1), args.at(2), keyValue));
                     },
                     [&args](bool keyValue) {
-                        Application::Console().WriteRaw(fmt::format("'{} > {}' = {}", args.at(1), args.at(2), keyValue));
+                        Application::Console().WriteRaw(fmt::format("'{}::{}' = {}", args.at(1), args.at(2), keyValue));
                     }
 
                 },
