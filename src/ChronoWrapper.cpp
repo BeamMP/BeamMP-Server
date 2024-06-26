@@ -10,7 +10,6 @@ std::chrono::high_resolution_clock::duration ChronoWrapper::TimeFromStringWithLi
     float time_value;
     if (!std::regex_search(time_str, match, time_regex)) return std::chrono::nanoseconds(0);
     time_value = stof(match.str(1));
-    beammp_debugf("Parsed time was: {}{}", time_value, match.str(2));
     if (match.str(2) == "d") {
         return std::chrono::seconds((uint64_t)(time_value * 86400)); //86400 seconds in a day
     }
