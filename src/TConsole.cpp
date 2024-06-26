@@ -367,7 +367,7 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
         settings help                               displays this help
         settings list                               lists all settings
         settings get <category> <setting>           prints current value of specified setting
-        settings set <categoty> <setting> <value>   sets specified setting to value
+        settings set <category> <setting> <value>   sets specified setting to value
         )";
 
     if (args.size() == 0) {
@@ -412,8 +412,8 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             return;
         }
     } else if (args.front() == "set") {
-        if (args.size() == 1) {
-            beammp_errorf("'settings set' needs at least two arguments!");
+        if (args.size() <= 3) {
+            beammp_errorf("'settings set' needs at least three arguments!");
 
             Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
             return;
@@ -450,8 +450,7 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
                 keyType);
 
         } catch (std::logic_error& e) {
-            beammp_errorf("Error when setting key.");
-            beammp_debugf("Exception when setting settings key via console: {}", e.what());
+            beammp_errorf("Exception when setting settings key via console: {}", e.what());
             return;
         }
 
