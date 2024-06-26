@@ -40,8 +40,8 @@ void THeartbeatThread::operator()() {
     static std::chrono::high_resolution_clock::time_point LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
     std::chrono::high_resolution_clock::duration UpdateReminderTimePassed;
-    auto UpdateReminderTimeout = ChronoWrapper::TimeFromStringWithLiteral(Application::Settings.getAsString(Settings::Key::Misc_UpdateReminderTime));
     while (!Application::IsShuttingDown()) {
+        auto UpdateReminderTimeout = ChronoWrapper::TimeFromStringWithLiteral(Application::Settings.getAsString(Settings::Key::Misc_UpdateReminderTime));
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
         auto Now = std::chrono::high_resolution_clock::now();
