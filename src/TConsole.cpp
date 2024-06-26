@@ -106,41 +106,6 @@ void TConsole::BackupOldLog() {
         } catch (const std::exception& e) {
             beammp_warn(e.what());
         }
-        /*
-        int err = 0;
-        zip* z = zip_open("ServerLogs.zip", ZIP_CREATE, &err);
-        if (!z) {
-            std::cerr << GetPlatformAgnosticErrorString() << std::endl;
-            return;
-        }
-        FILE* File = std::fopen(Path.string().c_str(), "r");
-        if (!File) {
-            std::cerr << GetPlatformAgnosticErrorString() << std::endl;
-            return;
-        }
-        std::vector<uint8_t> Buffer;
-        Buffer.resize(fs::file_size(Path));
-        std::fread(Buffer.data(), 1, Buffer.size(), File);
-        std::fclose(File);
-
-        auto s = zip_source_buffer(z, Buffer.data(), Buffer.size(), 0);
-
-        auto TimePoint = fs::last_write_time(Path);
-        auto Secs = TimePoint.time_since_epoch().count();
-        auto MyTimeT = std::time(&Secs);
-
-        std::string NewName = Path.stem().string();
-        NewName += "_";
-        std::string Time;
-        Time.resize(32);
-        size_t n = strftime(Time.data(), Time.size(), "%F_%H.%M.%S", localtime(&MyTimeT));
-        Time.resize(n);
-        NewName += Time;
-        NewName += ".log";
-
-        zip_file_add(z, NewName.c_str(), s, 0);
-        zip_close(z);
-    */
     }
 }
 
