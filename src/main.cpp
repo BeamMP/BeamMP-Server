@@ -20,6 +20,7 @@
 #include "Common.h"
 #include "Http.h"
 #include "LuaAPI.h"
+#include "Settings.h"
 #include "SignalHandling.h"
 #include "TConfig.h"
 #include "THeartbeatThread.h"
@@ -150,7 +151,7 @@ int BeamMPServerMain(MainArguments Arguments) {
                 beammp_errorf("Custom port requested via --port is invalid: '{}'", Port.value());
                 return 1;
             } else {
-                Application::Settings.Port = P;
+                Application::Settings.set(Settings::Key::General_Port, P);
                 beammp_info("Custom port requested via commandline arguments: " + Port.value());
             }
         }
@@ -164,6 +165,9 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::SetSubsystemStatus("Main", Application::Status::Starting);
 
     SetupSignalHandlers();
+
+    Settings settings {};
+    beammp_infof("Server name set in new impl: {}", settings.getAsString(Settings::Key::General_Name));
 
     bool Shutdown = false;
     Application::RegisterShutdownHandler([&Shutdown] {
@@ -193,11 +197,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
 
-    TPluginMonitor PluginMonitor(fs::path(Application::Settings.Resource) / "Server", LuaEngine);
-
-    if (Application::Settings.HTTPServerEnabled) {
-        Http::Server::THttpServerInstance HttpServerInstance {};
-    }
+    TPluginMonitor PluginMonitor(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server", LuaEngine);
 
     Application::SetSubsystemStatus("Main", Application::Status::Good);
     RegisterThread("Main(Waiting)");

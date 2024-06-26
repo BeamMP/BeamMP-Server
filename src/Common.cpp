@@ -22,19 +22,17 @@
 #include "TConsole.h"
 #include <array>
 #include <charconv>
+#include <chrono>
 #include <fmt/core.h>
 #include <iostream>
 #include <map>
 #include <regex>
 #include <sstream>
 #include <thread>
-#include <chrono>
 
 #include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"
-
-Application::TSettings Application::Settings = {};
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
@@ -257,7 +255,7 @@ static std::mutex ThreadNameMapMutex {};
 
 std::string ThreadName(bool DebugModeOverride) {
     auto Lock = std::unique_lock(ThreadNameMapMutex);
-    if (DebugModeOverride || Application::Settings.DebugModeEnabled) {
+    if (DebugModeOverride || Application::Settings.getAsBool(Settings::Key::General_Debug)) {
         auto id = std::this_thread::get_id();
         if (threadNameMap.find(id) != threadNameMap.end()) {
             // found
@@ -269,21 +267,21 @@ std::string ThreadName(bool DebugModeOverride) {
 
 TEST_CASE("ThreadName") {
     RegisterThread("MyThread");
-    auto OrigDebug = Application::Settings.DebugModeEnabled;
+    auto OrigDebug = Application::Settings.getAsBool(Settings::Key::General_Debug);
 
     // ThreadName adds a space at the end, legacy but we need it still
     SUBCASE("Debug mode enabled") {
-        Application::Settings.DebugModeEnabled = true;
+        Application::Settings.set(Settings::Key::General_Debug, true);
         CHECK(ThreadName(true) == "MyThread ");
         CHECK(ThreadName(false) == "MyThread ");
     }
     SUBCASE("Debug mode disabled") {
-        Application::Settings.DebugModeEnabled = false;
+        Application::Settings.set(Settings::Key::General_Debug, false);
         CHECK(ThreadName(true) == "MyThread ");
         CHECK(ThreadName(false) == "");
     }
     // cleanup
-    Application::Settings.DebugModeEnabled = OrigDebug;
+    Application::Settings.set(Settings::Key::General_Debug, OrigDebug);
 }
 
 void RegisterThread(const std::string& str) {
@@ -297,7 +295,7 @@ void RegisterThread(const std::string& str) {
 #elif defined(BEAMMP_FREEBSD)
     ThreadId = std::to_string(getpid());
 #endif
-    if (Application::Settings.DebugModeEnabled) {
+    if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {
         std::ofstream ThreadFile(".Threads.log", std::ios::app);
         ThreadFile << ("Thread \"" + str + "\" is TID " + ThreadId) << std::endl;
     }
@@ -330,7 +328,7 @@ TEST_CASE("Version::AsString") {
 }
 
 void LogChatMessage(const std::string& name, int id, const std::string& msg) {
-    if (Application::Settings.LogChat) {
+    if (Application::Settings.getAsBool(Settings::Key::General_LogChat)) {
         std::stringstream ss;
         ss << ThreadName();
         ss << "[CHAT] ";
@@ -385,4 +383,3 @@ void SplitString(const std::string& str, const char delim, std::vector<std::stri
         out.push_back(str.substr(start, end - start));
     }
 }
-

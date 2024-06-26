@@ -80,7 +80,7 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::Settings.Port);
+    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::Settings.getAsInt(Settings::Key::General_Port));
     boost::system::error_code ec;
     mUDPSock.open(UdpListenEndpoint.protocol(), ec);
     if (ec) {
@@ -95,8 +95,8 @@ void TNetwork::UDPServerMain() {
         Application::GracefullyShutdown();
     }
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Good);
-    beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.Port) + (" with a Max of ")
-        + std::to_string(Application::Settings.MaxPlayers) + (" Clients"));
+    beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)) + (" with a Max of ")
+        + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) + (" Clients"));
     while (!Application::IsShuttingDown()) {
         try {
             ip::udp::endpoint client {};
@@ -133,7 +133,7 @@ void TNetwork::UDPServerMain() {
 void TNetwork::TCPServerMain() {
     RegisterThread("TCPServer");
 
-    ip::tcp::endpoint ListenEp(ip::address::from_string("0.0.0.0"), Application::Settings.Port);
+    ip::tcp::endpoint ListenEp(ip::address::from_string("0.0.0.0"), Application::Settings.getAsInt(Settings::Key::General_Port));
     ip::tcp::socket Listener(mServer.IoCtx());
     boost::system::error_code ec;
     Listener.open(ListenEp.protocol(), ec);
@@ -290,9 +290,9 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     std::string Key(reinterpret_cast<const char*>(Data.data()), Data.size());
-    std::string AuthKey = Application::Settings.Key;
+    std::string AuthKey = Application::Settings.getAsString(Settings::Key::General_AuthKey);
     std::string ClientIp = Client->GetIdentifiers().at("ip");
-    
+
     nlohmann::json AuthReq {};
     std::string AuthResStr {};
     try {
@@ -339,22 +339,6 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    if (!Application::Settings.Password.empty()) { // ask password
-        if (!TCPSend(*Client, StringToVector("S"))) {
-            // TODO: handle
-        }
-        beammp_info("Waiting for password");
-        Data = TCPRcv(*Client);
-        std::string Pass = std::string(reinterpret_cast<const char*>(Data.data()), Data.size());
-        if (Pass != HashPassword(Application::Settings.Password)) {
-            beammp_debug(Client->GetName() + " attempted to connect with a wrong password");
-            ClientKick(*Client, "Wrong password!");
-            return {};
-        } else {
-            beammp_debug(Client->GetName() + " used the correct password");
-        }
-    }
-
     beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         std::shared_ptr<TClient> Cl;
@@ -389,7 +373,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             return false;
         });
 
-    if (!NotAllowedWithReason && !Application::Settings.AllowGuests && Client->IsGuest()) { //!NotAllowedWithReason because this message has the lowest priority
+    if (!NotAllowedWithReason && !Application::Settings.getAsBool(Settings::Key::General_AllowGuests) && Client->IsGuest()) { //! NotAllowedWithReason because this message has the lowest priority
         NotAllowedWithReason = true;
         Reason = "No guests are allowed on this server! To join, sign up at: forum.beammp.com.";
     }
@@ -402,7 +386,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return {};
     }
 
-    if (mServer.ClientCount() < size_t(Application::Settings.MaxPlayers)) {
+    if (mServer.ClientCount() < size_t(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers))) {
         beammp_info("Identification success");
         mServer.InsertClient(Client);
         TCPClient(Client);
@@ -595,7 +579,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
 }
 
 void TNetwork::UpdatePlayer(TClient& Client) {
-    std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.MaxPlayers) + ":";
+    std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) + ":";
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         ReadLock Lock(mServer.GetClientMutex());
         if (!ClientPtr.expired()) {
@@ -670,7 +654,7 @@ void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
     SyncResources(*LockedClient);
     if (LockedClient->IsDisconnected())
         return;
-    (void)Respond(*LockedClient, StringToVector("M" + Application::Settings.MapName), true); // Send the Map on connect
+    (void)Respond(*LockedClient, StringToVector("M" + Application::Settings.getAsString(Settings::Key::General_Map)), true); // Send the Map on connect
     beammp_info(LockedClient->GetName() + " : Connected");
     LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerJoining", "", LockedClient->GetID()));
 }
@@ -729,7 +713,7 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
         return;
     }
     auto FileName = fs::path(UnsafeName).filename().string();
-    FileName = Application::Settings.Resource + "/Client/" + FileName;
+    FileName = Application::Settings.getAsString(Settings::Key::General_ResourceFolder) + "/Client/" + FileName;
 
     if (!std::filesystem::exists(FileName)) {
         if (!TCPSend(c, StringToVector("CO"))) {

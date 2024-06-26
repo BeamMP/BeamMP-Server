@@ -49,6 +49,7 @@ set(PRJ_HEADERS
     include/TServer.h
     include/VehicleData.h
     include/Env.h
+    include/Settings.h
     include/Profiling.h
     include/ChronoWrapper.h
 )
@@ -74,6 +75,7 @@ set(PRJ_SOURCES
     src/TServer.cpp
     src/VehicleData.cpp
     src/Env.cpp
+    src/Settings.cpp
     src/Profiling.cpp
     src/ChronoWrapper.cpp
 )

@@ -30,6 +30,8 @@
 #include <mutex>
 #include <openssl/opensslv.h>
 #include <sstream>
+#include <stdexcept>
+#include <unordered_map>
 
 static inline bool StringStartsWith(const std::string& What, const std::string& StartsWith) {
     return What.size() >= StartsWith.size() && What.substr(0, StartsWith.size()) == StartsWith;
@@ -78,7 +80,7 @@ static std::string GetDate() {
     auto local_tm = std::localtime(&tt);
     char buf[30];
     std::string date;
-    if (Application::Settings.DebugModeEnabled) {
+    if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {
         std::strftime(buf, sizeof(buf), "[%d/%m/%y %T.", local_tm);
         date += buf;
         auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(now);
@@ -106,41 +108,6 @@ void TConsole::BackupOldLog() {
         } catch (const std::exception& e) {
             beammp_warn(e.what());
         }
-        /*
-        int err = 0;
-        zip* z = zip_open("ServerLogs.zip", ZIP_CREATE, &err);
-        if (!z) {
-            std::cerr << GetPlatformAgnosticErrorString() << std::endl;
-            return;
-        }
-        FILE* File = std::fopen(Path.string().c_str(), "r");
-        if (!File) {
-            std::cerr << GetPlatformAgnosticErrorString() << std::endl;
-            return;
-        }
-        std::vector<uint8_t> Buffer;
-        Buffer.resize(fs::file_size(Path));
-        std::fread(Buffer.data(), 1, Buffer.size(), File);
-        std::fclose(File);
-
-        auto s = zip_source_buffer(z, Buffer.data(), Buffer.size(), 0);
-
-        auto TimePoint = fs::last_write_time(Path);
-        auto Secs = TimePoint.time_since_epoch().count();
-        auto MyTimeT = std::time(&Secs);
-
-        std::string NewName = Path.stem().string();
-        NewName += "_";
-        std::string Time;
-        Time.resize(32);
-        size_t n = strftime(Time.data(), Time.size(), "%F_%H.%M.%S", localtime(&MyTimeT));
-        Time.resize(n);
-        NewName += Time;
-        NewName += ".log";
-
-        zip_file_add(z, NewName.c_str(), s, 0);
-        zip_close(z);
-    */
     }
 }
 
@@ -386,8 +353,142 @@ std::tuple<std::string, std::vector<std::string>> TConsole::ParseCommand(const s
     return { Command, Args };
 }
 
+template <class... Ts>
+struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+
 void TConsole::Command_Settings(const std::string&, const std::vector<std::string>& args) {
-    if (!EnsureArgsCount(args, 1, 2)) {
+
+    static constexpr const char* sHelpString = R"(
+    Settings:
+        settings help                               displays this help
+        settings list                               lists all settings
+        settings get <category> <setting>           prints current value of specified setting
+        settings set <category> <setting> <value>   sets specified setting to value
+        )";
+
+    if (args.size() == 0) {
+        beammp_errorf("No arguments specified for command 'settings'!");
+        Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+        return;
+    }
+
+    if (args.front() == "help") {
+
+        Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+        return;
+    } else if (args.front() == "get") {
+        if (args.size() < 3) {
+            beammp_errorf("'settings get' needs at least two arguments!");
+
+            Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+            return;
+        }
+
+        try {
+            Settings::SettingsAccessControl acl = Application::Settings.getConsoleInputAccessMapping(ComposedKey { args.at(1), args.at(2) });
+            Settings::SettingsTypeVariant keyType = Application::Settings.get(acl.first);
+
+            std::visit(
+                overloaded {
+                    [&args](std::string keyValue) {
+                        Application::Console().WriteRaw(fmt::format("'{}::{}' = {}", args.at(1), args.at(2), keyValue));
+                    },
+                    [&args](int keyValue) {
+                        Application::Console().WriteRaw(fmt::format("'{}::{}' = {}", args.at(1), args.at(2), keyValue));
+                    },
+                    [&args](bool keyValue) {
+                        Application::Console().WriteRaw(fmt::format("'{}::{}' = {}", args.at(1), args.at(2), keyValue));
+                    }
+
+                },
+                keyType);
+
+        } catch (std::logic_error& e) {
+            beammp_errorf("Error when getting key: {}", e.what());
+            return;
+        }
+    } else if (args.front() == "set") {
+        if (args.size() <= 3) {
+            beammp_errorf("'settings set' needs at least three arguments!");
+
+            Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
+            return;
+        }
+
+        try {
+
+            Settings::SettingsAccessControl acl = Application::Settings.getConsoleInputAccessMapping(ComposedKey { args.at(1), args.at(2) });
+            Settings::SettingsTypeVariant keyType = Application::Settings.get(acl.first);
+
+            std::visit(
+                overloaded {
+                    [&args](std::string keyValue) {
+                        Application::Settings.setConsoleInputAccessMapping(ComposedKey { args.at(1), args.at(2) }, std::string(args.at(3)));
+                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::string(args.at(3))));
+                    },
+                    [&args](int keyValue) {
+                        Application::Settings.setConsoleInputAccessMapping(ComposedKey { args.at(1), args.at(2) }, std::stoi(args.at(3)));
+                        Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::stoi(args.at(3))));
+                    },
+                    [&args](bool keyValue) {
+                        if (args.at(3) == "true") {
+                            Application::Settings.setConsoleInputAccessMapping(ComposedKey { args.at(1), args.at(2) }, true);
+                            Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "true"));
+                        } else if (args.at(3) == "false") {
+                            Application::Settings.setConsoleInputAccessMapping(ComposedKey { args.at(1), args.at(2) }, false);
+                            Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "false"));
+                        } else {
+                            beammp_errorf("Error when setting key: {}::{} : Unknown literal, use either 'true', or 'false' to set boolean values.", args.at(1), args.at(2));
+                        }
+                    }
+
+                },
+                keyType);
+
+        } catch (std::logic_error& e) {
+            beammp_errorf("Exception when setting settings key via console: {}", e.what());
+            return;
+        }
+
+    } else if (args.front() == "list") {
+        for (const auto& [composedKey, keyACL] : Application::Settings.getAccessControlMap()) {
+            // even though we have the value, we want to ignore it in order to make use of access
+            // control checks
+
+            if (keyACL.second != Settings::SettingsAccessMask::NO_ACCESS) {
+
+                try {
+
+                    Settings::SettingsAccessControl acl = Application::Settings.getConsoleInputAccessMapping(composedKey);
+                    Settings::SettingsTypeVariant keyType = Application::Settings.get(acl.first);
+
+                    std::visit(
+                        overloaded {
+                            [&composedKey](std::string keyValue) {
+                                Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
+                            },
+                            [&composedKey](int keyValue) {
+                                Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
+                            },
+                            [&composedKey](bool keyValue) {
+                                Application::Console().WriteRaw(fmt::format("{} = {}", composedKey, keyValue));
+                            }
+
+                        },
+                        keyType);
+                } catch (std::logic_error& e) {
+                    beammp_errorf("Error when getting key: {}", e.what());
+                }
+            }
+        }
+    } else {
+        beammp_errorf("Unknown argument for command 'settings': {}", args.front());
+
+        Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
         return;
     }
 }
@@ -396,7 +497,7 @@ void TConsole::Command_Say(const std::string& FullCmd) {
     if (FullCmd.size() > 3) {
         auto Message = FullCmd.substr(4);
         LuaAPI::MP::SendChatMessage(-1, Message);
-        if (!Application::Settings.LogChat) {
+        if (!Application::Settings.getAsBool(Settings::Key::General_LogChat)) {
             Application::Console().WriteRaw("Chat message sent!");
         }
     }

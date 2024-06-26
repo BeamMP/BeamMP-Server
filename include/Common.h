@@ -37,6 +37,7 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+#include "Settings.h"
 #include "TConsole.h"
 
 struct Version {
@@ -59,34 +60,6 @@ using SparseArray = std::unordered_map<size_t, T>;
 class Application final {
 public:
     // types
-    struct TSettings {
-        std::string ServerName { "BeamMP Server" };
-        std::string ServerDesc { "BeamMP Default Description" };
-        std::string ServerTags { "Freeroam" };
-        std::string Resource { "Resources" };
-        std::string MapName { "/levels/gridmap_v2/info.json" };
-        std::string Key {};
-        std::string Password {};
-        std::string SSLKeyPath { "./.ssl/HttpServer/key.pem" };
-        std::string SSLCertPath { "./.ssl/HttpServer/cert.pem" };
-        bool HTTPServerEnabled { false };
-        int MaxPlayers { 8 };
-        bool Private { true };
-        int MaxCars { 1 };
-        bool DebugModeEnabled { false };
-        int Port { 30814 };
-        std::string CustomIP {};
-        bool LogChat { true };
-        bool AllowGuests { true };
-        bool SendErrors { true };
-        bool SendErrorsMessageEnabled { true };
-        int HTTPServerPort { 8080 };
-        std::string HTTPServerIP { "127.0.0.1" };
-        bool HTTPServerUseSSL { false };
-        bool HideUpdateMessages { false };
-        std::string UpdateReminderTime { "30s" };
-        [[nodiscard]] bool HasCustomIP() const { return !CustomIP.empty(); }
-    };
 
     using TShutdownHandler = std::function<void()>;
 
@@ -104,7 +77,7 @@ public:
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
-    static TSettings Settings;
+    static inline struct Settings Settings { };
 
     static std::vector<std::string> GetBackendUrlsInOrder() {
         return {
@@ -226,13 +199,13 @@ void RegisterThread(const std::string& str);
     #define luaprint(x) Application::Console().Write(_this_location + std::string("[LUA] ") + (x))
     #define beammp_debug(x)                                                                   \
         do {                                                                                  \
-            if (Application::Settings.DebugModeEnabled) {                                     \
+            if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {                                     \
                 Application::Console().Write(_this_location + std::string("[DEBUG] ") + (x)); \
             }                                                                                 \
         } while (false)
     #define beammp_event(x)                                                                   \
         do {                                                                                  \
-            if (Application::Settings.DebugModeEnabled) {                                     \
+            if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {                                     \
                 Application::Console().Write(_this_location + std::string("[EVENT] ") + (x)); \
             }                                                                                 \
         } while (false)
@@ -240,7 +213,7 @@ void RegisterThread(const std::string& str);
     #if defined(DEBUG)
         #define beammp_trace(x)                                                                   \
             do {                                                                                  \
-                if (Application::Settings.DebugModeEnabled) {                                     \
+                if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {                                     \
                     Application::Console().Write(_this_location + std::string("[TRACE] ") + (x)); \
                 }                                                                                 \
             } while (false)

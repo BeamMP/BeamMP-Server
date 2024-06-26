@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Common.h"
+#include "Settings.h"
 
 #include <atomic>
 #include <filesystem>
@@ -40,9 +41,7 @@ public:
 private:
     void CreateConfigFile();
     void ParseFromFile(std::string_view name);
-    void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, std::string& OutValue);
-    void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, bool& OutValue);
-    void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, int& OutValue);
+    void TryReadValue(toml::value& Table, const std::string& Category, const std::string_view& Key, const std::string_view& Env, Settings::Key key);
 
     void ParseOldFormat();
     std::string TagsAsPrettyArray() const;

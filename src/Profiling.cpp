@@ -57,4 +57,3 @@ size_t prof::UnitExecutionTime::measurement_count() const {
     std::unique_lock lock(m_mtx);
     return m_total_calls;
 }
-

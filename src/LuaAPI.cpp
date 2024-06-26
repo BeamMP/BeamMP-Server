@@ -20,6 +20,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "Settings.h"
 #include "TLuaEngine.h"
 
 #include <nlohmann/json.hpp>
@@ -230,56 +231,56 @@ void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
     switch (ConfigID) {
     case 0: // debug
         if (NewValue.is<bool>()) {
-            Application::Settings.DebugModeEnabled = NewValue.as<bool>();
-            beammp_info(std::string("Set `Debug` to ") + (Application::Settings.DebugModeEnabled ? "true" : "false"));
+            Application::Settings.set(Settings::Key::General_Debug, NewValue.as<bool>());
+            beammp_info(std::string("Set `Debug` to ") + (Application::Settings.getAsBool(Settings::Key::General_Debug) ? "true" : "false"));
         } else {
             beammp_lua_error("set invalid argument [2] expected boolean");
         }
         break;
     case 1: // private
         if (NewValue.is<bool>()) {
-            Application::Settings.Private = NewValue.as<bool>();
-            beammp_info(std::string("Set `Private` to ") + (Application::Settings.Private ? "true" : "false"));
+            Application::Settings.set(Settings::Key::General_Private, NewValue.as<bool>());
+            beammp_info(std::string("Set `Private` to ") + (Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false"));
         } else {
             beammp_lua_error("set invalid argument [2] expected boolean");
         }
         break;
     case 2: // max cars
         if (NewValue.is<int>()) {
-            Application::Settings.MaxCars = NewValue.as<int>();
-            beammp_info(std::string("Set `MaxCars` to ") + std::to_string(Application::Settings.MaxCars));
+            Application::Settings.set(Settings::Key::General_MaxCars, NewValue.as<int>());
+            beammp_info(std::string("Set `MaxCars` to ") + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxCars)));
         } else {
             beammp_lua_error("set invalid argument [2] expected integer");
         }
         break;
     case 3: // max players
         if (NewValue.is<int>()) {
-            Application::Settings.MaxPlayers = NewValue.as<int>();
-            beammp_info(std::string("Set `MaxPlayers` to ") + std::to_string(Application::Settings.MaxPlayers));
+            Application::Settings.set(Settings::Key::General_MaxPlayers, NewValue.as<int>());
+            beammp_info(std::string("Set `MaxPlayers` to ") + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)));
         } else {
             beammp_lua_error("set invalid argument [2] expected integer");
         }
         break;
     case 4: // Map
         if (NewValue.is<std::string>()) {
-            Application::Settings.MapName = NewValue.as<std::string>();
-            beammp_info(std::string("Set `Map` to ") + Application::Settings.MapName);
+            Application::Settings.set(Settings::Key::General_Map, NewValue.as<std::string>());
+            beammp_info(std::string("Set `Map` to ") + Application::Settings.getAsString(Settings::Key::General_Map));
         } else {
             beammp_lua_error("set invalid argument [2] expected string");
         }
         break;
     case 5: // Name
         if (NewValue.is<std::string>()) {
-            Application::Settings.ServerName = NewValue.as<std::string>();
-            beammp_info(std::string("Set `Name` to ") + Application::Settings.ServerName);
+            Application::Settings.set(Settings::Key::General_Name, NewValue.as<std::string>());
+            beammp_info(std::string("Set `Name` to ") + Application::Settings.getAsString(Settings::Key::General_Name));
         } else {
             beammp_lua_error("set invalid argument [2] expected string");
         }
         break;
     case 6: // Desc
         if (NewValue.is<std::string>()) {
-            Application::Settings.ServerDesc = NewValue.as<std::string>();
-            beammp_info(std::string("Set `Description` to ") + Application::Settings.ServerDesc);
+            Application::Settings.set(Settings::Key::General_Description, NewValue.as<std::string>());
+            beammp_info(std::string("Set `Description` to ") + Application::Settings.getAsString(Settings::Key::General_Description));
         } else {
             beammp_lua_error("set invalid argument [2] expected string");
         }

@@ -37,11 +37,11 @@
 TLuaEngine* LuaAPI::MP::Engine;
 
 TLuaEngine::TLuaEngine()
-    : mResourceServerPath(fs::path(Application::Settings.Resource) / "Server") {
+    : mResourceServerPath(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server") {
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
     LuaAPI::MP::Engine = this;
-    if (!fs::exists(Application::Settings.Resource)) {
-        fs::create_directory(Application::Settings.Resource);
+    if (!fs::exists(Application::Settings.getAsString(Settings::Key::General_ResourceFolder))) {
+        fs::create_directory(Application::Settings.getAsString(Settings::Key::General_ResourceFolder));
     }
     if (!fs::exists(mResourceServerPath)) {
         fs::create_directory(mResourceServerPath);
@@ -57,7 +57,7 @@ TLuaEngine::TLuaEngine()
 }
 
 TEST_CASE("TLuaEngine ctor & dtor") {
-    Application::Settings.Resource = "beammp_server_test_resources";
+    Application::Settings.set(Settings::Key::General_ResourceFolder, "beammp_server_test_resources");
     TLuaEngine engine;
     Application::GracefullyShutdown();
 }
@@ -896,7 +896,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
             ToPrint += LuaAPI::LuaToString(static_cast<const sol::object>(arg));
             ToPrint += "\t";
         }
-        if (Application::Settings.DebugModeEnabled) {
+        if (Application::Settings.getAsBool(Settings::Key::General_Debug)) {
             beammp_lua_log("DEBUG", mStateId, ToPrint);
         }
     });
@@ -1135,7 +1135,7 @@ void TLuaEngine::StateThreadData::operator()() {
                         case TLuaType::Bool:
                             LuaArgs.push_back(sol::make_object(StateView, std::get<bool>(Arg)));
                             break;
-                         case TLuaType::StringStringMap: {
+                        case TLuaType::StringStringMap: {
                             auto Map = std::get<std::unordered_map<std::string, std::string>>(Arg);
                             auto Table = StateView.create_table();
                             for (const auto& [k, v] : Map) {
