@@ -89,7 +89,7 @@ struct Settings {
         General_AllowGuests
     };
 
-    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap; 
+    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap;
     enum SettingsAccessMask {
         READ_ONLY, // Value can be read from console
         READ_WRITE, // Value can be read and written to from console
@@ -101,7 +101,7 @@ struct Settings {
         SettingsAccessMask // Console read/write permissions
         >;
 
-    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping; 
+    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping;
     std::string getAsString(Key key);
 
     int getAsInt(Key key);
@@ -142,5 +142,3 @@ struct Settings {
     void setConsoleInputAccessMapping(const ComposedKey& keyName, int value);
     void setConsoleInputAccessMapping(const ComposedKey& keyName, bool value);
 };
-
-

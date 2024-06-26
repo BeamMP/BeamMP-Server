@@ -22,13 +22,13 @@
 #include "TConsole.h"
 #include <array>
 #include <charconv>
+#include <chrono>
 #include <fmt/core.h>
 #include <iostream>
 #include <map>
 #include <regex>
 #include <sstream>
 #include <thread>
-#include <chrono>
 
 #include "Compat.h"
 #include "CustomAssert.h"
@@ -383,4 +383,3 @@ void SplitString(const std::string& str, const char delim, std::vector<std::stri
         out.push_back(str.substr(start, end - start));
     }
 }
-

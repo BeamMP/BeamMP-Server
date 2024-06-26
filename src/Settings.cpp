@@ -18,9 +18,7 @@
 
 #include "Settings.h"
 
-
-
-Settings::Settings(){
+Settings::Settings() {
     SettingsMap = std::unordered_map<Key, SettingsTypeVariant> {
         // All entries which contain std::strings must be explicitly constructed, otherwise they become 'bool'
         { General_Description, std::string("BeamMP Default Description") },
@@ -39,7 +37,7 @@ Settings::Settings(){
         { Misc_SendErrorsShowMessage, true },
         { Misc_SendErrors, true },
         { Misc_ImScaredOfUpdates, true },
-        { Misc_UpdateReminderTime, "30s"}
+        { Misc_UpdateReminderTime, "30s" }
     };
 
     InputAccessMapping = std::unordered_map<ComposedKey, SettingsAccessControl> {
@@ -55,14 +53,12 @@ Settings::Settings(){
         { { "General", "LogChat" }, { General_LogChat, READ_ONLY } },
         { { "General", "ResourceFolder" }, { General_ResourceFolder, READ_ONLY } },
         { { "General", "Debug" }, { General_Debug, READ_WRITE } },
-        { { "General", "AllowGuests"}, { General_AllowGuests, READ_WRITE } },
+        { { "General", "AllowGuests" }, { General_AllowGuests, READ_WRITE } },
         { { "Misc", "SendErrorsShowMessage" }, { Misc_SendErrorsShowMessage, READ_WRITE } },
         { { "Misc", "SendErrors" }, { Misc_SendErrors, READ_WRITE } },
         { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, READ_WRITE } },
-        { { "Misc", "UpdateReminderTime" }, {Misc_UpdateReminderTime, READ_WRITE} }
+        { { "Misc", "UpdateReminderTime" }, { Misc_UpdateReminderTime, READ_WRITE } }
     };
-
-
 }
 
 std::string Settings::getAsString(Key key) {

@@ -65,13 +65,13 @@ void TPPSMonitor::operator()() {
                 V += c->GetCarCount();
             }
             // kick on "no ping"
-            if (c->SecondsSinceLastPing() > (20 * 60) ){
+            if (c->SecondsSinceLastPing() > (20 * 60)) {
                 beammp_debugf("client {} ({}) timing out: {}", c->GetID(), c->GetName(), c->SecondsSinceLastPing());
                 TimedOutClients.push_back(c);
             } else if (c->IsSynced() && c->SecondsSinceLastPing() > (1 * 60)) {
                 beammp_debugf("client {} ({}) timing out: {}", c->GetName(), c->GetID(), c->SecondsSinceLastPing());
                 TimedOutClients.push_back(c);
-            } 
+            }
 
             return true;
         });

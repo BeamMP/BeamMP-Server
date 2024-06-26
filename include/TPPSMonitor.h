@@ -27,7 +27,7 @@ class TNetwork;
 class TPPSMonitor : public IThreaded {
 public:
     explicit TPPSMonitor(TServer& Server);
-    virtual ~TPPSMonitor() {}
+    virtual ~TPPSMonitor() { }
 
     void operator()() override;
 

@@ -20,8 +20,8 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
-#include "TLuaEngine.h"
 #include "Settings.h"
+#include "TLuaEngine.h"
 
 #include <nlohmann/json.hpp>
 

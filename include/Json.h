@@ -17,7 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #pragma once
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/prettywriter.h"
 #include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
+#include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"

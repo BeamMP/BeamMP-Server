@@ -37,8 +37,8 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-#include "TConsole.h"
 #include "Settings.h"
+#include "TConsole.h"
 
 struct Version {
     uint8_t major;
@@ -60,8 +60,6 @@ using SparseArray = std::unordered_map<size_t, T>;
 class Application final {
 public:
     // types
-
-
 
     using TShutdownHandler = std::function<void()>;
 

@@ -19,8 +19,8 @@
 #include "Common.h"
 
 #include "Env.h"
-#include "TConfig.h"
 #include "Settings.h"
+#include "TConfig.h"
 #include <cstdlib>
 #include <exception>
 #include <fstream>
@@ -239,7 +239,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 void TConfig::ParseFromFile(std::string_view name) {
     try {
         toml::value data {};
-        if (!mDisableConfig) { 
+        if (!mDisableConfig) {
             data = toml::parse<toml::preserve_comments>(name.data());
         }
 

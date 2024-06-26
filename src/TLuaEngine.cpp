@@ -1135,7 +1135,7 @@ void TLuaEngine::StateThreadData::operator()() {
                         case TLuaType::Bool:
                             LuaArgs.push_back(sol::make_object(StateView, std::get<bool>(Arg)));
                             break;
-                         case TLuaType::StringStringMap: {
+                        case TLuaType::StringStringMap: {
                             auto Map = std::get<std::unordered_map<std::string, std::string>>(Arg);
                             auto Table = StateView.create_table();
                             for (const auto& [k, v] : Map) {
