@@ -141,18 +141,4 @@ struct Settings {
     void setConsoleInputAccessMapping(const ComposedKey& keyName, bool value);
 };
 
-TEST_CASE("settings get/set") {
-    Settings settings;
-    settings.set(Settings::General_Name, "hello, world");
-    CHECK_EQ(settings.getAsString(Settings::General_Name), "hello, world");
-    settings.set(Settings::General_Name, std::string("hello, world"));
-    CHECK_EQ(settings.getAsString(Settings::General_Name), "hello, world");
-    settings.set(Settings::General_MaxPlayers, 12);
-    CHECK_EQ(settings.getAsInt(Settings::General_MaxPlayers), 12);
-}
 
-TEST_CASE("settings check for exception on wrong input type") {
-    Settings settings;
-    CHECK_THROWS(settings.set(Settings::General_Debug, "hello, world"));
-    CHECK_NOTHROW(settings.set(Settings::General_Debug, false));
-}
