@@ -487,7 +487,7 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
             }
         }
     } else {
-        beammp_errorf("Unknown argument for cammand 'settings': {}", args.front());
+        beammp_errorf("Unknown argument for command 'settings': {}", args.front());
 
         Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
         return;
