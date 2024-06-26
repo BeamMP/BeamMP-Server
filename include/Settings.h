@@ -61,6 +61,8 @@ public:
 struct Settings {
     using SettingsTypeVariant = std::variant<std::string, bool, int>;
 
+    Settings();
+
     enum Key {
         // Keys that correspond to the keys set in TOML
         // Keys have their TOML section name as prefix
@@ -85,25 +87,7 @@ struct Settings {
         General_Debug
     };
 
-    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap = std::unordered_map<Key, SettingsTypeVariant> {
-        // All entries which contain std::strings must be explicitly constructed, otherwise they become 'bool'
-        { General_Description, std::string("BeamMP Default Description") },
-        { General_Tags, std::string("Freeroam") },
-        { General_MaxPlayers, 8 },
-        { General_Name, std::string("BeamMP Server") },
-        { General_Map, std::string("/levels/gridmap_v2/info.json") },
-        { General_AuthKey, std::string("") },
-        { General_Private, true },
-        { General_Port, 30814 },
-        { General_MaxCars, 1 },
-        { General_LogChat, true },
-        { General_ResourceFolder, std::string("Resources") },
-        { General_Debug, false },
-        { Misc_SendErrorsShowMessage, true },
-        { Misc_SendErrors, true },
-        { Misc_ImScaredOfUpdates, true }
-    };
-
+    Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap; 
     enum SettingsAccessMask {
         READ_ONLY, // Value can be read from console
         READ_WRITE, // Value can be read and written to from console
@@ -115,24 +99,7 @@ struct Settings {
         SettingsAccessMask // Console read/write permissions
         >;
 
-    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping = std::unordered_map<ComposedKey, SettingsAccessControl> {
-        { { "General", "Description" }, { General_Description, READ_WRITE } },
-        { { "General", "Tags" }, { General_Tags, READ_WRITE } },
-        { { "General", "MaxPlayers" }, { General_MaxPlayers, READ_WRITE } },
-        { { "General", "Name" }, { General_Name, READ_WRITE } },
-        { { "General", "Map" }, { General_Map, READ_WRITE } },
-        { { "General", "AuthKey" }, { General_AuthKey, READ_WRITE } },
-        { { "General", "Private" }, { General_Private, READ_ONLY } },
-        { { "General", "Port" }, { General_Port, READ_ONLY } },
-        { { "General", "MaxCars" }, { General_MaxCars, READ_WRITE } },
-        { { "General", "LogChat" }, { General_LogChat, READ_ONLY } },
-        { { "General", "ResourceFolder" }, { General_ResourceFolder, READ_ONLY } },
-        { { "General", "Debug" }, { General_Debug, READ_WRITE } },
-        { { "Misc", "SendErrorsShowMessage" }, { Misc_SendErrorsShowMessage, READ_WRITE } },
-        { { "Misc", "SendErrors" }, { Misc_SendErrors, READ_WRITE } },
-        { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, READ_WRITE } }
-    };
-
+    Sync<std::unordered_map<ComposedKey, SettingsAccessControl>> InputAccessMapping; 
     std::string getAsString(Key key);
 
     int getAsInt(Key key);
