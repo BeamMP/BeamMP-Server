@@ -71,6 +71,7 @@ struct Settings {
         Misc_SendErrorsShowMessage,
         Misc_SendErrors,
         Misc_ImScaredOfUpdates,
+        Misc_UpdateReminderTime,
 
         // [General]
         General_Description,
@@ -84,7 +85,8 @@ struct Settings {
         General_MaxCars,
         General_LogChat,
         General_ResourceFolder,
-        General_Debug
+        General_Debug,
+        General_AllowGuests
     };
 
     Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap; 

@@ -290,7 +290,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     std::string Key(reinterpret_cast<const char*>(Data.data()), Data.size());
-    std::string AuthKey = Application::Settings.Key;
+    std::string AuthKey = Application::Settings.getAsString(Settings::Key::General_AuthKey);
     std::string ClientIp = Client->GetIdentifiers().at("ip");
     
     nlohmann::json AuthReq {};
@@ -373,7 +373,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
             return false;
         });
 
-    if (!NotAllowedWithReason && !Application::Settings.AllowGuests && Client->IsGuest()) { //!NotAllowedWithReason because this message has the lowest priority
+    if (!NotAllowedWithReason && !Application::Settings.getAsBool(Settings::Key::General_AllowGuests) && Client->IsGuest()) { //!NotAllowedWithReason because this message has the lowest priority
         NotAllowedWithReason = true;
         Reason = "No guests are allowed on this server! To join, sign up at: forum.beammp.com.";
     }

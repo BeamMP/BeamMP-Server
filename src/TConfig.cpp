@@ -132,7 +132,7 @@ void TConfig::FlushToFile() {
     SetComment(data["General"][StrLogChat.data()].comments(), " Whether to log chat messages in the console / log");
     data["General"][StrDebug.data()] = Application::Settings.getAsBool(Settings::Key::General_Debug);
     data["General"][StrPrivate.data()] = Application::Settings.getAsBool(Settings::Key::General_Private);
-    data["General"][StrAllowGuests.data()] = Application::Settings.AllowGuests;
+    data["General"][StrAllowGuests.data()] = Application::Settings.getAsBool(Settings::Key::General_AllowGuests);
     SetComment(data["General"][StrAllowGuests.data()].comments(), " Whether to allow guests");
     data["General"][StrPort.data()] = Application::Settings.getAsInt(Settings::Key::General_Port);
     data["General"][StrName.data()] = Application::Settings.getAsString(Settings::Key::General_Name);
@@ -149,7 +149,7 @@ void TConfig::FlushToFile() {
     data["Misc"][StrHideUpdateMessages.data()] = Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates);
     SetComment(data["Misc"][StrHideUpdateMessages.data()].comments(), " Hides the periodic update message which notifies you of a new server version. You should really keep this on and always update as soon as possible. For more information visit https://wiki.beammp.com/en/home/server-maintenance#updating-the-server. An update message will always appear at startup regardless.");
     data["Misc"][StrSendErrors.data()] = Application::Settings.getAsBool(Settings::Key::Misc_SendErrors);
-    data["Misc"][StrUpdateReminderTime.data()] = Application::Settings.UpdateReminderTime;
+    data["Misc"][StrUpdateReminderTime.data()] = Application::Settings.getAsString(Settings::Key::Misc_UpdateReminderTime);
     SetComment(data["Misc"][StrUpdateReminderTime.data()].comments(), " Specifies the time between update reminders. You can use any of \"s, min, h, d\" at the end to specify the units seconds, minutes, hours or days. So 30d or 0.5min will print the update message every 30 days or half a minute.");
     SetComment(data["Misc"][StrSendErrors.data()].comments(), " If SendErrors is `true`, the server will send helpful info about crashes and other issues back to the BeamMP developers. This info may include your config, who is on your server at the time of the error, and similar general information. This kind of data is vital in helping us diagnose and fix issues faster. This has no impact on server performance. You can opt-out of this system by setting this to `false`");
     data["Misc"][StrSendErrorsMessageEnabled.data()] = Application::Settings.getAsBool(Settings::Key::Misc_SendErrorsShowMessage);
@@ -267,12 +267,12 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Settings::Key::General_ResourceFolder);
         TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Settings::Key::General_AuthKey);
         TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Settings::Key::General_LogChat);
-        TryReadValue(data, "General", StrAllowGuests, EnvStrAllowGuests, Application::Settings.AllowGuests);
+        TryReadValue(data, "General", StrAllowGuests, EnvStrAllowGuests, Settings::Key::General_AllowGuests);
         // Misc
         TryReadValue(data, "Misc", StrSendErrors, "", Settings::Key::Misc_SendErrors);
-        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Settings::Misc_ImScaredOfUpdates);
-        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Settings::Misc_SendErrorsShowMessage);
-        TryReadValue(data, "Misc", StrUpdateReminderTime, "", Application::Settings.UpdateReminderTime);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Settings::Key::Misc_ImScaredOfUpdates);
+        TryReadValue(data, "Misc", StrSendErrorsMessageEnabled, "", Settings::Key::Misc_SendErrorsShowMessage);
+        TryReadValue(data, "Misc", StrUpdateReminderTime, "", Settings::Key::Misc_UpdateReminderTime);
 
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
@@ -317,7 +317,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.getAsBool(Settings::Key::General_LogChat) ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.getAsString(Settings::Key::General_ResourceFolder) + "\"");
-    beammp_debug(std::string(StrAllowGuests) + ": \"" + (Application::Settings.AllowGuests ? "true" : "false") + "\"");
+    beammp_debug(std::string(StrAllowGuests) + ": \"" + (Application::Settings.getAsBool(Settings::Key::General_AllowGuests) ? "true" : "false") + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.getAsString(Settings::Key::General_AuthKey).length()) + "");
 }

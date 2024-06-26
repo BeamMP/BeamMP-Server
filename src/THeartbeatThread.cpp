@@ -40,7 +40,7 @@ void THeartbeatThread::operator()() {
     static std::chrono::high_resolution_clock::time_point LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
     bool isAuth = false;
     std::chrono::high_resolution_clock::duration UpdateReminderTimePassed;
-    auto UpdateReminderTimeout = ChronoWrapper::TimeFromStringWithLiteral(Application::Settings.UpdateReminderTime);
+    auto UpdateReminderTimeout = ChronoWrapper::TimeFromStringWithLiteral(Application::Settings.getAsString(Settings::Key::Misc_UpdateReminderTime));
     while (!Application::IsShuttingDown()) {
         Body = GenerateCall();
         // a hot-change occurs when a setting has changed, to update the backend of that change.
@@ -129,7 +129,7 @@ void THeartbeatThread::operator()() {
         if (isAuth || Application::Settings.getAsBool(Settings::Key::General_Private)) {
             Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
         }
-        if (!Application::Settings.HideUpdateMessages && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
+        if (!Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates) && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
             LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
             Application::CheckForUpdates();
         }
@@ -149,7 +149,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
         << "&name=" << Application::Settings.getAsString(Settings::Key::General_Name)
         << "&tags=" << Application::Settings.getAsString(Settings::Key::General_Tags)
-        << "&guests=" << (Application::Settings.AllowGuests ? "true" : "false")
+        << "&guests=" << (Application::Settings.getAsBool(Settings::Key::General_AllowGuests) ? "true" : "false")
         << "&modlist=" << mResourceManager.TrimmedList()
         << "&modstotalsize=" << mResourceManager.MaxModSize()
         << "&modstotal=" << mResourceManager.ModsLoaded()

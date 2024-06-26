@@ -35,9 +35,11 @@ Settings::Settings(){
         { General_LogChat, true },
         { General_ResourceFolder, std::string("Resources") },
         { General_Debug, false },
+        { General_AllowGuests, true },
         { Misc_SendErrorsShowMessage, true },
         { Misc_SendErrors, true },
-        { Misc_ImScaredOfUpdates, true }
+        { Misc_ImScaredOfUpdates, true },
+        { Misc_UpdateReminderTime, "30s"}
     };
 
     InputAccessMapping = std::unordered_map<ComposedKey, SettingsAccessControl> {
@@ -53,9 +55,11 @@ Settings::Settings(){
         { { "General", "LogChat" }, { General_LogChat, READ_ONLY } },
         { { "General", "ResourceFolder" }, { General_ResourceFolder, READ_ONLY } },
         { { "General", "Debug" }, { General_Debug, READ_WRITE } },
+        { { "General", "AllowGuests"}, { General_AllowGuests, READ_WRITE } },
         { { "Misc", "SendErrorsShowMessage" }, { Misc_SendErrorsShowMessage, READ_WRITE } },
         { { "Misc", "SendErrors" }, { Misc_SendErrors, READ_WRITE } },
-        { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, READ_WRITE } }
+        { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, READ_WRITE } },
+        { { "Misc", "UpdateReminderTime" }, {Misc_UpdateReminderTime, READ_WRITE} }
     };
 
 
