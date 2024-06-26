@@ -241,7 +241,7 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
 void TConfig::ParseFromFile(std::string_view name) {
     try {
         toml::value data {};
-        if (!mDisableConfig) { // todo: rename mDisableCofig to configEnabled
+        if (!mDisableConfig) { 
             data = toml::parse<toml::preserve_comments>(name.data());
         }
 
