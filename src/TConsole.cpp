@@ -370,7 +370,7 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
         settings set <categoty> <setting> <value>   sets specified setting to value
         )";
 
-    if (EnsureArgsCount(args, 0)) {
+    if (args.size() == 0) {
         beammp_errorf("No arguments specified for command 'settings'!");
         Application::Console().WriteRaw("BeamMP-Server Console: " + std::string(sHelpString));
         return;
@@ -451,7 +451,8 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
                 keyType);
 
         } catch (std::logic_error& e) {
-            beammp_errorf("Error when setting key: {}", e.what());
+            beammp_errorf("Error when setting key.");
+            beammp_debugf("Exception when setting settings key via console: {}", e.what());
             return;
         }
 
