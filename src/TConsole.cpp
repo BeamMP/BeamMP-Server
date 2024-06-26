@@ -435,7 +435,6 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
                         Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), std::stoi(args.at(3))));
                     },
                     [&args](bool keyValue) {
-                        // todo: implement other way to convert from string to bool
                         if (args.at(3) == "true") {
                             Application::Settings.setConsoleInputAccessMapping(ComposedKey{args.at(1), args.at(2)}, true);
                             Application::Console().WriteRaw(fmt::format("{}::{} := {}", args.at(1), args.at(2), "true"));
@@ -457,7 +456,6 @@ void TConsole::Command_Settings(const std::string&, const std::vector<std::strin
         }
 
     } else if (args.front() == "list") {
-        // std::unordered_map<std::string, Settings::SettingsAccessControl>
         for (const auto& [composedKey, keyACL] : Application::Settings.getAccessControlMap()) {
             // even though we have the value, we want to ignore it in order to make use of access
             // control checks
