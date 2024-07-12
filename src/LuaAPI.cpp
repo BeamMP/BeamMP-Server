@@ -298,7 +298,7 @@ void LuaAPI::MP::Sleep(size_t Ms) {
 bool LuaAPI::MP::IsPlayerConnected(int ID) {
     auto MaybeClient = GetClient(Engine->Server(), ID);
     if (MaybeClient && !MaybeClient.value().expired()) {
-        return MaybeClient.value().lock()->IsConnected();
+        return MaybeClient.value().lock()->IsUDPConnected();
     } else {
         return false;
     }

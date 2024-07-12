@@ -27,6 +27,8 @@
 #include <array>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/address_v4.hpp>
+#include <boost/asio/ip/address_v6.hpp>
+#include <boost/asio/ip/v6_only.hpp>
 #include <cstring>
 
 typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
@@ -80,13 +82,20 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::Settings.getAsInt(Settings::Key::General_Port));
+    // listen on all ipv6 addresses
+    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("::"), Application::Settings.getAsInt(Settings::Key::General_Port));
     boost::system::error_code ec;
     mUDPSock.open(UdpListenEndpoint.protocol(), ec);
     if (ec) {
         beammp_error("open() failed: " + ec.message());
         std::this_thread::sleep_for(std::chrono::seconds(5));
         Application::GracefullyShutdown();
+    }
+    // set IP_V6ONLY to false to allow both v4 and v6
+    boost::asio::ip::v6_only option(false);
+    mUDPSock.set_option(option, ec);
+    if (ec) {
+        beammp_warnf("Failed to unset IP_V6ONLY on UDP, only IPv6 will work: {}", ec.message());
     }
     mUDPSock.bind(UdpListenEndpoint, ec);
     if (ec) {
@@ -99,8 +108,8 @@ void TNetwork::UDPServerMain() {
         + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) + (" Clients"));
     while (!Application::IsShuttingDown()) {
         try {
-            ip::udp::endpoint client {};
-            std::vector<uint8_t> Data = UDPRcvFromClient(client); // Receives any data from Socket
+            ip::udp::endpoint remote_client_ep {};
+            std::vector<uint8_t> Data = UDPRcvFromClient(remote_client_ep);
             auto Pos = std::find(Data.begin(), Data.end(), ':');
             if (Data.empty() || Pos > Data.begin() + 2)
                 continue;
@@ -116,16 +125,31 @@ void TNetwork::UDPServerMain() {
                 }
 
                 if (Client->GetID() == ID) {
-                    Client->SetUDPAddr(client);
-                    Client->SetIsConnected(true);
-                    Data.erase(Data.begin(), Data.begin() + 2);
-                    mServer.GlobalParser(ClientPtr, std::move(Data), mPPSMonitor, *this);
+                    // not initialized yet
+                    if (Client->GetUDPAddr() == ip::udp::endpoint {} || !Client->IsUDPConnected()) {
+                        // same IP (just a sanity check)
+                        if (remote_client_ep.address() == Client->GetTCPSock().remote_endpoint().address()) {
+                            Client->SetUDPAddr(remote_client_ep);
+                            Client->SetIsUDPConnected(true);
+                            beammp_debugf("UDP connected for client {}", ID);
+                        } else {
+                            beammp_debugf("Denied initial UDP packet due to IP mismatch");
+                            return false;
+                        }
+                    }
+                    if (Client->GetUDPAddr() == remote_client_ep) {
+                        Data.erase(Data.begin(), Data.begin() + 2);
+                        mServer.GlobalParser(ClientPtr, std::move(Data), mPPSMonitor, *this);
+                    } else {
+                        beammp_debugf("Ignored UDP packet due to remote address mismatch");
+                        return false;
+                    }
                 }
 
                 return true;
             });
         } catch (const std::exception& e) {
-            beammp_error(("fatal: ") + std::string(e.what()));
+            beammp_warnf("Failed to receive/parse packet via UDP: {}", e.what());
         }
     }
 }
@@ -133,13 +157,22 @@ void TNetwork::UDPServerMain() {
 void TNetwork::TCPServerMain() {
     RegisterThread("TCPServer");
 
-    ip::tcp::endpoint ListenEp(ip::address::from_string("0.0.0.0"), Application::Settings.getAsInt(Settings::Key::General_Port));
+    // listen on all ipv6 addresses
+    auto port = uint16_t(Application::Settings.getAsInt(Settings::Key::General_Port));
+    ip::tcp::endpoint ListenEp(ip::address::from_string("::"), port);
+    beammp_infof("Listening on 0.0.0.0:{0} and [::]:{0}", port);
     ip::tcp::socket Listener(mServer.IoCtx());
     boost::system::error_code ec;
     Listener.open(ListenEp.protocol(), ec);
     if (ec) {
         beammp_errorf("Failed to open socket: {}", ec.message());
         return;
+    }
+    // set IP_V6ONLY to false to allow both v4 and v6
+    boost::asio::ip::v6_only option(false);
+    Listener.set_option(option, ec);
+    if (ec) {
+        beammp_warnf("Failed to unset IP_V6ONLY on TCP, only IPv6 will work: {}", ec.message());
     }
     socket_base::linger LingerOpt {};
     LingerOpt.enabled(false);
@@ -169,13 +202,13 @@ void TNetwork::TCPServerMain() {
             ip::tcp::endpoint ClientEp;
             ip::tcp::socket ClientSocket = Acceptor.accept(ClientEp, ec);
             if (ec) {
-                beammp_errorf("failed to accept: {}", ec.message());
+                beammp_errorf("Failed to accept() new client: {}", ec.message());
             }
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
-            beammp_error("fatal: " + std::string(e.what()));
+            beammp_errorf("Exception in accept routine: {}", e.what());
         }
     } while (!Application::IsShuttingDown());
 }
@@ -256,8 +289,14 @@ std::string HashPassword(const std::string& str) {
 
 std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     auto Client = CreateClient(std::move(RawConnection.Socket));
-    Client->SetIdentifier("ip", RawConnection.SockAddr.address().to_string());
-    beammp_tracef("This thread is ip {}", RawConnection.SockAddr.address().to_string());
+    std::string ip = "";
+    if (RawConnection.SockAddr.address().to_v6().is_v4_mapped()) {
+        ip = boost::asio::ip::make_address_v4(ip::v4_mapped_t::v4_mapped, RawConnection.SockAddr.address().to_v6()).to_string();
+    } else {
+        ip = RawConnection.SockAddr.address().to_string();
+    }
+    Client->SetIdentifier("ip", ip);
+    beammp_tracef("This thread is ip {} ({})", ip, RawConnection.SockAddr.address().to_v6().is_v4_mapped() ? "IPv4 mapped IPv6" : "IPv6");
 
     beammp_info("Identifying new ClientConnection...");
 
@@ -977,7 +1016,7 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
 }
 
 bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
-    if (!Client.IsConnected() || Client.IsDisconnected()) {
+    if (!Client.IsUDPConnected() || Client.IsDisconnected()) {
         // this can happen if we try to send a packet to a client that is either
         // 1. not yet fully connected, or
         // 2. disconnected and not yet fully removed
