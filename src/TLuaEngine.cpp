@@ -1161,10 +1161,9 @@ void TLuaEngine::StateThreadData::operator()() {
                         if (Error.has_value()) {
                             ErrorString = Error.value();
                         }
-                        auto DebugTracebackFn = sol::state_view(L).globals()
-                                                    .get<sol::table>("debug")
-                                                    .get<sol::protected_function>("traceback");
-                        std::string Traceback = DebugTracebackFn(ErrorString, 2); // refusing to elaborate. questions? rtfm.
+                        auto DebugTracebackFn = sol::state_view(L).globals().get<sol::table>("debug").get<sol::protected_function>("traceback");
+                        // 2 = start collecting the trace one above the current function (1=current function)
+                        std::string Traceback = DebugTracebackFn(ErrorString, 2);
                         return sol::stack::push(L, Traceback);
                     };
                     sol::protected_function Fn(RawFn, StateView["INTERNAL_ERROR_HANDLER"]);
