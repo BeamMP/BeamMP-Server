@@ -1099,7 +1099,7 @@ void TLuaEngine::StateThreadData::operator()() {
                     S.second->Result = std::move(Res);
                 } else {
                     beammp_debug("Some call failed");
-                    traceback(StateView.lua_state());
+                    // traceback(StateView.lua_state());
                     S.second->Error = true;
                     sol::error Err = Res;
                     S.second->ErrorMessage = Err.what();
@@ -1123,7 +1123,12 @@ void TLuaEngine::StateThreadData::operator()() {
                 // TODO: Use TheQueuedFunction.EventName for errors, warnings, etc
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
-                sol::protected_function Fn = StateView[FnName];
+                StateView.script(R"(
+                function beammp_internal_error_handler(message)
+                return "Error: " .. message .. ", Stacktrace: " .. debug.traceback()
+                end
+                )");
+                sol::protected_function Fn(StateView[FnName], StateView["beammp_internal_error_handler"]);
                 if (Fn.valid() && Fn.get_type() == sol::type::function) {
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
@@ -1159,7 +1164,8 @@ void TLuaEngine::StateThreadData::operator()() {
                             break;
                         }
                     }
-                    Fn.set_error_handler([](const std::string& error, sol::this_state state) -> std::string { return traceback(state.lua_state()); });
+                    // StateView.set_panic( sol::c_call<decltype(&my_panic), &my_panic> );
+                    // Fn.set_error_handler([](const std::string& error, sol::this_state state) -> std::string { return traceback(state.lua_state()); });
                     auto Res = Fn(sol::as_args(LuaArgs));
                     if (Res.valid()) {
                         Result->Error = false;
