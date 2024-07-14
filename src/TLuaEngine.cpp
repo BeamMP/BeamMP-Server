@@ -38,6 +38,8 @@
 
 TLuaEngine* LuaAPI::MP::Engine;
 
+static sol::protected_function addTraceback(sol::state_view StateView, sol::protected_function RawFn);
+
 TLuaEngine::TLuaEngine()
     : mResourceServerPath(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server") {
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
@@ -493,6 +495,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
     sol::variadic_results LocalArgs = JsonStringToArray(Str);
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
+        Fn = addTraceback(mStateView, Fn);
         if (Fn.valid()) {
             auto LuaResult = Fn(LocalArgs);
             auto Result = std::make_shared<TLuaResult>();
@@ -500,9 +503,10 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
                 Result->Error = false;
                 Result->Result = LuaResult;
             } else {
-                beammp_debug("Some call failed 2");
                 Result->Error = true;
-                Result->ErrorMessage = "Function result in TriggerGlobalEvent was invalid";
+                sol::error Err = LuaResult;
+                Result->ErrorMessage = Err.what();
+                beammp_errorf("An error occured while executing local event handler \"{}\" for event \"{}\": {}", Handler, EventName, Result->ErrorMessage);
             }
             Result->MarkAsReady();
             Return.push_back(Result);
@@ -799,7 +803,6 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         return;
     }
     luaL_openlibs(mState);
-    // lua_pushcfunction(mState, (lua_CFunction)(traceback));
     sol::state_view StateView(mState);
     lua_atpanic(mState, LuaAPI::PanicHandler);
     // StateView.globals()["package"].get()
@@ -1053,6 +1056,21 @@ void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, co
     mEngine->RegisterEvent(EventName, mStateId, FunctionName);
 }
 
+static sol::protected_function addTraceback(sol::state_view StateView, sol::protected_function RawFn) {
+    StateView["INTERNAL_ERROR_HANDLER"] = [](lua_State *L) {
+        auto Error = sol::stack::get<std::optional<std::string>>(L);
+        std::string ErrorString = "<Unknown error>";
+        if (Error.has_value()) {
+            ErrorString = Error.value();
+        }
+        auto DebugTracebackFn = sol::state_view(L).globals().get<sol::table>("debug").get<sol::protected_function>("traceback");
+        // 2 = start collecting the trace one above the current function (1=current function)
+        std::string Traceback = DebugTracebackFn(ErrorString, 2);
+        return sol::stack::push(L, Traceback);
+    };
+    return sol::protected_function(RawFn, StateView["INTERNAL_ERROR_HANDLER"]);
+}
+
 void TLuaEngine::StateThreadData::operator()() {
     RegisterThread("Lua:" + mStateId);
     while (!Application::IsShuttingDown()) {
@@ -1094,8 +1112,6 @@ void TLuaEngine::StateThreadData::operator()() {
                     S.second->Error = false;
                     S.second->Result = std::move(Res);
                 } else {
-                    beammp_debug("Some call failed");
-                    // traceback(StateView.lua_state());
                     S.second->Error = true;
                     sol::error Err = Res;
                     S.second->ErrorMessage = Err.what();
@@ -1155,31 +1171,18 @@ void TLuaEngine::StateThreadData::operator()() {
                             break;
                         }
                     }
-                    StateView["INTERNAL_ERROR_HANDLER"] = [](lua_State* L) {
-                        auto Error = sol::stack::get<std::optional<std::string>>(L);
-                        std::string ErrorString = "<Unknown error>";
-                        if (Error.has_value()) {
-                            ErrorString = Error.value();
-                        }
-                        auto DebugTracebackFn = sol::state_view(L).globals().get<sol::table>("debug").get<sol::protected_function>("traceback");
-                        // 2 = start collecting the trace one above the current function (1=current function)
-                        std::string Traceback = DebugTracebackFn(ErrorString, 2);
-                        return sol::stack::push(L, Traceback);
-                    };
-                    sol::protected_function Fn(RawFn, StateView["INTERNAL_ERROR_HANDLER"]);
+                    auto Fn = addTraceback(StateView, RawFn);
                     auto Res = Fn(sol::as_args(LuaArgs));
                     if (Res.valid()) {
                         Result->Error = false;
                         Result->Result = std::move(Res);
                     } else {
-                        beammp_debug("Some call failed 3");
                         Result->Error = true;
                         sol::error Err = Res;
                         Result->ErrorMessage = Err.what();
                     }
                     Result->MarkAsReady();
                 } else {
-                    beammp_debug("Some call failed 4");
                     Result->Error = true;
                     Result->ErrorMessage = BeamMPFnNotFoundError; // special error kind that we can ignore later
                     Result->MarkAsReady();
