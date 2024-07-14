@@ -816,10 +816,12 @@ const uint8_t* /* end ptr */ TNetwork::SendSplit(TClient& c, ip::tcp::socket& So
 #include <cstring>
 #include <sys/sendfile.h>
 #include <unistd.h>
+#include <signal.h>
 #endif
 void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const std::string& Name) {
     TScopedTimer timer(fmt::format("Download of {}-{} for '{}'", Offset, End, Name));
 #if defined(BEAMMP_LINUX)
+    signal(SIGPIPE, SIG_IGN);
     // on linux, we can use sendfile(2)!
     int fd = ::open(Name.c_str(), O_RDONLY);
     if (fd < 0) {
