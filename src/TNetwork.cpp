@@ -831,7 +831,7 @@ void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const st
 
     auto SysOffset = off_t(Offset);
 
-    ssize_t ret = sendfile(socket, fd, &SysOffset, End - Offset);
+    ssize_t ret = sendfile64(socket, fd, &SysOffset, End - Offset);
     if (ret < 0) {
         beammp_errorf("Failed to send mod '{}' to client {}: {}", Name, c.GetID(), std::strerror(errno));
         return;
