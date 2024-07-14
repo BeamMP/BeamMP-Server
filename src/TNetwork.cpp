@@ -21,6 +21,7 @@
 #include "Common.h"
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
+#include "TScopedTimer.h"
 #include "nlohmann/json.hpp"
 #include <CustomAssert.h>
 #include <Http.h>
@@ -741,7 +742,8 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
         return;
     }
 
-    size_t Size = size_t(std::filesystem::file_size(FileName)), MSize = Size / 2;
+    size_t Size = size_t(std::filesystem::file_size(FileName));
+    size_t MSize = Size / 2;
 
     std::thread SplitThreads[2] {
         std::thread([&] {
@@ -809,41 +811,68 @@ const uint8_t* /* end ptr */ TNetwork::SendSplit(TClient& c, ip::tcp::socket& So
     }
 }
 
-void TNetwork::SplitLoad(TClient& c, size_t Sent, size_t Size, bool D, const std::string& Name) {
+#if defined(BEAMMP_LINUX)
+#include <cerrno>
+#include <cstring>
+#include <sys/sendfile.h>
+#include <unistd.h>
+#endif
+void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const std::string& Name) {
+    TScopedTimer timer(fmt::format("Download of {}-{} for '{}'", Offset, End, Name));
+#if defined(BEAMMP_LINUX)
+    // on linux, we can use sendfile(2)!
+    int fd = ::open(Name.c_str(), O_RDONLY);
+    if (fd < 0) {
+        beammp_errorf("Failed to open mod '{}' for sending, error: {}", Name, std::strerror(errno));
+        return;
+    }
+    // native handle, needed in order to make native syscalls with it
+    int socket = D ? c.GetDownSock().native_handle() : c.GetTCPSock().native_handle();
+
+    auto SysOffset = off_t(Offset);
+
+    ssize_t ret = sendfile(socket, fd, &SysOffset, End - Offset);
+    if (ret < 0) {
+        beammp_errorf("Failed to send mod '{}' to client {}: {}", Name, c.GetID(), std::strerror(errno));
+        return;
+    }
+
+#else
     std::ifstream f(Name.c_str(), std::ios::binary);
     uint32_t Split = 125 * MB;
     std::vector<uint8_t> Data;
-    if (Size > Split)
+    if (End > Split)
         Data.resize(Split);
     else
-        Data.resize(Size);
+        Data.resize(End);
     ip::tcp::socket* TCPSock { nullptr };
     if (D)
         TCPSock = &c.GetDownSock();
     else
         TCPSock = &c.GetTCPSock();
-    while (!c.IsDisconnected() && Sent < Size) {
-        size_t Diff = Size - Sent;
+    while (!c.IsDisconnected() && Offset < End) {
+        size_t Diff = End - Offset;
         if (Diff > Split) {
-            f.seekg(Sent, std::ios_base::beg);
+            f.seekg(Offset, std::ios_base::beg);
             f.read(reinterpret_cast<char*>(Data.data()), Split);
             if (!TCPSendRaw(c, *TCPSock, Data.data(), Split)) {
                 if (!c.IsDisconnected())
                     c.Disconnect("TCPSendRaw failed in mod download (1)");
                 break;
             }
-            Sent += Split;
+            Offset += Split;
         } else {
-            f.seekg(Sent, std::ios_base::beg);
+            f.seekg(Offset, std::ios_base::beg);
             f.read(reinterpret_cast<char*>(Data.data()), Diff);
             if (!TCPSendRaw(c, *TCPSock, Data.data(), int32_t(Diff))) {
                 if (!c.IsDisconnected())
                     c.Disconnect("TCPSendRaw failed in mod download (2)");
                 break;
             }
-            Sent += Diff;
+            Offset += Diff;
         }
     }
+#endif
 }
 
 bool TNetwork::TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size) {
