@@ -831,12 +831,16 @@ void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const st
     // native handle, needed in order to make native syscalls with it
     int socket = D ? c.GetDownSock().native_handle() : c.GetTCPSock().native_handle();
 
-    auto SysOffset = off_t(Offset);
-
-    ssize_t ret = sendfile64(socket, fd, &SysOffset, End - Offset);
-    if (ret < 0) {
-        beammp_errorf("Failed to send mod '{}' to client {}: {}", Name, c.GetID(), std::strerror(errno));
-        return;
+    ssize_t ret = 0;
+    auto ToSendTotal = End - Offset;
+    auto Start = Offset;
+    while (ret < ssize_t(ToSendTotal)) {
+        auto SysOffset = off_t(Start + size_t(ret));
+        ret = sendfile(socket, fd, &SysOffset, ToSendTotal - size_t(ret));
+        if (ret < 0) {
+            beammp_errorf("Failed to send mod '{}' to client {}: {}", Name, c.GetID(), std::strerror(errno));
+            return;
+        }
     }
 
 #else
