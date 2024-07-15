@@ -412,7 +412,7 @@ std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
             // into huge data.
             // If this limit were to be an issue, this could be made configurable, however clients have a similar
             // limit. For that reason, we just reject packets which decompress into too much data.
-            if (output_buffer.size() > MAX_DECOMPRESSION_BUFFER_SIZE) {
+            if (output_buffer.size() >= MAX_DECOMPRESSION_BUFFER_SIZE) {
                 throw std::runtime_error(fmt::format("decompressed packet size of {} bytes exceeded", MAX_DECOMPRESSION_BUFFER_SIZE));
             }
             // if decompression fails, we double the buffer size (up to the allowed limit) and try again
