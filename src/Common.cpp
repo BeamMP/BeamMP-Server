@@ -390,6 +390,9 @@ void SplitString(const std::string& str, const char delim, std::vector<std::stri
 std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
     beammp_debugf("got {} bytes of input data", input.size());
 
+    // start with a decompression buffer of 5x the input size, clamped to a maximum of 15 MB.
+    // this buffer can and will grow, but we don't want to start it too large. A 5x compression ratio
+    // is pretty optimistic.
     std::vector<uint8_t> output_buffer(std::min<size_t>(input.size() * 5, 15 * 1024 * 1024));
 
     uLongf output_size = output_buffer.size();
@@ -401,6 +404,9 @@ std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
             reinterpret_cast<const Bytef*>(input.data()),
             static_cast<uLongf>(input.size()));
         if (res == Z_BUF_ERROR) {
+            // We assume that a reasonable maximum size for decompressed packets is 30 MB.
+            // If this were to be an issue, this could be made configurable, however clients have a similar
+            // limit. For that reason, we just reject packets which decompress into too much data.
             if (output_buffer.size() > 30 * 1024 * 1024) {
                 throw std::runtime_error("decompressed packet size of 30 MB exceeded");
             }
