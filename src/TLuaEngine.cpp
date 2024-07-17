@@ -38,7 +38,7 @@
 
 TLuaEngine* LuaAPI::MP::Engine;
 
-static sol::protected_function addTraceback(sol::state_view StateView, sol::protected_function RawFn);
+static sol::protected_function AddTraceback(sol::state_view StateView, sol::protected_function RawFn);
 
 TLuaEngine::TLuaEngine()
     : mResourceServerPath(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server") {
@@ -495,7 +495,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
     sol::variadic_results LocalArgs = JsonStringToArray(Str);
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
-        Fn = addTraceback(mStateView, Fn);
+        Fn = AddTraceback(mStateView, Fn);
         if (Fn.valid()) {
             auto LuaResult = Fn(LocalArgs);
             auto Result = std::make_shared<TLuaResult>();
@@ -1056,7 +1056,7 @@ void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, co
     mEngine->RegisterEvent(EventName, mStateId, FunctionName);
 }
 
-static sol::protected_function addTraceback(sol::state_view StateView, sol::protected_function RawFn) {
+static sol::protected_function AddTraceback(sol::state_view StateView, sol::protected_function RawFn) {
     StateView["INTERNAL_ERROR_HANDLER"] = [](lua_State *L) {
         auto Error = sol::stack::get<std::optional<std::string>>(L);
         std::string ErrorString = "<Unknown error>";
@@ -1171,7 +1171,7 @@ void TLuaEngine::StateThreadData::operator()() {
                             break;
                         }
                     }
-                    auto Fn = addTraceback(StateView, RawFn);
+                    auto Fn = AddTraceback(StateView, RawFn);
                     auto Res = Fn(sol::as_args(LuaArgs));
                     if (Res.valid()) {
                         Result->Error = false;
