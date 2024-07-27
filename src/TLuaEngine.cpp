@@ -30,11 +30,15 @@
 #include <condition_variable>
 #include <fmt/core.h>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <random>
+#include <sol/stack_core.hpp>
 #include <thread>
 #include <tuple>
 
 TLuaEngine* LuaAPI::MP::Engine;
+
+static sol::protected_function AddTraceback(sol::state_view StateView, sol::protected_function RawFn);
 
 TLuaEngine::TLuaEngine()
     : mResourceServerPath(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server") {
@@ -491,6 +495,7 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
     sol::variadic_results LocalArgs = JsonStringToArray(Str);
     for (const auto& Handler : MyHandlers) {
         auto Fn = mStateView[Handler];
+        Fn = AddTraceback(mStateView, Fn);
         if (Fn.valid()) {
             auto LuaResult = Fn(LocalArgs);
             auto Result = std::make_shared<TLuaResult>();
@@ -499,7 +504,9 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
                 Result->Result = LuaResult;
             } else {
                 Result->Error = true;
-                Result->ErrorMessage = "Function result in TriggerGlobalEvent was invalid";
+                sol::error Err = LuaResult;
+                Result->ErrorMessage = Err.what();
+                beammp_errorf("An error occured while executing local event handler \"{}\" for event \"{}\": {}", Handler, EventName, Result->ErrorMessage);
             }
             Result->MarkAsReady();
             Return.push_back(Result);
@@ -1049,6 +1056,21 @@ void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, co
     mEngine->RegisterEvent(EventName, mStateId, FunctionName);
 }
 
+static sol::protected_function AddTraceback(sol::state_view StateView, sol::protected_function RawFn) {
+    StateView["INTERNAL_ERROR_HANDLER"] = [](lua_State *L) {
+        auto Error = sol::stack::get<std::optional<std::string>>(L);
+        std::string ErrorString = "<Unknown error>";
+        if (Error.has_value()) {
+            ErrorString = Error.value();
+        }
+        auto DebugTracebackFn = sol::state_view(L).globals().get<sol::table>("debug").get<sol::protected_function>("traceback");
+        // 2 = start collecting the trace one above the current function (1=current function)
+        std::string Traceback = DebugTracebackFn(ErrorString, 2);
+        return sol::stack::push(L, Traceback);
+    };
+    return sol::protected_function(RawFn, StateView["INTERNAL_ERROR_HANDLER"]);
+}
+
 void TLuaEngine::StateThreadData::operator()() {
     RegisterThread("Lua:" + mStateId);
     while (!Application::IsShuttingDown()) {
@@ -1113,8 +1135,8 @@ void TLuaEngine::StateThreadData::operator()() {
                 // TODO: Use TheQueuedFunction.EventName for errors, warnings, etc
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
-                auto Fn = StateView[FnName];
-                if (Fn.valid() && Fn.get_type() == sol::type::function) {
+                auto RawFn = StateView[FnName];
+                if (RawFn.valid() && RawFn.get_type() == sol::type::function) {
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
                         if (Arg.valueless_by_exception()) {
@@ -1149,6 +1171,7 @@ void TLuaEngine::StateThreadData::operator()() {
                             break;
                         }
                     }
+                    auto Fn = AddTraceback(StateView, RawFn);
                     auto Res = Fn(sol::as_args(LuaArgs));
                     if (Res.valid()) {
                         Result->Error = false;
