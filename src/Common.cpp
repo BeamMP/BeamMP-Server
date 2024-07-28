@@ -24,6 +24,7 @@
 #include <charconv>
 #include <chrono>
 #include <fmt/core.h>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <regex>
@@ -382,4 +383,52 @@ void SplitString(const std::string& str, const char delim, std::vector<std::stri
         end = str.find(delim, start);
         out.push_back(str.substr(start, end - start));
     }
+}
+std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
+    beammp_debugf("got {} bytes of input data", input.size());
+
+    std::vector<uint8_t> output_buffer(std::min<size_t>(input.size() * 5, 15 * 1024 * 1024));
+
+    uLongf output_size = output_buffer.size();
+
+    while (true) {
+        int res = uncompress(
+            reinterpret_cast<Bytef*>(output_buffer.data()),
+            &output_size,
+            reinterpret_cast<const Bytef*>(input.data()),
+            static_cast<uLongf>(input.size()));
+        if (res == Z_BUF_ERROR) {
+            if (output_buffer.size() > 30 * 1024 * 1024) {
+                throw std::runtime_error("decompressed packet size of 30 MB exceeded");
+            }
+            beammp_warn("zlib uncompress() failed, trying with 2x buffer size of " + std::to_string(output_buffer.size() * 2));
+            output_buffer.resize(output_buffer.size() * 2);
+            output_size = output_buffer.size();
+        } else if (res != Z_OK) {
+            beammp_error("zlib uncompress() failed: " + std::to_string(res));
+            throw std::runtime_error("zlib uncompress() failed");
+        } else if (res == Z_OK) {
+            break;
+        }
+    }
+    output_buffer.resize(output_size);
+    return output_buffer;
+}
+
+std::vector<uint8_t> Comp(std::span<const uint8_t> input) {
+    auto max_size = compressBound(input.size());
+    std::vector<uint8_t> output(max_size);
+    uLongf output_size = output.size();
+    int res = compress(
+        reinterpret_cast<Bytef*>(output.data()),
+        &output_size,
+        reinterpret_cast<const Bytef*>(input.data()),
+        static_cast<uLongf>(input.size()));
+    if (res != Z_OK) {
+        beammp_error("zlib compress() failed: " + std::to_string(res));
+        throw std::runtime_error("zlib compress() failed");
+    }
+    beammp_debug("zlib compressed " + std::to_string(input.size()) + " B to " + std::to_string(output_size) + " B");
+    output.resize(output_size);
+    return output;
 }
