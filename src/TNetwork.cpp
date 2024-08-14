@@ -183,13 +183,19 @@ void TNetwork::TCPServerMain() {
                 break;
             }
             ip::tcp::endpoint ClientEp;
+            //Wait to a client
             ip::tcp::socket ClientSocket = Acceptor.accept(ClientEp, ec);
             if (ec) {
-                beammp_errorf("failed to accept: {}", ec.message());
+                if (ec == boost::asio::error::interrupted) {
+                    continue;
+                }else
+                    beammp_errorf("failed to accept: {}", ec.message());
+            } else {
+                TConnection Conn { std::move(ClientSocket), ClientEp };
+                std::thread ID(&TNetwork::Identify, this, std::move(Conn));
+                ID.detach(); // TODO: Add to a queue and attempt to join periodically
             }
-            TConnection Conn { std::move(ClientSocket), ClientEp };
-            std::thread ID(&TNetwork::Identify, this, std::move(Conn));
-            ID.detach(); // TODO: Add to a queue and attempt to join periodically
+
         } catch (const std::exception& e) {
             beammp_error("fatal: " + std::string(e.what()));
         }
