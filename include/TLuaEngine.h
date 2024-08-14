@@ -192,7 +192,9 @@ public:
         for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
                 if (Event.first != IgnoreId) {
-                    Results.push_back(EnqueueFunctionCall(Event.first, Function, Arguments));
+                    auto Result = EnqueueFunctionCall(Event.first, Function, Arguments);
+                    Results.push_back(Result);
+                    AddResultToCheck(Result);
                 }
             }
         }
