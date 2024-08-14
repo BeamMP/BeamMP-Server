@@ -40,7 +40,6 @@ public:
 
     void InsertClient(const std::shared_ptr<TClient>& Ptr);
     void RemoveClient(const std::weak_ptr<TClient>&);
-    // in Fn, return true to continue, return false to break
     void ForEachClient(const std::function<bool(std::weak_ptr<TClient>)>& Fn);
     size_t ClientCount() const;
 
