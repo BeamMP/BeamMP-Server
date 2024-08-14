@@ -24,7 +24,7 @@
 void ArgsParser::Parse(const std::vector<std::string_view>& ArgList) {
     for (const auto& Arg : ArgList) {
         if (Arg.size() > 2 && Arg.substr(0, 2) == "--") {
-            // long arg
+            // Arg with value
             if (Arg.find("=") != Arg.npos) {
                 ConsumeLongAssignment(std::string(Arg));
             } else {
