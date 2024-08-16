@@ -142,6 +142,7 @@ std::string THeartbeatThread::GenerateCall() {
     Ret << "uuid=" << Application::Settings.getAsString(Settings::Key::General_AuthKey)
         << "&players=" << mServer.ClientCount()
         << "&maxplayers=" << Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)
+        << "&ip=" << Application::Settings.getAsString(Settings::Key::General_Ip) // TODO Add on the website the usage of this info
         << "&port=" << Application::Settings.getAsInt(Settings::Key::General_Port)
         << "&map=" << Application::Settings.getAsString(Settings::Key::General_Map)
         << "&private=" << (Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false")

@@ -39,6 +39,9 @@ public:
 
     ArgsParser() = default;
 
+    /**
+     * Parse all arguments provided, if they have been register.
+     */
     void Parse(const std::vector<std::string_view>& ArgList);
     // prints errors if any errors occurred, in that case also returns false
     bool Verify();
@@ -48,8 +51,15 @@ public:
     std::optional<std::string> GetValueOfArgument(const std::vector<std::string>& Names);
 
 private:
+    
+    /**
+     * Register an argument with a value.
+     */
     void ConsumeLongAssignment(const std::string& Arg);
     void ConsumeLongFlag(const std::string& Arg);
+    /**
+     * return if the argument asked has been registered previously.
+     */
     bool IsRegistered(const std::string& Name);
 
     struct Argument {

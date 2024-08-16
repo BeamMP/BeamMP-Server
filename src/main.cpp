@@ -42,9 +42,12 @@ USAGE:
 ARGUMENTS:
     --help              
                         Displays this help and exits.
+    --ip=<IPv4|IPv6>
+                        Sets the server's ip to listen on.
+                        Overrides ENV and ServerConfig value.
     --port=1234
                         Sets the server's listening TCP and
-                        UDP port. Overrides ENV and ServerConfig.
+                        UDP port. Overrides ENV and ServerConfig value.
     --config=/path/to/ServerConfig.toml
                         Absolute or relative path to the 
                         Server Config file, including the
@@ -74,6 +77,7 @@ struct MainArguments {
 int BeamMPServerMain(MainArguments Arguments);
 
 int main(int argc, char** argv) {
+
     MainArguments Args { argc, argv, {}, argv[0] };
     Args.List.reserve(size_t(argc));
     for (int i = 1; i < argc; ++i) {
@@ -96,6 +100,7 @@ int BeamMPServerMain(MainArguments Arguments) {
     Parser.RegisterArgument({ "help" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "version" }, ArgsParser::NONE);
     Parser.RegisterArgument({ "config" }, ArgsParser::HAS_VALUE);
+    Parser.RegisterArgument({ "ip" }, ArgsParser::HAS_VALUE);
     Parser.RegisterArgument({ "port" }, ArgsParser::HAS_VALUE);
     Parser.RegisterArgument({ "working-directory" }, ArgsParser::HAS_VALUE);
     Parser.Parse(Arguments.List);
@@ -140,6 +145,21 @@ int BeamMPServerMain(MainArguments Arguments) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
         return 1;
+    }
+
+    // override default IP (0.0.0.0) if provided via arguments
+    if (Parser.FoundArgument({ "ip" })) {
+        auto ip = Parser.GetValueOfArgument({ "ip" });
+        if (ip.has_value()) {
+            const std::regex patternIPv4IPv6(R"(((^\h*((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]).){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5]))\h*(|/([0-9]|[1-2][0-9]|3[0-2]))$)|(^\h*((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))(%.+)?\h*(|/([0-9]|[0-9][0-9]|1[0-1][0-9]|12[0-8]))$)))");
+            if (std::regex_match(ip.value(), patternIPv4IPv6)) {
+                beammp_errorf("Custom ip requested via --ip is invalid: '{}'", ip.value());
+                return 1;
+            } else {
+                Application::Settings.set(Settings::Key::General_Ip, ip.value());
+                beammp_info("Custom ip requested via commandline arguments: " + ip.value());
+            }
+        }
     }
 
     // override port if provided via arguments
@@ -205,6 +225,8 @@ int BeamMPServerMain(MainArguments Arguments) {
     std::set<std::string> IgnoreSubsystems {
         "UpdateCheck" // Ignore as not to confuse users (non-vital system)
     };
+
+
 
     bool FullyStarted = false;
     while (!Shutdown) {

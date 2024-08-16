@@ -29,6 +29,7 @@
 #include <stdexcept>
 
 using json = nlohmann::json;
+
 struct Connection {
     std::string host {};
     int port {};
@@ -37,6 +38,7 @@ struct Connection {
         : host(host)
         , port(port) {};
 };
+
 constexpr uint8_t CONNECTION_AMOUNT = 10;
 static thread_local uint8_t write_index = 0;
 static thread_local std::array<Connection, CONNECTION_AMOUNT> connections;
@@ -62,7 +64,7 @@ static thread_local std::array<std::shared_ptr<httplib::SSLClient>, CONNECTION_A
 std::string Http::GET(const std::string& host, int port, const std::string& target, unsigned int* status) {
     std::shared_ptr<httplib::SSLClient> client = getClient({ host, port });
     client->enable_server_certificate_verification(false);
-    client->set_address_family(AF_INET);
+    client->set_address_family(AF_UNSPEC);
     auto res = client->Get(target.c_str());
     if (res) {
         if (status) {
@@ -79,7 +81,7 @@ std::string Http::POST(const std::string& host, int port, const std::string& tar
     client->set_read_timeout(std::chrono::seconds(10));
     beammp_assert(client->is_valid());
     client->enable_server_certificate_verification(false);
-    client->set_address_family(AF_INET);
+    client->set_address_family(AF_UNSPEC);
     auto res = client->Post(target.c_str(), headers, body.c_str(), body.size(), ContentType.c_str());
     if (res) {
         if (status) {

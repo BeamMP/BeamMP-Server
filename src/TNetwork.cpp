@@ -81,8 +81,16 @@ TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& R
 
 void TNetwork::UDPServerMain() {
     RegisterThread("UDPServer");
-    ip::udp::endpoint UdpListenEndpoint(ip::address::from_string("0.0.0.0"), Application::Settings.getAsInt(Settings::Key::General_Port));
+
     boost::system::error_code ec;
+
+    auto add = ip::make_address(Application::Settings.getAsString(Settings::Key::General_Ip), ec);
+    if (ec) {
+        beammp_errorf("Invalid address: {}", ec.message());
+        return;
+    }
+
+    ip::udp::endpoint UdpListenEndpoint(add, Application::Settings.getAsInt(Settings::Key::General_Port));
     mUDPSock.open(UdpListenEndpoint.protocol(), ec);
     if (ec) {
         beammp_error("open() failed: " + ec.message());
@@ -96,7 +104,8 @@ void TNetwork::UDPServerMain() {
         Application::GracefullyShutdown();
     }
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Good);
-    beammp_info(("Vehicle data network online on port ") + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)) + (" with a Max of ")
+    beammp_info(("Vehicle data network online on ") + Application::Settings.getAsString(Settings::Key::General_Ip)
+        + " on port " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)) + (" with a Max of ")
         + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) + (" Clients"));
     while (!Application::IsShuttingDown()) {
         try {
@@ -134,9 +143,16 @@ void TNetwork::UDPServerMain() {
 void TNetwork::TCPServerMain() {
     RegisterThread("TCPServer");
 
-    ip::tcp::endpoint ListenEp(ip::address::from_string("0.0.0.0"), Application::Settings.getAsInt(Settings::Key::General_Port));
-    ip::tcp::socket Listener(mServer.IoCtx());
     boost::system::error_code ec;
+
+    auto add = ip::make_address(Application::Settings.getAsString(Settings::Key::General_Ip), ec);
+    if (ec) {
+        beammp_errorf("Invalid address: {}", ec.message());
+        return;
+    }
+    ip::tcp::endpoint ListenEp(add, Application::Settings.getAsInt(Settings::Key::General_Port));
+    ip::tcp::socket Listener(mServer.IoCtx());
+
     Listener.open(ListenEp.protocol(), ec);
     if (ec) {
         beammp_errorf("Failed to open socket: {}", ec.message());
@@ -168,13 +184,19 @@ void TNetwork::TCPServerMain() {
                 break;
             }
             ip::tcp::endpoint ClientEp;
+            //Wait to a client
             ip::tcp::socket ClientSocket = Acceptor.accept(ClientEp, ec);
             if (ec) {
-                beammp_errorf("failed to accept: {}", ec.message());
+                if (ec == boost::asio::error::interrupted) {
+                    continue;
+                }else
+                    beammp_errorf("failed to accept: {}", ec.message());
+            } else {
+                TConnection Conn { std::move(ClientSocket), ClientEp };
+                std::thread ID(&TNetwork::Identify, this, std::move(Conn));
+                ID.detach(); // TODO: Add to a queue and attempt to join periodically
             }
-            TConnection Conn { std::move(ClientSocket), ClientEp };
-            std::thread ID(&TNetwork::Identify, this, std::move(Conn));
-            ID.detach(); // TODO: Add to a queue and attempt to join periodically
+
         } catch (const std::exception& e) {
             beammp_error("fatal: " + std::string(e.what()));
         }

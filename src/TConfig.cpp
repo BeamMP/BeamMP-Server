@@ -34,6 +34,8 @@ static constexpr std::string_view StrDebug = "Debug";
 static constexpr std::string_view EnvStrDebug = "BEAMMP_DEBUG";
 static constexpr std::string_view StrPrivate = "Private";
 static constexpr std::string_view EnvStrPrivate = "BEAMMP_PRIVATE";
+static constexpr std::string_view StrIp = "Ip";
+static constexpr std::string_view EnvStrIp = "BEAMMP_IP";
 static constexpr std::string_view StrPort = "Port";
 static constexpr std::string_view EnvStrPort = "BEAMMP_PORT";
 static constexpr std::string_view StrMaxCars = "MaxCars";
@@ -134,6 +136,7 @@ void TConfig::FlushToFile() {
     data["General"][StrPrivate.data()] = Application::Settings.getAsBool(Settings::Key::General_Private);
     data["General"][StrAllowGuests.data()] = Application::Settings.getAsBool(Settings::Key::General_AllowGuests);
     SetComment(data["General"][StrAllowGuests.data()].comments(), " Whether to allow guests");
+    data["General"][StrIp.data()] = Application::Settings.getAsString(Settings::Key::General_Ip);
     data["General"][StrPort.data()] = Application::Settings.getAsInt(Settings::Key::General_Port);
     data["General"][StrName.data()] = Application::Settings.getAsString(Settings::Key::General_Name);
     SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
@@ -248,6 +251,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         // Read into new Settings Singleton
         TryReadValue(data, "General", StrDebug, EnvStrDebug, Settings::Key::General_Debug);
         TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Settings::Key::General_Private);
+        TryReadValue(data, "General", StrIp, EnvStrIp, Settings::Key::General_Ip);
         TryReadValue(data, "General", StrPort, EnvStrPort, Settings::Key::General_Port);
         TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Settings::Key::General_MaxCars);
         TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Settings::Key::General_MaxPlayers);
@@ -299,6 +303,7 @@ void TConfig::PrintDebug() {
     }
     beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_Debug) ? "true" : "false"));
     beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false"));
+    beammp_debug(std::string(StrIp) + ": " + Application::Settings.getAsString(Settings::Key::General_Ip));
     beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)));
     beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxCars)));
     beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)));
