@@ -543,7 +543,7 @@ void TConsole::Command_Status(const std::string&, const std::vector<std::string>
         if (!Client.expired()) {
             auto Locked = Client.lock();
             CarCount += Locked->GetCarCount();
-            ConnectedCount += Locked->IsConnected() ? 1 : 0;
+            ConnectedCount += Locked->IsUDPConnected() ? 1 : 0;
             GuestCount += Locked->IsGuest() ? 1 : 0;
             SyncedCount += Locked->IsSynced() ? 1 : 0;
             SyncingCount += Locked->IsSyncing() ? 1 : 0;

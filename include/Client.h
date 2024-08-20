@@ -88,7 +88,7 @@ public:
     void ClearCars();
     [[nodiscard]] int GetID() const { return mID; }
     [[nodiscard]] int GetUnicycleID() const { return mUnicycleID; }
-    [[nodiscard]] bool IsConnected() const { return mIsConnected; }
+    [[nodiscard]] bool IsUDPConnected() const { return mIsUDPConnected; }
     [[nodiscard]] bool IsSynced() const { return mIsSynced; }
     [[nodiscard]] bool IsSyncing() const { return mIsSyncing; }
     [[nodiscard]] bool IsGuest() const { return mIsGuest; }
@@ -100,7 +100,7 @@ public:
     [[nodiscard]] const std::queue<std::vector<uint8_t>>& MissedPacketQueue() const { return mPacketsSync; }
     [[nodiscard]] size_t MissedPacketQueueSize() const { return mPacketsSync.size(); }
     [[nodiscard]] std::mutex& MissedPacketQueueMutex() const { return mMissedPacketsMutex; }
-    void SetIsConnected(bool NewIsConnected) { mIsConnected = NewIsConnected; }
+    void SetIsUDPConnected(bool NewIsConnected) { mIsUDPConnected = NewIsConnected; }
     [[nodiscard]] TServer& Server() const;
     void UpdatePingTime();
     int SecondsSinceLastPing();
@@ -109,7 +109,7 @@ private:
     void InsertVehicle(int ID, const std::string& Data);
 
     TServer& mServer;
-    bool mIsConnected = false;
+    bool mIsUDPConnected = false;
     bool mIsSynced = false;
     bool mIsSyncing = false;
     mutable std::mutex mMissedPacketsMutex;
