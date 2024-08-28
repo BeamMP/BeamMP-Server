@@ -358,9 +358,9 @@ std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const
     return mLuaStates.at(StateID)->EnqueueScript(Script);
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName) {
     std::unique_lock Lock(mLuaStatesMutex);
-    return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args);
+    return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args, EventName);
 }
 
 void TLuaEngine::CollectAndInitPlugins() {
@@ -433,7 +433,7 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
         mLuaStates[StateId] = std::move(DataPtr);
         RegisterEvent("onInit", StateId, "onInit");
         if (!DontCallOnInit) {
-            auto Res = EnqueueFunctionCall(StateId, "onInit", {});
+            auto Res = EnqueueFunctionCall(StateId, "onInit", {}, "onInit");
             Res->WaitUntilReady();
             if (Res->Error && Res->ErrorMessage != TLuaEngine::BeamMPFnNotFoundError) {
                 beammp_lua_error("Calling \"onInit\" on \"" + StateId + "\" failed: " + Res->ErrorMessage);
@@ -1042,12 +1042,12 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFrom
     }
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName) {
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
     Result->Function = FunctionName;
     std::unique_lock Lock(mStateFunctionQueueMutex);
-    mStateFunctionQueue.push_back({ FunctionName, Result, Args, "" });
+    mStateFunctionQueue.push_back({ FunctionName, Result, Args, EventName });
     mStateFunctionQueueCond.notify_all();
     return Result;
 }
