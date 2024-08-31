@@ -40,6 +40,18 @@ TLuaEngine* LuaAPI::MP::Engine;
 
 static sol::protected_function AddTraceback(sol::state_view StateView, sol::protected_function RawFn);
 
+static std::optional<sol::function> GetLuaHandler(sol::state_view StateView, const std::string Handler, const std::string EventName);
+
+static std::optional<sol::function> GetLuaHandler(sol::state_view StateView, const std::string Handler, const std::string EventName) {
+    auto Res = StateView.safe_script("return " + Handler, sol::script_pass_on_error);
+    if (!Res.valid()) {
+        beammp_errorf("invalid handler for event \"{}\". handler: \"{}\"", EventName, Handler);
+    } else if (Res.get_type() == sol::type::function) {
+        return Res.get<sol::function>();
+    }
+    return std::nullopt;
+}
+
 TLuaEngine::TLuaEngine()
     : mResourceServerPath(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server") {
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
@@ -358,9 +370,9 @@ std::shared_ptr<TLuaResult> TLuaEngine::EnqueueScript(TLuaStateId StateID, const
     return mLuaStates.at(StateID)->EnqueueScript(Script);
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName) {
     std::unique_lock Lock(mLuaStatesMutex);
-    return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args);
+    return mLuaStates.at(StateID)->EnqueueFunctionCall(FunctionName, Args, EventName);
 }
 
 void TLuaEngine::CollectAndInitPlugins() {
@@ -433,7 +445,7 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
         mLuaStates[StateId] = std::move(DataPtr);
         RegisterEvent("onInit", StateId, "onInit");
         if (!DontCallOnInit) {
-            auto Res = EnqueueFunctionCall(StateId, "onInit", {});
+            auto Res = EnqueueFunctionCall(StateId, "onInit", {}, "onInit");
             Res->WaitUntilReady();
             if (Res->Error && Res->ErrorMessage != TLuaEngine::BeamMPFnNotFoundError) {
                 beammp_lua_error("Calling \"onInit\" on \"" + StateId + "\" failed: " + Res->ErrorMessage);
@@ -494,9 +506,11 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerGlobalEvent(const std::string
 
     sol::variadic_results LocalArgs = JsonStringToArray(Str);
     for (const auto& Handler : MyHandlers) {
-        auto Fn = mStateView[Handler];
-        Fn = AddTraceback(mStateView, Fn);
-        if (Fn.valid()) {
+        auto Res = GetLuaHandler(mStateView, Handler, EventName);
+        if (Res.has_value()) {
+            sol::function Fn = Res.value();
+            Fn = AddTraceback(mStateView, Fn);
+
             auto LuaResult = Fn(LocalArgs);
             auto Result = std::make_shared<TLuaResult>();
             if (LuaResult.valid()) {
@@ -548,8 +562,9 @@ sol::table TLuaEngine::StateThreadData::Lua_TriggerLocalEvent(const std::string&
     sol::table Result = mStateView.create_table();
     int i = 1;
     for (const auto& Handler : mEngine->GetEventHandlersForState(EventName, mStateId)) {
-        auto Fn = mStateView[Handler];
-        if (Fn.valid() && Fn.get_type() == sol::type::function) {
+        auto Res = GetLuaHandler(mStateView, Handler, EventName);
+        if (Res.has_value()) {
+            sol::function Fn = Res.value();
             auto FnRet = Fn(EventArgs);
             if (FnRet.valid()) {
                 Result.set(i, FnRet);
@@ -1042,12 +1057,12 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFrom
     }
 }
 
-std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args) {
+std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName) {
     auto Result = std::make_shared<TLuaResult>();
     Result->StateId = mStateId;
     Result->Function = FunctionName;
     std::unique_lock Lock(mStateFunctionQueueMutex);
-    mStateFunctionQueue.push_back({ FunctionName, Result, Args, "" });
+    mStateFunctionQueue.push_back({ FunctionName, Result, Args, EventName });
     mStateFunctionQueueCond.notify_all();
     return Result;
 }
@@ -1135,8 +1150,10 @@ void TLuaEngine::StateThreadData::operator()() {
                 // TODO: Use TheQueuedFunction.EventName for errors, warnings, etc
                 Result->StateId = mStateId;
                 sol::state_view StateView(mState);
-                auto RawFn = StateView[FnName];
-                if (RawFn.valid() && RawFn.get_type() == sol::type::function) {
+
+                auto Res = GetLuaHandler(StateView, FnName, TheQueuedFunction.EventName);
+                if (Res.has_value()) {
+                    sol::function Fn = Res.value();
                     std::vector<sol::object> LuaArgs;
                     for (const auto& Arg : Args) {
                         if (Arg.valueless_by_exception()) {
@@ -1171,7 +1188,7 @@ void TLuaEngine::StateThreadData::operator()() {
                             break;
                         }
                     }
-                    auto Fn = AddTraceback(StateView, RawFn);
+                    Fn = AddTraceback(StateView, Fn);
                     auto Res = Fn(sol::as_args(LuaArgs));
                     if (Res.valid()) {
                         Result->Error = false;

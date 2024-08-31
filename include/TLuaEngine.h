@@ -167,7 +167,7 @@ public:
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     /**
@@ -192,7 +192,7 @@ public:
         for (const auto& Event : mLuaEvents.at(EventName)) {
             for (const auto& Function : Event.second) {
                 if (Event.first != IgnoreId) {
-                    auto Result = EnqueueFunctionCall(Event.first, Function, Arguments);
+                    auto Result = EnqueueFunctionCall(Event.first, Function, Arguments, EventName);
                     Results.push_back(Result);
                     AddResultToCheck(Result);
                 }
@@ -211,7 +211,7 @@ public:
         std::vector<TLuaValue> Arguments { TLuaValue { std::forward<ArgsT>(Args) }... };
         const auto Handlers = GetEventHandlersForState(EventName, StateId);
         for (const auto& Handler : Handlers) {
-            Results.push_back(EnqueueFunctionCall(StateId, Handler, Arguments));
+            Results.push_back(EnqueueFunctionCall(StateId, Handler, Arguments, EventName));
         }
         return Results;
     }
@@ -245,7 +245,7 @@ private:
         StateThreadData(const StateThreadData&) = delete;
         virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
         void AddPath(const fs::path& Path); // to be added to path and cpath
