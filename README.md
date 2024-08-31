@@ -19,7 +19,7 @@ Feel free to ask any questions via the following channels:
 
 These values are guesstimated and are subject to change with each release.
 
-* RAM: 50+ MiB usable (not counting OS overhead)
+* RAM: 30-100 MiB usable (not counting OS overhead)
 * CPU: >1GHz, preferably multicore
 * OS: Windows, Linux (theoretically any POSIX)
 * GPU: None
