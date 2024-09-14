@@ -41,7 +41,7 @@ jobs:
         run: bash ./scripts/windows/2-build.sh
 
       - name: Archive server artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: BeamMP-Server-windows
           path: ./bin/Release/BeamMP-Server.exe

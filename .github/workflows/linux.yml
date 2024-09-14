@@ -63,13 +63,13 @@ jobs:
         run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/3-build.sh
 
       - name: Archive server artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: BeamMP-Server.${{ matrix.distro }}.${{ matrix.version }}.x86_64
           path: ./bin/BeamMP-Server
 
       - name: Archive server debug info artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: debuginfo.${{ matrix.distro }}.${{ matrix.version }}.x86_64
           path: ./bin/BeamMP-Server.debug
@@ -134,13 +134,13 @@ jobs:
         run: bash ./scripts/${{ matrix.distro }}-${{ matrix.version }}/3-build.sh
 
       - name: Archive server artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: BeamMP-Server.${{ matrix.distro }}.${{ matrix.version }}.arm64
           path: ./bin/BeamMP-Server
 
       - name: Archive server debug info artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: debuginfo.${{ matrix.distro }}.${{ matrix.version }}.arm64
           path: ./bin/BeamMP-Server.debug
