@@ -354,10 +354,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
             auto FoundPos = Packet.find('{');
             FoundPos = FoundPos == std::string::npos ? 0 : FoundPos; // attempt at sanitizing this
+            bool Allowed = false;
             if ((c.GetUnicycleID() != VID || IsUnicycle(c, Packet.substr(FoundPos)))
                 && !ShouldntAllow) {
                 Network.SendToAll(&c, StringToVector(Packet), false, true);
                 Apply(c, VID, Packet);
+                Allowed = true;
             } else {
                 if (c.GetUnicycleID() == VID) {
                     c.SetUnicycleID(-1);
@@ -365,7 +367,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
                 Network.SendToAll(nullptr, StringToVector(Destroy), true, true);
                 c.DeleteCar(VID);
+                Allowed = false;
             }
+
+            auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postVehicleEdited", "", Allowed, c.GetID(), VID, Packet.substr(3));
+            // the post event is not cancellable so we dont wait for it
+            LuaAPI::MP::Engine->ReportErrors(PostFutures);
         }
         return;
     }
