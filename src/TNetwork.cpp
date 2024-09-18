@@ -437,21 +437,20 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         ClientKick(*Client, Reason);
     }
 
-    auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postPlayerAuth", "", Allowed, Client->GetName(), Client->GetRoles(), Client->IsGuest(), Client->GetIdentifiers());
-    // the post event is not cancellable so we dont wait for it
-    LuaAPI::MP::Engine->ReportErrors(PostFutures);
 
     if (!Allowed) {
         return {};
-    }
-
-    if (mServer.ClientCount() < size_t(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers))) {
+    } else if (mServer.ClientCount() < size_t(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers))) {
         beammp_info("Identification success");
         mServer.InsertClient(Client);
         TCPClient(Client);
     } else {
         ClientKick(*Client, "Server full!");
     }
+
+    auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postPlayerAuth", "", Allowed, Client->GetName(), Client->GetRoles(), Client->IsGuest(), Client->GetIdentifiers());
+    // the post event is not cancellable so we dont wait for it
+    LuaAPI::MP::Engine->ReportErrors(PostFutures);
 
     return Client;
 }
