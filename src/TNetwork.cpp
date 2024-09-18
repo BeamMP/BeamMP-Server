@@ -423,6 +423,18 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         Reason = "No guests are allowed on this server! To join, sign up at: forum.beammp.com.";
     }
 
+    bool Allowed = true;
+    if (NotAllowed) {
+        Allowed = false;
+    }
+    if (NotAllowedWithReason) {
+        Allowed = false;
+    }
+
+    auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postPlayerAuth", "", Allowed, Client->GetName(), Client->GetRoles(), Client->IsGuest(), Client->GetIdentifiers());
+    // the post event is not cancellable so we dont wait for it
+    LuaAPI::MP::Engine->ReportErrors(PostFutures);
+
     if (NotAllowed) {
         ClientKick(*Client, "you are not allowed on the server!");
         return {};
