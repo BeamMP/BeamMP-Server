@@ -217,6 +217,7 @@ std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
     auto c = MaybeClient.value().lock();
     if (!c->GetCarData(VID).empty()) {
         std::string Destroy = "Od:" + std::to_string(PID) + "-" + std::to_string(VID);
+        LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", PID, VID));
         Engine->Network().SendToAll(nullptr, StringToVector(Destroy), true, true);
         c->DeleteCar(VID);
         Result.first = true;

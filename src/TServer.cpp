@@ -137,7 +137,6 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     beammp_assert(LockedClientPtr != nullptr);
     TClient& Client = *LockedClientPtr;
     beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
-    // TODO: Send delete packets for all cars
     Client.ClearCars();
     WriteLock Lock(mClientsMutex);
     mClients.erase(WeakClientPtr.lock());
@@ -322,6 +321,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     // TODO: handle
                 }
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(CarID);
+                LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), CarID));
                 if (!Network.Respond(c, StringToVector(Destroy), true)) {
                     // TODO: handle
                 }
@@ -355,6 +355,7 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 }
                 std::string Destroy = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(VID);
                 Network.SendToAll(nullptr, StringToVector(Destroy), true, true);
+                LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
                 c.DeleteCar(VID);
             }
         }

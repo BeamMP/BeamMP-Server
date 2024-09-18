@@ -656,6 +656,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
         VehicleData = *LockedData.VehicleData;
     } // End Vehicle Data Lock Scope
     for (auto& v : VehicleData) {
+        LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), v.ID()));
         Packet = "Od:" + std::to_string(c.GetID()) + "-" + std::to_string(v.ID());
         SendToAll(&c, StringToVector(Packet), false, true);
     }
