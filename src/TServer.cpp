@@ -20,6 +20,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include <TLuaPlugin.h>
@@ -314,9 +315,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     return !Result->Error && Result->Result.is<int>() && Result->Result.as<int>() != 0;
                 });
 
+            bool SpawnConfirmed = false;
             if (ShouldSpawn(c, CarJson, CarID) && !ShouldntSpawn) {
                 c.AddNewCar(CarID, Packet);
                 Network.SendToAll(nullptr, StringToVector(Packet), true, true);
+                SpawnConfirmed = true;
             } else {
                 if (!Network.Respond(c, StringToVector(Packet), true)) {
                     // TODO: handle
@@ -326,7 +329,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     // TODO: handle
                 }
                 beammp_debugf("{} (force : car limit/lua) removed ID {}", c.GetName(), CarID);
+                SpawnConfirmed = false;
             }
+            auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postVehicleSpawn", "", SpawnConfirmed, c.GetID(), CarID, Packet.substr(3));
+            // the post event is not cancellable so we dont wait for it
+            LuaAPI::MP::Engine->ReportErrors(PostFutures);
         }
         return;
     case 'c': {
