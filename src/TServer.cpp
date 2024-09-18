@@ -137,7 +137,6 @@ void TServer::RemoveClient(const std::weak_ptr<TClient>& WeakClientPtr) {
     beammp_assert(LockedClientPtr != nullptr);
     TClient& Client = *LockedClientPtr;
     beammp_debug("removing client " + Client.GetName() + " (" + std::to_string(ClientCount()) + ")");
-    // TODO: Send delete packets for all cars
     Client.ClearCars();
     WriteLock Lock(mClientsMutex);
     mClients.erase(WeakClientPtr.lock());
