@@ -224,16 +224,18 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Message);
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
-        if (std::any_of(Futures.begin(), Futures.end(),
-                [](const std::shared_ptr<TLuaResult>& Elem) {
-                    return !Elem->Error
-                        && Elem->Result.is<int>()
-                        && bool(Elem->Result.as<int>());
-                })) {
-            break;
+        bool Rejected = std::any_of(Futures.begin(), Futures.end(),
+            [](const std::shared_ptr<TLuaResult>& Elem) {
+                return !Elem->Error
+                    && Elem->Result.is<int>()
+                    && bool(Elem->Result.as<int>());
+            });
+        if (!Rejected) {
+            std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
+            Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
         }
-        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
-        Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
+        auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postChatMessage", "", !Rejected, LockedClient->GetID(), LockedClient->GetName(), Message);
+        LuaAPI::MP::Engine->ReportErrors(PostFutures);
         return;
     }
     case 'E':
