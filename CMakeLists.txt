@@ -20,7 +20,7 @@ include(cmake/Git.cmake)
 ### SETTINGS ###
 
 # add all headers (.h, .hpp) to this
-set(PRJ_HEADERS 
+set(PRJ_HEADERS
     include/ArgsParser.h
     include/BoostAliases.h
     include/Client.h
@@ -93,7 +93,7 @@ set(PRJ_COMPILE_FEATURES cxx_std_20)
 # set #defines (test enable/disable not included here)
 set(PRJ_DEFINITIONS CPPHTTPLIB_OPENSSL_SUPPORT)
 # add all libraries used by the project (WARNING: also set them in vcpkg.json!)
-set(PRJ_LIBRARIES 
+set(PRJ_LIBRARIES
     fmt::fmt
     doctest::doctest
     Threads::Threads
@@ -116,7 +116,7 @@ find_package(httplib CONFIG REQUIRED)
 find_package(libzip CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
-find_package(toml11 CONFIG REQUIRED)
+add_subdirectory("deps/toml11")
 
 include_directories(include)
 
@@ -125,7 +125,7 @@ include(FindThreads)
 
 ### END SETTINGS ###
 
-# DONT change anything beyond this point unless you've read the cmake bible and 
+# DONT change anything beyond this point unless you've read the cmake bible and
 # swore on it not to bonk up the ci/cd pipelines with your changes.
 
 ####################
@@ -164,7 +164,7 @@ set(PRJ_DEFINITIONS ${PRJ_DEFINITIONS}
 )
 
 # build commandline manually for funky windows flags to carry over without a custom toolchain file
-add_library(commandline_static 
+add_library(commandline_static
     deps/commandline/src/impls.h
     deps/commandline/src/windows_impl.cpp
     deps/commandline/src/linux_impl.cpp

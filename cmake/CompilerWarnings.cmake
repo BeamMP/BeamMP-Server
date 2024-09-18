@@ -3,9 +3,9 @@
 # https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
 # Courtesy of Jason Turner
 # License here: https://github.com/cpp-best-practices/cppbestpractices/blob/master/LICENSE
-# 
+#
 # This version has been modified by the owners of the current respository.
-# Modifications have mostly been marked with "modified" or similar, though this is not 
+# Modifications have mostly been marked with "modified" or similar, though this is not
 # strictly required.
 
 function(set_project_warnings project_name)
@@ -73,7 +73,6 @@ function(set_project_warnings project_name)
             -Werror=missing-declarations
             -Werror=missing-field-initializers
             -Werror=ctor-dtor-privacy
-            -Werror=switch-enum
             -Wswitch-default
             -Werror=unused-result
             -Werror=implicit-fallthrough

@@ -2,7 +2,7 @@ find_package(Git)
 if(${PROJECT_NAME}_CHECKOUT_GIT_SUBMODULES)
     if(Git_FOUND)
         message(STATUS "Git found, submodule update and init")
-        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                         RESULT_VARIABLE GIT_SUBMOD_RESULT)
         if(NOT GIT_SUBMOD_RESULT EQUAL "0")

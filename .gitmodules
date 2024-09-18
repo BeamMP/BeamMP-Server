@@ -4,3 +4,6 @@
 [submodule "vcpkg"]
 	path = vcpkg
 	url = https://github.com/Microsoft/vcpkg.git
+[submodule "deps/toml11"]
+	path = deps/toml11
+	url = https://github.com/ToruNiina/toml11

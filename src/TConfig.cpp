@@ -158,7 +158,7 @@ void TConfig::FlushToFile() {
     Ss << "# This is the BeamMP-Server config file.\n"
           "# Help & Documentation: `https://docs.beammp.com/server/server-maintenance/`\n"
           "# IMPORTANT: Fill in the AuthKey with the key you got from `https://keymaster.beammp.com/` on the left under \"Keys\"\n"
-       << data;
+       << toml::format(data);
     auto File = std::fopen(mConfigFileName.c_str(), "w+");
     if (!File) {
         beammp_error("Failed to create/write to config file: " + GetPlatformAgnosticErrorString());
@@ -240,7 +240,7 @@ void TConfig::ParseFromFile(std::string_view name) {
     try {
         toml::value data {};
         if (!mDisableConfig) {
-            data = toml::parse<toml::preserve_comments>(name.data());
+            data = toml::parse(name.data());
         }
 
         // GENERAL
