@@ -431,15 +431,17 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         Allowed = false;
     }
 
+    if (NotAllowed) {
+        ClientKick(*Client, "you are not allowed on the server!");
+    } else if (NotAllowedWithReason) {
+        ClientKick(*Client, Reason);
+    }
+
     auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postPlayerAuth", "", Allowed, Client->GetName(), Client->GetRoles(), Client->IsGuest(), Client->GetIdentifiers());
     // the post event is not cancellable so we dont wait for it
     LuaAPI::MP::Engine->ReportErrors(PostFutures);
 
-    if (NotAllowed) {
-        ClientKick(*Client, "you are not allowed on the server!");
-        return {};
-    } else if (NotAllowedWithReason) {
-        ClientKick(*Client, Reason);
+    if (!Allowed) {
         return {};
     }
 
