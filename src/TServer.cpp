@@ -20,6 +20,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
+#include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
 #include <TLuaPlugin.h>
@@ -222,16 +223,18 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Message);
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
-        if (std::any_of(Futures.begin(), Futures.end(),
-                [](const std::shared_ptr<TLuaResult>& Elem) {
-                    return !Elem->Error
-                        && Elem->Result.is<int>()
-                        && bool(Elem->Result.as<int>());
-                })) {
-            break;
+        bool Rejected = std::any_of(Futures.begin(), Futures.end(),
+            [](const std::shared_ptr<TLuaResult>& Elem) {
+                return !Elem->Error
+                    && Elem->Result.is<int>()
+                    && bool(Elem->Result.as<int>());
+            });
+        if (!Rejected) {
+            std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
+            Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
         }
-        std::string SanitizedPacket = fmt::format("C:{}: {}", LockedClient->GetName(), Message);
-        Network.SendToAll(nullptr, StringToVector(SanitizedPacket), true, true);
+        auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postChatMessage", "", !Rejected, LockedClient->GetID(), LockedClient->GetName(), Message);
+        LuaAPI::MP::Engine->ReportErrors(PostFutures);
         return;
     }
     case 'E':
@@ -313,9 +316,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     return !Result->Error && Result->Result.is<int>() && Result->Result.as<int>() != 0;
                 });
 
+            bool SpawnConfirmed = false;
             if (ShouldSpawn(c, CarJson, CarID) && !ShouldntSpawn) {
                 c.AddNewCar(CarID, Packet);
                 Network.SendToAll(nullptr, StringToVector(Packet), true, true);
+                SpawnConfirmed = true;
             } else {
                 if (!Network.Respond(c, StringToVector(Packet), true)) {
                     // TODO: handle
@@ -326,7 +331,11 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                     // TODO: handle
                 }
                 beammp_debugf("{} (force : car limit/lua) removed ID {}", c.GetName(), CarID);
+                SpawnConfirmed = false;
             }
+            auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postVehicleSpawn", "", SpawnConfirmed, c.GetID(), CarID, Packet.substr(3));
+            // the post event is not cancellable so we dont wait for it
+            LuaAPI::MP::Engine->ReportErrors(PostFutures);
         }
         return;
     case 'c': {
@@ -345,10 +354,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
 
             auto FoundPos = Packet.find('{');
             FoundPos = FoundPos == std::string::npos ? 0 : FoundPos; // attempt at sanitizing this
+            bool Allowed = false;
             if ((c.GetUnicycleID() != VID || IsUnicycle(c, Packet.substr(FoundPos)))
                 && !ShouldntAllow) {
                 Network.SendToAll(&c, StringToVector(Packet), false, true);
                 Apply(c, VID, Packet);
+                Allowed = true;
             } else {
                 if (c.GetUnicycleID() == VID) {
                     c.SetUnicycleID(-1);
@@ -357,7 +368,12 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
                 Network.SendToAll(nullptr, StringToVector(Destroy), true, true);
                 LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehicleDeleted", "", c.GetID(), VID));
                 c.DeleteCar(VID);
+                Allowed = false;
             }
+
+            auto PostFutures = LuaAPI::MP::Engine->TriggerEvent("postVehicleEdited", "", Allowed, c.GetID(), VID, Packet.substr(3));
+            // the post event is not cancellable so we dont wait for it
+            LuaAPI::MP::Engine->ReportErrors(PostFutures);
         }
         return;
     }
