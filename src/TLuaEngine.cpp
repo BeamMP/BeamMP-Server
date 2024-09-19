@@ -595,6 +595,15 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
     }
 }
 
+std::string TLuaEngine::StateThreadData::Lua_GetPlayerRole(int ID) {
+    auto MaybeClient = GetClient(mEngine->Server(), ID);
+    if (MaybeClient && !MaybeClient.value().expired())
+        return MaybeClient.value().lock()->GetRoles();
+    else
+        return "";
+}
+
+
 sol::table TLuaEngine::StateThreadData::Lua_GetPlayers() {
     sol::table Result = mStateView.create_table();
     mEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
@@ -882,6 +891,9 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     });
     MPTable.set_function("GetPlayerIdentifiers", [&](int ID) -> sol::table {
         return Lua_GetPlayerIdentifiers(ID);
+    });
+    MPTable.set_function("GetPlayerRole", [&](int ID) -> std::string {
+        return Lua_GetPlayerRole(ID);
     });
     MPTable.set_function("Sleep", &LuaAPI::MP::Sleep);
     //  const std::string& EventName, size_t IntervalMS, int strategy
