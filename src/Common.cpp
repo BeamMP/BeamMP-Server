@@ -418,7 +418,11 @@ std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
             output_size = output_buffer.size();
         } else if (res != Z_OK) {
             beammp_error("zlib uncompress() failed: " + std::to_string(res));
-            throw std::runtime_error("zlib uncompress() failed");
+            if (res == Z_DATA_ERROR) {
+                throw InvalidDataError {};
+            } else {
+                throw std::runtime_error("zlib uncompress() failed");
+            }
         } else if (res == Z_OK) {
             break;
         }

@@ -546,7 +546,17 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     constexpr std::string_view ABG = "ABG:";
     if (Data.size() >= ABG.size() && std::equal(Data.begin(), Data.begin() + ABG.size(), ABG.begin(), ABG.end())) {
         Data.erase(Data.begin(), Data.begin() + ABG.size());
-        return DeComp(Data);
+        try {
+            return DeComp(Data);
+        } catch (const InvalidDataError& ) {
+            beammp_errorf("Failed to decompress packet from a client. The receive failed and the client may be disconnected as a result");
+            // return empty -> error
+            return std::vector<uint8_t>();
+        } catch (const std::runtime_error& e) {
+            beammp_errorf("Failed to decompress packet from a client: {}. The server may be out of RAM! The receive failed and the client may be disconnected as a result", e.what());
+            // return empty -> error
+            return std::vector<uint8_t>();
+        }
     } else {
         return Data;
     }

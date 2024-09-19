@@ -165,7 +165,19 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     constexpr std::string_view ABG = "ABG:";
     if (Packet.size() >= ABG.size() && std::equal(Packet.begin(), Packet.begin() + ABG.size(), ABG.begin(), ABG.end())) {
         Packet.erase(Packet.begin(), Packet.begin() + ABG.size());
-        Packet = DeComp(Packet);
+        try {
+            Packet = DeComp(Packet);
+        } catch (const InvalidDataError& ) {
+            auto LockedClient = Client.lock();
+            beammp_errorf("Failed to decompress packet from client {}. The client sent invalid data and will now be disconnected.", LockedClient->GetID());
+            Network.ClientKick(*LockedClient, "Sent invalid compressed packet (this is likely a bug on your end)");
+            return;
+        } catch (const std::runtime_error& e) {
+            auto LockedClient = Client.lock();
+            beammp_errorf("Failed to decompress packet from client {}: {}. The server might be out of RAM! The client will now be disconnected.", LockedClient->GetID(), e.what());
+            Network.ClientKick(*LockedClient, "Decompression failed (likely a server-side problem)");
+            return;
+        }
     }
     if (Packet.empty()) {
         return;
