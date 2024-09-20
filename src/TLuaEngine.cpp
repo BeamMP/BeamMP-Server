@@ -597,10 +597,11 @@ sol::table TLuaEngine::StateThreadData::Lua_GetPlayerIdentifiers(int ID) {
 
 std::string TLuaEngine::StateThreadData::Lua_GetPlayerRole(int ID) {
     auto MaybeClient = GetClient(mEngine->Server(), ID);
-    if (MaybeClient && !MaybeClient.value().expired())
+    if (MaybeClient) {
         return MaybeClient.value().lock()->GetRoles();
-    else
+    } else {
         return "";
+    }
 }
 
 
