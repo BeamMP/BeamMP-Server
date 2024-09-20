@@ -127,7 +127,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 5, 0 };
+    static inline Version mVersion { 3, 5, 1 };
 };
 
 void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);
@@ -268,3 +268,9 @@ std::vector<uint8_t> DeComp(std::span<const uint8_t> input);
 
 std::string GetPlatformAgnosticErrorString();
 #define S_DSN SU_RAW
+
+class InvalidDataError : std::runtime_error {
+public:
+    InvalidDataError() : std::runtime_error("Invalid data") {
+    }
+};
