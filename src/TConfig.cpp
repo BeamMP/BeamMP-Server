@@ -139,7 +139,7 @@ void TConfig::FlushToFile() {
     SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
     data["General"][StrTags.data()] = Application::Settings.getAsString(Settings::Key::General_Tags);
     data["General"][StrMaxCars.data()] = Application::Settings.getAsInt(Settings::Key::General_MaxCars);
-    data["General"][StrMaxPlayers.data()] = Application::Settings.getAsInt(Settings::Key::General_MaxCars);
+    data["General"][StrMaxPlayers.data()] = Application::Settings.getAsInt(Settings::Key::General_MaxPlayers);
     data["General"][StrMap.data()] = Application::Settings.getAsString(Settings::Key::General_Map);
     data["General"][StrDescription.data()] = Application::Settings.getAsString(Settings::Key::General_Description);
     data["General"][StrResourceFolder.data()] = Application::Settings.getAsString(Settings::Key::General_ResourceFolder);
