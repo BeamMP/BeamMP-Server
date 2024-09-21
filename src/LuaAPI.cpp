@@ -292,6 +292,36 @@ void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
     }
 }
 
+TLuaValue LuaAPI::MP::Get(int ConfigID) {
+    switch (ConfigID) {
+    case 0: // debug
+        return Application::Settings.getAsBool(Settings::Key::General_Debug);
+        break;
+    case 1: // private
+        return Application::Settings.getAsBool(Settings::Key::General_Private);
+        break;
+    case 2: // max cars
+        return Application::Settings.getAsInt(Settings::Key::General_MaxCars);
+        break;
+    case 3: // max players
+        return Application::Settings.getAsInt(Settings::Key::General_MaxPlayers);
+        break;
+    case 4: // Map
+        return Application::Settings.getAsString(Settings::Key::General_Map);
+        break;
+    case 5: // Name
+        return Application::Settings.getAsString(Settings::Key::General_Name);
+        break;
+    case 6: // Desc
+        return Application::Settings.getAsString(Settings::Key::General_Description);
+        break;
+    default:
+        beammp_warn("Invalid config ID \"" + std::to_string(ConfigID) + "\". Use `MP.Settings.*` enum for this.");
+        return 0;
+        break;
+    }
+}
+
 void LuaAPI::MP::Sleep(size_t Ms) {
     std::this_thread::sleep_for(std::chrono::milliseconds(Ms));
 }
