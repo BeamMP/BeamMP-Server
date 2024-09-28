@@ -35,6 +35,7 @@ namespace MP {
     inline size_t GetPlayerCount() { return Engine->Server().ClientCount(); }
     std::pair<bool, std::string> DropPlayer(int ID, std::optional<std::string> MaybeReason);
     std::pair<bool, std::string> SendChatMessage(int ID, const std::string& Message);
+    std::pair<bool, std::string> SendNotification(int ID, const std::string& Message, const std::string& Icon, const std::string& Category);
     std::pair<bool, std::string> RemoveVehicle(int PlayerID, int VehicleID);
     void Set(int ConfigID, sol::object NewValue);
     bool IsPlayerGuest(int ID);

@@ -205,6 +205,37 @@ std::pair<bool, std::string> LuaAPI::MP::SendChatMessage(int ID, const std::stri
     return Result;
 }
 
+std::pair<bool, std::string> LuaAPI::MP::SendNotification(int ID, const std::string& Message, const std::string& Icon, const std::string& Category) {
+    std::pair<bool, std::string> Result;
+    std::string Packet = "N" + Category + ":" + Icon + ":" + Message;
+    if (ID == -1) {
+        Engine->Network().SendToAll(nullptr, StringToVector(Packet), true, true);
+        Result.first = true;
+    } else {
+        auto MaybeClient = GetClient(Engine->Server(), ID);
+        if (MaybeClient) {
+            auto c = MaybeClient.value().lock();
+            if (!c->IsSynced()) {
+                Result.first = false;
+                Result.second = "Player still syncing data";
+                return Result;
+            }
+            if (!Engine->Network().Respond(*c, StringToVector(Packet), true)) {
+                beammp_errorf("Failed to send notification back to sender (id {}) - did the sender disconnect?", ID);
+                Result.first = false;
+                Result.second = "Failed to send packet";
+            }
+            Result.first = true;
+        } else {
+            beammp_lua_error("SendNotification invalid argument [1] invalid ID");
+            Result.first = false;
+            Result.second = "Invalid Player ID";
+        }
+        return Result;
+    }
+    return Result;
+}
+
 std::pair<bool, std::string> LuaAPI::MP::RemoveVehicle(int PID, int VID) {
     std::pair<bool, std::string> Result;
     auto MaybeClient = GetClient(Engine->Server(), PID);
