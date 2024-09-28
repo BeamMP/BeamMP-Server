@@ -36,19 +36,19 @@
 #include <thread>
 
 static const std::string sCommandlineArguments = R"(
-USAGE: 
+USAGE:
     BeamMP-Server [arguments]
-    
+
 ARGUMENTS:
-    --help              
+    --help
                         Displays this help and exits.
     --port=1234
                         Sets the server's listening TCP and
                         UDP port. Overrides ENV and ServerConfig.
     --config=/path/to/ServerConfig.toml
-                        Absolute or relative path to the 
+                        Absolute or relative path to the
                         Server Config file, including the
-                        filename. For paths and filenames with 
+                        filename. For paths and filenames with
                         spaces, put quotes around the path.
     --working-directory=/path/to/folder
                         Sets the working directory of the Server.
@@ -59,7 +59,7 @@ ARGUMENTS:
 
 EXAMPLES:
     BeamMP-Server --config=../MyWestCoastServerConfig.toml
-        Runs the BeamMP-Server and uses the server config file 
+        Runs the BeamMP-Server and uses the server config file
         which is one directory above it and is named
         'MyWestCoastServerConfig.toml'.
 )";
@@ -190,6 +190,7 @@ int BeamMPServerMain(MainArguments Arguments) {
 
     beammp_trace("Running in debug mode on a debug build");
     TResourceManager ResourceManager;
+    ResourceManager.RefreshFiles();
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
