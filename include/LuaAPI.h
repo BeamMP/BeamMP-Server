@@ -37,6 +37,7 @@ namespace MP {
     std::pair<bool, std::string> SendChatMessage(int ID, const std::string& Message);
     std::pair<bool, std::string> RemoveVehicle(int PlayerID, int VehicleID);
     void Set(int ConfigID, sol::object NewValue);
+    TLuaValue Get(int ConfigID);
     bool IsPlayerGuest(int ID);
     bool IsPlayerConnected(int ID);
     void Sleep(size_t Ms);

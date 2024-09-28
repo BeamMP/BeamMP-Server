@@ -910,6 +910,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         mEngine->CancelEventTimers(EventName, mStateId);
     });
     MPTable.set_function("Set", &LuaAPI::MP::Set);
+    MPTable.set_function("Get", &LuaAPI::MP::Get);
 
     auto UtilTable = StateView.create_named_table("Util");
     UtilTable.set_function("LogDebug", [this](sol::variadic_args args) {
