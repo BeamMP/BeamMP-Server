@@ -144,7 +144,6 @@ void TClient::EnqueuePacket(const std::vector<uint8_t>& Packet) {
 TClient::TClient(TServer& Server, ip::tcp::socket&& Socket)
     : mServer(Server)
     , mSocket(std::move(Socket))
-    , mDownSocket(ip::tcp::socket(Server.IoCtx()))
     , mLastPingTime(std::chrono::high_resolution_clock::now()) {
 }
 

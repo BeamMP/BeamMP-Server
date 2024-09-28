@@ -127,7 +127,7 @@ void TResourceManager::RefreshFiles() {
             }
             beammp_debugf("sha256('{}'): {}", File, result);
             mMods.push_back(nlohmann::json {
-                { "file_name", File },
+                { "file_name", std::filesystem::path(File).filename() },
                 { "file_size", Read },
                 { "hash_algorithm", "sha256" },
                 { "hash", result },

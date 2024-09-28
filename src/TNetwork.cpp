@@ -240,7 +240,8 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         if (Code == 'C') {
             Client = Authentication(std::move(RawConnection));
         } else if (Code == 'D') {
-            HandleDownload(std::move(RawConnection));
+            beammp_errorf("Old download packet detected - the client is wildly out of date, this will be ignored");
+            return;
         } else if (Code == 'P') {
             boost::system::error_code ec;
             write(RawConnection.Socket, buffer("P"), ec);
@@ -249,7 +250,7 @@ void TNetwork::Identify(TConnection&& RawConnection) {
             beammp_errorf("Invalid code got in Identify: '{}'", Code);
         }
     } catch (const std::exception& e) {
-        beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket", Code);
+        beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket: {}", Code, e.what());
         boost::system::error_code ec;
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
         if (ec) {
@@ -262,27 +263,7 @@ void TNetwork::Identify(TConnection&& RawConnection) {
     }
 }
 
-void TNetwork::HandleDownload(TConnection&& Conn) {
-    char D;
-    boost::system::error_code ec;
-    read(Conn.Socket, buffer(&D, 1), ec);
-    if (ec) {
-        Conn.Socket.shutdown(socket_base::shutdown_both, ec);
-        // ignore ec
-        return;
-    }
-    auto ID = uint8_t(D);
-    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
-        ReadLock Lock(mServer.GetClientMutex());
-        if (!ClientPtr.expired()) {
-            auto c = ClientPtr.lock();
-            if (c->GetID() == ID) {
-                c->SetDownSock(std::move(Conn.Socket));
-            }
-        }
-        return true;
-    });
-}
+
 
 std::string HashPassword(const std::string& str) {
     std::stringstream ret;
@@ -772,8 +753,6 @@ void TNetwork::Parse(TClient& c, const std::vector<uint8_t>& Packet) {
 }
 
 void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
-    beammp_info(c.GetName() + " requesting : " + UnsafeName.substr(UnsafeName.find_last_of('/')));
-
     if (!fs::path(UnsafeName).has_filename()) {
         if (!TCPSend(c, StringToVector("CO"))) {
             // TODO: handle
@@ -796,87 +775,9 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
         // TODO: handle
     }
 
-    /// Wait for connections
-    int T = 0;
-    while (!c.GetDownSock().is_open() && T < 50) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        T++;
-    }
-
-    if (!c.GetDownSock().is_open()) {
-        beammp_error("Client doesn't have a download socket!");
-        if (!c.IsDisconnected())
-            c.Disconnect("Missing download socket");
-        return;
-    }
-
     size_t Size = size_t(std::filesystem::file_size(FileName));
-    size_t MSize = Size / 2;
 
-    std::thread SplitThreads[2] {
-        std::thread([&] {
-            RegisterThread("SplitLoad_0");
-            SplitLoad(c, 0, MSize, false, FileName);
-        }),
-        std::thread([&] {
-            RegisterThread("SplitLoad_1");
-            SplitLoad(c, MSize, Size, true, FileName);
-        })
-    };
-
-    for (auto& SplitThread : SplitThreads) {
-        if (SplitThread.joinable()) {
-            SplitThread.join();
-        }
-    }
-}
-
-static std::pair<size_t /* count */, size_t /* last chunk */> SplitIntoChunks(size_t FullSize, size_t ChunkSize) {
-    if (FullSize < ChunkSize) {
-        return { 0, FullSize };
-    }
-    size_t Count = FullSize / (FullSize / ChunkSize);
-    size_t LastChunkSize = FullSize - (Count * ChunkSize);
-    return { Count, LastChunkSize };
-}
-
-TEST_CASE("SplitIntoChunks") {
-    size_t FullSize;
-    size_t ChunkSize;
-    SUBCASE("Normal case") {
-        FullSize = 1234567;
-        ChunkSize = 1234;
-    }
-    SUBCASE("Zero original size") {
-        FullSize = 0;
-        ChunkSize = 100;
-    }
-    SUBCASE("Equal full size and chunk size") {
-        FullSize = 125;
-        ChunkSize = 125;
-    }
-    SUBCASE("Even split") {
-        FullSize = 10000;
-        ChunkSize = 100;
-    }
-    SUBCASE("Odd split") {
-        FullSize = 13;
-        ChunkSize = 2;
-    }
-    SUBCASE("Large sizes") {
-        FullSize = 10 * GB;
-        ChunkSize = 125 * MB;
-    }
-    auto [Count, LastSize] = SplitIntoChunks(FullSize, ChunkSize);
-    CHECK((Count * ChunkSize) + LastSize == FullSize);
-}
-
-const uint8_t* /* end ptr */ TNetwork::SendSplit(TClient& c, ip::tcp::socket& Socket, const uint8_t* DataPtr, size_t Size) {
-    if (TCPSendRaw(c, Socket, DataPtr, Size)) {
-        return DataPtr + Size;
-    } else {
-        return nullptr;
-    }
+    SendFileToClient(c, Size, FileName);
 }
 
 #if defined(BEAMMP_LINUX)
@@ -886,8 +787,8 @@ const uint8_t* /* end ptr */ TNetwork::SendSplit(TClient& c, ip::tcp::socket& So
 #include <unistd.h>
 #include <signal.h>
 #endif
-void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const std::string& Name) {
-    TScopedTimer timer(fmt::format("Download of {}-{} for '{}'", Offset, End, Name));
+void TNetwork::SendFileToClient(TClient& c, size_t Size, const std::string& Name) {
+    TScopedTimer timer(fmt::format("Download of '{}' for client {}", Name, c.GetID()));
 #if defined(BEAMMP_LINUX)
     signal(SIGPIPE, SIG_IGN);
     // on linux, we can use sendfile(2)!
@@ -897,11 +798,11 @@ void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const st
         return;
     }
     // native handle, needed in order to make native syscalls with it
-    int socket = D ? c.GetDownSock().native_handle() : c.GetTCPSock().native_handle();
+    int socket = c.GetTCPSock().native_handle();
 
     ssize_t ret = 0;
-    auto ToSendTotal = End - Offset;
-    auto Start = Offset;
+    auto ToSendTotal = Size;
+    auto Start = 0;
     while (ret < ssize_t(ToSendTotal)) {
         auto SysOffset = off_t(Start + size_t(ret));
         ret = sendfile(socket, fd, &SysOffset, ToSendTotal - size_t(ret));
@@ -915,35 +816,32 @@ void TNetwork::SplitLoad(TClient& c, size_t Offset, size_t End, bool D, const st
     std::ifstream f(Name.c_str(), std::ios::binary);
     uint32_t Split = 125 * MB;
     std::vector<uint8_t> Data;
-    if (End > Split)
+    if (Size > Split)
         Data.resize(Split);
     else
-        Data.resize(End);
-    ip::tcp::socket* TCPSock { nullptr };
-    if (D)
-        TCPSock = &c.GetDownSock();
-    else
-        TCPSock = &c.GetTCPSock();
-    while (!c.IsDisconnected() && Offset < End) {
-        size_t Diff = End - Offset;
+        Data.resize(Size);
+    ip::tcp::socket* TCPSock = &c.GetTCPSock();
+    std::streamsize Sent = 0;
+    while (!c.IsDisconnected() && Sent < Size) {
+        size_t Diff = Size - Sent;
         if (Diff > Split) {
-            f.seekg(Offset, std::ios_base::beg);
+            f.seekg(Sent, std::ios_base::beg);
             f.read(reinterpret_cast<char*>(Data.data()), Split);
             if (!TCPSendRaw(c, *TCPSock, Data.data(), Split)) {
                 if (!c.IsDisconnected())
                     c.Disconnect("TCPSendRaw failed in mod download (1)");
                 break;
             }
-            Offset += Split;
+            Sent += Split;
         } else {
-            f.seekg(Offset, std::ios_base::beg);
+            f.seekg(Sent, std::ios_base::beg);
             f.read(reinterpret_cast<char*>(Data.data()), Diff);
             if (!TCPSendRaw(c, *TCPSock, Data.data(), int32_t(Diff))) {
                 if (!c.IsDisconnected())
                     c.Disconnect("TCPSendRaw failed in mod download (2)");
                 break;
             }
-            Offset += Diff;
+            Sent += Diff;
         }
     }
 #endif
