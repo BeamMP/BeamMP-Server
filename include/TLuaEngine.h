@@ -263,7 +263,7 @@ private:
         sol::table Lua_TriggerGlobalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_TriggerLocalEvent(const std::string& EventName, sol::variadic_args EventArgs);
         sol::table Lua_GetPlayerIdentifiers(int ID);
-        std::string Lua_GetPlayerRole(int ID);
+        std::variant<std::string, sol::nil_t> Lua_GetPlayerRole(int ID);
         sol::table Lua_GetPlayers();
         std::string Lua_GetPlayerName(int ID);
         sol::table Lua_GetPlayerVehicles(int ID);
