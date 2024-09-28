@@ -404,10 +404,21 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
 
     auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerAuth", "", Client->GetName(), Client->GetRoles(), Client->IsGuest(), Client->GetIdentifiers());
     TLuaEngine::WaitForAll(Futures);
-    bool NotAllowed = std::any_of(Futures.begin(), Futures.end(),
-        [](const std::shared_ptr<TLuaResult>& Result) {
-            return !Result->Error && Result->Result.is<int>() && bool(Result->Result.as<int>());
-        });
+    bool NotAllowed = false;
+    bool BypassLimit = false;
+
+    for (const auto& Result : Futures) {
+        if (!Result->Error && Result->Result.is<int>()) {
+            auto Res = Result->Result.as<int>();
+
+            if (Res == 1) {
+                NotAllowed = true;
+                break;
+            } else if (Res == 2) {
+                BypassLimit = true;
+            }
+        }
+    }
     std::string Reason;
     bool NotAllowedWithReason = std::any_of(Futures.begin(), Futures.end(),
         [&Reason](const std::shared_ptr<TLuaResult>& Result) -> bool {
@@ -440,7 +451,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
 
     if (!Allowed) {
         return {};
-    } else if (mServer.ClientCount() < size_t(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers))) {
+    } else if (mServer.ClientCount() < size_t(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) || BypassLimit) {
         beammp_info("Identification success");
         mServer.InsertClient(Client);
         TCPClient(Client);
