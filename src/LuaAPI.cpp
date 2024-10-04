@@ -217,11 +217,11 @@ std::pair<bool, std::string> LuaAPI::MP::SendNotification(int ID, const std::str
             auto c = MaybeClient.value().lock();
             if (!c->IsSynced()) {
                 Result.first = false;
-                Result.second = "Player still syncing data";
+                Result.second = "Player is not synced yet";
                 return Result;
             }
             if (!Engine->Network().Respond(*c, StringToVector(Packet), true)) {
-                beammp_errorf("Failed to send notification back to sender (id {}) - did the sender disconnect?", ID);
+                beammp_errorf("Failed to send notification to player (id {}) - did the player disconnect?", ID);
                 Result.first = false;
                 Result.second = "Failed to send packet";
             }
