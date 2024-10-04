@@ -20,6 +20,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "LuaAPI.h"
+#include "THeartbeatThread.h"
 #include "TLuaEngine.h"
 #include "TScopedTimer.h"
 #include "nlohmann/json.hpp"
@@ -246,6 +247,9 @@ void TNetwork::Identify(TConnection&& RawConnection) {
             boost::system::error_code ec;
             write(RawConnection.Socket, buffer("P"), ec);
             return;
+        } else if (Code == 'I') {
+            boost::system::error_code ec;
+            write(RawConnection.Socket, buffer(THeartbeatThread::lastCall), ec);
         } else {
             beammp_errorf("Invalid code got in Identify: '{}'", Code);
         }

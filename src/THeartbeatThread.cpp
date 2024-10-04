@@ -140,8 +140,7 @@ void THeartbeatThread::operator()() {
 std::string THeartbeatThread::GenerateCall() {
     std::stringstream Ret;
 
-    Ret << "uuid=" << Application::Settings.getAsString(Settings::Key::General_AuthKey)
-        << "&players=" << mServer.ClientCount()
+    Ret << "players=" << mServer.ClientCount()
         << "&maxplayers=" << Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)
         << "&port=" << Application::Settings.getAsInt(Settings::Key::General_Port)
         << "&map=" << Application::Settings.getAsString(Settings::Key::General_Map)
@@ -156,6 +155,8 @@ std::string THeartbeatThread::GenerateCall() {
         << "&modstotal=" << mResourceManager.ModsLoaded()
         << "&playerslist=" << GetPlayers()
         << "&desc=" << Application::Settings.getAsString(Settings::Key::General_Description);
+    lastCall = Ret.str();
+    Ret << "&uuid=" << Application::Settings.getAsString(Settings::Key::General_AuthKey);
     return Ret.str();
 }
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
