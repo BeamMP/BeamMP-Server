@@ -66,7 +66,6 @@ public:
     std::string GetCarData(int Ident);
     std::string GetCarPositionRaw(int Ident);
     void SetUDPAddr(const ip::udp::endpoint& Addr) { mUDPAddress = Addr; }
-    void SetDownSock(ip::tcp::socket&& CSock) { mDownSocket = std::move(CSock); }
     void SetTCPSock(ip::tcp::socket&& CSock) { mSocket = std::move(CSock); }
     void Disconnect(std::string_view Reason);
     bool IsDisconnected() const { return !mSocket.is_open(); }
@@ -75,8 +74,6 @@ public:
     [[nodiscard]] const std::unordered_map<std::string, std::string>& GetIdentifiers() const { return mIdentifiers; }
     [[nodiscard]] const ip::udp::endpoint& GetUDPAddr() const { return mUDPAddress; }
     [[nodiscard]] ip::udp::endpoint& GetUDPAddr() { return mUDPAddress; }
-    [[nodiscard]] ip::tcp::socket& GetDownSock() { return mDownSocket; }
-    [[nodiscard]] const ip::tcp::socket& GetDownSock() const { return mDownSocket; }
     [[nodiscard]] ip::tcp::socket& GetTCPSock() { return mSocket; }
     [[nodiscard]] const ip::tcp::socket& GetTCPSock() const { return mSocket; }
     [[nodiscard]] std::string GetRoles() const { return mRole; }
@@ -122,7 +119,6 @@ private:
     SparseArray<std::string> mVehiclePosition;
     std::string mName = "Unknown Client";
     ip::tcp::socket mSocket;
-    ip::tcp::socket mDownSocket;
     ip::udp::endpoint mUDPAddress {};
     int mUnicycleID = -1;
     std::string mRole;

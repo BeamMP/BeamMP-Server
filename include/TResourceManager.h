@@ -19,6 +19,7 @@
 #pragma once
 
 #include "Common.h"
+#include <nlohmann/json.hpp>
 
 class TResourceManager {
 public:
@@ -30,10 +31,17 @@ public:
     [[nodiscard]] std::string FileSizes() const { return mFileSizes; }
     [[nodiscard]] int ModsLoaded() const { return mModsLoaded; }
 
+    [[nodiscard]] std::string NewFileList() const;
+
+    void RefreshFiles();
+
 private:
     size_t mMaxModSize = 0;
     std::string mFileSizes;
     std::string mFileList;
     std::string mTrimmedList;
     int mModsLoaded = 0;
+
+    std::mutex mModsMutex;
+    nlohmann::json mMods;
 };

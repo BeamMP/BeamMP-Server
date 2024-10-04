@@ -17,9 +17,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "TResourceManager.h"
+#include "Common.h"
 
 #include <algorithm>
 #include <filesystem>
+#include <fmt/core.h>
+#include <ios>
+#include <nlohmann/json.hpp>
+#include <openssl/evp.h>
 
 namespace fs = std::filesystem;
 
@@ -51,4 +56,84 @@ TResourceManager::TResourceManager() {
     }
 
     Application::SetSubsystemStatus("ResourceManager", Application::Status::Good);
+}
+
+std::string TResourceManager::NewFileList() const {
+    return mMods.dump();
+}
+void TResourceManager::RefreshFiles() {
+    mMods.clear();
+    std::unique_lock Lock(mModsMutex);
+
+    std::string Path = Application::Settings.getAsString(Settings::Key::General_ResourceFolder) + "/Client";
+    for (const auto& entry : fs::directory_iterator(Path)) {
+        std::string File(entry.path().string());
+
+        if (entry.path().extension() != ".zip" || std::filesystem::is_directory(entry.path())) {
+            beammp_warnf("'{}' is not a ZIP file and will be ignored", File);
+            continue;
+        }
+
+        try {
+            EVP_MD_CTX* mdctx;
+            const EVP_MD* md;
+            uint8_t sha256_value[EVP_MAX_MD_SIZE];
+            md = EVP_sha256();
+            if (md == nullptr) {
+                throw std::runtime_error("EVP_sha256() failed");
+            }
+
+            mdctx = EVP_MD_CTX_new();
+            if (mdctx == nullptr) {
+                throw std::runtime_error("EVP_MD_CTX_new() failed");
+            }
+            if (!EVP_DigestInit_ex2(mdctx, md, NULL)) {
+                EVP_MD_CTX_free(mdctx);
+                throw std::runtime_error("EVP_DigestInit_ex2() failed");
+            }
+
+            std::ifstream stream(File, std::ios::binary);
+
+            const size_t FileSize = std::filesystem::file_size(File);
+            size_t Read = 0;
+            std::vector<char> Data;
+            while (Read < FileSize) {
+                Data.resize(size_t(std::min<size_t>(FileSize - Read, 4096)));
+                size_t RealDataSize = Data.size();
+                stream.read(Data.data(), std::streamsize(Data.size()));
+                if (stream.eof() || stream.fail()) {
+                    RealDataSize = size_t(stream.gcount());
+                }
+                Data.resize(RealDataSize);
+                if (RealDataSize == 0) {
+                    break;
+                }
+                if (RealDataSize > 0 && !EVP_DigestUpdate(mdctx, Data.data(), Data.size())) {
+                    EVP_MD_CTX_free(mdctx);
+                    throw std::runtime_error("EVP_DigestUpdate() failed");
+                }
+                Read += RealDataSize;
+            }
+            unsigned int sha256_len = 0;
+            if (!EVP_DigestFinal_ex(mdctx, sha256_value, &sha256_len)) {
+                EVP_MD_CTX_free(mdctx);
+                throw std::runtime_error("EVP_DigestFinal_ex() failed");
+            }
+            EVP_MD_CTX_free(mdctx);
+
+            std::string result;
+            for (size_t i = 0; i < sha256_len; i++) {
+                result += fmt::format("{:02x}", sha256_value[i]);
+            }
+            beammp_debugf("sha256('{}'): {}", File, result);
+            mMods.push_back(nlohmann::json {
+                { "file_name", std::filesystem::path(File).filename() },
+                { "file_size", std::filesystem::file_size(File) },
+                { "hash_algorithm", "sha256" },
+                { "hash", result },
+            });
+        } catch (const std::exception& e) {
+            beammp_errorf("Sha256 hashing of '{}' failed: {}", File, e.what());
+        }
+    }
 }
