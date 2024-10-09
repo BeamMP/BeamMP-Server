@@ -20,6 +20,7 @@
 
 #include "ChronoWrapper.h"
 #include "Client.h"
+#include "Common.h"
 #include "Http.h"
 // #include "SocketIO.h"
 #include <rapidjson/document.h>
@@ -146,7 +147,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&map=" << Application::Settings.getAsString(Settings::Key::General_Map)
         << "&private=" << (Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false")
         << "&version=" << Application::ServerVersionString()
-        << "&clientversion=" << std::to_string(Application::ClientMajorVersion()) + ".0" // FIXME: Wtf.
+        << "&clientversion=" << Application::ClientMinimumVersion().AsString()
         << "&name=" << Application::Settings.getAsString(Settings::Key::General_Name)
         << "&tags=" << Application::Settings.getAsString(Settings::Key::General_Tags)
         << "&guests=" << (Application::Settings.getAsBool(Settings::Key::General_AllowGuests) ? "true" : "false")

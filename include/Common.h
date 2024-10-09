@@ -74,7 +74,7 @@ public:
     static TConsole& Console() { return mConsole; }
     static std::string ServerVersionString();
     static const Version& ServerVersion() { return mVersion; }
-    static uint8_t ClientMajorVersion() { return 2; }
+    static Version ClientMinimumVersion() { return Version { 2, 2, 0 }; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
@@ -162,13 +162,13 @@ void RegisterThread(const std::string& str);
     #else
         #define _function_name std::string(__func__)
     #endif
-    
+
     #ifndef NDEBUG
         #define DEBUG
     #endif
-    
+
     #if defined(DEBUG)
-        
+
         // if this is defined, we will show the full function signature infront of
         // each info/debug/warn... call instead of the 'filename:line' format.
         #if defined(BMP_FULL_FUNCTION_NAMES)
@@ -178,7 +178,7 @@ void RegisterThread(const std::string& str);
         #endif
 
     #endif // defined(DEBUG)
-    
+
     #define beammp_warn(x) Application::Console().Write(_this_location + std::string("[WARN] ") + (x))
     #define beammp_info(x) Application::Console().Write(_this_location + std::string("[INFO] ") + (x))
     #define beammp_error(x)                                                               \
@@ -221,7 +221,7 @@ void RegisterThread(const std::string& str);
     #else
         #define beammp_trace(x)
     #endif // defined(DEBUG)
-    
+
     #define beammp_errorf(...) beammp_error(fmt::format(__VA_ARGS__))
     #define beammp_infof(...) beammp_info(fmt::format(__VA_ARGS__))
     #define beammp_debugf(...) beammp_debug(fmt::format(__VA_ARGS__))
