@@ -43,5 +43,5 @@ private:
     int mModsLoaded = 0;
 
     std::mutex mModsMutex;
-    nlohmann::json mMods;
+    nlohmann::json mMods = nlohmann::json::array();
 };
