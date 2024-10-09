@@ -297,7 +297,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         if (Application::IsOutdated(ClientVersion, MinClientVersion)) {
             beammp_errorf("Client tried to connect with version '{}', but only versions >= {} are allowed",
                 ClientVersion.AsString(), Application::ClientMinimumVersion().AsString());
-            ClientKick(*Client, "Outdated Version!");
+            ClientKick(*Client, fmt::format("Outdated version, launcher version >={} required to join!", MinClientVersion.AsString()));
             return nullptr;
         }
     } else {
