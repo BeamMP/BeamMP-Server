@@ -147,7 +147,7 @@ std::string THeartbeatThread::GenerateCall() {
         << "&map=" << Application::Settings.getAsString(Settings::Key::General_Map)
         << "&private=" << (Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false")
         << "&version=" << Application::ServerVersionString()
-        << "&clientversion=" << Application::ClientMinimumVersion()
+        << "&clientversion=" << Application::ClientMinimumVersion().AsString()
         << "&name=" << Application::Settings.getAsString(Settings::Key::General_Name)
         << "&tags=" << Application::Settings.getAsString(Settings::Key::General_Tags)
         << "&guests=" << (Application::Settings.getAsBool(Settings::Key::General_AllowGuests) ? "true" : "false")

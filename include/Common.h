@@ -74,7 +74,7 @@ public:
     static TConsole& Console() { return mConsole; }
     static std::string ServerVersionString();
     static const Version& ServerVersion() { return mVersion; }
-    static std::string ClientMinimumVersion() { return "2.2.0"; }
+    static Version ClientMinimumVersion() { return Version { 2, 2, 0 }; }
     static std::string PPS() { return mPPS; }
     static void SetPPS(const std::string& NewPPS) { mPPS = NewPPS; }
 
