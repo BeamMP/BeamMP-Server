@@ -249,7 +249,7 @@ void TNetwork::Identify(TConnection&& RawConnection) {
             return;
         } else if (Code == 'I') {
             boost::system::error_code ec;
-            write(RawConnection.Socket, buffer(THeartbeatThread::lastCall), ec);
+            write(RawConnection.Socket, buffer(Application::Settings.getAsBool(Settings::Key::General_InformationPacket) ? THeartbeatThread::lastCall : ""), ec);
         } else {
             beammp_errorf("Invalid code got in Identify: '{}'", Code);
         }
