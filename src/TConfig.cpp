@@ -56,6 +56,8 @@ static constexpr std::string_view StrLogChat = "LogChat";
 static constexpr std::string_view EnvStrLogChat = "BEAMMP_LOG_CHAT";
 static constexpr std::string_view StrAllowGuests = "AllowGuests";
 static constexpr std::string_view EnvStrAllowGuests = "BEAMMP_ALLOW_GUESTS";
+static constexpr std::string_view StrInformationPacket = "InformationPacket";
+static constexpr std::string_view EnvStrInformationPacket = "BEAMMP_INFORMATION_PACKET";
 static constexpr std::string_view StrPassword = "Password";
 
 // Misc
@@ -132,6 +134,8 @@ void TConfig::FlushToFile() {
     SetComment(data["General"][StrLogChat.data()].comments(), " Whether to log chat messages in the console / log");
     data["General"][StrDebug.data()] = Application::Settings.getAsBool(Settings::Key::General_Debug);
     data["General"][StrPrivate.data()] = Application::Settings.getAsBool(Settings::Key::General_Private);
+    SetComment(data["General"][StrInformationPacket.data()].comments(), " Whether to allow unconnected clients to get the public server information without joining");
+    data["General"][StrInformationPacket.data()] = Application::Settings.getAsBool(Settings::Key::General_InformationPacket);
     data["General"][StrAllowGuests.data()] = Application::Settings.getAsBool(Settings::Key::General_AllowGuests);
     SetComment(data["General"][StrAllowGuests.data()].comments(), " Whether to allow guests");
     data["General"][StrPort.data()] = Application::Settings.getAsInt(Settings::Key::General_Port);
@@ -248,6 +252,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         // Read into new Settings Singleton
         TryReadValue(data, "General", StrDebug, EnvStrDebug, Settings::Key::General_Debug);
         TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Settings::Key::General_Private);
+        TryReadValue(data, "General", StrInformationPacket, EnvStrInformationPacket, Settings::Key::General_InformationPacket);
         TryReadValue(data, "General", StrPort, EnvStrPort, Settings::Key::General_Port);
         TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Settings::Key::General_MaxCars);
         TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Settings::Key::General_MaxPlayers);
@@ -299,6 +304,7 @@ void TConfig::PrintDebug() {
     }
     beammp_debug(std::string(StrDebug) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_Debug) ? "true" : "false"));
     beammp_debug(std::string(StrPrivate) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false"));
+    beammp_debug(std::string(StrInformationPacket) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_InformationPacket) ? "true" : "false"));
     beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)));
     beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxCars)));
     beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)));
