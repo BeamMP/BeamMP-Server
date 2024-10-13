@@ -112,9 +112,19 @@ void TNetwork::UDPServerMain() {
         try {
             ip::udp::endpoint remote_client_ep {};
             std::vector<uint8_t> Data = UDPRcvFromClient(remote_client_ep);
-            auto Pos = std::find(Data.begin(), Data.end(), ':');
-            if (Data.empty() || Pos > Data.begin() + 2)
+            if (Data.empty()) {
                 continue;
+            }
+            if (Data.size() == 1 && Data.at(0) == 'P') {
+                mUDPSock.send_to(const_buffer("P", 1), remote_client_ep, {}, ec);
+                // ignore errors
+                (void)ec;
+                continue;
+            }
+            auto Pos = std::find(Data.begin(), Data.end(), ':');
+            if (Pos > Data.begin() + 2) {
+                continue;
+            }
             uint8_t ID = uint8_t(Data.at(0)) - 1;
             mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
                 std::shared_ptr<TClient> Client;
