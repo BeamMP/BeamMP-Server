@@ -317,6 +317,14 @@ void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
             beammp_lua_error("set invalid argument [2] expected string");
         }
         break;
+    case 7: // Information packet
+        if (NewValue.is<bool>()) {
+            Application::Settings.set(Settings::Key::General_InformationPacket, NewValue.as<bool>());
+            beammp_info(std::string("Set `InformationPacket` to ") + (Application::Settings.getAsBool(Settings::Key::General_InformationPacket) ? "true" : "false"));
+        } else {
+            beammp_lua_error("set invalid argument [2] expected boolean");
+        }
+         break;
     default:
         beammp_warn("Invalid config ID \"" + std::to_string(ConfigID) + "\". Use `MP.Settings.*` enum for this.");
         break;
@@ -339,6 +347,8 @@ TLuaValue LuaAPI::MP::Get(int ConfigID) {
         return Application::Settings.getAsString(Settings::Key::General_Name);
     case 6: // Desc
         return Application::Settings.getAsString(Settings::Key::General_Description);
+    case 7: // Information packet
+        return Application::Settings.getAsBool(Settings::Key::General_InformationPacket);
     default:
         beammp_warn("Invalid config ID \"" + std::to_string(ConfigID) + "\". Use `MP.Settings.*` enum for this.");
         return 0;

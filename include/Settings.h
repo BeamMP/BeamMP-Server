@@ -86,7 +86,8 @@ struct Settings {
         General_LogChat,
         General_ResourceFolder,
         General_Debug,
-        General_AllowGuests
+        General_AllowGuests,
+        General_InformationPacket,
     };
 
     Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap;

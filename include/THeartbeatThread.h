@@ -29,6 +29,7 @@ public:
     //~THeartbeatThread();
     void operator()() override;
 
+    static inline std::string lastCall = "";
 private:
     std::string GenerateCall();
     std::string GetPlayers();

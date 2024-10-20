@@ -25,6 +25,7 @@
 // #include "SocketIO.h"
 #include <rapidjson/document.h>
 #include <rapidjson/rapidjson.h>
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 namespace json = rapidjson;
@@ -65,7 +66,7 @@ void THeartbeatThread::operator()() {
         json::Document Doc;
         bool Ok = false;
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
-            T = Http::POST(Url, 443, Target, Body, "application/x-www-form-urlencoded", &ResponseCode, { { "api-v", "2" } });
+            T = Http::POST(Url, 443, Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
             Doc.Parse(T.data(), T.size());
             if (Doc.HasParseError() || !Doc.IsObject()) {
                 if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
@@ -138,25 +139,30 @@ void THeartbeatThread::operator()() {
 }
 
 std::string THeartbeatThread::GenerateCall() {
-    std::stringstream Ret;
+    nlohmann::json Ret = {
+        {"players", mServer.ClientCount()},
+        {"maxplayers", Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)},
+        {"port", Application::Settings.getAsInt(Settings::Key::General_Port)},
+        {"map", Application::Settings.getAsString(Settings::Key::General_Map)},
+        {"private", Application::Settings.getAsBool(Settings::Key::General_Private)},
+        {"version", Application::ServerVersionString()},
+        {"clientversion", Application::ClientMinimumVersion().AsString()},
+        {"name", Application::Settings.getAsString(Settings::Key::General_Name)},
+        {"tags", Application::Settings.getAsString(Settings::Key::General_Tags)},
+        {"guests", Application::Settings.getAsBool(Settings::Key::General_AllowGuests)},
+        {"modlist", mResourceManager.TrimmedList()},
+        {"modstotalsize", mResourceManager.MaxModSize()},
+        {"modstotal", mResourceManager.ModsLoaded()},
+        {"playerslist", GetPlayers()},
+        {"desc", Application::Settings.getAsString(Settings::Key::General_Description)}
+    };
 
-    Ret << "uuid=" << Application::Settings.getAsString(Settings::Key::General_AuthKey)
-        << "&players=" << mServer.ClientCount()
-        << "&maxplayers=" << Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)
-        << "&port=" << Application::Settings.getAsInt(Settings::Key::General_Port)
-        << "&map=" << Application::Settings.getAsString(Settings::Key::General_Map)
-        << "&private=" << (Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false")
-        << "&version=" << Application::ServerVersionString()
-        << "&clientversion=" << Application::ClientMinimumVersion().AsString()
-        << "&name=" << Application::Settings.getAsString(Settings::Key::General_Name)
-        << "&tags=" << Application::Settings.getAsString(Settings::Key::General_Tags)
-        << "&guests=" << (Application::Settings.getAsBool(Settings::Key::General_AllowGuests) ? "true" : "false")
-        << "&modlist=" << mResourceManager.TrimmedList()
-        << "&modstotalsize=" << mResourceManager.MaxModSize()
-        << "&modstotal=" << mResourceManager.ModsLoaded()
-        << "&playerslist=" << GetPlayers()
-        << "&desc=" << Application::Settings.getAsString(Settings::Key::General_Description);
-    return Ret.str();
+    lastCall = Ret.dump();
+
+    //Add sensitive information here because value of lastCall is used for the information packet.
+    Ret["uuid"] = Application::Settings.getAsString(Settings::Key::General_AuthKey);
+
+    return Ret.dump();
 }
 THeartbeatThread::THeartbeatThread(TResourceManager& ResourceManager, TServer& Server)
     : mResourceManager(ResourceManager)

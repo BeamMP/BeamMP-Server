@@ -1024,7 +1024,8 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         "MaxPlayers", 3,
         "Map", 4,
         "Name", 5,
-        "Description", 6);
+        "Description", 6,
+        "InformationPacket", 7);
 
     MPTable.create_named("CallStrategy",
         "BestEffort", CallStrategy::BestEffort,
