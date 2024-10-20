@@ -159,6 +159,7 @@ std::string THeartbeatThread::GenerateCall() {
 
     lastCall = Ret.dump();
 
+    //Add sensitive information here because value of lastCall is used for the information packet.
     Ret["uuid"] = Application::Settings.getAsString(Settings::Key::General_AuthKey);
 
     return Ret.dump();
