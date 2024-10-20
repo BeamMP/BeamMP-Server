@@ -436,6 +436,20 @@ void TServer::ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Networ
         Network.SendToAll(&c, StringToVector(Packet), false, true);
         return;
     }
+    case 'p': {
+        beammp_trace(std::string(("got 'Op' packet: '")) + Packet + ("' (") + std::to_string(Packet.size()) + (")"));
+        auto MaybePidVid = GetPidVid(Data.substr(0, Data.find(':', 1)));
+        if (MaybePidVid) {
+            std::tie(PID, VID) = MaybePidVid.value();
+        }
+
+        if (PID != -1 && VID != -1 && PID == c.GetID()) {
+            Data = Data.substr(Data.find('['));
+            LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onVehiclePaintChanged", "", c.GetID(), VID, Data));
+            Network.SendToAll(&c, StringToVector(Packet), false, true);
+        }
+        return;
+    }
     default:
         beammp_trace(std::string(("possibly not implemented: '") + Packet + ("' (") + std::to_string(Packet.size()) + (")")));
         return;
