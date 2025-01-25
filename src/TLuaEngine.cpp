@@ -43,6 +43,8 @@ static sol::protected_function AddTraceback(sol::state_view StateView, sol::prot
 static std::optional<sol::function> GetLuaHandler(sol::state_view StateView, const std::string Handler, const std::string EventName);
 
 static std::optional<sol::function> GetLuaHandler(sol::state_view StateView, const std::string Handler, const std::string EventName) {
+    if (!StateView)
+        return std::nullopt;
     auto Res = StateView.safe_script("return " + Handler, sol::script_pass_on_error);
     if (!Res.valid()) {
         beammp_errorf("invalid handler for event \"{}\". handler: \"{}\"", EventName, Handler);

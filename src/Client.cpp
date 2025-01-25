@@ -84,6 +84,7 @@ void TClient::Disconnect(std::string_view Reason) {
         if (ec) {
             beammp_debugf("Failed to shutdown client socket: {}", ec.message());
         }
+        mSocket.cancel();
         mSocket.close(ec);
         if (ec) {
             beammp_debugf("Failed to close client socket: {}", ec.message());
