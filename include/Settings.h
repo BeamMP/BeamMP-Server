@@ -79,6 +79,7 @@ struct Settings {
         General_Map,
         General_AuthKey,
         General_Private,
+        General_Offline,
         General_Port,
         General_MaxCars,
         General_LogChat,

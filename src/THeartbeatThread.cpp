@@ -110,30 +110,35 @@ void THeartbeatThread::operator()() {
             }
         } else {
             if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
-                beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
-            }
-        }
-
-        if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
-            if (Status == "2000") {
-                beammp_info(("Authenticated! " + Message));
-                isAuth = true;
-            } else if (Status == "200") {
-                beammp_info(("Resumed authenticated session! " + Message));
-                isAuth = true;
-            } else {
-                if (Message.empty()) {
-                    Message = "Backend didn't provide a reason.";
+                if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
+                    beammp_warn("Server is in Offline Mode. Your server will not appear in the global server list. Direct connect will still work.");
+                } else {
+                    beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
                 }
-                beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
         }
-        if (isAuth || Application::Settings.getAsBool(Settings::Key::General_Private)) {
-            Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
-        }
-        if (!Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates) && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
-            LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
-            Application::CheckForUpdates();
+        if (!Application::Settings.getAsBool(Settings::Key::General_Offline)) {
+            if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
+                if (Status == "2000") {
+                    beammp_info(("Authenticated! " + Message));
+                    isAuth = true;
+                } else if (Status == "200") {
+                    beammp_info(("Resumed authenticated session! " + Message));
+                    isAuth = true;
+                } else {
+                    if (Message.empty()) {
+                        Message = "Backend didn't provide a reason.";
+                    }
+                    beammp_error("Backend REFUSED the auth key. Reason: " + Message);
+                }
+            }
+            if (isAuth || Application::Settings.getAsBool(Settings::Key::General_Private)) {
+                Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+            }
+            if (!Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates) && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
+                LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
+                Application::CheckForUpdates();
+            }
         }
     }
 }
@@ -145,6 +150,7 @@ std::string THeartbeatThread::GenerateCall() {
         { "port", std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)) },
         { "map", Application::Settings.getAsString(Settings::Key::General_Map) },
         { "private", Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false" },
+        { "offline", Application::Settings.getAsBool(Settings::Key::General_Offline) ? "true" : "false" },
         { "version", Application::ServerVersionString() },
         { "clientversion", Application::ClientMinimumVersion().AsString() },
         { "name", Application::Settings.getAsString(Settings::Key::General_Name) },

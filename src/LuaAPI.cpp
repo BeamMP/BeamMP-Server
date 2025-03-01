@@ -325,6 +325,14 @@ void LuaAPI::MP::Set(int ConfigID, sol::object NewValue) {
             beammp_lua_error("set invalid argument [2] expected boolean");
         }
          break;
+    case 8: // Offline play
+        if (NewValue.is<bool>()) {
+            Application::Settings.set(Settings::Key::General_Offline, NewValue.as<bool>());
+            beammp_info(std::string("Set `Offline` to ") + (Application::Settings.getAsBool(Settings::Key::General_Offline) ? "true" : "false"));
+        } else {
+            beammp_lua_error("set invalid argument [2] expected boolean");
+        }
+        break;
     default:
         beammp_warn("Invalid config ID \"" + std::to_string(ConfigID) + "\". Use `MP.Settings.*` enum for this.");
         break;
