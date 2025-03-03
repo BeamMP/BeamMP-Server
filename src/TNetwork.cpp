@@ -362,11 +362,18 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    if (!Application::Settings.getAsBool(Settings::Key::General_Offline)) {
-         beammp_debug("Response from authentication backend: " + AuthResStr);
+    // If we are in "offline mode", we want to do something different for auth
+    if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
+        // skip auth altogether.
+        // this prevents players from getting kicked for not being logged in.
+        
+        // TODO: authenticate using a different method here.
 
-         try {
-             nlohmann::json AuthRes = nlohmann::json::parse(AuthResStr);
+    } else {
+        beammp_debug("Response from authentication backend: " + AuthResStr);
+
+        try {
+            nlohmann::json AuthRes = nlohmann::json::parse(AuthResStr);
 
             if (AuthRes["username"].is_string() && AuthRes["roles"].is_string()
                 && AuthRes["guest"].is_boolean() && AuthRes["identifiers"].is_array()) {

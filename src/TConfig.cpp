@@ -35,7 +35,7 @@ static constexpr std::string_view EnvStrDebug = "BEAMMP_DEBUG";
 static constexpr std::string_view StrPrivate = "Private";
 static constexpr std::string_view EnvStrPrivate = "BEAMMP_PRIVATE";
 static constexpr std::string_view StrOffline = "Offline";
-//static constexpr std::string_view EnvStrOffline = "BEAMMP_OFFLINE";
+static constexpr std::string_view EnvStrOffline = "BEAMMP_OFFLINE";
 static constexpr std::string_view StrPort = "Port";
 static constexpr std::string_view EnvStrPort = "BEAMMP_PORT";
 static constexpr std::string_view StrMaxCars = "MaxCars";
@@ -249,7 +249,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         // Read into new Settings Singleton
         TryReadValue(data, "General", StrDebug, EnvStrDebug, Settings::Key::General_Debug);
         TryReadValue(data, "General", StrPrivate, EnvStrPrivate, Settings::Key::General_Private);
-        TryReadValue(data, "General", StrOffline, EnvStrPrivate, Settings::Key::General_Offline);
+        TryReadValue(data, "General", StrOffline, EnvStrOffline, Settings::Key::General_Offline);
         TryReadValue(data, "General", StrInformationPacket, EnvStrInformationPacket, Settings::Key::General_InformationPacket);
         if (Env::Get(Env::Key::PROVIDER_PORT_ENV).has_value()) {
             TryReadValue(data, "General", StrPort, Env::Get(Env::Key::PROVIDER_PORT_ENV).value(), Settings::Key::General_Port);

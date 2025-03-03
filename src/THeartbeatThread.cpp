@@ -111,12 +111,14 @@ void THeartbeatThread::operator()() {
         } else {
             if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
                 if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
-                    beammp_warn("Server is in Offline Mode. Your server will not appear in the global server list. Direct connect will still work.");
+                    // TODO-Preston: find out if we ever actually get here when in offline mode? This message may not be necessary
+                    beammp_warn("Server is in Offline Mode. Your server will not appear in the global server list. Direct connect will still work with LAN connections.");
                 } else {
                     beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
                 }
             }
         }
+        // Don't do anything requiring an internet connection if we are in offline mode.
         if (!Application::Settings.getAsBool(Settings::Key::General_Offline)) {
             if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
                 if (Status == "2000") {
