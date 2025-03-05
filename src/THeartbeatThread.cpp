@@ -61,6 +61,11 @@ void THeartbeatThread::operator()() {
 
         nlohmann::json Doc;
         bool Ok = false;
+
+        if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
+            beammp_warn("Server is in Offline Mode. Your server will not appear in the global server list. Direct connect will still work with LAN connections.");
+            return;
+        }
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url + Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
 
@@ -110,37 +115,29 @@ void THeartbeatThread::operator()() {
             }
         } else {
             if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
-                if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
-                    // TODO-Preston: find out if we ever actually get here when in offline mode? This message may not be necessary
-                    beammp_warn("Server is in Offline Mode. Your server will not appear in the global server list. Direct connect will still work with LAN connections.");
-                } else {
-                    beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
-                }
+                beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
             }
         }
-        // Don't do anything requiring an internet connection if we are in offline mode.
-        if (!Application::Settings.getAsBool(Settings::Key::General_Offline)) {
-            if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
-                if (Status == "2000") {
-                    beammp_info(("Authenticated! " + Message));
-                    isAuth = true;
-                } else if (Status == "200") {
-                    beammp_info(("Resumed authenticated session! " + Message));
-                    isAuth = true;
-                } else {
-                    if (Message.empty()) {
-                        Message = "Backend didn't provide a reason.";
-                    }
-                    beammp_error("Backend REFUSED the auth key. Reason: " + Message);
+        if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
+            if (Status == "2000") {
+                beammp_info(("Authenticated! " + Message));
+                isAuth = true;
+            } else if (Status == "200") {
+                beammp_info(("Resumed authenticated session! " + Message));
+                isAuth = true;
+            } else {
+                if (Message.empty()) {
+                    Message = "Backend didn't provide a reason.";
                 }
+                beammp_error("Backend REFUSED the auth key. Reason: " + Message);
             }
-            if (isAuth || Application::Settings.getAsBool(Settings::Key::General_Private)) {
-                Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
-            }
-            if (!Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates) && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
-                LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
-                Application::CheckForUpdates();
-            }
+        }
+        if (isAuth || Application::Settings.getAsBool(Settings::Key::General_Private)) {
+            Application::SetSubsystemStatus("Heartbeat", Application::Status::Good);
+        }
+        if (!Application::Settings.getAsBool(Settings::Key::Misc_ImScaredOfUpdates) && UpdateReminderTimePassed.count() > UpdateReminderTimeout.count()) {
+            LastUpdateReminderTime = std::chrono::high_resolution_clock::now();
+            Application::CheckForUpdates();
         }
     }
 }
