@@ -478,4 +478,3 @@ callgrind.*
 notes/*
 compile_commands.json
 nohup.out
-vcpkg.json

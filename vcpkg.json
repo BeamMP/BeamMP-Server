@@ -10,7 +10,6 @@
     "doctest",
     "fmt",
     "libzip",
-    "lua",
     "nlohmann-json",
     "openssl",
     "rapidjson",
