@@ -61,6 +61,11 @@ void THeartbeatThread::operator()() {
 
         nlohmann::json Doc;
         bool Ok = false;
+
+        if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
+            beammp_warn("Server is in Offline Mode. Your server will not appear in the global server list. Direct connect will still work with LAN connections.");
+            return;
+        }
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url + Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
 
@@ -113,7 +118,6 @@ void THeartbeatThread::operator()() {
                 beammp_warn("Backend failed to respond to a heartbeat. Your server may temporarily disappear from the server list. This is not an error, and will likely resolve itself soon. Direct connect will still work.");
             }
         }
-
         if (Ok && !isAuth && !Application::Settings.getAsBool(Settings::Key::General_Private)) {
             if (Status == "2000") {
                 beammp_info(("Authenticated! " + Message));
@@ -145,6 +149,7 @@ std::string THeartbeatThread::GenerateCall() {
         { "port", std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)) },
         { "map", Application::Settings.getAsString(Settings::Key::General_Map) },
         { "private", Application::Settings.getAsBool(Settings::Key::General_Private) ? "true" : "false" },
+        { "offline", Application::Settings.getAsBool(Settings::Key::General_Offline) ? "true" : "false" },
         { "version", Application::ServerVersionString() },
         { "clientversion", Application::ClientMinimumVersion().AsString() },
         { "name", Application::Settings.getAsString(Settings::Key::General_Name) },

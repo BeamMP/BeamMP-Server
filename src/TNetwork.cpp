@@ -367,32 +367,41 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         return nullptr;
     }
 
-    beammp_debug("Response from authentication backend: " + AuthResStr);
+    // If we are in "offline mode", we want to do something different for auth
+    if (Application::Settings.getAsBool(Settings::Key::General_Offline)) {
+        // skip auth altogether.
+        // this prevents players from getting kicked for not being logged in.
+        
+        // TODO: authenticate using a different method here.
 
-    try {
-        nlohmann::json AuthRes = nlohmann::json::parse(AuthResStr);
+    } else {
+        beammp_debug("Response from authentication backend: " + AuthResStr);
 
-        if (AuthRes["username"].is_string() && AuthRes["roles"].is_string()
-            && AuthRes["guest"].is_boolean() && AuthRes["identifiers"].is_array()) {
+        try {
+            nlohmann::json AuthRes = nlohmann::json::parse(AuthResStr);
 
-            Client->SetName(AuthRes["username"]);
-            Client->SetRoles(AuthRes["roles"]);
-            Client->SetIsGuest(AuthRes["guest"]);
-            for (const auto& ID : AuthRes["identifiers"]) {
-                auto Raw = std::string(ID);
-                auto SepIndex = Raw.find(':');
-                Client->SetIdentifier(Raw.substr(0, SepIndex), Raw.substr(SepIndex + 1));
+            if (AuthRes["username"].is_string() && AuthRes["roles"].is_string()
+                && AuthRes["guest"].is_boolean() && AuthRes["identifiers"].is_array()) {
+
+                Client->SetName(AuthRes["username"]);
+                Client->SetRoles(AuthRes["roles"]);
+                Client->SetIsGuest(AuthRes["guest"]);
+                for (const auto& ID : AuthRes["identifiers"]) {
+                    auto Raw = std::string(ID);
+                    auto SepIndex = Raw.find(':');
+                    Client->SetIdentifier(Raw.substr(0, SepIndex), Raw.substr(SepIndex + 1));
+                }
+            } else {
+                beammp_error("Invalid authentication data received from authentication backend");
+                ClientKick(*Client, "Invalid authentication data!");
+                return nullptr;
             }
-        } else {
-            beammp_error("Invalid authentication data received from authentication backend");
-            ClientKick(*Client, "Invalid authentication data!");
+        } catch (const std::exception& e) {
+            beammp_errorf("Client sent invalid key. Error was: {}", e.what());
+            // TODO: we should really clarify that this was a backend response or parsing error
+            ClientKick(*Client, "Invalid key! Please restart your game.");
             return nullptr;
         }
-    } catch (const std::exception& e) {
-        beammp_errorf("Client sent invalid key. Error was: {}", e.what());
-        // TODO: we should really clarify that this was a backend response or parsing error
-        ClientKick(*Client, "Invalid key! Please restart your game.");
-        return nullptr;
     }
 
     beammp_debug("Name -> " + Client->GetName() + ", Guest -> " + std::to_string(Client->IsGuest()) + ", Roles -> " + Client->GetRoles());
