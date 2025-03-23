@@ -182,10 +182,6 @@ int BeamMPServerMain(MainArguments Arguments) {
 
     TServer Server(Arguments.List);
 
-    auto LuaEngine = std::make_shared<TLuaEngine>();
-    LuaEngine->SetServer(&Server);
-    Application::Console().InitializeLuaConsole(*LuaEngine);
-
     RegisterThread("Main");
 
     beammp_trace("Running in debug mode on a debug build");
@@ -194,13 +190,16 @@ int BeamMPServerMain(MainArguments Arguments) {
     TPPSMonitor PPSMonitor(Server);
     THeartbeatThread Heartbeat(ResourceManager, Server);
     TNetwork Network(Server, PPSMonitor, ResourceManager);
+
+    auto LuaEngine = std::make_shared<TLuaEngine>();
+    LuaEngine->SetServer(&Server);
+    Application::Console().InitializeLuaConsole(*LuaEngine);
     LuaEngine->SetNetwork(&Network);
     PPSMonitor.SetNetwork(Network);
     Application::CheckForUpdates();
 
     TPluginMonitor PluginMonitor(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server", LuaEngine);
 
-    Application::SetSubsystemStatus("Main", Application::Status::Good);
     RegisterThread("Main(Waiting)");
 
     std::set<std::string> IgnoreSubsystems {
@@ -215,6 +214,10 @@ int BeamMPServerMain(MainArguments Arguments) {
             std::string SystemsBadList {};
             auto Statuses = Application::GetSubsystemStatuses();
             for (const auto& NameStatusPair : Statuses) {
+                if (NameStatusPair.first == "Main") {
+                    continue;
+                }
+
                 if (IgnoreSubsystems.count(NameStatusPair.first) > 0) {
                     continue; // ignore
                 }
@@ -228,6 +231,8 @@ int BeamMPServerMain(MainArguments Arguments) {
             // remove ", "
             SystemsBadList = SystemsBadList.substr(0, SystemsBadList.size() - 2);
             if (FullyStarted) {
+                Application::SetSubsystemStatus("Main", Application::Status::Good);
+
                 if (!WithErrors) {
                     beammp_info("ALL SYSTEMS STARTED SUCCESSFULLY, EVERYTHING IS OKAY");
                 } else {

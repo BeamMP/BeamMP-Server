@@ -307,6 +307,11 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     Client->SetIdentifier("ip", ip);
     beammp_tracef("This thread is ip {} ({})", ip, RawConnection.SockAddr.address().to_v6().is_v4_mapped() ? "IPv4 mapped IPv6" : "IPv6");
 
+    if (Application::GetSubsystemStatuses().at("Main") == Application::Status::Starting) {
+        ClientKick(*Client, "The server is still starting, please try joining again later.");
+        return nullptr;
+    }
+
     beammp_info("Identifying new ClientConnection...");
 
     auto Data = TCPRcv(*Client);

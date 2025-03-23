@@ -104,7 +104,7 @@ jobs:
           asset_content_type: application/x-elf
 
   arm64-matrix:
-    runs-on: [Linux, ARM64]
+    runs-on: ubuntu-22.04-arm
     needs: create-release
     strategy:
       matrix:

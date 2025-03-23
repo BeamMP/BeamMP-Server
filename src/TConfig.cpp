@@ -64,7 +64,9 @@ static constexpr std::string_view StrPassword = "Password";
 
 // Misc
 static constexpr std::string_view StrHideUpdateMessages = "ImScaredOfUpdates";
+static constexpr std::string_view EnvStrHideUpdateMessages = "BEAMMP_IM_SCARED_OF_UPDATES";
 static constexpr std::string_view StrUpdateReminderTime = "UpdateReminderTime";
+static constexpr std::string_view EnvStrUpdateReminderTime = "BEAMMP_UPDATE_REMINDER_TIME";
 
 TEST_CASE("TConfig::TConfig") {
     const std::string CfgFile = "beammp_server_testconfig.toml";
@@ -267,8 +269,8 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Settings::Key::General_LogChat);
         TryReadValue(data, "General", StrAllowGuests, EnvStrAllowGuests, Settings::Key::General_AllowGuests);
         // Misc
-        TryReadValue(data, "Misc", StrHideUpdateMessages, "", Settings::Key::Misc_ImScaredOfUpdates);
-        TryReadValue(data, "Misc", StrUpdateReminderTime, "", Settings::Key::Misc_UpdateReminderTime);
+        TryReadValue(data, "Misc", StrHideUpdateMessages, EnvStrHideUpdateMessages, Settings::Key::Misc_ImScaredOfUpdates);
+        TryReadValue(data, "Misc", StrUpdateReminderTime, EnvStrUpdateReminderTime, Settings::Key::Misc_UpdateReminderTime);
 
     } catch (const std::exception& err) {
         beammp_error("Error parsing config file value: " + std::string(err.what()));
