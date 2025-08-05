@@ -564,13 +564,14 @@ void TConsole::Command_List(const std::string&, const std::vector<std::string>& 
         Application::Console().WriteRaw("No players online.");
     } else {
         std::stringstream ss;
-        ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::endl;
+        ss << std::left << std::setw(25) << "Name" << std::setw(6) << "ID" << std::setw(6) << "Cars" << std::setw(16) << "IP" << std::endl;
         mLuaEngine->Server().ForEachClient([&](std::weak_ptr<TClient> Client) -> bool {
             if (!Client.expired()) {
                 auto locked = Client.lock();
                 ss << std::left << std::setw(25) << locked->GetName()
                    << std::setw(6) << locked->GetID()
-                   << std::setw(6) << locked->GetCarCount() << "\n";
+                   << std::setw(6) << locked->GetCarCount()
+                   << std::setw(16) << locked->GetIdentifiers().at("ip") << "\n";
             }
             return true;
         });
