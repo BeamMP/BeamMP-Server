@@ -14,6 +14,19 @@ project(
 include(cmake/StandardSettings.cmake)
 include(cmake/StaticAnalyzers.cmake)
 include(cmake/Git.cmake)
+include(FetchContent)
+
+# Fetch packages before proceeding
+
+include(FetchContent)
+FetchContent_Declare(
+    toml11
+    GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
+    GIT_TAG        v4.4.0
+)
+FetchContent_MakeAvailable(toml11)
+
+# done fetching packages
 
 # below are options which should be changed
 
@@ -118,7 +131,7 @@ find_package(libzip CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
-add_subdirectory("deps/toml11")
+#add_subdirectory("deps/toml11")
 
 include_directories(include)
 
