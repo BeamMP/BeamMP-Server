@@ -452,40 +452,34 @@ static std::pair<bool, std::string> FSWrapper(FnT Fn, ArgsT&&... Args) {
     return Result;
 }
 
-std::pair<bool, std::string> LuaAPI::FS::CreateDirectory(const std::string& Path) {
+std::optional<std::string> LuaAPI::FS::CreateDirectory(const std::string& Path) {
     std::error_code errc;
-    std::pair<bool, std::string> Result;
     fs::create_directories(Path, errc);
-    Result.first = errc == std::error_code {};
-    if (!Result.first) {
-        Result.second = errc.message();
+    if (errc != std::error_code {}) {
+        return errc.message();
     }
-    return Result;
+    return std::nullopt;
 }
 
 TEST_CASE("LuaAPI::FS::CreateDirectory") {
     std::string TestDir = "beammp_test_dir";
     fs::remove_all(TestDir);
     SUBCASE("Single level dir") {
-        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir);
-        CHECK(Ok);
-        CHECK(Err == "");
+        const auto Err = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(!Err.has_value());
         CHECK(fs::exists(TestDir));
     }
     SUBCASE("Multi level dir") {
-        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir + "/a/b/c");
-        CHECK(Ok);
-        CHECK(Err == "");
+        const auto Err = LuaAPI::FS::CreateDirectory(TestDir + "/a/b/c");
+        CHECK(!Err.has_value());
         CHECK(fs::exists(TestDir + "/a/b/c"));
     }
     SUBCASE("Already exists") {
-        const auto [Ok, Err] = LuaAPI::FS::CreateDirectory(TestDir);
-        CHECK(Ok);
-        CHECK(Err == "");
+        const auto Err = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(!Err.has_value());
         CHECK(fs::exists(TestDir));
-        const auto [Ok2, Err2] = LuaAPI::FS::CreateDirectory(TestDir);
-        CHECK(Ok2);
-        CHECK(Err2 == "");
+        const auto Err2 = LuaAPI::FS::CreateDirectory(TestDir);
+        CHECK(!Err2.has_value());
     }
     fs::remove_all(TestDir);
 }
