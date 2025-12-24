@@ -655,6 +655,23 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     return Result;
 }
 
+// Check if a Lua table is a valid array (all keys are integers >= 1)
+static bool IsLuaArray(const sol::table& table) {
+    for (const auto& pair : table) {
+        if (pair.first.get_type() != sol::type::number) {
+            return false;
+        }
+        if (!pair.first.is<int>()) {
+            return false;
+        }
+        int key = pair.first.as<int>();
+        if (key < 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, const sol::object& right, bool is_array, size_t depth = 0) {
     if (depth > 100) {
         beammp_lua_error("json serialize will not go deeper than 100 nested tables, internal references assumed, aborted this path");
@@ -724,12 +741,7 @@ static void JsonEncodeRecursive(nlohmann::json& json, const sol::object& left, c
         if (right.as<sol::table>().empty()) {
             value = nlohmann::json::object();
         } else {
-            bool local_is_array = true;
-            for (const auto& pair : right.as<sol::table>()) {
-                if (pair.first.get_type() != sol::type::number) {
-                    local_is_array = false;
-                }
-            }
+            bool local_is_array = IsLuaArray(right.as<sol::table>());
             for (const auto& pair : right.as<sol::table>()) {
                 JsonEncodeRecursive(value, pair.first, pair.second, local_is_array, depth + 1);
             }
@@ -752,12 +764,7 @@ std::string LuaAPI::MP::JsonEncode(const sol::table& object) {
     if (object.as<sol::table>().empty()) {
         json = nlohmann::json::object();
     } else {
-        bool is_array = true;
-        for (const auto& pair : object.as<sol::table>()) {
-            if (pair.first.get_type() != sol::type::number) {
-                is_array = false;
-            }
-        }
+        bool is_array = IsLuaArray(object.as<sol::table>());
         for (const auto& entry : object) {
             JsonEncodeRecursive(json, entry.first, entry.second, is_array);
         }
