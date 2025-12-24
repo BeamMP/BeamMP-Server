@@ -82,6 +82,15 @@ void TLuaEngine::operator()() {
         }
     }
 
+    // now call onInitFinal after all states have completed their onInit
+    auto FinalFutures = TriggerEvent("onInitFinal", "");
+    WaitForAll(FinalFutures, std::chrono::seconds(5));
+    for (const auto& Future : FinalFutures) {
+        if (Future->Error && Future->ErrorMessage != BeamMPFnNotFoundError) {
+            beammp_lua_error("Calling \"onInitFinal\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
+        }
+    }
+
     auto ResultCheckThread = std::thread([&] {
         RegisterThread("ResultCheckThread");
         while (!Application::IsShuttingDown()) {
@@ -433,6 +442,7 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
         auto DataPtr = std::make_unique<StateThreadData>(Name, StateId, *this);
         mLuaStates[StateId] = std::move(DataPtr);
         RegisterEvent("onInit", StateId, "onInit");
+        RegisterEvent("onInitFinal", StateId, "onInitFinal");
         if (!DontCallOnInit) {
             auto Res = EnqueueFunctionCall(StateId, "onInit", {}, "onInit");
             Res->WaitUntilReady();
