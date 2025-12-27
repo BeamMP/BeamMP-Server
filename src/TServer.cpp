@@ -256,6 +256,10 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
             beammp_debugf("Empty chat message received from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
             return;
         }
+        if (Message.size() > 500) {
+           beammp_debugf("Chat message too long from '{}' ({}), ignoring it", LockedClient->GetName(), LockedClient->GetID());
+           return;
+        }
         auto Futures = LuaAPI::MP::Engine->TriggerEvent("onChatMessage", "", LockedClient->GetID(), LockedClient->GetName(), Message);
         TLuaEngine::WaitForAll(Futures);
         LogChatMessage(LockedClient->GetName(), LockedClient->GetID(), PacketAsString.substr(PacketAsString.find(':', 3) + 1));
