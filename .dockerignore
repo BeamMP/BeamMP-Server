@@ -1,43 +1,26 @@
-# Build artifacts
-bin/
+.git/
 build/
 cmake-build-*/
-*.orig
-
-# Git
-.git/
-.gitignore
-.gitattributes
+bin/
+out/
+.cache/
+**/.DS_Store
 
 # IDE
 .idea/
 .vs/
 *.user
 *.suo
-*.sln.docstates
 
-# Documentation
-*.md
-!README.md
-docs/
-
-# CI/CD
+# CI
 .github/
 
-# Docker
-Dockerfile
-.dockerignore
-compose.yaml
-docker-compose*.yml
-
-# Scripts (not needed in image)
+# Scripts (pas nécessaires au build Docker ici)
 scripts/
 
-# Tests
-test/
+# Docs (garde README si tu veux)
+*.md
+!README.md
 
-# Other
-*.toml
-Resources/
-run-in-env.sh
-
+# Docker files (garde ce dont tu as besoin)
+docker-compose*.yml
