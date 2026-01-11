@@ -1,0 +1,43 @@
+# Build artifacts
+bin/
+build/
+cmake-build-*/
+*.orig
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# CI/CD
+.github/
+
+# Docker
+Dockerfile
+.dockerignore
+compose.yaml
+docker-compose*.yml
+
+# Scripts (not needed in image)
+scripts/
+
+# Tests
+test/
+
+# Other
+*.toml
+Resources/
+run-in-env.sh
+

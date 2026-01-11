@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  beammp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: beammp-server:latest
+    container_name: beammp-server
+    restart: unless-stopped
+    ports:
+      - "30814:30814/tcp"
+      - "30814:30814/udp"
+    volumes:
+      # Mount configuration directory
+      - ./config:/config:ro
+      # Mount resources directory (mods, plugins, etc.)
+      - ./resources:/resources:ro
+      # Mount working directory for logs and data
+      - ./data:/app
+    environment:
+      - TZ=UTC
+    # Optional: limit resources
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 128M
+
