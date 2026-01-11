@@ -14,6 +14,8 @@ services:
       - ./config:/config
       # Mount resources directory (mods, plugins, etc.)
       - ./Resources:/app/Resources
+    env_file:
+      - .env
     environment:
       - TZ=UTC
 
