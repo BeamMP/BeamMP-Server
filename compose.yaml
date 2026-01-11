@@ -18,15 +18,4 @@ services:
       - ./data:/app/data
     environment:
       - TZ=UTC
-      # Optionnel: renseigne ton AuthKey BeamMP ici pour démarrer automatiquement
-      # - BEAMMP_AUTHKEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    # Optional: limit resources
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '2'
-    #       memory: 512M
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 128M
 
