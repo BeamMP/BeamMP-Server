@@ -33,7 +33,8 @@ jobs:
         id: image
         shell: bash
         run: |
-          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY@L}" >> "${GITHUB_ENV}"
+          echo "IMAGE_NAME: ${{ env.IMAGE_NAME }}"
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
