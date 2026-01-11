@@ -90,7 +90,9 @@ RUN useradd -m -u 1000 beammp && \
     mkdir -p /app /app/data /config /resources && \
     chown -R beammp:beammp /app /config /resources
 
-COPY --from=builder /work/build-server/BeamMP-Server /app/BeamMP-Server
+# /work/build-server est un cache BuildKit (non persisté dans les layers),
+# l'artefact final est copié dans /work/out pendant le build.
+COPY --from=builder /work/out/BeamMP-Server /app/BeamMP-Server
 
 WORKDIR /app
 USER beammp
