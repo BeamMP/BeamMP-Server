@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: beammp-server:latest
+    image: ghcr.io/BeamMP/beammp-server
     container_name: beammp-server
     restart: unless-stopped
     ports:
