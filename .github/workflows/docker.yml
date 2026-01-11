@@ -62,3 +62,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=ghcr.io/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.arch }}
           cache-to: type=registry,ref=ghcr.io/${{ env.IMAGE_NAME }}:buildcache-${{ matrix.arch }},mode=max
+          provenance: false
+          sbom: false
