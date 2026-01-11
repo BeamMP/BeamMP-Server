@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.6
-
 FROM debian:12-slim AS builder
 
 ARG VCPKG_COMMIT=5bf0c55239da398b8c6f450818c9e28d36bf9966
@@ -28,7 +26,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       binutils \
     && rm -rf /var/lib/apt/lists/*
 
-# vcpkg doit être un vrai repo git (manifest/versioning)
 RUN git clone https://github.com/microsoft/vcpkg /work/vcpkg && \
     cd /work/vcpkg && \
     git checkout ${VCPKG_COMMIT} && \
@@ -36,7 +33,6 @@ RUN git clone https://github.com/microsoft/vcpkg /work/vcpkg && \
 
 ENV VCPKG_ROOT=/work/vcpkg
 
-# Copie du projet (inclut les tests)
 COPY vcpkg.json ./
 COPY deps/ ./deps/
 COPY cmake/ ./cmake/
@@ -45,7 +41,6 @@ COPY include/ ./include/
 COPY src/ ./src/
 COPY test/ ./test/
 
-# 1) Build serveur (LTO configurable)
 RUN --mount=type=cache,target=/root/.cache/vcpkg,sharing=locked \
     --mount=type=cache,target=/work/vcpkg/downloads,sharing=locked \
     --mount=type=cache,target=/work/vcpkg/buildtrees,sharing=locked \
@@ -63,7 +58,6 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg,sharing=locked \
     && objcopy --add-gnu-debuglink=/work/build-server/BeamMP-Server.debug /work/build-server/BeamMP-Server \
     && install -m 0755 /work/build-server/BeamMP-Server /work/out/BeamMP-Server
 
-# 2) Build tests (LTO OFF pour réduire la RAM)
 RUN --mount=type=cache,target=/root/.cache/vcpkg,sharing=locked \
     --mount=type=cache,target=/work/vcpkg/downloads,sharing=locked \
     --mount=type=cache,target=/work/vcpkg/buildtrees,sharing=locked \
@@ -74,9 +68,6 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg,sharing=locked \
       -DCMAKE_BUILD_TYPE=Release \
       -DBeamMP-Server_ENABLE_LTO=OFF \
     && cmake --build /work/build-tests --parallel 1 -t BeamMP-Server-tests
-
-# Note: on copie l'artefact final dans /work/out pour qu'il soit présent dans les couches suivantes
-# même si /work/build-server est un cache BuildKit.
 
 FROM debian:12-slim AS runtime
 
@@ -90,8 +81,7 @@ RUN useradd -m -u 1000 beammp && \
     mkdir -p /app /app/data /config /resources && \
     chown -R beammp:beammp /app /config /resources
 
-# /work/build-server est un cache BuildKit (non persisté dans les layers),
-# l'artefact final est copié dans /work/out pendant le build.
+# /work/build-server is a BuildKit cache mount (not persisted in layers), so copy from /work/out.
 COPY --from=builder /work/out/BeamMP-Server /app/BeamMP-Server
 
 WORKDIR /app
