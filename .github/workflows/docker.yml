@@ -16,7 +16,6 @@ env:
   CMAKE_BUILD_TYPE: "Release"
   DEBIAN_FRONTEND: "noninteractive"
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
@@ -30,6 +29,11 @@ jobs:
           - linux/amd64
           - linux/arm64
     steps:
+      - name: Set image name
+        id: image
+        shell: bash
+        run: |
+          echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
