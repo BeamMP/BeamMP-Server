@@ -13,9 +13,7 @@ services:
       # Mount configuration directory
       - ./config:/config
       # Mount resources directory (mods, plugins, etc.)
-      - ./resources:/resources:ro
-      # Mount working directory for logs and data
-      - ./data:/app/data
+      - ./Resources:/app/Resources
     environment:
       - TZ=UTC
 

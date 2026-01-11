@@ -89,4 +89,4 @@ USER beammp
 
 EXPOSE 30814
 ENTRYPOINT ["/app/BeamMP-Server"]
-CMD ["--config=/config/ServerConfig.toml", "--working-directory=/app"]
+CMD ["--config=/config/ServerConfig.toml"]
