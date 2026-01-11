@@ -5,6 +5,7 @@ on:
     branches:
       - 'develop'
       - 'minor'
+      - 'docker-support'
     tags:
       - 'v*'
   pull_request:
