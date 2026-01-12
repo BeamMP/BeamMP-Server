@@ -3,6 +3,7 @@ name: Docker Build and Publish (native multi-arch)
 on:
   push:
     branches:
+      - 'docker-suppor-lua-rocks'
       - 'develop'
       - 'minor'
     tags:

@@ -50,6 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg,sharing=locked \
     cmake -S /work -B /work/build-server -G Ninja \
       -DCMAKE_TOOLCHAIN_FILE=/work/vcpkg/scripts/buildsystems/vcpkg.cmake \
       -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_EXE_LINKER_FLAGS="-Wl,--export-dynamic" \
       -DCMAKE_CXX_FLAGS="-O3 -g -Wl,-z,norelro -Wl,--hash-style=gnu -Wl,-z,noseparate-code -ffunction-sections -fdata-sections -Wl,--gc-sections" \
       -DBeamMP-Server_ENABLE_LTO=${ENABLE_LTO} \
     && cmake --build /work/build-server --parallel ${BUILD_PARALLEL} -t BeamMP-Server \
@@ -66,6 +67,7 @@ RUN --mount=type=cache,target=/root/.cache/vcpkg,sharing=locked \
     cmake -S /work -B /work/build-tests -G Ninja \
       -DCMAKE_TOOLCHAIN_FILE=/work/vcpkg/scripts/buildsystems/vcpkg.cmake \
       -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_EXE_LINKER_FLAGS="-Wl,--export-dynamic" \
       -DBeamMP-Server_ENABLE_LTO=OFF \
     && cmake --build /work/build-tests --parallel 1 -t BeamMP-Server-tests
 
@@ -73,6 +75,13 @@ FROM debian:12-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     liblua5.3-0 \
+    lua5.3 \
+    luarocks \
+    build-essential \
+    pkg-config \
+    liblua5.3-dev \
+    git \
+    unzip \
     curl \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
