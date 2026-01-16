@@ -14,17 +14,12 @@
     "openssl",
     "rapidjson",
     "sol2",
-    "curl",
-    "lua"
+    "curl"
   ],
   "overrides": [
     {
       "name": "sol2",
       "version": "3.3.1"
-    },
-    {
-      "name": "lua",
-      "version": "5.3.5#6"
     }
   ],
   "builtin-baseline": "5bf0c55239da398b8c6f450818c9e28d36bf9966"
