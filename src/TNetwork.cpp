@@ -246,8 +246,8 @@ void TNetwork::TCPServerMain() {
                 continue;
             }
             // Disable Nagle's algorithm, equivalent to TCP_NODELAY.
-            // Nagle's algorithm trades beeter bandwidth efficiency for worse latency.
-            // Real time multi-layer games want lower latency.
+            // Nagle's algorithm trades better bandwidth efficiency for worse latency.
+            // Real time multi-player games want lower latency.
             ip::tcp::no_delay NoDelayOpt(true);
             ClientSocket.set_option(NoDelayOpt);
 
