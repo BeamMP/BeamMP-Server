@@ -65,7 +65,7 @@ TEST_CASE("TLuaEngine ctor & dtor") {
 void TLuaEngine::operator()() {
     RegisterThread("LuaEngine");
     // lua engine main thread
-    beammp_infof("Lua v{}.{}.{}", LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE);
+    beammp_infof(LUA_RELEASE);
     CollectAndInitPlugins();
 
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Good);
