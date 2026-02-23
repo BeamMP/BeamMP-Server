@@ -168,7 +168,7 @@ public:
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName);
-    void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
+    void EnsureStateExists(TLuaStateId StateId, const std::string& Name);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
     /**
      *
