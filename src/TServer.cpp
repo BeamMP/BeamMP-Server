@@ -327,7 +327,7 @@ void TServer::HandleEvent(TClient& c, const std::string& RawData) {
     std::string Name = RawData.substr(2, NameDataSep - 2);
     std::string Data = RawData.substr(NameDataSep + 1);
 
-    std::vector<std::string> exclude = {"onInit", "onFileChanged","onVehicleDeleted","onConsoleInput","onPlayerAuth","postPlayerAuth", "onPlayerDisconnect",
+    std::vector<std::string> exclude = {"onInit","onInitFinal", "onFileChanged","onVehicleDeleted","onConsoleInput","onPlayerAuth","postPlayerAuth", "onPlayerDisconnect",
     "onPlayerConnecting","onPlayerJoining","onPlayerJoin","onChatMessage","postChatMessage","onVehicleSpawn","postVehicleSpawn","onVehicleEdited", "postVehicleEdited",
     "onVehicleReset","onVehiclePaintChanged","onShutdown"};
 
