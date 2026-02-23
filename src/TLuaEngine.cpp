@@ -207,10 +207,9 @@ std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::Debug_
     return Result;
 }
 
-std::vector<TLuaEngine::QueuedFunction> TLuaEngine::Debug_GetStateFunctionQueueForState(TLuaStateId StateId) {
-    std::vector<TLuaEngine::QueuedFunction> Result;
+std::deque<TLuaEngine::QueuedFunction> TLuaEngine::Debug_GetStateFunctionQueueForState(TLuaStateId StateId) {
     std::unique_lock Lock(mLuaStatesMutex);
-    Result = mLuaStates.at(StateId)->Debug_GetStateFunctionQueue();
+    std::deque<TLuaEngine::QueuedFunction> Result = mLuaStates.at(StateId)->Debug_GetStateFunctionQueue();
     return Result;
 }
 
@@ -433,7 +432,7 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
 
 void TLuaEngine::RegisterEvent(const std::string& EventName, TLuaStateId StateId, const sol::object& FunctionObject) {
     std::unique_lock Lock(mLuaEventsMutex);
-    mLuaEvents[EventName][StateId].emplace_back(FunctionObject);
+    mLuaEvents[EventName][StateId] = { FunctionObject };
 }
 
 std::vector<sol::basic_object<sol::basic_reference<>>> TLuaEngine::GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId) {
@@ -1044,8 +1043,9 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLu
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFromCustomEvent(const sol::object& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy) {
+    std::unique_lock Lock(mStateFunctionQueueMutex);
+    auto Iter = mStateFunctionQueue.end();
     // TODO: Document all this
-    decltype(mStateFunctionQueue)::iterator Iter = mStateFunctionQueue.end();
     if (Strategy == CallStrategy::BestEffort) {
         Iter = std::find_if(mStateFunctionQueue.begin(), mStateFunctionQueue.end(),
             [&EventName](const QueuedFunction& Element) {
@@ -1056,13 +1056,11 @@ std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCallFrom
         auto Result = std::make_shared<TLuaResult>();
         Result->StateId = mStateId;
         Result->Function = FunctionObject;
-        std::unique_lock Lock(mStateFunctionQueueMutex);
         mStateFunctionQueue.push_back({ FunctionObject, Result, Args, EventName });
         mStateFunctionQueueCond.notify_all();
         return Result;
-    } else {
-        return nullptr;
     }
+    return nullptr;
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueFunctionCall(const sol::object& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName) {
@@ -1135,7 +1133,7 @@ void TLuaEngine::StateThreadData::operator()() {
             if (NotExpired) {
                 auto ProfStart = prof::now();
                 auto TheQueuedFunction = std::move(mStateFunctionQueue.front());
-                mStateFunctionQueue.erase(mStateFunctionQueue.begin());
+                mStateFunctionQueue.pop_front();
                 Lock.unlock();
                 auto& Result = TheQueuedFunction.Result;
                 auto Args = TheQueuedFunction.Args;
@@ -1218,9 +1216,9 @@ std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> TLuaEngine::StateT
     return mStateExecuteQueue;
 }
 
-std::vector<TLuaEngine::QueuedFunction> TLuaEngine::StateThreadData::Debug_GetStateFunctionQueue() {
+std::deque<TLuaEngine::QueuedFunction> TLuaEngine::StateThreadData::Debug_GetStateFunctionQueue() {
     std::unique_lock Lock(mStateFunctionQueueMutex);
-    return mStateFunctionQueue;
+    return std::deque<TLuaEngine::QueuedFunction>(mStateFunctionQueue);
 }
 
 void TLuaEngine::CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy) {
@@ -1232,6 +1230,10 @@ void TLuaEngine::CreateEventTimer(const std::string& EventName, TLuaStateId Stat
         StateId,
         Strategy
     };
+    if (std::ranges::any_of(mTimedEvents, [&](const auto& e) { return e.EventName == Event.EventName && e.StateId == Event.StateId; })) {
+        beammp_trace("event timer for \"" + EventName + "\" on \"" + StateId + "\" already exists");
+        return;
+    }
     mTimedEvents.push_back(std::move(Event));
     beammp_trace("created event timer for \"" + EventName + "\" on \"" + StateId + "\" with " + std::to_string(IntervalMS) + "ms interval");
 }
