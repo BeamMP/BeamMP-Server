@@ -732,28 +732,26 @@ void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
     } else if (cmd == "queued") {
         auto QueuedFunctions = LuaAPI::MP::Engine->Debug_GetStateFunctionQueueForState(mStateId);
         Application::Console().WriteRaw("Pending functions in State '" + mStateId + "'");
-        std::unordered_map<std::string, size_t> FunctionsCount;
-        std::vector<std::string> FunctionsInOrder;
-        while (!QueuedFunctions.empty()) {
-            auto Tuple = QueuedFunctions.front();
-            QueuedFunctions.erase(QueuedFunctions.begin());
-            FunctionsInOrder.push_back(Tuple.FunctionName);
-            FunctionsCount[Tuple.FunctionName] += 1;
+        size_t FunctionsCount = QueuedFunctions.size();
+        std::vector<sol::object> FunctionsInOrder;
+        for (int i = 0; i < FunctionsCount; ++i) {
+            FunctionsInOrder.push_back(QueuedFunctions[i].FunctionObject);
         }
-        std::set<std::string> Uniques;
-        for (const auto& Function : FunctionsInOrder) {
-            if (Uniques.count(Function) == 0) {
-                Uniques.insert(Function);
-                if (FunctionsCount.at(Function) > 1) {
-                    Application::Console().WriteRaw("    " + Function + " (" + std::to_string(FunctionsCount.at(Function)) + "x)");
+        std::vector<sol::object> Uniques;
+        int Index = 0;
+        for (const sol::object Function : FunctionsInOrder) {
+            if (!(std::find(Uniques.begin(), Uniques.end(), Function) == Uniques.end())) {
+                Uniques.push_back(Function);
+                if (Index != 0) {
+                    Application::Console().WriteRaw("    " + Function.as<std::string>() + " (" + std::to_string(Index) + "x)");
                 } else {
-                    Application::Console().WriteRaw("    " + Function);
+                    Application::Console().WriteRaw("    " + Function.as<std::string>());
                 }
             }
         }
         Application::Console().WriteRaw("Executed functions waiting to be checked in State '" + mStateId + "'");
         for (const auto& Function : LuaAPI::MP::Engine->Debug_GetResultsToCheckForState(mStateId)) {
-            Application::Console().WriteRaw("    '" + Function.Function + "' (Ready? " + (Function.Ready ? "Yes" : "No") + ", Error? " + (Function.Error ? "Yes: '" + Function.ErrorMessage + "'" : "No") + ")");
+            Application::Console().WriteRaw("    '" + Function.Function.as<std::string>() + "' (Ready? " + (Function.Ready ? "Yes" : "No") + ", Error? " + (Function.Error ? "Yes: '" + Function.ErrorMessage + "'" : "No") + ")");
         }
     } else if (cmd == "events") {
         auto Events = LuaAPI::MP::Engine->Debug_GetEventsForState(mStateId);
@@ -761,7 +759,7 @@ void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
         for (const auto& EventHandlerPair : Events) {
             Application::Console().WriteRaw("    Event '" + EventHandlerPair.first + "'");
             for (const auto& Handler : EventHandlerPair.second) {
-                Application::Console().WriteRaw("        " + Handler);
+                Application::Console().WriteRaw("        " + Handler.as<std::string>());
             }
         }
     } else if (cmd == "help") {
