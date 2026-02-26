@@ -436,7 +436,10 @@ void LuaAPI::MP::PrintRaw(sol::variadic_args Args) {
 }
 
 int LuaAPI::PanicHandler(lua_State* State) {
-    beammp_lua_error("PANIC: " + sol::stack::get<std::string>(State, 1));
+    const char* message = lua_tostring(State, -1);
+    if (message) {
+        beammp_lua_error("PANIC: " + std::string(message));
+    }
     return 0;
 }
 
