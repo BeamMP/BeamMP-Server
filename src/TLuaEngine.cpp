@@ -831,7 +831,7 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     });
     MPTable.set_function("GetOSName", &LuaAPI::MP::GetOSName);
     MPTable.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
-    MPTable.set_function("RegisterEvent", [this](const std::string& EventName, const sol::main_object& FunctionObject) {
+    MPTable.set_function("RegisterEvent", [this](const std::string& EventName, const LuaFunction& FunctionObject) {
         RegisterEvent(EventName, FunctionObject);
     });
     MPTable.set_function("TriggerGlobalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
@@ -1150,7 +1150,6 @@ void TLuaEngine::StateThreadData::operator()() {
                 std::string profileName;
                 if (std::holds_alternative<std::string>(FnObject)) {
                     std::string name = std::get<std::string>(FnObject);
-                    beammp_debug("Function call name: " + name);
                     Fn = StateView[name];
                     profileName = name;
                 } else {
