@@ -36,6 +36,7 @@
 #include <set>
 #include <toml.hpp>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #define SOL_ALL_SAFETIES_ON 1
@@ -76,7 +77,7 @@ struct TLuaResult {
     std::string ErrorMessage;
     sol::object Result { sol::lua_nil };
     TLuaStateId StateId;
-    sol::object Function;
+    LuaFunction Function;
     std::shared_ptr<std::mutex> ReadyMutex {
         std::make_shared<std::mutex>()
     };
@@ -112,7 +113,7 @@ public:
     };
 
     struct QueuedFunction {
-        sol::object FunctionObject;
+        LuaFunction FunctionObject;
         std::shared_ptr<TLuaResult> Result;
         std::vector<TLuaValue> Args;
         std::string EventName; // optional, may be empty
@@ -167,9 +168,9 @@ public:
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const sol::object& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName);
+    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const LuaFunction& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
-    void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const sol::object& FunctionObject);
+    void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const LuaFunction& FunctionObject);
     /**
      *
      * @tparam ArgsT Template Arguments for the event (Metadata) todo: figure out what this means
@@ -182,7 +183,7 @@ public:
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerEvent(const std::string& EventName, TLuaStateId IgnoreId, ArgsT&&... Args) {
         std::unique_lock Lock(mLuaEventsMutex);
         beammp_event(EventName);
-        if (mLuaEvents.find(EventName) == mLuaEvents.end()) { // if no event handler is defined for 'EventName', return immediately
+        if (!mLuaEvents.contains(EventName)) { // if no event handler is defined for 'EventName', return immediately
             return {};
         }
 
@@ -213,7 +214,7 @@ public:
         }
         return Results;
     }
-    std::vector<sol::basic_object<sol::basic_reference<>>> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
+    std::vector<std::variant<sol::basic_protected_function<sol::basic_reference<true>>, std::string>> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy);
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
     sol::state_view GetStateForPlugin(const fs::path& PluginPath);
@@ -226,7 +227,7 @@ public:
     std::vector<std::string> GetStateTableKeysForState(TLuaStateId StateId, std::vector<std::string> keys);
 
     // Debugging functions (slow)
-    std::unordered_map<std::string /*event name */, std::vector<sol::object> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
+    std::unordered_map<std::string /*event name */, std::vector<LuaFunction> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
     std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
     std::deque<QueuedFunction> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
     std::vector<TLuaResult> Debug_GetResultsToCheckForState(TLuaStateId StateId);
@@ -243,9 +244,9 @@ private:
         StateThreadData(const StateThreadData&) = delete;
         virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const sol::object& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName);
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const sol::object& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy);
-        void RegisterEvent(const std::string& EventName, const sol::object& FunctionObject) const;
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const LuaFunction& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName);
+        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const LuaFunction& FunctionObject, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy);
+        void RegisterEvent(const std::string& EventName, const LuaFunction& FunctionObject) const;
         void AddPath(const fs::path& Path); // to be added to path and cpath
         void operator()() override;
         sol::state_view State() { return sol::state_view(mState); }
@@ -309,7 +310,7 @@ private:
     std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
     std::recursive_mutex mLuaStatesMutex;
-    std::unordered_map<std::string /* event name */, std::unordered_map<TLuaStateId, std::vector<sol::object>>> mLuaEvents;
+    std::unordered_map<std::string, std::unordered_map<TLuaStateId, std::vector<LuaFunction>>> mLuaEvents;
     std::recursive_mutex mLuaEventsMutex;
     std::vector<TimedEvent> mTimedEvents;
     std::recursive_mutex mTimedEventsMutex;

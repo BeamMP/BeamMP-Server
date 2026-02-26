@@ -35,6 +35,8 @@
 #include "CustomAssert.h"
 #include "Http.h"
 
+#include <sol/forward.hpp>
+
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
     if (Handler) {
@@ -454,4 +456,11 @@ std::vector<uint8_t> Comp(std::span<const uint8_t> input) {
     beammp_debug("zlib compressed " + std::to_string(input.size()) + " B to " + std::to_string(output_size) + " B");
     output.resize(output_size);
     return output;
+}
+
+std::string GetFunctionName(const LuaFunction& cb) {
+    if (const std::string* name = std::get_if<std::string>(&cb)) {
+        return *name;
+    }
+    return "anonymous";
 }

@@ -36,11 +36,12 @@
 
 #include <doctest/doctest.h>
 #include <filesystem>
+#include <sol/sol.hpp>
 namespace fs = std::filesystem;
 
 #include "Settings.h"
 #include "TConsole.h"
-
+using LuaFunction = std::variant<sol::main_protected_function, std::string>;
 struct Version {
     uint8_t major;
     uint8_t minor;
@@ -267,7 +268,7 @@ void LogChatMessage(const std::string& name, int id, const std::string& msg);
 
 std::vector<uint8_t> Comp(std::span<const uint8_t> input);
 std::vector<uint8_t> DeComp(std::span<const uint8_t> input);
-
+std::string GetFunctionName(const LuaFunction& cb);
 std::string GetPlatformAgnosticErrorString();
 #define S_DSN SU_RAW
 
