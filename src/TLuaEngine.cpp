@@ -182,6 +182,13 @@ TLuaStateId TLuaEngine::GetStateIDForPlugin(const fs::path& PluginPath) {
     return "";
 }
 
+void TLuaEngine::ClearEventsForState(const std::string& StateID) {
+    std::unique_lock Lock(mLuaEventsMutex);
+    for (auto& StateMap : mLuaEvents | std::views::values) {
+        StateMap.erase(StateID);
+    }
+}
+
 void TLuaEngine::AddResultToCheck(const std::shared_ptr<TLuaResult>& Result) {
     std::unique_lock Lock(mResultsToCheckMutex);
     mResultsToCheck.push_back(Result);
@@ -436,7 +443,10 @@ void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name,
 
 void TLuaEngine::RegisterEvent(const std::string& EventName, TLuaStateId StateId, const LuaFunction& FunctionObject) {
     std::unique_lock Lock(mLuaEventsMutex);
-    mLuaEvents[EventName][StateId].push_back(std::move(FunctionObject));
+    auto& Events = mLuaEvents[EventName][StateId];
+    if (const auto it = std::find(Events.begin(), Events.end(), FunctionObject); it == Events.end()) {
+        Events.push_back(std::move(FunctionObject));
+    }
 }
 
 std::vector<std::variant<sol::basic_protected_function<sol::basic_reference<true>>, std::string>> TLuaEngine::GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId) {

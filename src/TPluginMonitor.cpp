@@ -67,6 +67,7 @@ void TPluginMonitor::operator()() {
                             FileStream.read(Contents->data(), Contents->size());
                             TLuaChunk Chunk(Contents, Pair.first, fs::path(Pair.first).parent_path().string());
                             auto StateID = mEngine->GetStateIDForPlugin(fs::path(Pair.first).parent_path());
+                            mEngine->ClearEventsForState(StateID);
                             auto Res = mEngine->EnqueueScript(StateID, Chunk);
                             Res->WaitUntilReady();
                             if (Res->Error) {
