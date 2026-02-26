@@ -1092,7 +1092,7 @@ void TLuaEngine::StateThreadData::operator()() {
                 Lock.unlock();
 
                 { // Paths Scope
-                    std::unique_lock Lock(mPathsMutex);
+                    std::unique_lock PathLock(mPathsMutex);
                     if (!mPaths.empty()) {
                         std::stringstream PathAdditions;
                         std::stringstream CPathAdditions;
