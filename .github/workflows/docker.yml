@@ -122,7 +122,7 @@ jobs:
 
       - name: Inspect
         run: |
-          # Affiche les détails de l'image créée pour vérification
-          # On utilise le premier tag de la liste pour l'inspection
+          # Display the created image details for verification
+          # Use the first tag from the list for inspection
           TAG_TO_INSPECT=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
           docker buildx imagetools inspect $TAG_TO_INSPECT || true

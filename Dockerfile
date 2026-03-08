@@ -90,7 +90,6 @@ RUN useradd -m -u 1000 beammp && \
     mkdir -p /app /app/data /config /resources && \
     chown -R beammp:beammp /app /config /resources
 
-# /work/build-server is a BuildKit cache mount (not persisted in layers), so copy from /work/out.
 COPY --from=builder /work/out/BeamMP-Server /app/BeamMP-Server
 
 WORKDIR /app

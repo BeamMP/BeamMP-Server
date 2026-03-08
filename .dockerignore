@@ -15,12 +15,12 @@ out/
 # CI
 .github/
 
-# Scripts (pas nécessaires au build Docker ici)
+# Scripts
 scripts/
 
-# Docs (garde README si tu veux)
+# Docs
 *.md
 !README.md
 
-# Docker files (garde ce dont tu as besoin)
+# Docker files
 docker-compose*.yml

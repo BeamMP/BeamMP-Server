@@ -481,5 +481,5 @@ nohup.out
 
 build/
 
-#Ignore Docker env file
+# Ignore Docker env file
 .env
