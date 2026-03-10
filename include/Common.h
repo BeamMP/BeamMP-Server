@@ -41,7 +41,7 @@ namespace fs = std::filesystem;
 
 #include "Settings.h"
 #include "TConsole.h"
-using LuaFunction = std::variant<sol::main_protected_function, std::string>;
+using LuaFunction = std::variant<std::shared_ptr<sol::main_protected_function>, std::string>;
 struct Version {
     uint8_t major;
     uint8_t minor;

@@ -203,7 +203,7 @@ public:
     [[nodiscard]] std::vector<std::shared_ptr<TLuaResult>> TriggerLocalEvent(const TLuaStateId& StateId, const std::string& EventName, ArgsT&&... Args) {
         std::unique_lock Lock(mLuaEventsMutex);
         beammp_event(EventName + " in '" + StateId + "'");
-        if (mLuaEvents.find(EventName) == mLuaEvents.end()) { // if no event handler is defined for 'EventName', return immediately
+        if (!mLuaEvents.contains(EventName)) { // if no event handler is defined for 'EventName', return immediately
             return {};
         }
         std::vector<std::shared_ptr<TLuaResult>> Results;
@@ -214,7 +214,7 @@ public:
         }
         return Results;
     }
-    std::vector<std::variant<sol::basic_protected_function<sol::basic_reference<true>>, std::string>> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
+    std::vector<std::variant<std::shared_ptr<sol::basic_protected_function<sol::basic_reference<true>>>, std::string>> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy);
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
     sol::state_view GetStateForPlugin(const fs::path& PluginPath);
