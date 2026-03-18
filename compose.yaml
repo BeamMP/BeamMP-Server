@@ -10,7 +10,6 @@ services:
       - "${BEAMMP_PORT}:${BEAMMP_PORT}/tcp"
       - "${BEAMMP_PORT}:${BEAMMP_PORT}/udp"
     volumes:
-      # Mount resources directory (mods, plugins, etc.)
       - ./Resources:/app/Resources
     env_file:
       - .env
