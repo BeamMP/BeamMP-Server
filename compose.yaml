@@ -11,4 +11,6 @@ services:
       - "${BEAMMP_PORT}:${BEAMMP_PORT}/udp"
     env_file:
       - .env
+    environment:
+      - BEAMMP_PROVIDER_DISABLE_CONFIG=true
 
