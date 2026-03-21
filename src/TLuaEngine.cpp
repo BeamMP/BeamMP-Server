@@ -1179,7 +1179,7 @@ void TLuaEngine::StateThreadData::operator()() {
             if (NotExpired) {
                 auto ProfStart = prof::now();
                 auto TheQueuedFunction = std::move(mStateFunctionQueue.front());
-                mStateFunctionQueue.erase(mStateFunctionQueue.begin());
+                mStateFunctionQueue.pop_front();
                 Lock.unlock();
 
                 std::lock_guard LuaLock(mEngine->mLuaStatesMutex);
