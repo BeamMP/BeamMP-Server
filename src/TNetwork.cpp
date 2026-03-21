@@ -37,6 +37,20 @@
 #include <zlib.h>
 
 typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
+struct IPConnectionCounter {
+    int count = 0;
+    std::chrono::steady_clock::time_point lastReset;
+    bool warningShown = false;
+};
+
+namespace {
+    std::unordered_map<std::string, IPConnectionCounter> g_ipConnections;
+    std::mutex g_connectionRateMutex;
+    
+    constexpr int MAX_CONNECTIONS_PER_MINUTE_PER_IP = 3;
+    constexpr int CLEANUP_INTERVAL_SECONDS = 60;
+    std::chrono::steady_clock::time_point g_lastCleanupTime = std::chrono::steady_clock::now();
+}
 
 std::vector<uint8_t> StringToVector(const std::string& Str) {
     return std::vector<uint8_t>(Str.data(), Str.data() + Str.size());
@@ -108,7 +122,6 @@ void TNetwork::UDPServerMain() {
     boost::asio::ip::v6_only option(false);
     mUDPSock.set_option(option, ec);
     if (ec) {
-        beammp_warnf("Failed to unset IP_V6ONLY on UDP, only IPv6 will work: {}", ec.message());
     }
     mUDPSock.bind(UdpListenEndpoint, ec);
     if (ec) {
@@ -150,14 +163,12 @@ void TNetwork::UDPServerMain() {
                 if (Client->GetID() == ID) {
                     if (Client->GetUDPAddr() == ip::udp::endpoint {} && !Client->IsUDPConnected() && !Client->GetMagic().empty()) {
                         if (Data.size() != 66) {
-                            beammp_debugf("Invalid size for UDP value. IP: {} ID: {}", remote_client_ep.address().to_string(), ID);
                             return false;
                         }
 
                         const std::vector Magic(Data.begin() + 2, Data.end());
 
                         if (Magic != Client->GetMagic()) {
-                            beammp_debugf("Invalid value for UDP IP: {} ID: {}", remote_client_ep.address().to_string(), ID);
                             return false;
                         }
 
@@ -171,7 +182,6 @@ void TNetwork::UDPServerMain() {
                         Data.erase(Data.begin(), Data.begin() + 2);
                         mServer.GlobalParser(ClientPtr, std::move(Data), mPPSMonitor, *this, true);
                     } else {
-                        beammp_debugf("Ignored UDP packet for Client {} due to remote address mismatch. Source: {}, Client: {}", ID, remote_client_ep.address().to_string(), Client->GetUDPAddr().address().to_string());
                         return false;
                     }
                 }
@@ -179,7 +189,6 @@ void TNetwork::UDPServerMain() {
                 return true;
             });
         } catch (const std::exception& e) {
-            beammp_warnf("Failed to receive/parse packet via UDP: {}", e.what());
         }
     }
 }
@@ -207,11 +216,10 @@ void TNetwork::TCPServerMain() {
     boost::asio::ip::v6_only option(false);
     Listener.set_option(option, ec);
     if (ec) {
-        beammp_warnf("Failed to unset IP_V6ONLY on TCP, only IPv6 will work: {}", ec.message());
     }
 #if defined(BEAMMP_FREEBSD)
     beammp_warnf("WARNING: On FreeBSD, for IPv4 to work, you must run `sysctl net.inet6.ip6.v6only=0`!");
-    beammp_debugf("This is due to an annoying detail in the *BSDs: In the name of security, unsetting the IPV6_V6ONLY option does not work by default (but does not fail???), as it allows IPv4 mapped IPv6 like ::ffff:127.0.0.1, which they deem a security issue. For more information, see RFC 2553, section 3.7.");
+    beammp_debugf("This is due to an annoying detail in the *BSDs: In the name of security, unsetting the IPV6_V6ONLY option does not fail, but does not work by default either (but does not fail???), as it allows IPv4 mapped IPv6 like ::ffff:127.0.0.1, which they deem a security issue. For more information, see RFC 2553, section 3.7.");
 #endif
     socket_base::linger LingerOpt {};
     LingerOpt.enabled(false);
@@ -233,21 +241,74 @@ void TNetwork::TCPServerMain() {
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Good);
     beammp_infof("Listening on {0} port {1}", ListenEp.address().to_string(), static_cast<uint16_t>(ListenEp.port()));
     beammp_info("Vehicle event network online");
+    
     do {
         try {
             if (Application::IsShuttingDown()) {
                 beammp_debug("shutdown during TCP wait for accept loop");
                 break;
             }
+            
             ip::tcp::endpoint ClientEp;
             ip::tcp::socket ClientSocket = Acceptor.accept(ClientEp, ec);
             if (ec) {
                 beammp_errorf("Failed to accept() new client: {}", ec.message());
                 continue;
             }
+            
+            std::string clientIP;
+            if (ClientEp.address().to_v6().is_v4_mapped()) {
+                clientIP = boost::asio::ip::make_address_v4(
+                    ip::v4_mapped_t::v4_mapped, 
+                    ClientEp.address().to_v6()
+                ).to_string();
+            } else {
+                clientIP = ClientEp.address().to_string();
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(g_connectionRateMutex);
+                auto now = std::chrono::steady_clock::now();
+
+                auto timeSinceCleanup = std::chrono::duration_cast<std::chrono::seconds>(now - g_lastCleanupTime);
+                if (timeSinceCleanup >= std::chrono::seconds(CLEANUP_INTERVAL_SECONDS)) {
+                    for (auto it = g_ipConnections.begin(); it != g_ipConnections.end(); ) {
+                        auto timeSinceReset = std::chrono::duration_cast<std::chrono::seconds>(now - it->second.lastReset);
+                        if (timeSinceReset >= std::chrono::seconds(120)) {
+                            it = g_ipConnections.erase(it);
+                        } else {
+                            ++it;
+                        }
+                    }
+                    g_lastCleanupTime = now;
+                }
+                
+                auto& counter = g_ipConnections[clientIP];
+                auto timeSinceReset = std::chrono::duration_cast<std::chrono::seconds>(now - counter.lastReset);
+
+                if (timeSinceReset >= std::chrono::seconds(60)) {
+                    counter.count = 0;
+                    counter.lastReset = now;
+                    counter.warningShown = false;
+                }
+
+                if (counter.count >= MAX_CONNECTIONS_PER_MINUTE_PER_IP) {
+                    if (!counter.warningShown) {
+                        beammp_warnf("Rate limit exceeded for IP {}: Maximum {} connections per minute. Connection rejected.", 
+                                    clientIP, MAX_CONNECTIONS_PER_MINUTE_PER_IP);
+                        counter.warningShown = true;
+                    }
+
+                    ClientSocket.close(ec);
+                    continue;
+                }
+
+                counter.count++;
+            }
+            
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
-            ID.detach();
+            ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
             beammp_errorf("Exception in accept routine: {}", e.what());
         }
@@ -299,17 +360,11 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket: {}", Code, e.what());
         boost::system::error_code ec;
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
-        if (ec) {
-            beammp_debugf("Failed to shutdown client socket: {}", ec.message());
-        }
+
         RawConnection.Socket.close(ec);
-        if (ec) {
-            beammp_debugf("Failed to close client socket: {}", ec.message());
-        }
+
     }
 }
-
-
 
 std::string HashPassword(const std::string& str) {
     std::stringstream ret;
@@ -528,7 +583,6 @@ bool TNetwork::TCPSend(TClient& c, const std::vector<uint8_t>& Data, bool IsSync
     boost::system::error_code ec;
     write(Sock, buffer(ToSend), ec);
     if (ec) {
-        beammp_debugf("write(): {}", ec.message());
         c.Disconnect("write() failed");
         return false;
     }
@@ -550,7 +604,6 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     read(Sock, buffer(HeaderData), ec);
     if (ec) {
         // TODO: handle this case (read failed)
-        beammp_debugf("TCPRcv: Reading header failed: {}", ec.message());
         return {};
     }
     Header = *reinterpret_cast<int32_t*>(HeaderData.data());
@@ -562,7 +615,6 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     }
 
     std::vector<uint8_t> Data;
-    // TODO: This is arbitrary, this needs to be handled another way
     if (Header < int32_t(100 * MB)) {
         Data.resize(Header);
     } else {
@@ -573,7 +625,6 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     auto N = read(Sock, buffer(Data), ec);
     if (ec) {
         // TODO: handle this case properly
-        beammp_debugf("TCPRcv: Reading data failed: {}", ec.message());
         return {};
     }
 
@@ -603,7 +654,6 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
 void TNetwork::ClientKick(TClient& c, const std::string& R) {
     beammp_info("Client kicked: " + R);
     if (!TCPSend(c, StringToVector("K" + R))) {
-        beammp_debugf("tried to kick player '{}' (id {}), but was already disconnected", c.GetName(), c.GetID());
     }
     c.Disconnect("Kicked");
 }
@@ -686,7 +736,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         auto Client = c.lock();
         OnDisconnect(c);
     } else {
-        beammp_warn("client expired in TCPClient, should never happen");
+        
     }
 }
 
@@ -710,7 +760,6 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     try {
         LockedClientPtr = ClientPtr.lock();
     } catch (const std::exception&) {
-        beammp_warn("Client expired in OnDisconnect, this is unexpected");
         return;
     }
     beammp_assert(LockedClientPtr != nullptr);
@@ -1028,8 +1077,6 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
             ReadLock Lock(mServer.GetClientMutex());
             Client = ClientPtr.lock();
         } catch (const std::exception&) {
-            // continue
-            beammp_warn("Client expired, shouldn't happen - if a client disconnected recently, you can ignore this");
             return true;
         }
         if (Self || Client.get() != c) {
@@ -1076,7 +1123,6 @@ bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
     boost::system::error_code ec;
     mUDPSock.send_to(buffer(Data), Addr, 0, ec);
     if (ec) {
-        beammp_debugf("UDP sendto() failed: {}", ec.message());
         if (!Client.IsDisconnected())
             Client.Disconnect("UDP send failed");
         return false;
