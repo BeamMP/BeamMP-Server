@@ -330,29 +330,29 @@ void TLuaEngine::WaitForAll(std::vector<std::shared_ptr<TLuaResult>>& Results, c
         bool Cancelled = false;
         size_t ms = 0;
         std::set<std::string> WarnedResults;
-        std::string functionName = GetFunctionName(Result->Function);
+        std::string FunctionName = GetFunctionName(Result->Function);
 
         while (!Result->Ready && !Cancelled) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             ms += 10;
             if (Max.has_value() && std::chrono::milliseconds(ms) > Max.value()) {
-                beammp_trace("'" + functionName + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms).");
+                beammp_trace("'" + FunctionName + "' in '" + Result->StateId + "' did not finish executing in time (took: " + std::to_string(ms) + "ms).");
                 Cancelled = true;
             } else if (ms > 1000 * 60) {
-                auto ResultId = Result->StateId + "_" + functionName;
+                auto ResultId = Result->StateId + "_" + FunctionName;
                 if (WarnedResults.count(ResultId) == 0) {
                     WarnedResults.insert(ResultId);
-                    beammp_lua_warn("'" + functionName + "' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
+                    beammp_lua_warn("'" + FunctionName + "' in '" + Result->StateId + "' is taking very long. The event it's handling is too important to discard the result of this handler, but may block this event and possibly the whole lua state.");
                 }
             }
         }
 
         if (Cancelled) {
-            beammp_lua_warn("'" + functionName + "' in '" + Result->StateId + "' failed to execute in time and was not waited for. It may still finish executing at a later time.");
+            beammp_lua_warn("'" + FunctionName + "' in '" + Result->StateId + "' failed to execute in time and was not waited for. It may still finish executing at a later time.");
             LuaAPI::MP::Engine->ReportErrors({ Result });
         } else if (Result->Error) {
             if (Result->ErrorMessage != BeamMPFnNotFoundError) {
-                beammp_lua_error(functionName + ": " + Result->ErrorMessage);
+                beammp_lua_error(FunctionName + ": " + Result->ErrorMessage);
             }
         }
     }

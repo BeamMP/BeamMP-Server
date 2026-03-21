@@ -741,19 +741,19 @@ void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
         int Index = 0;
         for (const LuaFunction Function : FunctionsInOrder) {
             if (!(std::find(Uniques.begin(), Uniques.end(), Function) == Uniques.end())) {
-                std::string functionName = GetFunctionName(Function);
+                std::string FunctionName = GetFunctionName(Function);
                 Uniques.push_back(Function);
                 if (Index != 0) {
-                    Application::Console().WriteRaw("    " + functionName + " (" + std::to_string(Index) + "x)");
+                    Application::Console().WriteRaw("    " + FunctionName + " (" + std::to_string(Index) + "x)");
                 } else {
-                    Application::Console().WriteRaw("    " + functionName);
+                    Application::Console().WriteRaw("    " + FunctionName);
                 }
             }
         }
         Application::Console().WriteRaw("Executed functions waiting to be checked in State '" + mStateId + "'");
         for (const auto& Function : LuaAPI::MP::Engine->Debug_GetResultsToCheckForState(mStateId)) {
-            std::string functionName = GetFunctionName(Function.Function);;
-            Application::Console().WriteRaw("    '" + functionName + "' (Ready? " + (Function.Ready ? "Yes" : "No") + ", Error? " + (Function.Error ? "Yes: '" + Function.ErrorMessage + "'" : "No") + ")");
+            std::string FunctionName = GetFunctionName(Function.Function);;
+            Application::Console().WriteRaw("    '" + FunctionName + "' (Ready? " + (Function.Ready ? "Yes" : "No") + ", Error? " + (Function.Error ? "Yes: '" + Function.ErrorMessage + "'" : "No") + ")");
         }
     } else if (cmd == "events") {
         auto Events = LuaAPI::MP::Engine->Debug_GetEventsForState(mStateId);
@@ -761,8 +761,8 @@ void TConsole::HandleLuaInternalCommand(const std::string& cmd) {
         for (const auto& EventHandlerPair : Events) {
             Application::Console().WriteRaw("    Event '" + EventHandlerPair.first + "'");
             for (const auto& Handler : EventHandlerPair.second) {
-                std::string functionName = GetFunctionName(Handler);;
-                Application::Console().WriteRaw("        " + functionName);
+                std::string FunctionName = GetFunctionName(Handler);;
+                Application::Console().WriteRaw("        " + FunctionName);
             }
         }
     } else if (cmd == "help") {
