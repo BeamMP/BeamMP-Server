@@ -245,6 +245,12 @@ void TNetwork::TCPServerMain() {
                 beammp_errorf("Failed to accept() new client: {}", ec.message());
                 continue;
             }
+            // Disable Nagle's algorithm, equivalent to TCP_NODELAY.
+            // Nagle's algorithm trades better bandwidth efficiency for worse latency.
+            // Real time multi-player games want lower latency.
+            ip::tcp::no_delay NoDelayOpt(true);
+            ClientSocket.set_option(NoDelayOpt);
+
             TConnection Conn { std::move(ClientSocket), ClientEp };
             std::thread ID(&TNetwork::Identify, this, std::move(Conn));
             ID.detach();
