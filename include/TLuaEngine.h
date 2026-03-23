@@ -283,7 +283,7 @@ private:
         std::thread mThread;
         std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
-        std::deque<QueuedFunction> mStateFunctionQueue;
+        std::deque<QueuedFunction> mStateFunctionQueue; //This has been changed from vector to deque; it has been benchmarked and improves the queue performance by a lot
         std::mutex mStateFunctionQueueMutex;
         std::condition_variable mStateFunctionQueueCond;
         TLuaEngine* mEngine;
