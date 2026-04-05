@@ -661,7 +661,7 @@ void TNetwork::DisconnectClient(const std::weak_ptr<TClient> &c, const std::stri
 void TNetwork::DisconnectClient(TClient &c, const std::string &R)
 {
     if (c.IsDisconnected()) return;
-    std::string ClientIP = c.GetTCPSock().remote_endpoint().address().to_string();
+    std::string ClientIP = c.GetIdentifiers().at("ip");
     mClientMapMutex.lock();
     if (mClientMap[ClientIP] > 0) {
         mClientMap[ClientIP]--;
