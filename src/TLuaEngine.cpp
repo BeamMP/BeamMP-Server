@@ -1174,11 +1174,9 @@ void TLuaEngine::StateThreadData::operator()() {
                         S->second->Result = std::move(Res);
                     }
                 } else {
-                    if (lua_gettop(mState) > 0) {
-                        if (sol::stack_object err_obj(mState, -1); err_obj.is<std::string>()) {
-                            S->second->ErrorMessage = err_obj.as<std::string>();
-                        }
-                    }
+                    S->second->Error = true;
+                    sol::error err = Res;
+                    S->second->ErrorMessage = err.what();
                 }
                 lua_settop(mState, 0);
                 S->second->MarkAsReady();
