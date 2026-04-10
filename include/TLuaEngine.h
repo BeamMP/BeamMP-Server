@@ -214,7 +214,7 @@ public:
         }
         return Results;
     }
-    std::vector<std::variant<std::shared_ptr<sol::basic_protected_function<sol::basic_reference<true>>>, std::string>> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
+    std::set<std::variant<std::shared_ptr<sol::basic_protected_function<sol::basic_reference<true>>>, std::string>> GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId);
     void CreateEventTimer(const std::string& EventName, TLuaStateId StateId, size_t IntervalMS, CallStrategy Strategy);
     void CancelEventTimers(const std::string& EventName, TLuaStateId StateId);
     sol::state_view GetStateForPlugin(const fs::path& PluginPath);
@@ -311,7 +311,7 @@ private:
     std::vector<std::shared_ptr<TLuaPlugin>> mLuaPlugins;
     std::unordered_map<TLuaStateId, std::unique_ptr<StateThreadData>> mLuaStates;
     std::recursive_mutex mLuaStatesMutex;
-    std::unordered_map<std::string, std::unordered_map<TLuaStateId, std::vector<LuaFunction>>> mLuaEvents;
+    std::unordered_map<std::string, std::unordered_map<TLuaStateId, std::set<LuaFunction>>> mLuaEvents;
     std::recursive_mutex mLuaEventsMutex;
     std::vector<TimedEvent> mTimedEvents;
     std::recursive_mutex mTimedEventsMutex;

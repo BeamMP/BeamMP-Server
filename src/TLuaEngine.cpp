@@ -457,11 +457,11 @@ void TLuaEngine::RegisterEvent(const std::string& EventName, TLuaStateId StateId
     std::unique_lock Lock(mLuaEventsMutex);
     auto& Events = mLuaEvents[EventName][StateId];
     if (const auto it = std::find(Events.begin(), Events.end(), FunctionObject); it == Events.end()) {
-        Events.push_back(std::move(FunctionObject));
+        Events.emplace(std::move(FunctionObject));
     }
 }
 
-std::vector<std::variant<std::shared_ptr<sol::basic_protected_function<sol::basic_reference<true>>>, std::string>> TLuaEngine::GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId) {
+std::set<std::variant<std::shared_ptr<sol::basic_protected_function<sol::basic_reference<true>>>, std::string>> TLuaEngine::GetEventHandlersForState(const std::string& EventName, TLuaStateId StateId) {
     return mLuaEvents[EventName][StateId];
 }
 
