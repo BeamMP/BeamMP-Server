@@ -861,8 +861,21 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     });
     MPTable.set_function("GetOSName", &LuaAPI::MP::GetOSName);
     MPTable.set_function("GetServerVersion", &LuaAPI::MP::GetServerVersion);
-    MPTable.set_function("RegisterEvent", [this](const std::string& EventName, sol::main_protected_function FunctionObject) {
-      RegisterEvent(EventName, std::make_shared<sol::main_protected_function>(std::move(FunctionObject)));
+    MPTable.set_function("RegisterEvent", [this](const std::string& EventName, sol::object FunctionObject) {
+        LuaFunction handler;
+        bool valid = false;
+        if (FunctionObject.is<std::string>()) {
+            handler = FunctionObject.as<std::string>();
+            valid = true;
+        }
+        else if (FunctionObject.is<sol::function>()) {
+            auto ptr = std::make_shared<sol::main_protected_function>(FunctionObject.as<sol::main_protected_function>());
+            handler = std::move(ptr);
+            valid = true;
+        }
+        if (valid) {
+            RegisterEvent(EventName, std::move(handler));
+        }
     });
     MPTable.set_function("TriggerGlobalEvent", [&](const std::string& EventName, sol::variadic_args EventArgs) -> sol::table {
         return Lua_TriggerGlobalEvent(EventName, EventArgs);
