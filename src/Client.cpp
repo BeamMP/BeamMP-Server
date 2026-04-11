@@ -149,6 +149,11 @@ TClient::TClient(TServer& Server, ip::tcp::socket&& Socket)
     : mServer(Server)
     , mSocket(std::move(Socket))
     , mLastPingTime(std::chrono::high_resolution_clock::now()) {
+    boost::system::error_code ec;
+    auto ep = mSocket.remote_endpoint(ec);
+    if (!ec) {
+        mIP = ep.address().to_string();
+    }
 }
 
 TClient::~TClient() {

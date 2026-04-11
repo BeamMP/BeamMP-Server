@@ -79,6 +79,7 @@ public:
     [[nodiscard]] const ip::tcp::socket& GetTCPSock() const { return mSocket; }
     [[nodiscard]] std::string GetRoles() const { return mRole; }
     [[nodiscard]] std::string GetName() const { return mName; }
+    [[nodiscard]] const std::string& GetIP() const { return mIP; }
     void SetUnicycleID(int ID) { mUnicycleID = ID; }
     void SetID(int ID) { mID = ID; }
     [[nodiscard]] int GetOpenCarID() const;
@@ -121,6 +122,7 @@ private:
     TSetOfVehicleData mVehicleData;
     SparseArray<std::string> mVehiclePosition;
     std::string mName = "Unknown Client";
+    std::string mIP;
     ip::tcp::socket mSocket;
     ip::udp::endpoint mUDPAddress {};
     int mUnicycleID = -1;

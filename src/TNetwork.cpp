@@ -661,15 +661,16 @@ void TNetwork::DisconnectClient(const std::weak_ptr<TClient> &c, const std::stri
 void TNetwork::DisconnectClient(TClient &c, const std::string &R)
 {
     if (c.IsDisconnected()) return;
-    std::string ClientIP = c.GetTCPSock().remote_endpoint().address().to_string();
-    mClientMapMutex.lock();
-    if (mClientMap[ClientIP] > 0) {
-        mClientMap[ClientIP]--;
+    const std::string& ClientIP = c.GetIP();
+    if (!ClientIP.empty()) {
+        std::lock_guard<std::mutex> lock(mClientMapMutex);
+        if (mClientMap[ClientIP] > 0) {
+            mClientMap[ClientIP]--;
+        }
+        if (mClientMap[ClientIP] == 0) {
+            mClientMap.erase(ClientIP);
+        }
     }
-    if (mClientMap[ClientIP] == 0) {
-        mClientMap.erase(ClientIP);
-    }
-    mClientMapMutex.unlock();
     c.Disconnect(R);
 }
 
