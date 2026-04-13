@@ -129,7 +129,7 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 9, 1 };
+    static inline Version mVersion { 3, 9, 2 };
 };
 
 void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);

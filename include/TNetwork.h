@@ -34,9 +34,11 @@ public:
     [[nodiscard]] bool TCPSend(TClient& c, const std::vector<uint8_t>& Data, bool IsSync = false);
     [[nodiscard]] bool SendLarge(TClient& c, std::vector<uint8_t> Data, bool isSync = false);
     [[nodiscard]] bool Respond(TClient& c, const std::vector<uint8_t>& MSG, bool Rel, bool isSync = false);
-    std::shared_ptr<TClient> CreateClient(ip::tcp::socket&& TCPSock);
+    std::shared_ptr<TClient> CreateClient(boost::asio::ip::tcp::socket&& TCPSock);
     std::vector<uint8_t> TCPRcv(TClient& c);
     void ClientKick(TClient& c, const std::string& R);
+    void DisconnectClient(const std::weak_ptr<TClient>& c, const std::string& R);
+    void DisconnectClient(TClient& c, const std::string& R);
     [[nodiscard]] bool SyncClient(const std::weak_ptr<TClient>& c);
     void Identify(TConnection&& client);
     std::shared_ptr<TClient> Authentication(TConnection&& ClientConnection);
@@ -44,6 +46,7 @@ public:
     [[nodiscard]] bool UDPSend(TClient& Client, const std::vector<uint8_t>& Data);
     void SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self, bool Rel);
     void UpdatePlayer(TClient& Client);
+    boost::system::error_code ReadWithTimeout(TConnection& Connection, void* Buf, size_t Len, std::chrono::steady_clock::duration Timeout);
 
     TResourceManager& ResourceManager() const { return mResourceManager; }
 
@@ -53,13 +56,15 @@ private:
 
     TServer& mServer;
     TPPSMonitor& mPPSMonitor;
-    ip::udp::socket mUDPSock;
+    boost::asio::ip::udp::socket mUDPSock;
     TResourceManager& mResourceManager;
     std::thread mUDPThread;
     std::thread mTCPThread;
     std::mutex mOpenIDMutex;
+    std::map<std::string, uint16_t> mClientMap;
+    std::mutex mClientMapMutex;
 
-    std::vector<uint8_t> UDPRcvFromClient(ip::udp::endpoint& ClientEndpoint);
+    std::vector<uint8_t> UDPRcvFromClient(boost::asio::ip::udp::endpoint& ClientEndpoint);
     void OnConnect(const std::weak_ptr<TClient>& c);
     void TCPClient(const std::weak_ptr<TClient>& c);
     void Looper(const std::weak_ptr<TClient>& c);
@@ -67,9 +72,9 @@ private:
     void OnDisconnect(const std::weak_ptr<TClient>& ClientPtr);
     void Parse(TClient& c, const std::vector<uint8_t>& Packet);
     void SendFile(TClient& c, const std::string& Name);
-    static bool TCPSendRaw(TClient& C, ip::tcp::socket& socket, const uint8_t* Data, size_t Size);
-    static void SendFileToClient(TClient& c, size_t Size, const std::string& Name);
-    static const uint8_t* SendSplit(TClient& c, ip::tcp::socket& Socket, const uint8_t* DataPtr, size_t Size);
+    static bool TCPSendRaw(TClient& C, boost::asio::ip::tcp::socket& socket, const uint8_t* Data, size_t Size);
+    void SendFileToClient(TClient& c, size_t Size, const std::string& Name);
+    static const uint8_t* SendSplit(TClient& c, boost::asio::ip::tcp::socket& Socket, const uint8_t* DataPtr, size_t Size);
 };
 
 std::string HashPassword(const std::string& str);
