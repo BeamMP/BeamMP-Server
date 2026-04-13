@@ -27,6 +27,7 @@
 #include <unordered_set>
 
 #include "BoostAliases.h"
+#include "TVoiceChat.h"
 
 class TClient;
 class TNetwork;
@@ -50,10 +51,14 @@ public:
 
     const TScopedTimer UptimeTimer;
 
+    TVoiceChat& VoiceChat() { return mVoiceChat; }
+    const TVoiceChat& VoiceChat() const { return mVoiceChat; }
+
     // asio io context
     io_context& IoCtx() { return mIoCtx; }
 
 private:
+    TVoiceChat mVoiceChat;
     io_context mIoCtx {};
     TClientSet mClients;
     mutable RWMutex mClientsMutex;

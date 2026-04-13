@@ -291,7 +291,7 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     case 'F': { // voice chat packet
         if (Packet.size() < 2) return;
 
-        auto& VC = TVoiceChat::Instance();
+        auto& VC = VoiceChat();
         int SenderId = LockedClient->GetID();
 
         // Server-side mute check

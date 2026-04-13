@@ -25,11 +25,6 @@ namespace {
     }
 } // namespace
 
-TVoiceChat& TVoiceChat::Instance() {
-    static TVoiceChat instance;
-    return instance;
-}
-
 void TVoiceChat::SetProximityDistance(float distance) {
     mProximityDistance.store(distance < 0.0f ? 0.0f : distance);
 }

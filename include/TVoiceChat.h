@@ -26,7 +26,9 @@ class TClient;
 
 class TVoiceChat {
 public:
-    static TVoiceChat& Instance();
+    TVoiceChat() = default;
+    TVoiceChat(const TVoiceChat&) = delete;
+    TVoiceChat& operator=(const TVoiceChat&) = delete;
 
     // Packet v2 constants (must match Launcher VoiceChat.h exactly).
     // Wire layout (25 bytes, little-endian):
@@ -109,9 +111,6 @@ private:
         float position[3] = {0, 0, 0}; // source position for spatial channels
         bool spatial = false;           // if true, server sets PROXIMITY flag
     };
-    TVoiceChat() = default;
-    TVoiceChat(const TVoiceChat&) = delete;
-    TVoiceChat& operator=(const TVoiceChat&) = delete;
 
     std::atomic<float> mProximityDistance { 0.0f }; // 0 = unlimited
     // Throttle map for onPlayerVoice Lua events — protected by mVoiceEventMutex.
