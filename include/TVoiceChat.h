@@ -74,6 +74,10 @@ public:
     void MutePlayer(int playerId, bool muted);
     bool IsPlayerMuted(int playerId) const;
 
+    // Removes all per-player state (channels, mute, throttle).
+    // Must be called when a player disconnects.
+    void CleanupPlayer(int playerId);
+
     // Throttled voice-activity query: returns true at most once per 300 ms
     // per player. Call this before firing the onPlayerVoice Lua event so the
     // server console is not flooded at 50 events/sec.

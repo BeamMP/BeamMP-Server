@@ -169,6 +169,18 @@ bool TVoiceChat::IsPlayerMuted(int playerId) const {
     return mMutedPlayers.count(playerId) > 0;
 }
 
+void TVoiceChat::CleanupPlayer(int playerId) {
+    RemovePlayerFromAllChannels(playerId);
+    {
+        std::lock_guard lock(mMuteMutex);
+        mMutedPlayers.erase(playerId);
+    }
+    {
+        std::lock_guard lock(mVoiceEventMutex);
+        mLastVoiceEvent.erase(playerId);
+    }
+}
+
 // ── packet building ─────────────────────────────────────
 
 std::vector<uint8_t> TVoiceChat::BuildPacket(uint8_t flags, uint16_t sourceId,

@@ -825,8 +825,7 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     SendToAll(&c, StringToVector(Packet), false, true);
     Packet.clear();
     // Auto-cleanup voice chat state for disconnecting player
-    TVoiceChat::Instance().RemovePlayerFromAllChannels(c.GetID());
-    TVoiceChat::Instance().MutePlayer(c.GetID(), false);
+    TVoiceChat::Instance().CleanupPlayer(c.GetID());
 
     auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", c.GetID());
     LuaAPI::MP::Engine->WaitForAll(Futures);
