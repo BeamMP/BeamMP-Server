@@ -41,7 +41,7 @@ public:
     void Identify(TConnection&& client);
     std::shared_ptr<TClient> Authentication(TConnection&& ClientConnection);
     void SyncResources(TClient& c);
-    [[nodiscard]] bool UDPSend(TClient& Client, std::vector<uint8_t> Data);
+    [[nodiscard]] bool UDPSend(TClient& Client, const std::vector<uint8_t>& Data);
     void SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self, bool Rel);
     void UpdatePlayer(TClient& Client);
 

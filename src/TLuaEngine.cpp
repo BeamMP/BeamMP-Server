@@ -25,7 +25,7 @@
 #include "Env.h"
 #include "Profiling.h"
 #include "TLuaPlugin.h"
-#include "sol/object.hpp"
+#include "TVoiceChat.h"
 
 #include <chrono>
 #include <condition_variable>
@@ -1052,6 +1052,100 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
         "BestEffort", CallStrategy::BestEffort,
         "Precise", CallStrategy::Precise);
 
+    auto VCTable = MPTable.create_named("VoiceChat");
+    VCTable.set_function("SetProximityDistance", [](float dist) {
+        TVoiceChat::Instance().SetProximityDistance(dist);
+    });
+    VCTable.set_function("GetProximityDistance", []() -> float {
+        return TVoiceChat::Instance().GetProximityDistance();
+    });
+    VCTable.set_function("CreateChannel", [](const std::string& name) -> int {
+        return TVoiceChat::Instance().CreateChannel(name);
+    });
+    VCTable.set_function("DeleteChannel", [](int channelId) -> bool {
+        return TVoiceChat::Instance().DeleteChannel(channelId);
+    });
+    VCTable.set_function("AddPlayerToChannel", [](int playerId, int channelId) -> bool {
+        return TVoiceChat::Instance().AddPlayerToChannel(playerId, channelId);
+    });
+    VCTable.set_function("RemovePlayerFromChannel", [](int playerId, int channelId) -> bool {
+        return TVoiceChat::Instance().RemovePlayerFromChannel(playerId, channelId);
+    });
+    VCTable.set_function("RemovePlayerFromAllChannels", [](int playerId) -> bool {
+        return TVoiceChat::Instance().RemovePlayerFromAllChannels(playerId);
+    });
+    VCTable.set_function("IsPlayerInChannel", [](int playerId, int channelId) -> bool {
+        return TVoiceChat::Instance().IsPlayerInChannel(playerId, channelId);
+    });
+    // Query API
+    VCTable.set_function("GetChannelMembers", [](sol::this_state ts, int channelId) -> sol::table {
+        sol::state_view sv(ts);
+        auto members = TVoiceChat::Instance().GetChannelMembers(channelId);
+        auto tbl = sv.create_table();
+        int i = 1;
+        for (int pid : members) { tbl[i++] = pid; }
+        return tbl;
+    });
+    VCTable.set_function("GetPlayerChannels", [](sol::this_state ts, int playerId) -> sol::table {
+        sol::state_view sv(ts);
+        auto channels = TVoiceChat::Instance().GetPlayerChannels(playerId);
+        auto tbl = sv.create_table();
+        int i = 1;
+        for (int ch : channels) { tbl[i++] = ch; }
+        return tbl;
+    });
+    VCTable.set_function("ListChannels", [](sol::this_state ts) -> sol::table {
+        sol::state_view sv(ts);
+        auto channels = TVoiceChat::Instance().ListChannels();
+        auto tbl = sv.create_table();
+        for (const auto& ch : channels) {
+            auto entry = sv.create_table();
+            entry["id"] = ch.id;
+            entry["name"] = ch.name;
+            tbl.add(entry);
+        }
+        return tbl;
+    });
+    // Channel properties
+    VCTable.set_function("SetChannelMaxDistance", [](int channelId, float dist) -> bool {
+        return TVoiceChat::Instance().SetChannelMaxDistance(channelId, dist);
+    });
+    VCTable.set_function("SetChannelPosition", [](int channelId, float x, float y, float z) -> bool {
+        return TVoiceChat::Instance().SetChannelPosition(channelId, x, y, z);
+    });
+    VCTable.set_function("SetChannelSpatial", [](int channelId, bool spatial) -> bool {
+        return TVoiceChat::Instance().SetChannelSpatial(channelId, spatial);
+    });
+    // Server-side player mute
+    VCTable.set_function("MutePlayer", [](int playerId, bool muted) {
+        TVoiceChat::Instance().MutePlayer(playerId, muted);
+    });
+    VCTable.set_function("IsPlayerMuted", [](int playerId) -> bool {
+        return TVoiceChat::Instance().IsPlayerMuted(playerId);
+    });
+    // Audio injection - use existing TVoiceChat::SendAudio
+    VCTable.set_function("SendAudio", [](int channelId, const std::string& opusData,
+            sol::optional<float> ox, sol::optional<float> oy, sol::optional<float> oz,
+            sol::optional<float> gainOpt) {
+        // x/y/z are optional: omit them (or pass nil) to use the channel's stored position.
+        const float nan = TVoiceChat::kUseChannelPos;
+        float x = ox.value_or(nan);
+        float y = oy.value_or(nan);
+        float z = oz.value_or(nan);
+        float gain = gainOpt.value_or(1.0f);
+        TVoiceChat::Instance().SendAudio(channelId, opusData, x, y, z,
+            [](TClient& client, const std::vector<uint8_t>& data) -> void {
+                (void)LuaAPI::MP::Engine->Network().UDPSend(client, data);
+            },
+            [](int playerId) -> std::shared_ptr<TClient> {
+                auto maybeClient = GetClient(LuaAPI::MP::Engine->Server(), playerId);
+                if (maybeClient && !maybeClient->expired()) {
+                    return maybeClient->lock();
+                }
+                return nullptr;
+            }, gain);
+    });
+
     auto FSTable = StateView.create_named_table("FS");
     FSTable.set_function("CreateDirectory", &LuaAPI::FS::CreateDirectory);
     FSTable.set_function("Exists", &LuaAPI::FS::Exists);
@@ -1297,10 +1391,10 @@ void TLuaResult::WaitUntilReady() {
         this->ReadyCondition->wait(readyLock);
 }
 
-TLuaChunk::TLuaChunk(std::shared_ptr<std::string> Content, std::string FileName, std::string PluginPath)
-    : Content(Content)
-    , FileName(FileName)
-    , PluginPath(PluginPath) {
+TLuaChunk::TLuaChunk(std::shared_ptr<std::string> InContent, std::string InFileName, std::string InPluginPath)
+    : Content(InContent)
+    , FileName(InFileName)
+    , PluginPath(InPluginPath) {
 }
 
 bool TLuaEngine::TimedEvent::Expired() {

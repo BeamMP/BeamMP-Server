@@ -23,6 +23,7 @@
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
 #include "TScopedTimer.h"
+#include "TVoiceChat.h"
 #include "nlohmann/json.hpp"
 #include <CustomAssert.h>
 #include <Http.h>
@@ -731,6 +732,10 @@ void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
     Packet = ("L") + c.GetName() + (" left the server!");
     SendToAll(&c, StringToVector(Packet), false, true);
     Packet.clear();
+    // Auto-cleanup voice chat state for disconnecting player
+    TVoiceChat::Instance().RemovePlayerFromAllChannels(c.GetID());
+    TVoiceChat::Instance().MutePlayer(c.GetID(), false);
+
     auto Futures = LuaAPI::MP::Engine->TriggerEvent("onPlayerDisconnect", "", c.GetID());
     LuaAPI::MP::Engine->WaitForAll(Futures);
     c.Disconnect("Already Disconnected (OnDisconnect)");
@@ -1062,7 +1067,8 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
     return;
 }
 
-bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
+bool TNetwork::UDPSend(TClient& Client, const std::vector<uint8_t>& DataIn) {
+    std::vector<uint8_t> Data = DataIn; // local mutable copy — needed by CompressProperly
     if (!Client.IsUDPConnected() || Client.IsDisconnected()) {
         // this can happen if we try to send a packet to a client that is either
         // 1. not yet fully connected, or
