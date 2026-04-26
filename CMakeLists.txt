@@ -31,6 +31,7 @@ set(PRJ_HEADERS
     include/Defer.h
     include/Environment.h
     include/Http.h
+    include/HttpAsync.h
     include/IThreaded.h
     include/Json.h
     include/LuaAPI.h
@@ -60,6 +61,7 @@ set(PRJ_SOURCES
     src/Common.cpp
     src/Compat.cpp
     src/Http.cpp
+    src/HttpAsync.cpp
     src/LuaAPI.cpp
     src/SignalHandling.cpp
     src/TConfig.cpp

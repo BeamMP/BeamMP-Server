@@ -21,6 +21,7 @@
 #include "Common.h"
 #include "CustomAssert.h"
 #include "Http.h"
+#include "HttpAsync.h"
 #include "LuaAPI.h"
 #include "Env.h"
 #include "Profiling.h"
@@ -41,6 +42,7 @@ TLuaEngine::TLuaEngine()
     : mResourceServerPath(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server") {
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Starting);
     LuaAPI::MP::Engine = this;
+    HttpAsync::Init(); 
     if (!fs::exists(Application::Settings.getAsString(Settings::Key::General_ResourceFolder))) {
         fs::create_directory(Application::Settings.getAsString(Settings::Key::General_ResourceFolder));
     }
@@ -49,6 +51,7 @@ TLuaEngine::TLuaEngine()
     }
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("LuaEngine", Application::Status::ShuttingDown);
+        HttpAsync::Shutdown();
         if (mThread.joinable()) {
             mThread.join();
         }
@@ -1070,7 +1073,19 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     FSTable.set_function("ListDirectories", [this](const std::string& Path) {
         return Lua_FS_ListDirectories(Path);
     });
+    HttpAsync::RegisterBindings(mStateView);
     Start();
+}
+
+TLuaEngine::StateThreadData::~StateThreadData() noexcept {
+    HttpAsync::CleanupState(mState);
+
+    beammp_debug("\"" + mStateId + "\" destroyed");
+
+    if (mState) {
+        lua_close(mState);
+        mState = nullptr;
+    }
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLuaChunk& Script) {
@@ -1119,6 +1134,7 @@ void TLuaEngine::StateThreadData::RegisterEvent(const std::string& EventName, co
 void TLuaEngine::StateThreadData::operator()() {
     RegisterThread("Lua:" + mStateId);
     while (!Application::IsShuttingDown()) {
+        HttpAsync::Update(mStateView);
         { // StateExecuteQueue Scope
             std::unique_lock Lock(mStateExecuteQueueMutex);
             if (!mStateExecuteQueue.empty()) {
