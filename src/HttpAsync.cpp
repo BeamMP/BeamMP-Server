@@ -369,10 +369,22 @@ void AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::functio
     });
 }
 
+void AsyncHttpProxy::SetDefaultHeaders(sol::table headers) {
+    mDefaultHeaders.clear();
+    if (headers != sol::lua_nil && headers.valid()) {
+        for (auto const& pair : headers) {
+            if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
+                mDefaultHeaders[pair.first.as<std::string>()] = pair.second.as<std::string>();
+            }
+        }
+    }
+}
+
 void RegisterBindings(sol::state_view& lua) {
     lua.new_usertype<AsyncHttpProxy>("AsyncHttp", sol::no_constructor,
         "SetTimeout", &AsyncHttpProxy::SetTimeout,
         "VerifySSL", &AsyncHttpProxy::VerifySSL,
+        "SetDefaultHeaders", &AsyncHttpProxy::SetDefaultHeaders,
         "Get", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object h, sol::function cb) { self.Get(ep, h, cb, sol::nil); }, &AsyncHttpProxy::Get),
         "Post", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { self.Post(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Post),
         "PostFile", sol::overload([](AsyncHttpProxy& self, std::string ep, std::string fn, std::string fp, sol::function cb) { self.PostFile(ep, fn, fp, sol::nil, cb); }, &AsyncHttpProxy::PostFile),

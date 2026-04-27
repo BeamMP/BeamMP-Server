@@ -45,6 +45,7 @@ namespace HttpAsync {
 
         void SetTimeout(int seconds);
         void VerifySSL(bool verify) { mVerifySSL = verify; }
+        void SetDefaultHeaders(sol::table headers);
 
         void Get(std::string endpoint, sol::object headers, sol::function cb, sol::object prog);
         void Post(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
