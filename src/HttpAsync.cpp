@@ -76,7 +76,7 @@ static void ExtractHeaders(const httplib::Headers& source, std::map<std::string,
     }
 }
 
-static bool SetupClient(const std::string& url, int timeout, std::unique_ptr<httplib::Client>& outClient, std::string& outPath) {
+static bool SetupClient(const std::string& url, int timeout, bool verifySSL, std::unique_ptr<httplib::Client>& outClient, std::string& outPath) {
     static const std::regex url_regex(R"(^(https?://[^/]+)(/.*)?$)", std::regex::extended);
     std::smatch match;
     if (!std::regex_match(url, match, url_regex)) return false;
@@ -87,7 +87,7 @@ static bool SetupClient(const std::string& url, int timeout, std::unique_ptr<htt
     outClient->set_connection_timeout(timeout, 0);
     outClient->set_read_timeout(timeout, 0);
     outClient->set_follow_location(true);
-    outClient->enable_server_certificate_verification(true);
+    outClient->enable_server_certificate_verification(verifySSL);
     return true;
 }
 
@@ -124,13 +124,13 @@ static void EnqueueTask(lua_State* L, int cbRef, int progRef, Func&& task) {
 }
 
 static void Dispatch(std::string method, std::string url, std::map<std::string, std::string> headers, 
-                     std::string body, int timeout, lua_State* L, int cbRef, int progRef) {
+                     std::string body, int timeout, bool verifySSL, lua_State* L, int cbRef, int progRef) {
     
     EnqueueTask(L, cbRef, progRef,[=, b = std::move(body), hMap = std::move(headers)]
                                    (uint64_t reqId, std::shared_ptr<PendingRequest> info) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, timeout, cli, path)) throw std::runtime_error("Invalid URL Format");
+        if (!SetupClient(url, timeout, verifySSL, cli, path)) throw std::runtime_error("Invalid URL Format");
 
         httplib::Headers h;
         bool hasUA = false;
@@ -218,44 +218,45 @@ void AsyncHttpProxy::PreparePayload(sol::object data, sol::object overrides, std
 }
 
 void AsyncHttpProxy::Get(std::string ep, sol::object h, sol::function cb, sol::object prog) {
-    Dispatch("GET", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, cb.lua_state(), MakeRef(cb), MakeRef(prog));
+    Dispatch("GET", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), MakeRef(prog));
 }
 
 void AsyncHttpProxy::Post(std::string ep, sol::object data, sol::object h, sol::function cb) {
     std::string body; std::map<std::string, std::string> headers;
     PreparePayload(data, h, body, headers);
-    Dispatch("POST", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    Dispatch("POST", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
 void AsyncHttpProxy::Put(std::string ep, sol::object data, sol::object h, sol::function cb) {
     std::string body; std::map<std::string, std::string> headers;
     PreparePayload(data, h, body, headers);
-    Dispatch("PUT", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    Dispatch("PUT", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
 void AsyncHttpProxy::Patch(std::string ep, sol::object data, sol::object h, sol::function cb) {
     std::string body; std::map<std::string, std::string> headers;
     PreparePayload(data, h, body, headers);
-    Dispatch("PATCH", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    Dispatch("PATCH", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
 void AsyncHttpProxy::Delete(std::string ep, sol::object h, sol::function cb) {
-    Dispatch("DELETE", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    Dispatch("DELETE", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
 void AsyncHttpProxy::Head(std::string ep, sol::object h, sol::function cb) {
-    Dispatch("HEAD", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    Dispatch("HEAD", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
 void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string filePath, sol::object headers, sol::function cb) {
     auto hMap = PrepareHeaders(headers);
     std::string url = mBaseUrl + ep;
     int timeout = mTimeoutSeconds;
+    bool verify = mVerifySSL;
 
-    EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL,[=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> info) {
+    EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL, [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> info) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, timeout, cli, path)) throw std::runtime_error("Invalid URL");
+        if (!SetupClient(url, timeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
         if (!fs::exists(filePath)) throw std::runtime_error("File not found");
 
         auto file_stream = std::make_shared<std::ifstream>(filePath, std::ios::binary);
@@ -265,10 +266,12 @@ void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string
         httplib::FormDataProviderItems provider_items = {
             {
                 fieldName,
-                [file_stream](size_t offset, httplib::DataSink &sink) {
+                [file_stream, info](size_t offset, httplib::DataSink &sink) {
+                    if (info->abandoned.load()) return false;
+
                     if (static_cast<size_t>(file_stream->tellg()) != offset) {
                         file_stream->clear(); 
-                        file_stream->seekg(offset, std::ios::beg);
+                        file_stream->seekg(static_cast<std::streamoff>(offset), std::ios::beg);
                     }
                     
                     char buffer[8192];
@@ -284,10 +287,14 @@ void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string
         };
 
         httplib::Headers finalH;
+        bool hasUA = false;
         for (auto const& [key, val] : hMap) {
-            if (ToLower(key) == "content-type") continue;
+            std::string kLower = ToLower(key);
+            if (kLower == "user-agent") hasUA = true;
+            if (kLower == "content-type") continue; // httplib generates this for us in PostFile
             finalH.emplace(key, val);
         }
+        if (!hasUA) finalH.emplace("User-Agent", "BeamMP-Server/1.0");
         
         auto response = cli->Post(path.c_str(), finalH, regular_items, provider_items);
 
@@ -307,20 +314,24 @@ void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string
 void AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::function cb, sol::object prog) {
     std::string url = mBaseUrl + ep;
     int timeout = mTimeoutSeconds;
+    bool verify = mVerifySSL;
     auto hMap = PrepareHeaders(sol::lua_nil);
 
-    EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog),[=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> info) {
+    EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog), [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> info) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, timeout, cli, path)) throw std::runtime_error("Invalid URL");
+        if (!SetupClient(url, timeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
         
         std::ofstream ofs(savePath, std::ios::binary);
         if (!ofs) throw std::runtime_error("Could not open file for writing");
         
         httplib::Headers finalH;
+        bool hasUA = false;
         for (auto const&[key, val] : hMap) {
+            if (ToLower(key) == "user-agent") hasUA = true;
             finalH.emplace(key, val);
         }
+        if (!hasUA) finalH.emplace("User-Agent", "BeamMP-Server/1.0");
 
         int status_code = 0; std::map<std::string, std::string> resHeaders;
         auto lastProg = std::chrono::steady_clock::now();
@@ -361,6 +372,7 @@ void AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::functio
 void RegisterBindings(sol::state_view& lua) {
     lua.new_usertype<AsyncHttpProxy>("AsyncHttp", sol::no_constructor,
         "SetTimeout", &AsyncHttpProxy::SetTimeout,
+        "VerifySSL", &AsyncHttpProxy::VerifySSL,
         "Get", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object h, sol::function cb) { self.Get(ep, h, cb, sol::nil); }, &AsyncHttpProxy::Get),
         "Post", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { self.Post(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Post),
         "PostFile", sol::overload([](AsyncHttpProxy& self, std::string ep, std::string fn, std::string fp, sol::function cb) { self.PostFile(ep, fn, fp, sol::nil, cb); }, &AsyncHttpProxy::PostFile),

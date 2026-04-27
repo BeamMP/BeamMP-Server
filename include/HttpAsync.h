@@ -44,6 +44,7 @@ namespace HttpAsync {
         ~AsyncHttpProxy() = default;
 
         void SetTimeout(int seconds);
+        void VerifySSL(bool verify) { mVerifySSL = verify; }
 
         void Get(std::string endpoint, sol::object headers, sol::function cb, sol::object prog);
         void Post(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
@@ -62,6 +63,7 @@ namespace HttpAsync {
         std::string mBaseUrl;
         std::map<std::string, std::string> mDefaultHeaders;
         int mTimeoutSeconds = 30;
+        bool mVerifySSL = true;
     };
 
     void Init();
