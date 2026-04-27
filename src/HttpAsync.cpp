@@ -48,8 +48,34 @@ static std::atomic<bool> g_ShuttingDown{false};
 static std::unique_ptr<httplib::ThreadPool> g_ThreadPool;
 static std::atomic<uint64_t> g_NextRequestId{1};
 static std::map<uint64_t, std::shared_ptr<PendingRequest>> g_PendingRequests;
+static std::map<lua_State*, int> g_StateRequestCount;
+static std::mutex g_LimitMutex;
 
+const int MAX_REQUESTS_PER_STATE = 20;
 const int THREAD_POOL_SIZE = 8;
+
+static sol::table CreateHandle(lua_State* L, std::shared_ptr<PendingRequest> info) {
+    sol::state_view lua(L);
+    sol::table handle = lua.create_table();
+    if (info) {
+        handle["Cancel"] = [info]() { info->abandoned.store(true); };
+        handle["IsActive"] = [info]() { return !info->abandoned.load(); };
+        
+        // This allows the modder to attach a progress listener to the handle
+        handle["OnProgress"] = [L, info](sol::object func) {
+            if (func.is<sol::function>()) {
+                if (info->progressRef != LUA_REFNIL) {
+                    luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
+                }
+                func.push();
+                info->progressRef = luaL_ref(L, LUA_REGISTRYINDEX);
+            }
+        };
+    } else {
+        handle["Error"] = "Rate limited or Shutdown";
+    }
+    return handle;
+}
 
 static std::string ToLower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(),[](unsigned char c){ return static_cast<char>(std::tolower(c)); });
@@ -69,14 +95,13 @@ static int MakeRef(sol::object obj) {
     return luaL_ref(L, LUA_REGISTRYINDEX);
 }
 
-static void ExtractHeaders(const httplib::Headers& source, std::map<std::string, std::string>& dest) {
+static void ExtractHeaders(const httplib::Headers& source, std::map<std::string, std::vector<std::string>>& dest) {
     for (const auto& [k, v] : source) {
-        if (dest.count(k)) dest[k] += ", " + v;
-        else dest[k] = v;
+        dest[k].push_back(v);
     }
 }
 
-static bool SetupClient(const std::string& url, int timeout, bool verifySSL, std::unique_ptr<httplib::Client>& outClient, std::string& outPath) {
+static bool SetupClient(const std::string& url, int connectTimeout, int readTimeout, bool verifySSL, std::unique_ptr<httplib::Client>& outClient, std::string& outPath) {
     static const std::regex url_regex(R"(^(https?://[^/]+)(/.*)?$)", std::regex::extended);
     std::smatch match;
     if (!std::regex_match(url, match, url_regex)) return false;
@@ -84,19 +109,29 @@ static bool SetupClient(const std::string& url, int timeout, bool verifySSL, std
     outClient = std::make_unique<httplib::Client>(match[1].str());
     outPath = match[2].length() == 0 ? "/" : match[2].str();
 
-    outClient->set_connection_timeout(timeout, 0);
-    outClient->set_read_timeout(timeout, 0);
+    outClient->set_connection_timeout(connectTimeout, 0);
+    outClient->set_read_timeout(readTimeout, 0);
+    outClient->set_write_timeout(readTimeout, 0);
     outClient->set_follow_location(true);
     outClient->enable_server_certificate_verification(verifySSL);
     return true;
 }
 
-template <typename Func>
-static void EnqueueTask(lua_State* L, int cbRef, int progRef, Func&& task) {
+static std::shared_ptr<PendingRequest> EnqueueTask(lua_State* L, int cbRef, int progRef, std::function<void(uint64_t, std::shared_ptr<PendingRequest>)> task) {
     if (g_ShuttingDown.load() || !g_ThreadPool) {
         if (cbRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, cbRef);
         if (progRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, progRef);
-        return;
+        return nullptr;
+    }
+    {
+        std::lock_guard<std::mutex> lock(g_LimitMutex);
+        if (g_StateRequestCount[L] >= MAX_REQUESTS_PER_STATE) {
+            beammp_lua_warnf("Plugin reached HTTP request limit ({}). Request rejected.", MAX_REQUESTS_PER_STATE);
+            if (cbRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, cbRef);
+            if (progRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, progRef);
+            return nullptr;
+        }
+        g_StateRequestCount[L]++;
     }
 
     uint64_t reqId = g_NextRequestId++;
@@ -110,27 +145,24 @@ static void EnqueueTask(lua_State* L, int cbRef, int progRef, Func&& task) {
         g_PendingRequests[reqId] = info;
     }
 
-    g_ThreadPool->enqueue([reqId, info, task = std::forward<Func>(task)]() {
-        try {
-            task(reqId, info);
-        } catch (const std::exception& e) {
-            HttpResult res;
-            res.type = HttpResult::Type::COMPLETE;
-            res.requestId = reqId;
-            res.body = std::string("Internal Error: ") + e.what();
-            PushResult(std::move(res));
-        }
+    g_ThreadPool->enqueue([L, reqId, info, task = std::move(task)]() {
+        task(reqId, info);
+        
+        std::lock_guard<std::mutex> lock(g_LimitMutex);
+        g_StateRequestCount[L]--;
     });
+
+    return info;
 }
 
-static void Dispatch(std::string method, std::string url, std::map<std::string, std::string> headers, 
-                     std::string body, int timeout, bool verifySSL, lua_State* L, int cbRef, int progRef) {
+static sol::table Dispatch(std::string method, std::string url, std::map<std::string, std::string> headers,
+                        std::string body, int connectTimeout, int readTimeout, bool verifySSL, lua_State* L, int cbRef, int progRef) {
     
-    EnqueueTask(L, cbRef, progRef,[=, b = std::move(body), hMap = std::move(headers)]
-                                   (uint64_t reqId, std::shared_ptr<PendingRequest> info) {
+    auto info = EnqueueTask(L, cbRef, progRef, [=, b = std::move(body), hMap = std::move(headers)]
+                                   (uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, timeout, verifySSL, cli, path)) throw std::runtime_error("Invalid URL Format");
+        if (!SetupClient(url, connectTimeout, readTimeout, verifySSL, cli, path)) return;
 
         httplib::Headers h;
         bool hasUA = false;
@@ -148,8 +180,8 @@ static void Dispatch(std::string method, std::string url, std::map<std::string, 
 
         auto lastProg = std::chrono::steady_clock::now();
         auto prog_func = [&](uint64_t len, uint64_t total) {
-            if (g_ShuttingDown.load() || info->abandoned.load()) return false;
-            if (info->progressRef != LUA_REFNIL) {
+            if (g_ShuttingDown.load() || pReq->abandoned.load()) return false; 
+            if (pReq->progressRef != LUA_REFNIL) {
                 auto now = std::chrono::steady_clock::now();
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProg).count() > 100 || len == total) {
                     HttpResult res; res.type = HttpResult::Type::PROGRESS; res.requestId = reqId;
@@ -161,12 +193,14 @@ static void Dispatch(std::string method, std::string url, std::map<std::string, 
         };
 
         httplib::Result response;
-        if (method == "POST")        response = cli->Post(path.c_str(), h, b, cType.c_str());
-        else if (method == "PUT")    response = cli->Put(path.c_str(), h, b, cType.c_str());
-        else if (method == "PATCH")  response = cli->Patch(path.c_str(), h, b, cType.c_str());
-        else if (method == "DELETE") response = cli->Delete(path.c_str(), h);
+        if (method == "POST")        response = cli->Post(path.c_str(), h, b, cType.c_str(), prog_func);
+        else if (method == "PUT")    response = cli->Put(path.c_str(), h, b, cType.c_str(), prog_func);
+        else if (method == "PATCH")  response = cli->Patch(path.c_str(), h, b, cType.c_str(), prog_func);
+        else if (method == "DELETE") response = cli->Delete(path.c_str(), h, prog_func);
         else if (method == "HEAD")   response = cli->Head(path.c_str(), h);
         else                         response = cli->Get(path.c_str(), h, prog_func);
+
+        if (pReq->abandoned.load()) return;
 
         HttpResult res;
         res.type = HttpResult::Type::COMPLETE; res.requestId = reqId;
@@ -180,6 +214,8 @@ static void Dispatch(std::string method, std::string url, std::map<std::string, 
         }
         PushResult(std::move(res));
     });
+
+    return CreateHandle(L, info);
 }
 
 AsyncHttpProxy::AsyncHttpProxy(std::string baseUrl, sol::table defaultHeaders) : mBaseUrl(std::move(baseUrl)) {
@@ -191,7 +227,13 @@ AsyncHttpProxy::AsyncHttpProxy(std::string baseUrl, sol::table defaultHeaders) :
     }
 }
 
-void AsyncHttpProxy::SetTimeout(int seconds) { mTimeoutSeconds = seconds; }
+void AsyncHttpProxy::SetConnectTimeout(int seconds) { 
+    mConnectTimeoutSeconds = seconds; 
+}
+
+void AsyncHttpProxy::SetReadTimeout(int seconds) { 
+    mReadTimeoutSeconds = seconds; 
+}
 
 std::map<std::string, std::string> AsyncHttpProxy::PrepareHeaders(sol::object overrides) {
     auto finalHeaders = mDefaultHeaders;
@@ -217,46 +259,47 @@ void AsyncHttpProxy::PreparePayload(sol::object data, sol::object overrides, std
     }
 }
 
-void AsyncHttpProxy::Get(std::string ep, sol::object h, sol::function cb, sol::object prog) {
-    Dispatch("GET", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), MakeRef(prog));
+sol::table AsyncHttpProxy::Get(std::string ep, sol::object h, sol::function cb, sol::object prog) {
+    return Dispatch("GET", mBaseUrl + ep, PrepareHeaders(h), "", mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), MakeRef(prog));
 }
 
-void AsyncHttpProxy::Post(std::string ep, sol::object data, sol::object h, sol::function cb) {
+sol::table AsyncHttpProxy::Post(std::string ep, sol::object data, sol::object h, sol::function cb) {
     std::string body; std::map<std::string, std::string> headers;
     PreparePayload(data, h, body, headers);
-    Dispatch("POST", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    return Dispatch("POST", mBaseUrl + ep, headers, std::move(body), mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
-void AsyncHttpProxy::Put(std::string ep, sol::object data, sol::object h, sol::function cb) {
+sol::table AsyncHttpProxy::Put(std::string ep, sol::object data, sol::object h, sol::function cb) {
     std::string body; std::map<std::string, std::string> headers;
     PreparePayload(data, h, body, headers);
-    Dispatch("PUT", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    return Dispatch("PUT", mBaseUrl + ep, headers, std::move(body), mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
-void AsyncHttpProxy::Patch(std::string ep, sol::object data, sol::object h, sol::function cb) {
+sol::table AsyncHttpProxy::Patch(std::string ep, sol::object data, sol::object h, sol::function cb) {
     std::string body; std::map<std::string, std::string> headers;
     PreparePayload(data, h, body, headers);
-    Dispatch("PATCH", mBaseUrl + ep, headers, std::move(body), mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+    return Dispatch("PATCH", mBaseUrl + ep, headers, std::move(body), mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
-void AsyncHttpProxy::Delete(std::string ep, sol::object h, sol::function cb) {
-    Dispatch("DELETE", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+sol::table AsyncHttpProxy::Delete(std::string ep, sol::object h, sol::function cb) {
+    return Dispatch("DELETE", mBaseUrl + ep, PrepareHeaders(h), "", mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
-void AsyncHttpProxy::Head(std::string ep, sol::object h, sol::function cb) {
-    Dispatch("HEAD", mBaseUrl + ep, PrepareHeaders(h), "", mTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
+sol::table AsyncHttpProxy::Head(std::string ep, sol::object h, sol::function cb) {
+    return Dispatch("HEAD", mBaseUrl + ep, PrepareHeaders(h), "", mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cb.lua_state(), MakeRef(cb), LUA_REFNIL);
 }
 
-void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string filePath, sol::object headers, sol::function cb) {
+sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string filePath, sol::object headers, sol::function cb) {
     auto hMap = PrepareHeaders(headers);
     std::string url = mBaseUrl + ep;
-    int timeout = mTimeoutSeconds;
+    int connectTimeout = mConnectTimeoutSeconds;
+    int readTimeout = mReadTimeoutSeconds;
     bool verify = mVerifySSL;
 
-    EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL, [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> info) {
+    auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL, [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, timeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
+        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
         if (!fs::exists(filePath)) throw std::runtime_error("File not found");
 
         auto file_stream = std::make_shared<std::ifstream>(filePath, std::ios::binary);
@@ -266,8 +309,8 @@ void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string
         httplib::FormDataProviderItems provider_items = {
             {
                 fieldName,
-                [file_stream, info](size_t offset, httplib::DataSink &sink) {
-                    if (info->abandoned.load()) return false;
+                [file_stream, pReq](size_t offset, httplib::DataSink &sink) {
+                    if (pReq->abandoned.load()) return false;
 
                     if (static_cast<size_t>(file_stream->tellg()) != offset) {
                         file_stream->clear(); 
@@ -309,18 +352,22 @@ void AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string
         }
         PushResult(std::move(res));
     });
+
+    return CreateHandle(cb.lua_state(), info);
 }
 
-void AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::function cb, sol::object prog) {
+sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::function cb, sol::object prog) {
     std::string url = mBaseUrl + ep;
-    int timeout = mTimeoutSeconds;
+    int connectTimeout = mConnectTimeoutSeconds;
+    int readTimeout = mReadTimeoutSeconds;
+
     bool verify = mVerifySSL;
     auto hMap = PrepareHeaders(sol::lua_nil);
 
-    EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog), [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> info) {
+    auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog), [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, timeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
+        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
         
         std::ofstream ofs(savePath, std::ios::binary);
         if (!ofs) throw std::runtime_error("Could not open file for writing");
@@ -333,22 +380,22 @@ void AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::functio
         }
         if (!hasUA) finalH.emplace("User-Agent", "BeamMP-Server/1.0");
 
-        int status_code = 0; std::map<std::string, std::string> resHeaders;
+        int status_code = 0; std::map<std::string, std::vector<std::string>> resHeaders;
         auto lastProg = std::chrono::steady_clock::now();
         
         auto res = cli->Get(path.c_str(), finalH, 
             [&](const httplib::Response &r) { 
                 status_code = r.status; 
                 ExtractHeaders(r.headers, resHeaders);
-                return !g_ShuttingDown.load() && !info->abandoned.load(); 
+                return !g_ShuttingDown.load() && !pReq->abandoned.load(); 
             },
             [&](const char *b, size_t l) { 
-                if (g_ShuttingDown.load() || info->abandoned.load()) return false; 
+                if (g_ShuttingDown.load() || pReq->abandoned.load()) return false; 
                 ofs.write(b, static_cast<std::streamsize>(l)); 
                 return true; 
             },
             [&](uint64_t len, uint64_t total) {
-                if (info->progressRef != LUA_REFNIL && !info->abandoned.load()) {
+                if (pReq->progressRef != LUA_REFNIL && !pReq->abandoned.load()) {
                     auto now = std::chrono::steady_clock::now();
                     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProg).count() > 100 || len == total) {
                         HttpResult pres; pres.type = HttpResult::Type::PROGRESS; pres.requestId = reqId;
@@ -367,6 +414,8 @@ void AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::functio
         fres.headers = resHeaders;
         PushResult(std::move(fres));
     });
+
+    return CreateHandle(cb.lua_state(), info);
 }
 
 void AsyncHttpProxy::SetDefaultHeaders(sol::table headers) {
@@ -382,7 +431,8 @@ void AsyncHttpProxy::SetDefaultHeaders(sol::table headers) {
 
 void RegisterBindings(sol::state_view& lua) {
     lua.new_usertype<AsyncHttpProxy>("AsyncHttp", sol::no_constructor,
-        "SetTimeout", &AsyncHttpProxy::SetTimeout,
+        "SetConnectTimeout", &AsyncHttpProxy::SetConnectTimeout,
+        "SetReadTimeout", &AsyncHttpProxy::SetReadTimeout,
         "VerifySSL", &AsyncHttpProxy::VerifySSL,
         "SetDefaultHeaders", &AsyncHttpProxy::SetDefaultHeaders,
         "Get", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object h, sol::function cb) { self.Get(ep, h, cb, sol::nil); }, &AsyncHttpProxy::Get),
@@ -442,7 +492,19 @@ void Update(sol::state_view& lua) {
                 lua_rawgeti(L, LUA_REGISTRYINDEX, info->callbackRef);
                 sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
                 if (cb.valid()) {
-                    auto r = cb(res.status, res.body, res.headers);
+                    sol::table luaHeaders = lua.create_table();
+                    for (auto const& [name, values] : res.headers) {
+                        if (values.empty()) continue;
+
+                        std::string key = ToLower(name); 
+
+                        if (values.size() > 1 || key == "set-cookie") {
+                            luaHeaders[key] = sol::as_table(values);
+                        } else {
+                            luaHeaders[key] = values[0];
+                        }
+                    }
+                    auto r = cb(res.status, res.body, luaHeaders);
                     if (!r.valid()) beammp_lua_errorf("AsyncHttp Callback Error: {}", sol::error(r).what());
                 }
             }

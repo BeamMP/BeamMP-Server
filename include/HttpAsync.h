@@ -32,7 +32,7 @@ namespace HttpAsync {
         
         int status;
         std::string body;
-        std::map<std::string, std::string> headers;
+        std::map<std::string, std::vector<std::string>> headers; 
         
         long long current;
         long long total;
@@ -43,19 +43,20 @@ namespace HttpAsync {
         AsyncHttpProxy(std::string baseUrl, sol::table defaultHeaders);
         ~AsyncHttpProxy() = default;
 
-        void SetTimeout(int seconds);
+        void SetConnectTimeout(int seconds);
+        void SetReadTimeout(int seconds);
         void VerifySSL(bool verify) { mVerifySSL = verify; }
         void SetDefaultHeaders(sol::table headers);
 
-        void Get(std::string endpoint, sol::object headers, sol::function cb, sol::object prog);
-        void Post(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
-        void Put(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
-        void Patch(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
-        void Delete(std::string endpoint, sol::object headers, sol::function cb);
-        void Head(std::string endpoint, sol::object headers, sol::function cb);
+        sol::table Get(std::string endpoint, sol::object headers, sol::function cb, sol::object prog);
+        sol::table Post(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
+        sol::table Put(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
+        sol::table Patch(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
+        sol::table Delete(std::string endpoint, sol::object headers, sol::function cb);
+        sol::table Head(std::string endpoint, sol::object headers, sol::function cb);
         
-        void Download(std::string endpoint, std::string savePath, sol::function cb, sol::object prog);
-        void PostFile(std::string endpoint, std::string fieldName, std::string filePath, sol::object headers, sol::function cb);
+        sol::table Download(std::string endpoint, std::string savePath, sol::function cb, sol::object prog);
+        sol::table PostFile(std::string endpoint, std::string fieldName, std::string filePath, sol::object headers, sol::function cb);
 
     private:
         std::map<std::string, std::string> PrepareHeaders(sol::object overrides);
@@ -63,7 +64,8 @@ namespace HttpAsync {
 
         std::string mBaseUrl;
         std::map<std::string, std::string> mDefaultHeaders;
-        int mTimeoutSeconds = 30;
+        int mConnectTimeoutSeconds = 5;
+        int mReadTimeoutSeconds = 30;
         bool mVerifySSL = true;
     };
 
