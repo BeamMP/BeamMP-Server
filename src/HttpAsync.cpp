@@ -52,9 +52,13 @@ static std::map<lua_State*, int> g_StateRequestCount;
 static std::mutex g_LimitMutex;
 static std::vector<std::weak_ptr<AsyncWebSocket>> g_WebSockets;
 static std::mutex g_WsMutex;
+static std::map<lua_State*, int> g_StateWsCount;
 
-const int MAX_REQUESTS_PER_STATE = 20;
-const int THREAD_POOL_SIZE = 8;
+static int g_ActualPoolSize = 16;
+static int g_MaxRequestsPerPlugin = 8;
+static int g_MaxWsPerPlugin = 4;
+static int g_MaxWsGlobal = 32;
+static int g_CurrentWsGlobal = 0;
 
 static const char* DEFAULT_USER_AGENT = "BeamMP-Server/1.0";
 
@@ -62,7 +66,18 @@ static sol::table CreateHandle(lua_State* L, std::shared_ptr<PendingRequest> inf
     sol::state_view lua(L);
     sol::table handle = lua.create_table();
     if (info) {
-        handle["Cancel"] = [info]() { info->abandoned.store(true); };
+        handle["Cancel"] = [info, L]() {
+            info->abandoned.store(true);
+
+            if (info->callbackRef != LUA_REFNIL) {
+                luaL_unref(L, LUA_REGISTRYINDEX, info->callbackRef);
+                info->callbackRef = LUA_REFNIL;
+            }
+            if (info->progressRef != LUA_REFNIL) {
+                luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
+                info->progressRef = LUA_REFNIL;
+            }
+        };
         handle["IsActive"] = [info]() { return !info->abandoned.load(); };
         
         // This allows the modder to attach a progress listener to the handle
@@ -133,8 +148,8 @@ static std::shared_ptr<PendingRequest> EnqueueTask(lua_State* L, int cbRef, int 
     }
     {
         std::lock_guard<std::mutex> lock(g_LimitMutex);
-        if (g_StateRequestCount[L] >= MAX_REQUESTS_PER_STATE) {
-            beammp_lua_warnf("Plugin reached HTTP request limit ({}). Request rejected.", MAX_REQUESTS_PER_STATE);
+        if (g_StateRequestCount[L] >= g_MaxRequestsPerPlugin) {
+            beammp_lua_warnf("Plugin reached HTTP request limit ({}). Request rejected.", g_MaxRequestsPerPlugin);
             if (cbRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, cbRef);
             if (progRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, progRef);
             return nullptr;
@@ -604,6 +619,16 @@ void AsyncWebSocket::ProcessEvents() {
 }
 
 void AsyncWebSocket::Abandon() {
+    if (mAbandoned.exchange(true)) return;
+    
+    {
+        std::lock_guard<std::mutex> lock(g_LimitMutex);
+        g_StateWsCount[L]--;
+        if (g_StateWsCount[L] <= 0) g_StateWsCount.erase(L);
+        
+        g_CurrentWsGlobal--;
+    }
+
     mAbandoned = true;
     Close();
 
@@ -643,19 +668,39 @@ void RegisterBindings(sol::state_view& lua) {
         "OnError", &AsyncWebSocket::OnError
     );
 
-    lua["AsyncWebSocket"]["new"] = [](sol::this_state s, std::string url, sol::object headers) {
+    lua["AsyncWebSocket"]["new"] = [](sol::this_state s, std::string url, sol::object headers) -> sol::object {
+        lua_State* L = s.lua_state();
+        {
+            std::lock_guard<std::mutex> lock(g_LimitMutex);
+            
+            if (g_CurrentWsGlobal >= g_MaxWsGlobal) {
+                beammp_lua_warnf("Server-wide WebSocket limit reached ({}).", g_MaxWsGlobal);
+                return sol::make_object(s, sol::lua_nil);
+            }
+
+            if (g_StateWsCount[L] >= g_MaxWsPerPlugin) {
+                beammp_lua_warnf("Plugin reached WebSocket limit ({}).", g_MaxWsPerPlugin);
+                return sol::make_object(s, sol::lua_nil);
+            }
+
+            g_StateWsCount[L]++;
+            g_CurrentWsGlobal++;
+        }
+
         sol::table h;
         
         if (headers.is<sol::table>()) {
             h = headers.as<sol::table>();
         }
 
-        auto ws = std::make_shared<AsyncWebSocket>(url, h, s.lua_state());
+        auto ws = std::make_shared<AsyncWebSocket>(url, h, L);
         
-        std::lock_guard<std::mutex> lock(g_WsMutex);
-        g_WebSockets.push_back(ws);
+        {
+            std::lock_guard<std::mutex> lock(g_WsMutex);
+            g_WebSockets.push_back(ws);
+        }
         
-        return ws;
+        return sol::make_object(s, ws);
     };
 }
 
@@ -686,7 +731,21 @@ void Update(sol::state_view& lua) {
             if (g_PendingRequests.count(res.requestId)) info = g_PendingRequests[res.requestId];
         }
 
-        if (!info || info->abandoned.load()) continue;
+        if (!info || info->abandoned.load()) {
+            if (info) {
+                if (info->callbackRef != LUA_REFNIL) {
+                    luaL_unref(L, LUA_REGISTRYINDEX, info->callbackRef);
+                    info->callbackRef = LUA_REFNIL;
+                }
+                if (info->progressRef != LUA_REFNIL) {
+                    luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
+                    info->progressRef = LUA_REFNIL;
+                }
+            }
+            std::lock_guard<std::mutex> httpLock(g_Mutex);
+            g_PendingRequests.erase(res.requestId);
+            continue; 
+        }
 
         if (res.type == HttpResult::Type::PROGRESS) {
             if (info->progressRef != LUA_REFNIL) {
@@ -793,7 +852,19 @@ void CleanupState(lua_State* L) {
 
 void Init() { 
     g_ShuttingDown.store(false); 
-    g_ThreadPool = std::make_unique<httplib::ThreadPool>(THREAD_POOL_SIZE); 
+    int cores = static_cast<int>(std::thread::hardware_concurrency());
+    if (cores <= 0) cores = 4;
+
+
+    g_ActualPoolSize = std::clamp(cores * 4, 16, 128);
+    g_MaxRequestsPerPlugin = std::max(g_ActualPoolSize / 2, 5);
+    g_ThreadPool = std::make_unique<httplib::ThreadPool>(g_ActualPoolSize);
+
+    g_MaxWsGlobal = std::max(cores * 8, 32);
+    g_MaxWsPerPlugin = std::max(g_MaxWsGlobal / 4, 4);
+
+    beammp_infof("AsyncHttp initialized. HTTP Pool: {} ({} per plugin). WS Quota: {} ({} per plugin).",
+                 g_ActualPoolSize, g_MaxRequestsPerPlugin, g_MaxWsGlobal, g_MaxWsPerPlugin);
 }
 
 void Shutdown() { 
