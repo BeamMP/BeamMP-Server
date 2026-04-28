@@ -82,7 +82,11 @@ static sol::table CreateHandle(lua_State* L, std::shared_ptr<PendingRequest> inf
 }
 
 static std::string ToLower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(),[](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+    for (char &c : s) {
+        if (c >= 'A' && c <= 'Z') {
+            c += 32;
+        }
+    }
     return s;
 }
 
@@ -166,7 +170,9 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
                                    (uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, connectTimeout, readTimeout, verifySSL, cli, path)) return;
+        if (!SetupClient(url, connectTimeout, readTimeout, verifySSL, cli, path)) {
+            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Invalid URL"; PushResult(std::move(res)); return;
+        }
 
         httplib::Headers h;
         bool hasUA = false;
@@ -303,11 +309,17 @@ sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::
     auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL, [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
-        if (!fs::exists(filePath)) throw std::runtime_error("File not found");
+        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) {
+            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Invalid URL"; PushResult(std::move(res)); return;
+        }
+        if (!fs::exists(filePath)) {
+            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "File not found"; PushResult(std::move(res)); return;
+        }
 
         auto file_stream = std::make_shared<std::ifstream>(filePath, std::ios::binary);
-        if (!file_stream || !file_stream->is_open()) throw std::runtime_error("Could not open file");
+        if (!file_stream || !file_stream->is_open()) {
+            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Could not open file"; PushResult(std::move(res)); return;
+        }
 
         httplib::UploadFormDataItems regular_items; 
         httplib::FormDataProviderItems provider_items = {
@@ -371,10 +383,14 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
     auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog), [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) throw std::runtime_error("Invalid URL");
+        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) {
+            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Invalid URL"; PushResult(std::move(res)); return;
+        }
         
         std::ofstream ofs(savePath, std::ios::binary);
-        if (!ofs) throw std::runtime_error("Could not open file for writing");
+        if (!ofs) {
+            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Could not open file for writing"; PushResult(std::move(res)); return;
+        }
         
         httplib::Headers finalH;
         bool hasUA = false;
