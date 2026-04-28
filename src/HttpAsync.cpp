@@ -50,9 +50,13 @@ static std::atomic<uint64_t> g_NextRequestId{1};
 static std::map<uint64_t, std::shared_ptr<PendingRequest>> g_PendingRequests;
 static std::map<lua_State*, int> g_StateRequestCount;
 static std::mutex g_LimitMutex;
+static std::vector<std::weak_ptr<AsyncWebSocket>> g_WebSockets;
+static std::mutex g_WsMutex;
 
 const int MAX_REQUESTS_PER_STATE = 20;
 const int THREAD_POOL_SIZE = 8;
+
+static const char* DEFAULT_USER_AGENT = "BeamMP-Server/1.0";
 
 static sol::table CreateHandle(lua_State* L, std::shared_ptr<PendingRequest> info) {
     sol::state_view lua(L);
@@ -176,7 +180,7 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
             }
             h.emplace(key, val);
         }
-        if (!hasUA) h.emplace("User-Agent", "BeamMP-Server/1.0");
+        if (!hasUA) h.emplace("User-Agent", DEFAULT_USER_AGENT);
 
         auto lastProg = std::chrono::steady_clock::now();
         auto prog_func = [&](uint64_t len, uint64_t total) {
@@ -337,7 +341,7 @@ sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::
             if (kLower == "content-type") continue; // httplib generates this for us in PostFile
             finalH.emplace(key, val);
         }
-        if (!hasUA) finalH.emplace("User-Agent", "BeamMP-Server/1.0");
+        if (!hasUA) finalH.emplace("User-Agent", DEFAULT_USER_AGENT);
         
         auto response = cli->Post(path.c_str(), finalH, regular_items, provider_items);
 
@@ -378,7 +382,7 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
             if (ToLower(key) == "user-agent") hasUA = true;
             finalH.emplace(key, val);
         }
-        if (!hasUA) finalH.emplace("User-Agent", "BeamMP-Server/1.0");
+        if (!hasUA) finalH.emplace("User-Agent", DEFAULT_USER_AGENT);
 
         int status_code = 0; std::map<std::string, std::vector<std::string>> resHeaders;
         auto lastProg = std::chrono::steady_clock::now();
@@ -429,24 +433,214 @@ void AsyncHttpProxy::SetDefaultHeaders(sol::table headers) {
     }
 }
 
+AsyncWebSocket::AsyncWebSocket(std::string url, sol::table headers, lua_State* state) 
+    : mUrl(std::move(url)), L(state) {
+    if (headers.valid()) {
+        for (auto const& pair : headers) {
+            if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
+                mHeaders.emplace(pair.first.as<std::string>(), pair.second.as<std::string>());
+            }
+        }
+    }
+}
+
+AsyncWebSocket::~AsyncWebSocket() {
+    Abandon();
+    if (mThread.joinable()) {
+        mThread.join();
+    }
+}
+
+void AsyncWebSocket::VerifySSL(bool verify) {
+    mVerifySSL = verify;
+}
+
+void AsyncWebSocket::Connect() {
+    if (mIsRunning.exchange(true)) return;
+    
+    mThread = std::thread([this]() {
+        httplib::Headers h;
+        bool hasUA = false;
+
+        for (const auto& [k, v] : mHeaders) {
+            if (ToLower(k) == "user-agent") hasUA = true;
+            h.emplace(k, v);
+        }
+
+        if (!hasUA) h.emplace("User-Agent", DEFAULT_USER_AGENT);
+
+        httplib::ws::WebSocketClient client(mUrl, h);
+
+        client.enable_server_certificate_verification(mVerifySSL);
+        
+        {
+            std::lock_guard<std::mutex> lock(mClientMutex);
+            if (mAbandoned) return;
+            mClient = &client;
+        }
+
+        if (!client.connect()) {
+            PushEvent({WSEventType::ERROR_EVENT, "Failed to connect", 0});
+            mIsRunning = false;
+            std::lock_guard<std::mutex> lock(mClientMutex);
+            mClient = nullptr;
+            return;
+        }
+
+        PushEvent({WSEventType::OPEN, "", 0});
+
+        std::string msg;
+        while (mIsRunning && !mAbandoned) {
+            auto res = client.read(msg);
+            if (res == httplib::ws::ReadResult::Fail) {
+                break;
+            }
+            PushEvent({WSEventType::MESSAGE, msg, 0});
+            msg.clear();
+        }
+
+        PushEvent({WSEventType::CLOSE, "Connection closed", 1000});
+        mIsRunning = false;
+        
+        std::lock_guard<std::mutex> lock(mClientMutex);
+        mClient = nullptr;
+    });
+}
+
+void AsyncWebSocket::Send(const std::string& data) {
+    std::lock_guard<std::mutex> lock(mClientMutex);
+    if (mClient && mClient->is_open()) {
+        mClient->send(data);
+    }
+}
+
+void AsyncWebSocket::Close() {
+    mIsRunning = false;
+    std::lock_guard<std::mutex> lock(mClientMutex);
+    if (mClient && mClient->is_open()) {
+        mClient->close();
+    }
+}
+
+void AsyncWebSocket::PushEvent(WSEvent ev) {
+    if (mAbandoned) return;
+    std::lock_guard<std::mutex> lock(mMutex);
+    mEvents.push(std::move(ev));
+}
+
+void AsyncWebSocket::OnOpen(sol::object cb) {
+    if (mOnOpenRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnOpenRef);
+    mOnOpenRef = MakeRef(cb);
+}
+void AsyncWebSocket::OnMessage(sol::object cb) {
+    if (mOnMessageRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnMessageRef);
+    mOnMessageRef = MakeRef(cb);
+}
+void AsyncWebSocket::OnClose(sol::object cb) {
+    if (mOnCloseRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnCloseRef);
+    mOnCloseRef = MakeRef(cb);
+}
+void AsyncWebSocket::OnError(sol::object cb) {
+    if (mOnErrorRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnErrorRef);
+    mOnErrorRef = MakeRef(cb);
+}
+
+void AsyncWebSocket::ProcessEvents() {
+    if (mAbandoned) return;
+
+    std::queue<WSEvent> events;
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        std::swap(events, mEvents);
+    }
+
+    while (!events.empty()) {
+        auto ev = events.front();
+        events.pop();
+
+        if (mAbandoned) break; 
+
+        try {
+            if (ev.type == WSEventType::OPEN && mOnOpenRef != LUA_REFNIL) {
+                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnOpenRef);
+                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
+                if (cb.valid()) { auto r = cb(); if (!r.valid()) beammp_lua_errorf("WS OnOpen Error: {}", sol::error(r).what()); }
+            }
+            else if (ev.type == WSEventType::MESSAGE && mOnMessageRef != LUA_REFNIL) {
+                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnMessageRef);
+                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
+                if (cb.valid()) { auto r = cb(ev.payload); if (!r.valid()) beammp_lua_errorf("WS OnMessage Error: {}", sol::error(r).what()); }
+            }
+            else if (ev.type == WSEventType::CLOSE && mOnCloseRef != LUA_REFNIL) {
+                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnCloseRef);
+                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
+                if (cb.valid()) { auto r = cb(ev.closeCode, ev.payload); if (!r.valid()) beammp_lua_errorf("WS OnClose Error: {}", sol::error(r).what()); }
+            }
+            else if (ev.type == WSEventType::ERROR_EVENT && mOnErrorRef != LUA_REFNIL) {
+                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnErrorRef);
+                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
+                if (cb.valid()) { auto r = cb(ev.payload); if (!r.valid()) beammp_lua_errorf("WS OnError Error: {}", sol::error(r).what()); }
+            }
+        } catch (const std::exception& e) {
+            beammp_lua_errorf("WebSocket Exception: {}", e.what());
+        }
+    }
+}
+
+void AsyncWebSocket::Abandon() {
+    mAbandoned = true;
+    Close();
+
+    if (mOnOpenRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnOpenRef); mOnOpenRef = LUA_REFNIL; }
+    if (mOnMessageRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnMessageRef); mOnMessageRef = LUA_REFNIL; }
+    if (mOnCloseRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnCloseRef); mOnCloseRef = LUA_REFNIL; }
+    if (mOnErrorRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnErrorRef); mOnErrorRef = LUA_REFNIL; }
+}
+
 void RegisterBindings(sol::state_view& lua) {
     lua.new_usertype<AsyncHttpProxy>("AsyncHttp", sol::no_constructor,
         "SetConnectTimeout", &AsyncHttpProxy::SetConnectTimeout,
         "SetReadTimeout", &AsyncHttpProxy::SetReadTimeout,
         "VerifySSL", &AsyncHttpProxy::VerifySSL,
         "SetDefaultHeaders", &AsyncHttpProxy::SetDefaultHeaders,
-        "Get", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object h, sol::function cb) { self.Get(ep, h, cb, sol::nil); }, &AsyncHttpProxy::Get),
-        "Post", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { self.Post(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Post),
-        "PostFile", sol::overload([](AsyncHttpProxy& self, std::string ep, std::string fn, std::string fp, sol::function cb) { self.PostFile(ep, fn, fp, sol::nil, cb); }, &AsyncHttpProxy::PostFile),
-        "Put", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { self.Put(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Put),
-        "Patch", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { self.Patch(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Patch),
-        "Delete", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::function cb) { self.Delete(ep, sol::nil, cb); }, &AsyncHttpProxy::Delete),
-        "Head", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::function cb) { self.Head(ep, sol::nil, cb); }, &AsyncHttpProxy::Head),
-        "Download", sol::overload([](AsyncHttpProxy& self, std::string ep, std::string p, sol::function cb) { self.Download(ep, p, cb, sol::nil); }, &AsyncHttpProxy::Download)
+        "Get", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object h, sol::function cb) { return self.Get(ep, h, cb, sol::nil); }, &AsyncHttpProxy::Get),
+        "Post", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { return self.Post(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Post),
+        "PostFile", sol::overload([](AsyncHttpProxy& self, std::string ep, std::string fn, std::string fp, sol::function cb) { return self.PostFile(ep, fn, fp, sol::nil, cb); }, &AsyncHttpProxy::PostFile),
+        "Put", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { return self.Put(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Put),
+        "Patch", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::object d, sol::function cb) { return self.Patch(ep, d, sol::nil, cb); }, &AsyncHttpProxy::Patch),
+        "Delete", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::function cb) { return self.Delete(ep, sol::nil, cb); }, &AsyncHttpProxy::Delete),
+        "Head", sol::overload([](AsyncHttpProxy& self, std::string ep, sol::function cb) { return self.Head(ep, sol::nil, cb); }, &AsyncHttpProxy::Head),
+        "Download", sol::overload([](AsyncHttpProxy& self, std::string ep, std::string p, sol::function cb) { return self.Download(ep, p, cb, sol::nil); }, &AsyncHttpProxy::Download)
     );
 
     lua["AsyncHttp"]["new"] = sol::overload([](std::string url) { return std::make_shared<AsyncHttpProxy>(url, sol::table(sol::lua_nil)); },[](std::string url, sol::table headers) { return std::make_shared<AsyncHttpProxy>(url, headers); }
     );
+
+    lua.new_usertype<AsyncWebSocket>("AsyncWebSocket", sol::no_constructor,
+        "Connect", &AsyncWebSocket::Connect,
+        "Send", &AsyncWebSocket::Send,
+        "Close", &AsyncWebSocket::Close,
+        "VerifySSL", &AsyncWebSocket::VerifySSL,
+        "OnOpen", &AsyncWebSocket::OnOpen,
+        "OnMessage", &AsyncWebSocket::OnMessage,
+        "OnClose", &AsyncWebSocket::OnClose,
+        "OnError", &AsyncWebSocket::OnError
+    );
+
+    lua["AsyncWebSocket"]["new"] = [](sol::this_state s, std::string url, sol::object headers) {
+        sol::table h;
+        
+        if (headers.is<sol::table>()) {
+            h = headers.as<sol::table>();
+        }
+
+        auto ws = std::make_shared<AsyncWebSocket>(url, h, s.lua_state());
+        
+        std::lock_guard<std::mutex> lock(g_WsMutex);
+        g_WebSockets.push_back(ws);
+        
+        return ws;
+    };
 }
 
 void Update(sol::state_view& lua) {
@@ -454,7 +648,7 @@ void Update(sol::state_view& lua) {
     std::deque<HttpResult> toProcess;
     
     {
-        std::lock_guard<std::mutex> lock(g_Mutex);
+        std::lock_guard<std::mutex> httpLock(g_Mutex);
         auto it = g_Results.begin();
         while (it != g_Results.end()) {
             auto reqIt = g_PendingRequests.find(it->requestId);
@@ -472,7 +666,7 @@ void Update(sol::state_view& lua) {
     for (const auto& res : toProcess) {
         std::shared_ptr<PendingRequest> info;
         {
-            std::lock_guard<std::mutex> lock(g_Mutex);
+            std::lock_guard<std::mutex> httpLock(g_Mutex);
             if (g_PendingRequests.count(res.requestId)) info = g_PendingRequests[res.requestId];
         }
 
@@ -518,14 +712,34 @@ void Update(sol::state_view& lua) {
                 info->progressRef = LUA_REFNIL;
             }
             
-            std::lock_guard<std::mutex> lock(g_Mutex);
+            std::lock_guard<std::mutex> httpLock(g_Mutex);
             g_PendingRequests.erase(res.requestId);
         }
+    }
+
+    std::vector<std::shared_ptr<AsyncWebSocket>> websocketsToUpdate;
+    {
+        std::lock_guard<std::mutex> wsLock(g_WsMutex);
+        auto wsIt = g_WebSockets.begin();
+        while (wsIt != g_WebSockets.end()) {
+            if (auto ws = wsIt->lock()) {
+                if (ws->GetLuaState() == L) {
+                    websocketsToUpdate.push_back(ws);
+                }
+                ++wsIt;
+            } else {
+                wsIt = g_WebSockets.erase(wsIt);
+            }
+        }
+    }
+
+    for (auto& ws : websocketsToUpdate) {
+        ws->ProcessEvents();
     }
 }
 
 void CleanupState(lua_State* L) {
-    std::lock_guard<std::mutex> lock(g_Mutex);
+    std::lock_guard<std::mutex> httpLock(g_Mutex);
     for (auto it = g_PendingRequests.begin(); it != g_PendingRequests.end(); ) {
         if (it->second->L == L) {
             it->second->abandoned.store(true);
@@ -544,6 +758,21 @@ void CleanupState(lua_State* L) {
             ++it;
         }
     }
+
+    std::lock_guard<std::mutex> wsLock(g_WsMutex);
+    auto wsIt = g_WebSockets.begin();
+    while (wsIt != g_WebSockets.end()) {
+        if (auto ws = wsIt->lock()) {
+            if (ws->GetLuaState() == L) {
+                ws->Abandon();
+                wsIt = g_WebSockets.erase(wsIt);
+            } else {
+                ++wsIt;
+            }
+        } else {
+            wsIt = g_WebSockets.erase(wsIt);
+        }
+    }
 }
 
 void Init() { 
@@ -555,9 +784,17 @@ void Shutdown() {
     g_ShuttingDown.store(true); 
     if (g_ThreadPool) g_ThreadPool->shutdown(); 
     g_ThreadPool.reset(); 
-    std::lock_guard<std::mutex> lock(g_Mutex);
+    std::lock_guard<std::mutex> httpLock(g_Mutex);
     g_PendingRequests.clear();
     g_Results.clear();
+
+    std::lock_guard<std::mutex> wsLock(g_WsMutex);
+    for (auto& weak_ws : g_WebSockets) {
+        if (auto ws = weak_ws.lock()) {
+            ws->Abandon();
+        }
+    }
+    g_WebSockets.clear();
 }
 
 } // namespace HttpAsync

@@ -21,7 +21,15 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <queue>
+#include <thread>
 #include <sol/sol.hpp>
+
+namespace httplib {
+    namespace ws {
+        class WebSocketClient;
+    }
+}
 
 namespace HttpAsync {
 
@@ -67,6 +75,58 @@ namespace HttpAsync {
         int mConnectTimeoutSeconds = 5;
         int mReadTimeoutSeconds = 30;
         bool mVerifySSL = true;
+    };
+
+    enum class WSEventType { OPEN, MESSAGE, CLOSE, ERROR_EVENT };
+
+        struct WSEvent {
+        WSEventType type;
+        std::string payload;
+        int closeCode;
+    };
+
+    class AsyncWebSocket : public std::enable_shared_from_this<AsyncWebSocket> {
+    public:
+        AsyncWebSocket(std::string url, sol::table headers, lua_State* state);
+        ~AsyncWebSocket();
+
+        void Connect();
+        void Send(const std::string& data);
+        void Close();
+        void VerifySSL(bool verify);
+
+        void OnOpen(sol::object cb);
+        void OnMessage(sol::object cb);
+        void OnClose(sol::object cb);
+        void OnError(sol::object cb);
+
+        void ProcessEvents();
+        lua_State* GetLuaState() const { return L; }
+        void Abandon();
+
+    private:
+        std::string mUrl;
+        lua_State* L;
+        std::map<std::string, std::string> mHeaders;
+        
+        bool mVerifySSL = true;
+
+        std::thread mThread;
+        std::atomic<bool> mIsRunning{false};
+        std::atomic<bool> mAbandoned{false};
+        
+        httplib::ws::WebSocketClient* mClient = nullptr;
+        std::mutex mClientMutex;
+
+        std::queue<WSEvent> mEvents;
+        std::mutex mMutex;
+
+        int mOnOpenRef = LUA_REFNIL;
+        int mOnMessageRef = LUA_REFNIL;
+        int mOnCloseRef = LUA_REFNIL;
+        int mOnErrorRef = LUA_REFNIL;
+        
+        void PushEvent(WSEvent ev);
     };
 
     void Init();
