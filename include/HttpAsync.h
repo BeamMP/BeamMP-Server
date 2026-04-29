@@ -20,11 +20,16 @@
 
 #include <string>
 #include <map>
+#include <vector>
 #include <cstdint>
 #include <queue>
 #include <thread>
+#include <atomic>
+#include <mutex>
+#include <memory>
 #include <sol/sol.hpp>
 
+// Forward declaration for WebSocket client to keep header lean
 namespace httplib {
     namespace ws {
         class WebSocketClient;
@@ -38,24 +43,28 @@ namespace HttpAsync {
         
         uint64_t requestId;
         
-        int status;
+        // Progress data
+        long long current = 0;
+        long long total = 0;
+
+        // Response data
+        int status = 0;
         std::string body;
         std::map<std::string, std::vector<std::string>> headers; 
-        
-        long long current;
-        long long total;
     };
 
-    class AsyncHttpProxy {
+    class AsyncHttpProxy : public std::enable_shared_from_this<AsyncHttpProxy> {
     public:
         AsyncHttpProxy(std::string baseUrl, sol::table defaultHeaders);
         ~AsyncHttpProxy() = default;
 
+        // Configuration
         void SetConnectTimeout(int seconds);
         void SetReadTimeout(int seconds);
-        void VerifySSL(bool verify) { mVerifySSL = verify; }
+        void VerifySSL(bool verify);
         void SetDefaultHeaders(sol::table headers);
 
+        // HTTP Methods
         sol::table Get(std::string endpoint, sol::object headers, sol::function cb, sol::object prog);
         sol::table Post(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
         sol::table Put(std::string endpoint, sol::object data, sol::object headers, sol::function cb);
@@ -63,6 +72,7 @@ namespace HttpAsync {
         sol::table Delete(std::string endpoint, sol::object headers, sol::function cb);
         sol::table Head(std::string endpoint, sol::object headers, sol::function cb);
         
+        // File Operations
         sol::table Download(std::string endpoint, std::string savePath, sol::function cb, sol::object prog);
         sol::table PostFile(std::string endpoint, std::string fieldName, std::string filePath, sol::object headers, sol::function cb);
 
@@ -79,7 +89,7 @@ namespace HttpAsync {
 
     enum class WSEventType { OPEN, MESSAGE, CLOSE, ERROR_EVENT };
 
-        struct WSEvent {
+    struct WSEvent {
         WSEventType type;
         std::string payload;
         int closeCode;
@@ -87,6 +97,8 @@ namespace HttpAsync {
 
     class AsyncWebSocket : public std::enable_shared_from_this<AsyncWebSocket> {
     public:
+        static sol::object Create(sol::this_state s, std::string url, sol::object headers);
+
         AsyncWebSocket(std::string url, sol::table headers, lua_State* state);
         ~AsyncWebSocket();
 
@@ -95,40 +107,45 @@ namespace HttpAsync {
         void Close();
         void VerifySSL(bool verify);
 
+        // Lua Callback Registration
         void OnOpen(sol::object cb);
         void OnMessage(sol::object cb);
         void OnClose(sol::object cb);
         void OnError(sol::object cb);
 
         void ProcessEvents();
-        lua_State* GetLuaState() const { return L; }
         void Abandon();
+        
+        [[nodiscard]] lua_State* GetLuaState() const { return L; }
 
     private:
+        void PushEvent(WSEvent ev);
+
         std::string mUrl;
         lua_State* L;
         std::map<std::string, std::string> mHeaders;
-        
         bool mVerifySSL = true;
 
         std::thread mThread;
         std::atomic<bool> mIsRunning{false};
         std::atomic<bool> mAbandoned{false};
         
+        // Internal httplib pointer and sync
         httplib::ws::WebSocketClient* mClient = nullptr;
         std::mutex mClientMutex;
 
+        // Event Queue
         std::queue<WSEvent> mEvents;
         std::mutex mMutex;
 
+        // Lua Registry References
         int mOnOpenRef = LUA_REFNIL;
         int mOnMessageRef = LUA_REFNIL;
         int mOnCloseRef = LUA_REFNIL;
         int mOnErrorRef = LUA_REFNIL;
-        
-        void PushEvent(WSEvent ev);
     };
 
+    // Module Lifecycle
     void Init();
     void Shutdown();
     void Update(sol::state_view& lua);

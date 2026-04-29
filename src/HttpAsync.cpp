@@ -25,11 +25,11 @@
 #include <chrono>
 #include <atomic>
 #include <deque>
-#include <regex>
 #include <memory>
 #include <algorithm>
 #include <map>
 #include <filesystem>
+#include <string_view>
 
 namespace fs = std::filesystem;
 
@@ -42,73 +42,56 @@ struct PendingRequest {
     std::atomic<bool> abandoned{false};
 };
 
-static std::deque<HttpResult> g_Results;
-static std::mutex g_Mutex;
-static std::atomic<bool> g_ShuttingDown{false};
-static std::unique_ptr<httplib::ThreadPool> g_ThreadPool;
-static std::atomic<uint64_t> g_NextRequestId{1};
-static std::map<uint64_t, std::shared_ptr<PendingRequest>> g_PendingRequests;
-static std::map<lua_State*, int> g_StateRequestCount;
-static std::mutex g_LimitMutex;
-static std::vector<std::weak_ptr<AsyncWebSocket>> g_WebSockets;
-static std::mutex g_WsMutex;
-static std::map<lua_State*, int> g_StateWsCount;
-
-static int g_ActualPoolSize = 16;
-static int g_MaxRequestsPerPlugin = 8;
-static int g_MaxWsPerPlugin = 4;
-static int g_MaxWsGlobal = 32;
-static int g_CurrentWsGlobal = 0;
+// --- Centralized Global Context ---
+static struct GlobalContext {
+    std::deque<HttpResult> results;
+    std::mutex resultsMutex;
+    
+    std::atomic<bool> shuttingDown{false};
+    std::unique_ptr<httplib::ThreadPool> threadPool;
+    std::atomic<uint64_t> nextRequestId{1};
+    
+    std::map<uint64_t, std::shared_ptr<PendingRequest>> pendingRequests;
+    std::map<lua_State*, int> stateRequestCount;
+    std::mutex limitMutex;
+    
+    std::vector<std::weak_ptr<AsyncWebSocket>> webSockets;
+    std::mutex wsMutex;
+    std::map<lua_State*, int> stateWsCount;
+    
+    int actualPoolSize = 16;
+    int maxRequestsPerPlugin = 8;
+    int maxWsPerPlugin = 4;
+    int maxWsGlobal = 32;
+    int currentWsGlobal = 0;
+} ctx;
 
 static const char* DEFAULT_USER_AGENT = "BeamMP-Server/1.0";
 
-static sol::table CreateHandle(lua_State* L, std::shared_ptr<PendingRequest> info) {
-    sol::state_view lua(L);
-    sol::table handle = lua.create_table();
-    if (info) {
-        handle["Cancel"] = [info, L]() {
-            info->abandoned.store(true);
+// --- Utilities ---
 
-            if (info->callbackRef != LUA_REFNIL) {
-                luaL_unref(L, LUA_REGISTRYINDEX, info->callbackRef);
-                info->callbackRef = LUA_REFNIL;
-            }
-            if (info->progressRef != LUA_REFNIL) {
-                luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
-                info->progressRef = LUA_REFNIL;
-            }
-        };
-        handle["IsActive"] = [info]() { return !info->abandoned.load(); };
-        
-        // This allows the modder to attach a progress listener to the handle
-        handle["OnProgress"] = [L, info](sol::object func) {
-            if (func.is<sol::function>()) {
-                if (info->progressRef != LUA_REFNIL) {
-                    luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
-                }
-                func.push();
-                info->progressRef = luaL_ref(L, LUA_REGISTRYINDEX);
-            }
-        };
-    } else {
-        handle["Error"] = "Rate limited or Shutdown";
+static void ToLowerInPlace(std::string& s) {
+    for (char& c : s) {
+        if (c >= 'A' && c <= 'Z') c += 32;
     }
-    return handle;
 }
 
 static std::string ToLower(std::string s) {
-    for (char &c : s) {
-        if (c >= 'A' && c <= 'Z') {
-            c += 32;
-        }
-    }
+    ToLowerInPlace(s);
     return s;
 }
 
-static void PushResult(HttpResult res) {
-    if (g_ShuttingDown.load()) return;
-    std::lock_guard<std::mutex> lock(g_Mutex);
-    g_Results.push_back(std::move(res));
+static void UnrefCallback(lua_State* L, int& ref) {
+    if (ref != LUA_REFNIL) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ref);
+        ref = LUA_REFNIL;
+    }
+}
+
+static void ReleasePendingRequest(const std::shared_ptr<PendingRequest>& info) {
+    if (!info) return;
+    UnrefCallback(info->L, info->callbackRef);
+    UnrefCallback(info->L, info->progressRef);
 }
 
 static int MakeRef(sol::object obj) {
@@ -118,20 +101,82 @@ static int MakeRef(sol::object obj) {
     return luaL_ref(L, LUA_REGISTRYINDEX);
 }
 
-static void ExtractHeaders(const httplib::Headers& source, std::map<std::string, std::vector<std::string>>& dest) {
-    for (const auto& [k, v] : source) {
-        dest[k].push_back(v);
+template<typename... Args>
+static void InvokeLuaCallback(lua_State* L, int ref, const char* errorContext, Args&&... args) {
+    if (ref == LUA_REFNIL) return;
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+    sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
+    if (cb.valid()) {
+        auto r = cb(std::forward<Args>(args)...);
+        if (!r.valid()) beammp_lua_errorf("%s: %s", errorContext, sol::error(r).what());
     }
 }
 
+static void PushResult(HttpResult res) {
+    if (ctx.shuttingDown.load()) return;
+    std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+    ctx.results.push_back(std::move(res));
+}
+
+static void ExtractHeaders(const httplib::Headers& source, std::map<std::string, std::vector<std::string>>& dest) {
+    for (const auto& [k, v] : source) dest[k].push_back(v);
+}
+
+static bool ParseUrl(const std::string& url, std::string& base, std::string& path) {
+    if (url.rfind("http://", 0) != 0 && url.rfind("https://", 0) != 0) return false;
+
+    auto pos = url.find("://");
+    if (pos == std::string::npos) return false;
+    
+    auto pathPos = url.find_first_of("/?#", pos + 3);
+    if (pathPos == std::string::npos) {
+        base = url;
+        path = "/";
+    } else {
+        base = url.substr(0, pathPos);
+        path = url.substr(pathPos);
+    }
+    
+    if (base.length() <= pos + 3) return false;
+
+    return true;
+}
+
+static bool IsValidWsUrl(const std::string& url) {
+    return url.rfind("ws://", 0) == 0 || url.rfind("wss://", 0) == 0;
+}
+
+// --- HTTP Implementation ---
+
+static sol::table CreateHandle(lua_State* L, std::shared_ptr<PendingRequest> info) {
+    sol::state_view lua(L);
+    sol::table handle = lua.create_table();
+    
+    if (info) {
+        handle["Cancel"] = [info]() {
+            info->abandoned.store(true);
+            ReleasePendingRequest(info);
+        };
+        handle["IsActive"] = [info]() { 
+            return !info->abandoned.load(); 
+        };
+        handle["OnProgress"] = [info](sol::object func) {
+            if (func.is<sol::function>()) {
+                UnrefCallback(info->L, info->progressRef);
+                info->progressRef = MakeRef(func);
+            }
+        };
+    } else {
+        handle["Error"] = "Rate limited or Shutdown";
+    }
+    return handle;
+}
+
 static bool SetupClient(const std::string& url, int connectTimeout, int readTimeout, bool verifySSL, std::unique_ptr<httplib::Client>& outClient, std::string& outPath) {
-    static const std::regex url_regex(R"(^(https?://[^/]+)(/.*)?$)", std::regex::extended);
-    std::smatch match;
-    if (!std::regex_match(url, match, url_regex)) return false;
+    std::string base;
+    if (!ParseUrl(url, base, outPath)) return false;
 
-    outClient = std::make_unique<httplib::Client>(match[1].str());
-    outPath = match[2].length() == 0 ? "/" : match[2].str();
-
+    outClient = std::make_unique<httplib::Client>(base);
     outClient->set_connection_timeout(connectTimeout, 0);
     outClient->set_read_timeout(readTimeout, 0);
     outClient->set_write_timeout(readTimeout, 0);
@@ -141,61 +186,63 @@ static bool SetupClient(const std::string& url, int connectTimeout, int readTime
 }
 
 static std::shared_ptr<PendingRequest> EnqueueTask(lua_State* L, int cbRef, int progRef, std::function<void(uint64_t, std::shared_ptr<PendingRequest>)> task) {
-    if (g_ShuttingDown.load() || !g_ThreadPool) {
-        if (cbRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, cbRef);
-        if (progRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, progRef);
+    if (ctx.shuttingDown.load() || !ctx.threadPool) {
+        UnrefCallback(L, cbRef);
+        UnrefCallback(L, progRef);
         return nullptr;
     }
+    
     {
-        std::lock_guard<std::mutex> lock(g_LimitMutex);
-        if (g_StateRequestCount[L] >= g_MaxRequestsPerPlugin) {
-            beammp_lua_warnf("Plugin reached HTTP request limit ({}). Request rejected.", g_MaxRequestsPerPlugin);
-            if (cbRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, cbRef);
-            if (progRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, progRef);
+        std::lock_guard<std::mutex> lock(ctx.limitMutex);
+        if (ctx.stateRequestCount[L] >= ctx.maxRequestsPerPlugin) {
+            beammp_lua_warnf("Plugin reached HTTP request limit ({}). Request rejected.", ctx.maxRequestsPerPlugin);
+            UnrefCallback(L, cbRef);
+            UnrefCallback(L, progRef);
             return nullptr;
         }
-        g_StateRequestCount[L]++;
+        ctx.stateRequestCount[L]++;
     }
 
-    uint64_t reqId = g_NextRequestId++;
+    uint64_t reqId = ctx.nextRequestId++;
     auto info = std::make_shared<PendingRequest>();
     info->L = L;
     info->callbackRef = cbRef;
     info->progressRef = progRef;
 
     {
-        std::lock_guard<std::mutex> lock(g_Mutex);
-        g_PendingRequests[reqId] = info;
+        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        ctx.pendingRequests[reqId] = info;
     }
 
-    g_ThreadPool->enqueue([L, reqId, info, task = std::move(task)]() {
+    ctx.threadPool->enqueue([reqId, info, task = std::move(task)]() {
         task(reqId, info);
-        
-        std::lock_guard<std::mutex> lock(g_LimitMutex);
-        g_StateRequestCount[L]--;
     });
 
     return info;
 }
 
 static sol::table Dispatch(std::string method, std::string url, std::map<std::string, std::string> headers,
-                        std::string body, int connectTimeout, int readTimeout, bool verifySSL, lua_State* L, int cbRef, int progRef) {
+                           std::string body, int connectTimeout, int readTimeout, bool verifySSL, lua_State* L, int cbRef, int progRef) {
     
-    auto info = EnqueueTask(L, cbRef, progRef, [=, b = std::move(body), hMap = std::move(headers)]
-                                   (uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
+    auto info = EnqueueTask(L, cbRef, progRef,[=, b = std::move(body), hMap = std::move(headers)]
+                                               (uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
+        
         if (!SetupClient(url, connectTimeout, readTimeout, verifySSL, cli, path)) {
-            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Invalid URL"; PushResult(std::move(res)); return;
+            HttpResult res{HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}};
+            PushResult(std::move(res)); 
+            return;
         }
 
         httplib::Headers h;
         bool hasUA = false;
         std::string cType = "application/json";
         
-        for (auto const&[key, val] : hMap) {
-            if (ToLower(key) == "user-agent") hasUA = true;
-            if (ToLower(key) == "content-type") {
+        for (const auto&[key, val] : hMap) {
+            std::string kLower = ToLower(key);
+            if (kLower == "user-agent") hasUA = true;
+            if (kLower == "content-type") {
                 cType = val;
                 if (method == "POST" || method == "PUT" || method == "PATCH") continue; 
             }
@@ -205,20 +252,21 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
 
         auto lastProg = std::chrono::steady_clock::now();
         auto prog_func = [&](uint64_t len, uint64_t total) {
-            if (g_ShuttingDown.load() || pReq->abandoned.load()) return false; 
+            if (ctx.shuttingDown.load() || pReq->abandoned.load()) return false; 
+            
             if (pReq->progressRef != LUA_REFNIL) {
                 auto now = std::chrono::steady_clock::now();
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProg).count() > 100 || len == total) {
-                    HttpResult res; res.type = HttpResult::Type::PROGRESS; res.requestId = reqId;
-                    res.current = static_cast<long long>(len); res.total = static_cast<long long>(total);
-                    PushResult(std::move(res)); lastProg = now;
+                    HttpResult res{HttpResult::Type::PROGRESS, reqId, static_cast<long long>(len), static_cast<long long>(total), 0, "", {}};
+                    PushResult(std::move(res)); 
+                    lastProg = now;
                 }
             }
             return true;
         };
 
         httplib::Result response;
-        if (method == "POST")        response = cli->Post(path.c_str(), h, b, cType.c_str(), prog_func);
+        if      (method == "POST")   response = cli->Post(path.c_str(), h, b, cType.c_str(), prog_func);
         else if (method == "PUT")    response = cli->Put(path.c_str(), h, b, cType.c_str(), prog_func);
         else if (method == "PATCH")  response = cli->Patch(path.c_str(), h, b, cType.c_str(), prog_func);
         else if (method == "DELETE") response = cli->Delete(path.c_str(), h, prog_func);
@@ -227,14 +275,12 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
 
         if (pReq->abandoned.load()) return;
 
-        HttpResult res;
-        res.type = HttpResult::Type::COMPLETE; res.requestId = reqId;
+        HttpResult res{HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "", {}};
         if (response) {
             res.status = response->status;
             res.body = std::move(response->body);
             ExtractHeaders(response->headers, res.headers);
         } else {
-            res.status = 0;
             res.body = "Network Error: " + httplib::to_string(response.error());
         }
         PushResult(std::move(res));
@@ -243,21 +289,24 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
     return CreateHandle(L, info);
 }
 
+// --- AsyncHttpProxy ---
+
 AsyncHttpProxy::AsyncHttpProxy(std::string baseUrl, sol::table defaultHeaders) : mBaseUrl(std::move(baseUrl)) {
-    if (defaultHeaders != sol::lua_nil && defaultHeaders.valid()) {
-        for (auto const& pair : defaultHeaders) {
+    SetDefaultHeaders(defaultHeaders);
+}
+
+void AsyncHttpProxy::SetConnectTimeout(int seconds) { mConnectTimeoutSeconds = seconds; }
+void AsyncHttpProxy::SetReadTimeout(int seconds) { mReadTimeoutSeconds = seconds; }
+void AsyncHttpProxy::VerifySSL(bool verify) { mVerifySSL = verify; }
+
+void AsyncHttpProxy::SetDefaultHeaders(sol::table headers) {
+    mDefaultHeaders.clear();
+    if (headers != sol::lua_nil && headers.valid()) {
+        for (auto const& pair : headers) {
             if (pair.first.is<std::string>() && pair.second.is<std::string>())
                 mDefaultHeaders[pair.first.as<std::string>()] = pair.second.as<std::string>();
         }
     }
-}
-
-void AsyncHttpProxy::SetConnectTimeout(int seconds) { 
-    mConnectTimeoutSeconds = seconds; 
-}
-
-void AsyncHttpProxy::SetReadTimeout(int seconds) { 
-    mReadTimeoutSeconds = seconds; 
 }
 
 std::map<std::string, std::string> AsyncHttpProxy::PrepareHeaders(sol::object overrides) {
@@ -273,8 +322,11 @@ std::map<std::string, std::string> AsyncHttpProxy::PrepareHeaders(sol::object ov
 
 void AsyncHttpProxy::PreparePayload(sol::object data, sol::object overrides, std::string& outBody, std::map<std::string, std::string>& outHeaders) {
     outHeaders = PrepareHeaders(overrides);
+    
     bool hasCT = false;
-    for (const auto& [k, v] : outHeaders) if (ToLower(k) == "content-type") hasCT = true;
+    for (const auto& [k, v] : outHeaders) {
+        if (ToLower(k) == "content-type") hasCT = true;
+    }
 
     if (data.is<sol::table>()) {
         outBody = LuaAPI::MP::JsonEncode(data.as<sol::table>());
@@ -316,24 +368,25 @@ sol::table AsyncHttpProxy::Head(std::string ep, sol::object h, sol::function cb)
 
 sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::string filePath, sol::object headers, sol::function cb) {
     auto hMap = PrepareHeaders(headers);
-    std::string url = mBaseUrl + ep;
-    int connectTimeout = mConnectTimeoutSeconds;
-    int readTimeout = mReadTimeoutSeconds;
-    bool verify = mVerifySSL;
-
-    auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL, [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
+    auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), LUA_REFNIL, 
+    [this, ep, fieldName, filePath, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) mutable {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) {
-            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Invalid URL"; PushResult(std::move(res)); return;
+        
+        if (!SetupClient(mBaseUrl + ep, mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cli, path)) {
+            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}}); 
+            return;
         }
+        
         if (!fs::exists(filePath)) {
-            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "File not found"; PushResult(std::move(res)); return;
+            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "File not found", {}}); 
+            return;
         }
 
         auto file_stream = std::make_shared<std::ifstream>(filePath, std::ios::binary);
         if (!file_stream || !file_stream->is_open()) {
-            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Could not open file"; PushResult(std::move(res)); return;
+            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Could not open file", {}}); 
+            return;
         }
 
         httplib::UploadFormDataItems regular_items; 
@@ -362,23 +415,22 @@ sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::
 
         httplib::Headers finalH;
         bool hasUA = false;
-        for (auto const& [key, val] : hMap) {
+        for (const auto& [key, val] : hMap) {
             std::string kLower = ToLower(key);
             if (kLower == "user-agent") hasUA = true;
-            if (kLower == "content-type") continue; // httplib generates this for us in PostFile
+            if (kLower == "content-type") continue; 
             finalH.emplace(key, val);
         }
         if (!hasUA) finalH.emplace("User-Agent", DEFAULT_USER_AGENT);
         
         auto response = cli->Post(path.c_str(), finalH, regular_items, provider_items);
-
-        HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId;
+        HttpResult res{HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "", {}};
+        
         if (response) {
             res.status = response->status;
             res.body = std::move(response->body);
             ExtractHeaders(response->headers, res.headers);
         } else {
-            res.status = 0;
             res.body = "Upload Failed: " + httplib::to_string(response.error());
         }
         PushResult(std::move(res));
@@ -388,44 +440,43 @@ sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::
 }
 
 sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::function cb, sol::object prog) {
-    std::string url = mBaseUrl + ep;
-    int connectTimeout = mConnectTimeoutSeconds;
-    int readTimeout = mReadTimeoutSeconds;
-
-    bool verify = mVerifySSL;
     auto hMap = PrepareHeaders(sol::lua_nil);
-
-    auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog), [=, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) {
+    auto info = EnqueueTask(cb.lua_state(), MakeRef(cb), MakeRef(prog), 
+    [this, ep, savePath, hMap = std::move(hMap)](uint64_t reqId, std::shared_ptr<PendingRequest> pReq) mutable {
         std::string path;
         std::unique_ptr<httplib::Client> cli;
-        if (!SetupClient(url, connectTimeout, readTimeout, verify, cli, path)) {
-            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Invalid URL"; PushResult(std::move(res)); return;
+        
+        if (!SetupClient(mBaseUrl + ep, mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cli, path)) {
+            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}}); 
+            return;
         }
         
         std::ofstream ofs(savePath, std::ios::binary);
         if (!ofs) {
-            HttpResult res; res.type = HttpResult::Type::COMPLETE; res.requestId = reqId; res.status = 0; res.body = "Could not open file for writing"; PushResult(std::move(res)); return;
+            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Could not open file for writing", {}}); 
+            return;
         }
         
         httplib::Headers finalH;
         bool hasUA = false;
-        for (auto const&[key, val] : hMap) {
+        for (const auto&[key, val] : hMap) {
             if (ToLower(key) == "user-agent") hasUA = true;
             finalH.emplace(key, val);
         }
         if (!hasUA) finalH.emplace("User-Agent", DEFAULT_USER_AGENT);
 
-        int status_code = 0; std::map<std::string, std::vector<std::string>> resHeaders;
+        int status_code = 0; 
+        std::map<std::string, std::vector<std::string>> resHeaders;
         auto lastProg = std::chrono::steady_clock::now();
         
         auto res = cli->Get(path.c_str(), finalH, 
             [&](const httplib::Response &r) { 
                 status_code = r.status; 
                 ExtractHeaders(r.headers, resHeaders);
-                return !g_ShuttingDown.load() && !pReq->abandoned.load(); 
+                return !ctx.shuttingDown.load() && !pReq->abandoned.load(); 
             },
             [&](const char *b, size_t l) { 
-                if (g_ShuttingDown.load() || pReq->abandoned.load()) return false; 
+                if (ctx.shuttingDown.load() || pReq->abandoned.load()) return false; 
                 ofs.write(b, static_cast<std::streamsize>(l)); 
                 return true; 
             },
@@ -433,9 +484,8 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
                 if (pReq->progressRef != LUA_REFNIL && !pReq->abandoned.load()) {
                     auto now = std::chrono::steady_clock::now();
                     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProg).count() > 100 || len == total) {
-                        HttpResult pres; pres.type = HttpResult::Type::PROGRESS; pres.requestId = reqId;
-                        pres.current = static_cast<long long>(len); pres.total = static_cast<long long>(total);
-                        PushResult(std::move(pres)); lastProg = now;
+                        PushResult({HttpResult::Type::PROGRESS, reqId, static_cast<long long>(len), static_cast<long long>(total), 0, "", {}}); 
+                        lastProg = now;
                     }
                 }
                 return true;
@@ -443,26 +493,16 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
         );
         ofs.close();
         
-        HttpResult fres; fres.type = HttpResult::Type::COMPLETE; fres.requestId = reqId;
-        fres.status = status_code;
+        HttpResult fres{HttpResult::Type::COMPLETE, reqId, 0, 0, status_code, "", std::move(resHeaders)};
         fres.body = res ? "Success" : "Download Failed: " + httplib::to_string(res.error());
-        fres.headers = resHeaders;
         PushResult(std::move(fres));
     });
 
     return CreateHandle(cb.lua_state(), info);
 }
 
-void AsyncHttpProxy::SetDefaultHeaders(sol::table headers) {
-    mDefaultHeaders.clear();
-    if (headers != sol::lua_nil && headers.valid()) {
-        for (auto const& pair : headers) {
-            if (pair.first.is<std::string>() && pair.second.is<std::string>()) {
-                mDefaultHeaders[pair.first.as<std::string>()] = pair.second.as<std::string>();
-            }
-        }
-    }
-}
+
+// --- AsyncWebSocket ---
 
 AsyncWebSocket::AsyncWebSocket(std::string url, sol::table headers, lua_State* state) 
     : mUrl(std::move(url)), L(state) {
@@ -477,14 +517,39 @@ AsyncWebSocket::AsyncWebSocket(std::string url, sol::table headers, lua_State* s
 
 AsyncWebSocket::~AsyncWebSocket() {
     Abandon();
-    if (mThread.joinable()) {
-        mThread.join();
-    }
+    if (mThread.joinable()) mThread.join();
 }
 
-void AsyncWebSocket::VerifySSL(bool verify) {
-    mVerifySSL = verify;
+sol::object AsyncWebSocket::Create(sol::this_state s, std::string url, sol::object headers) {
+    lua_State* L = s.lua_state();
+
+    {
+        std::lock_guard<std::mutex> lock(ctx.limitMutex);
+        if (ctx.currentWsGlobal >= ctx.maxWsGlobal || ctx.stateWsCount[L] >= ctx.maxWsPerPlugin) {
+            beammp_lua_warnf("WebSocket limit reached (Global: {}/{}, Plugin: {}/{}).", 
+                ctx.currentWsGlobal, ctx.maxWsGlobal, ctx.stateWsCount[L], ctx.maxWsPerPlugin);
+            return sol::make_object(s, sol::lua_nil);
+        }
+        ctx.stateWsCount[L]++;
+        ctx.currentWsGlobal++;
+    }
+
+    if (!IsValidWsUrl(url)) {
+        beammp_lua_warnf("Invalid WebSocket URL: {}. Use 'ws://' or 'wss://'.", url);
+        std::lock_guard<std::mutex> lock(ctx.limitMutex);
+        ctx.stateWsCount[L]--;
+        ctx.currentWsGlobal--;
+        return sol::make_object(s, sol::lua_nil);
+    }
+
+    auto ws = std::make_shared<AsyncWebSocket>(url, headers.is<sol::table>() ? headers.as<sol::table>() : sol::table(), L);
+    
+    std::lock_guard<std::mutex> lock(ctx.wsMutex);
+    ctx.webSockets.push_back(ws);
+    return sol::make_object(s, ws);
 }
+
+void AsyncWebSocket::VerifySSL(bool verify) { mVerifySSL = verify; }
 
 void AsyncWebSocket::Connect() {
     if (mIsRunning.exchange(true)) return;
@@ -497,11 +562,9 @@ void AsyncWebSocket::Connect() {
             if (ToLower(k) == "user-agent") hasUA = true;
             h.emplace(k, v);
         }
-
         if (!hasUA) h.emplace("User-Agent", DEFAULT_USER_AGENT);
 
         httplib::ws::WebSocketClient client(mUrl, h);
-
         client.enable_server_certificate_verification(mVerifySSL);
         
         {
@@ -522,10 +585,7 @@ void AsyncWebSocket::Connect() {
 
         std::string msg;
         while (mIsRunning && !mAbandoned) {
-            auto res = client.read(msg);
-            if (res == httplib::ws::ReadResult::Fail) {
-                break;
-            }
+            if (client.read(msg) == httplib::ws::ReadResult::Fail) break;
             PushEvent({WSEventType::MESSAGE, msg, 0});
             msg.clear();
         }
@@ -540,17 +600,13 @@ void AsyncWebSocket::Connect() {
 
 void AsyncWebSocket::Send(const std::string& data) {
     std::lock_guard<std::mutex> lock(mClientMutex);
-    if (mClient && mClient->is_open()) {
-        mClient->send(data);
-    }
+    if (mClient && mClient->is_open()) mClient->send(data);
 }
 
 void AsyncWebSocket::Close() {
     mIsRunning = false;
     std::lock_guard<std::mutex> lock(mClientMutex);
-    if (mClient && mClient->is_open()) {
-        mClient->close();
-    }
+    if (mClient && mClient->is_open()) mClient->close();
 }
 
 void AsyncWebSocket::PushEvent(WSEvent ev) {
@@ -559,22 +615,10 @@ void AsyncWebSocket::PushEvent(WSEvent ev) {
     mEvents.push(std::move(ev));
 }
 
-void AsyncWebSocket::OnOpen(sol::object cb) {
-    if (mOnOpenRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnOpenRef);
-    mOnOpenRef = MakeRef(cb);
-}
-void AsyncWebSocket::OnMessage(sol::object cb) {
-    if (mOnMessageRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnMessageRef);
-    mOnMessageRef = MakeRef(cb);
-}
-void AsyncWebSocket::OnClose(sol::object cb) {
-    if (mOnCloseRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnCloseRef);
-    mOnCloseRef = MakeRef(cb);
-}
-void AsyncWebSocket::OnError(sol::object cb) {
-    if (mOnErrorRef != LUA_REFNIL) luaL_unref(L, LUA_REGISTRYINDEX, mOnErrorRef);
-    mOnErrorRef = MakeRef(cb);
-}
+void AsyncWebSocket::OnOpen(sol::object cb)    { UnrefCallback(L, mOnOpenRef);    mOnOpenRef = MakeRef(cb); }
+void AsyncWebSocket::OnMessage(sol::object cb) { UnrefCallback(L, mOnMessageRef); mOnMessageRef = MakeRef(cb); }
+void AsyncWebSocket::OnClose(sol::object cb)   { UnrefCallback(L, mOnCloseRef);   mOnCloseRef = MakeRef(cb); }
+void AsyncWebSocket::OnError(sol::object cb)   { UnrefCallback(L, mOnErrorRef);   mOnErrorRef = MakeRef(cb); }
 
 void AsyncWebSocket::ProcessEvents() {
     if (mAbandoned) return;
@@ -585,32 +629,26 @@ void AsyncWebSocket::ProcessEvents() {
         std::swap(events, mEvents);
     }
 
-    while (!events.empty()) {
+    while (!events.empty() && !mAbandoned) {
         auto ev = events.front();
         events.pop();
 
-        if (mAbandoned) break; 
-
         try {
-            if (ev.type == WSEventType::OPEN && mOnOpenRef != LUA_REFNIL) {
-                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnOpenRef);
-                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
-                if (cb.valid()) { auto r = cb(); if (!r.valid()) beammp_lua_errorf("WS OnOpen Error: {}", sol::error(r).what()); }
-            }
-            else if (ev.type == WSEventType::MESSAGE && mOnMessageRef != LUA_REFNIL) {
-                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnMessageRef);
-                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
-                if (cb.valid()) { auto r = cb(ev.payload); if (!r.valid()) beammp_lua_errorf("WS OnMessage Error: {}", sol::error(r).what()); }
-            }
-            else if (ev.type == WSEventType::CLOSE && mOnCloseRef != LUA_REFNIL) {
-                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnCloseRef);
-                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
-                if (cb.valid()) { auto r = cb(ev.closeCode, ev.payload); if (!r.valid()) beammp_lua_errorf("WS OnClose Error: {}", sol::error(r).what()); }
-            }
-            else if (ev.type == WSEventType::ERROR_EVENT && mOnErrorRef != LUA_REFNIL) {
-                lua_rawgeti(L, LUA_REGISTRYINDEX, mOnErrorRef);
-                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
-                if (cb.valid()) { auto r = cb(ev.payload); if (!r.valid()) beammp_lua_errorf("WS OnError Error: {}", sol::error(r).what()); }
+            switch (ev.type) {
+                case WSEventType::OPEN:
+                    InvokeLuaCallback(L, mOnOpenRef, "WS OnOpen Error");
+                    break;
+                case WSEventType::MESSAGE:
+                    InvokeLuaCallback(L, mOnMessageRef, "WS OnMessage Error", ev.payload);
+                    break;
+                case WSEventType::CLOSE:
+                    InvokeLuaCallback(L, mOnCloseRef, "WS OnClose Error", ev.closeCode, ev.payload);
+                    break;
+                case WSEventType::ERROR_EVENT:
+                    InvokeLuaCallback(L, mOnErrorRef, "WS OnError Error", ev.payload);
+                    break;
+                default:
+                    break; 
             }
         } catch (const std::exception& e) {
             beammp_lua_errorf("WebSocket Exception: {}", e.what());
@@ -622,21 +660,21 @@ void AsyncWebSocket::Abandon() {
     if (mAbandoned.exchange(true)) return;
     
     {
-        std::lock_guard<std::mutex> lock(g_LimitMutex);
-        g_StateWsCount[L]--;
-        if (g_StateWsCount[L] <= 0) g_StateWsCount.erase(L);
-        
-        g_CurrentWsGlobal--;
+        std::lock_guard<std::mutex> lock(ctx.limitMutex);
+        ctx.stateWsCount[L]--;
+        if (ctx.stateWsCount[L] <= 0) ctx.stateWsCount.erase(L);
+        ctx.currentWsGlobal--;
     }
 
-    mAbandoned = true;
     Close();
-
-    if (mOnOpenRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnOpenRef); mOnOpenRef = LUA_REFNIL; }
-    if (mOnMessageRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnMessageRef); mOnMessageRef = LUA_REFNIL; }
-    if (mOnCloseRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnCloseRef); mOnCloseRef = LUA_REFNIL; }
-    if (mOnErrorRef != LUA_REFNIL) { luaL_unref(L, LUA_REGISTRYINDEX, mOnErrorRef); mOnErrorRef = LUA_REFNIL; }
+    
+    UnrefCallback(L, mOnOpenRef);
+    UnrefCallback(L, mOnMessageRef);
+    UnrefCallback(L, mOnCloseRef);
+    UnrefCallback(L, mOnErrorRef);
 }
+
+// --- Lifecycle & Lua Bindings ---
 
 void RegisterBindings(sol::state_view& lua) {
     lua.new_usertype<AsyncHttpProxy>("AsyncHttp", sol::no_constructor,
@@ -668,142 +706,88 @@ void RegisterBindings(sol::state_view& lua) {
         "OnError", &AsyncWebSocket::OnError
     );
 
-    lua["AsyncWebSocket"]["new"] = [](sol::this_state s, std::string url, sol::object headers) -> sol::object {
-        lua_State* L = s.lua_state();
-        {
-            std::lock_guard<std::mutex> lock(g_LimitMutex);
-            
-            if (g_CurrentWsGlobal >= g_MaxWsGlobal) {
-                beammp_lua_warnf("Server-wide WebSocket limit reached ({}).", g_MaxWsGlobal);
-                return sol::make_object(s, sol::lua_nil);
-            }
-
-            if (g_StateWsCount[L] >= g_MaxWsPerPlugin) {
-                beammp_lua_warnf("Plugin reached WebSocket limit ({}).", g_MaxWsPerPlugin);
-                return sol::make_object(s, sol::lua_nil);
-            }
-
-            g_StateWsCount[L]++;
-            g_CurrentWsGlobal++;
-        }
-
-        sol::table h;
-        
-        if (headers.is<sol::table>()) {
-            h = headers.as<sol::table>();
-        }
-
-        auto ws = std::make_shared<AsyncWebSocket>(url, h, L);
-        
-        {
-            std::lock_guard<std::mutex> lock(g_WsMutex);
-            g_WebSockets.push_back(ws);
-        }
-        
-        return sol::make_object(s, ws);
-    };
+    lua["AsyncWebSocket"]["new"] = &AsyncWebSocket::Create;
 }
 
 void Update(sol::state_view& lua) {
     lua_State* L = lua.lua_state();
     std::deque<HttpResult> toProcess;
     
+    // 1. Gather relevant results safely
     {
-        std::lock_guard<std::mutex> httpLock(g_Mutex);
-        auto it = g_Results.begin();
-        while (it != g_Results.end()) {
-            auto reqIt = g_PendingRequests.find(it->requestId);
-            if (reqIt == g_PendingRequests.end()) {
-                it = g_Results.erase(it);
+        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        auto it = ctx.results.begin();
+        while (it != ctx.results.end()) {
+            auto reqIt = ctx.pendingRequests.find(it->requestId);
+            if (reqIt == ctx.pendingRequests.end()) {
+                it = ctx.results.erase(it);
             } else if (reqIt->second->L == L) {
                 toProcess.push_back(std::move(*it));
-                it = g_Results.erase(it);
+                it = ctx.results.erase(it);
             } else {
                 ++it;
             }
         }
     }
 
+    // 2. Dispatch Lua callbacks
     for (const auto& res : toProcess) {
         std::shared_ptr<PendingRequest> info;
         {
-            std::lock_guard<std::mutex> httpLock(g_Mutex);
-            if (g_PendingRequests.count(res.requestId)) info = g_PendingRequests[res.requestId];
+            std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+            auto it = ctx.pendingRequests.find(res.requestId);
+            if (it != ctx.pendingRequests.end()) info = it->second;
         }
 
         if (!info || info->abandoned.load()) {
             if (info) {
-                if (info->callbackRef != LUA_REFNIL) {
-                    luaL_unref(L, LUA_REGISTRYINDEX, info->callbackRef);
-                    info->callbackRef = LUA_REFNIL;
-                }
-                if (info->progressRef != LUA_REFNIL) {
-                    luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
-                    info->progressRef = LUA_REFNIL;
-                }
+                ReleasePendingRequest(info);
+
+                std::lock_guard<std::mutex> lock(ctx.limitMutex);
+                ctx.stateRequestCount[L]--;
             }
-            std::lock_guard<std::mutex> httpLock(g_Mutex);
-            g_PendingRequests.erase(res.requestId);
+            std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+            ctx.pendingRequests.erase(res.requestId);
             continue; 
         }
 
         if (res.type == HttpResult::Type::PROGRESS) {
-            if (info->progressRef != LUA_REFNIL) {
-                lua_rawgeti(L, LUA_REGISTRYINDEX, info->progressRef);
-                sol::protected_function prog = sol::stack::pop<sol::protected_function>(L);
-                if (prog.valid()) {
-                    auto r = prog(res.current, res.total);
-                    if (!r.valid()) beammp_lua_errorf("AsyncHttp Progress Error: {}", sol::error(r).what());
-                }
-            }
+            InvokeLuaCallback(L, info->progressRef, "AsyncHttp Progress Error", res.current, res.total);
         } else {
             if (info->callbackRef != LUA_REFNIL) {
-                lua_rawgeti(L, LUA_REGISTRYINDEX, info->callbackRef);
-                sol::protected_function cb = sol::stack::pop<sol::protected_function>(L);
-                if (cb.valid()) {
-                    sol::table luaHeaders = lua.create_table();
-                    for (auto const& [name, values] : res.headers) {
-                        if (values.empty()) continue;
-
-                        std::string key = ToLower(name); 
-
-                        if (values.size() > 1 || key == "set-cookie") {
-                            luaHeaders[key] = sol::as_table(values);
-                        } else {
-                            luaHeaders[key] = values[0];
-                        }
-                    }
-                    auto r = cb(res.status, res.body, luaHeaders);
-                    if (!r.valid()) beammp_lua_errorf("AsyncHttp Callback Error: {}", sol::error(r).what());
+                sol::table luaHeaders = lua.create_table();
+                for (auto const& [name, values] : res.headers) {
+                    if (values.empty()) continue;
+                    std::string key = ToLower(name); 
+                    if (values.size() > 1 || key == "set-cookie") luaHeaders[key] = sol::as_table(values);
+                    else luaHeaders[key] = values[0];
                 }
+                InvokeLuaCallback(L, info->callbackRef, "AsyncHttp Callback Error", res.status, res.body, luaHeaders);
             }
             
-            if (info->callbackRef != LUA_REFNIL) {
-                luaL_unref(L, LUA_REGISTRYINDEX, info->callbackRef);
-                info->callbackRef = LUA_REFNIL;
-            }
-            if (info->progressRef != LUA_REFNIL) {
-                luaL_unref(L, LUA_REGISTRYINDEX, info->progressRef);
-                info->progressRef = LUA_REFNIL;
+            ReleasePendingRequest(info);
+            
+            {
+                std::lock_guard<std::mutex> lock(ctx.limitMutex);
+                ctx.stateRequestCount[L]--;
             }
             
-            std::lock_guard<std::mutex> httpLock(g_Mutex);
-            g_PendingRequests.erase(res.requestId);
+            std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+            ctx.pendingRequests.erase(res.requestId);
         }
     }
 
+    // 3. Update WebSockets
     std::vector<std::shared_ptr<AsyncWebSocket>> websocketsToUpdate;
     {
-        std::lock_guard<std::mutex> wsLock(g_WsMutex);
-        auto wsIt = g_WebSockets.begin();
-        while (wsIt != g_WebSockets.end()) {
+        std::lock_guard<std::mutex> wsLock(ctx.wsMutex);
+        auto wsIt = ctx.webSockets.begin();
+        while (wsIt != ctx.webSockets.end()) {
             if (auto ws = wsIt->lock()) {
-                if (ws->GetLuaState() == L) {
-                    websocketsToUpdate.push_back(ws);
-                }
+                if (ws->GetLuaState() == L) websocketsToUpdate.push_back(ws);
                 ++wsIt;
             } else {
-                wsIt = g_WebSockets.erase(wsIt);
+                wsIt = ctx.webSockets.erase(wsIt);
             }
         }
     }
@@ -814,74 +798,76 @@ void Update(sol::state_view& lua) {
 }
 
 void CleanupState(lua_State* L) {
-    std::lock_guard<std::mutex> httpLock(g_Mutex);
-    for (auto it = g_PendingRequests.begin(); it != g_PendingRequests.end(); ) {
-        if (it->second->L == L) {
-            it->second->abandoned.store(true);
-            
-            if (it->second->callbackRef != LUA_REFNIL) {
-                luaL_unref(L, LUA_REGISTRYINDEX, it->second->callbackRef);
-                it->second->callbackRef = LUA_REFNIL;
+    // Purge pending HTTP requests
+    {
+        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        for (auto it = ctx.pendingRequests.begin(); it != ctx.pendingRequests.end(); ) {
+            if (it->second->L == L) {
+                it->second->abandoned.store(true);
+                ReleasePendingRequest(it->second);
+                it = ctx.pendingRequests.erase(it);
+            } else {
+                ++it;
             }
-            if (it->second->progressRef != LUA_REFNIL) {
-                luaL_unref(L, LUA_REGISTRYINDEX, it->second->progressRef);
-                it->second->progressRef = LUA_REFNIL;
-            }
-            
-            it = g_PendingRequests.erase(it);
-        } else {
-            ++it;
         }
     }
 
-    std::lock_guard<std::mutex> wsLock(g_WsMutex);
-    auto wsIt = g_WebSockets.begin();
-    while (wsIt != g_WebSockets.end()) {
-        if (auto ws = wsIt->lock()) {
-            if (ws->GetLuaState() == L) {
-                ws->Abandon();
-                wsIt = g_WebSockets.erase(wsIt);
+    // Purge attached WebSockets
+    {
+        std::lock_guard<std::mutex> wsLock(ctx.wsMutex);
+        auto wsIt = ctx.webSockets.begin();
+        while (wsIt != ctx.webSockets.end()) {
+            if (auto ws = wsIt->lock()) {
+                if (ws->GetLuaState() == L) {
+                    ws->Abandon();
+                    wsIt = ctx.webSockets.erase(wsIt);
+                } else {
+                    ++wsIt;
+                }
             } else {
-                ++wsIt;
+                wsIt = ctx.webSockets.erase(wsIt);
             }
-        } else {
-            wsIt = g_WebSockets.erase(wsIt);
         }
     }
 }
 
 void Init() { 
-    g_ShuttingDown.store(false); 
+    ctx.shuttingDown.store(false); 
     int cores = static_cast<int>(std::thread::hardware_concurrency());
     if (cores <= 0) cores = 4;
 
+    ctx.actualPoolSize = std::clamp(cores * 4, 16, 128);
+    ctx.maxRequestsPerPlugin = std::max(ctx.actualPoolSize / 2, 5);
+    ctx.threadPool = std::make_unique<httplib::ThreadPool>(ctx.actualPoolSize);
 
-    g_ActualPoolSize = std::clamp(cores * 4, 16, 128);
-    g_MaxRequestsPerPlugin = std::max(g_ActualPoolSize / 2, 5);
-    g_ThreadPool = std::make_unique<httplib::ThreadPool>(g_ActualPoolSize);
-
-    g_MaxWsGlobal = std::max(cores * 8, 32);
-    g_MaxWsPerPlugin = std::max(g_MaxWsGlobal / 4, 4);
+    ctx.maxWsGlobal = std::max(cores * 8, 32);
+    ctx.maxWsPerPlugin = std::max(ctx.maxWsGlobal / 4, 4);
 
     beammp_infof("AsyncHttp initialized. HTTP Pool: {} ({} per plugin). WS Quota: {} ({} per plugin).",
-                 g_ActualPoolSize, g_MaxRequestsPerPlugin, g_MaxWsGlobal, g_MaxWsPerPlugin);
+                 ctx.actualPoolSize, ctx.maxRequestsPerPlugin, ctx.maxWsGlobal, ctx.maxWsPerPlugin);
 }
 
 void Shutdown() { 
-    g_ShuttingDown.store(true); 
-    if (g_ThreadPool) g_ThreadPool->shutdown(); 
-    g_ThreadPool.reset(); 
-    std::lock_guard<std::mutex> httpLock(g_Mutex);
-    g_PendingRequests.clear();
-    g_Results.clear();
-
-    std::lock_guard<std::mutex> wsLock(g_WsMutex);
-    for (auto& weak_ws : g_WebSockets) {
-        if (auto ws = weak_ws.lock()) {
-            ws->Abandon();
-        }
+    ctx.shuttingDown.store(true); 
+    
+    if (ctx.threadPool) {
+        ctx.threadPool->shutdown(); 
+        ctx.threadPool.reset(); 
     }
-    g_WebSockets.clear();
+    
+    {
+        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        ctx.pendingRequests.clear();
+        ctx.results.clear();
+    }
+
+    {
+        std::lock_guard<std::mutex> wsLock(ctx.wsMutex);
+        for (auto& weak_ws : ctx.webSockets) {
+            if (auto ws = weak_ws.lock()) ws->Abandon();
+        }
+        ctx.webSockets.clear();
+    }
 }
 
 } // namespace HttpAsync
