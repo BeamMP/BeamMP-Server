@@ -42,23 +42,31 @@ struct PendingRequest {
     std::atomic<bool> abandoned{false};
 };
 
-// --- Centralized Global Context ---
-static struct GlobalContext {
+struct PluginContext {
     std::deque<HttpResult> results;
     std::mutex resultsMutex;
     
+    std::vector<std::weak_ptr<AsyncWebSocket>> webSockets;
+    std::mutex wsMutex;
+};
+
+// --- Centralized Global Context ---
+static struct GlobalContext {
     std::atomic<bool> shuttingDown{false};
     std::unique_ptr<httplib::ThreadPool> threadPool;
     std::atomic<uint64_t> nextRequestId{1};
     
     std::map<uint64_t, std::shared_ptr<PendingRequest>> pendingRequests;
+    std::mutex pendingRequestsMutex;
+    
     std::map<lua_State*, int> stateRequestCount;
     std::mutex limitMutex;
     
-    std::vector<std::weak_ptr<AsyncWebSocket>> webSockets;
-    std::mutex wsMutex;
     std::map<lua_State*, int> stateWsCount;
     
+    std::map<lua_State*, std::shared_ptr<PluginContext>> pluginContexts;
+    std::mutex pluginContextsMutex;
+
     int actualPoolSize = 16;
     int maxRequestsPerPlugin = 8;
     int maxWsPerPlugin = 4;
@@ -69,6 +77,18 @@ static struct GlobalContext {
 static const char* DEFAULT_USER_AGENT = "BeamMP-Server/1.0";
 
 // --- Utilities ---
+
+static std::shared_ptr<PluginContext> GetPluginContext(lua_State* L) {
+    std::lock_guard<std::mutex> lock(ctx.pluginContextsMutex);
+    auto it = ctx.pluginContexts.find(L);
+    if (it == ctx.pluginContexts.end()) {
+        auto newCtx = std::make_shared<PluginContext>();
+        ctx.pluginContexts[L] = newCtx;
+        return newCtx;
+    }
+    return it->second;
+}
+
 
 static void ToLowerInPlace(std::string& s) {
     for (char& c : s) {
@@ -112,10 +132,12 @@ static void InvokeLuaCallback(lua_State* L, int ref, const char* errorContext, A
     }
 }
 
-static void PushResult(HttpResult res) {
+static void PushResult(lua_State* L, HttpResult res) {
     if (ctx.shuttingDown.load()) return;
-    std::lock_guard<std::mutex> lock(ctx.resultsMutex);
-    ctx.results.push_back(std::move(res));
+    auto pCtx = GetPluginContext(L);
+    
+    std::lock_guard<std::mutex> lock(pCtx->resultsMutex);
+    pCtx->results.push_back(std::move(res));
 }
 
 static void ExtractHeaders(const httplib::Headers& source, std::map<std::string, std::vector<std::string>>& dest) {
@@ -210,7 +232,7 @@ static std::shared_ptr<PendingRequest> EnqueueTask(lua_State* L, int cbRef, int 
     info->progressRef = progRef;
 
     {
-        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        std::lock_guard<std::mutex> lock(ctx.pendingRequestsMutex);
         ctx.pendingRequests[reqId] = info;
     }
 
@@ -231,7 +253,7 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
         
         if (!SetupClient(url, connectTimeout, readTimeout, verifySSL, cli, path)) {
             HttpResult res{HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}};
-            PushResult(std::move(res)); 
+            PushResult(pReq->L, std::move(res));
             return;
         }
 
@@ -258,7 +280,7 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
                 auto now = std::chrono::steady_clock::now();
                 if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProg).count() > 100 || len == total) {
                     HttpResult res{HttpResult::Type::PROGRESS, reqId, static_cast<long long>(len), static_cast<long long>(total), 0, "", {}};
-                    PushResult(std::move(res)); 
+                    PushResult(pReq->L, std::move(res));
                     lastProg = now;
                 }
             }
@@ -283,7 +305,7 @@ static sol::table Dispatch(std::string method, std::string url, std::map<std::st
         } else {
             res.body = "Network Error: " + httplib::to_string(response.error());
         }
-        PushResult(std::move(res));
+        PushResult(pReq->L, std::move(res));
     });
 
     return CreateHandle(L, info);
@@ -374,18 +396,18 @@ sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::
         std::unique_ptr<httplib::Client> cli;
         
         if (!SetupClient(mBaseUrl + ep, mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cli, path)) {
-            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}}); 
+            PushResult(pReq->L, {HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}}); 
             return;
         }
         
         if (!fs::exists(filePath)) {
-            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "File not found", {}}); 
+            PushResult(pReq->L, {HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "File not found", {}}); 
             return;
         }
 
         auto file_stream = std::make_shared<std::ifstream>(filePath, std::ios::binary);
         if (!file_stream || !file_stream->is_open()) {
-            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Could not open file", {}}); 
+            PushResult(pReq->L, {HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Could not open file", {}}); 
             return;
         }
 
@@ -433,7 +455,7 @@ sol::table AsyncHttpProxy::PostFile(std::string ep, std::string fieldName, std::
         } else {
             res.body = "Upload Failed: " + httplib::to_string(response.error());
         }
-        PushResult(std::move(res));
+        PushResult(pReq->L, std::move(res));
     });
 
     return CreateHandle(cb.lua_state(), info);
@@ -447,13 +469,13 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
         std::unique_ptr<httplib::Client> cli;
         
         if (!SetupClient(mBaseUrl + ep, mConnectTimeoutSeconds, mReadTimeoutSeconds, mVerifySSL, cli, path)) {
-            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}}); 
+            PushResult(pReq->L, {HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Invalid URL", {}}); 
             return;
         }
         
         std::ofstream ofs(savePath, std::ios::binary);
         if (!ofs) {
-            PushResult({HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Could not open file for writing", {}}); 
+            PushResult(pReq->L, {HttpResult::Type::COMPLETE, reqId, 0, 0, 0, "Could not open file for writing", {}}); 
             return;
         }
         
@@ -484,7 +506,7 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
                 if (pReq->progressRef != LUA_REFNIL && !pReq->abandoned.load()) {
                     auto now = std::chrono::steady_clock::now();
                     if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProg).count() > 100 || len == total) {
-                        PushResult({HttpResult::Type::PROGRESS, reqId, static_cast<long long>(len), static_cast<long long>(total), 0, "", {}}); 
+                        PushResult(pReq->L, {HttpResult::Type::PROGRESS, reqId, static_cast<long long>(len), static_cast<long long>(total), 0, "", {}}); 
                         lastProg = now;
                     }
                 }
@@ -495,7 +517,7 @@ sol::table AsyncHttpProxy::Download(std::string ep, std::string savePath, sol::f
         
         HttpResult fres{HttpResult::Type::COMPLETE, reqId, 0, 0, status_code, "", std::move(resHeaders)};
         fres.body = res ? "Success" : "Download Failed: " + httplib::to_string(res.error());
-        PushResult(std::move(fres));
+        PushResult(pReq->L, std::move(fres));
     });
 
     return CreateHandle(cb.lua_state(), info);
@@ -544,8 +566,9 @@ sol::object AsyncWebSocket::Create(sol::this_state s, std::string url, sol::obje
 
     auto ws = std::make_shared<AsyncWebSocket>(url, headers.is<sol::table>() ? headers.as<sol::table>() : sol::table(), L);
     
-    std::lock_guard<std::mutex> lock(ctx.wsMutex);
-    ctx.webSockets.push_back(ws);
+    auto pCtx = GetPluginContext(L);
+    std::lock_guard<std::mutex> lock(pCtx->wsMutex);
+    pCtx->webSockets.push_back(ws);
     return sol::make_object(s, ws);
 }
 
@@ -711,30 +734,21 @@ void RegisterBindings(sol::state_view& lua) {
 
 void Update(sol::state_view& lua) {
     lua_State* L = lua.lua_state();
+    auto pCtx = GetPluginContext(L);
+    
     std::deque<HttpResult> toProcess;
     
     // 1. Gather relevant results safely
     {
-        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
-        auto it = ctx.results.begin();
-        while (it != ctx.results.end()) {
-            auto reqIt = ctx.pendingRequests.find(it->requestId);
-            if (reqIt == ctx.pendingRequests.end()) {
-                it = ctx.results.erase(it);
-            } else if (reqIt->second->L == L) {
-                toProcess.push_back(std::move(*it));
-                it = ctx.results.erase(it);
-            } else {
-                ++it;
-            }
-        }
+        std::lock_guard<std::mutex> lock(pCtx->resultsMutex);
+        toProcess.swap(pCtx->results);
     }
 
     // 2. Dispatch Lua callbacks
     for (const auto& res : toProcess) {
         std::shared_ptr<PendingRequest> info;
         {
-            std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+            std::lock_guard<std::mutex> lock(ctx.pendingRequestsMutex);
             auto it = ctx.pendingRequests.find(res.requestId);
             if (it != ctx.pendingRequests.end()) info = it->second;
         }
@@ -746,7 +760,7 @@ void Update(sol::state_view& lua) {
                 std::lock_guard<std::mutex> lock(ctx.limitMutex);
                 ctx.stateRequestCount[L]--;
             }
-            std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+            std::lock_guard<std::mutex> lock(ctx.pendingRequestsMutex);
             ctx.pendingRequests.erase(res.requestId);
             continue; 
         }
@@ -772,22 +786,22 @@ void Update(sol::state_view& lua) {
                 ctx.stateRequestCount[L]--;
             }
             
-            std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+            std::lock_guard<std::mutex> lock(ctx.pendingRequestsMutex);
             ctx.pendingRequests.erase(res.requestId);
         }
     }
 
-    // 3. Update WebSockets
+    // 3. Update WebSockets cleanly without cross-plugin locking
     std::vector<std::shared_ptr<AsyncWebSocket>> websocketsToUpdate;
     {
-        std::lock_guard<std::mutex> wsLock(ctx.wsMutex);
-        auto wsIt = ctx.webSockets.begin();
-        while (wsIt != ctx.webSockets.end()) {
+        std::lock_guard<std::mutex> wsLock(pCtx->wsMutex);
+        auto wsIt = pCtx->webSockets.begin();
+        while (wsIt != pCtx->webSockets.end()) {
             if (auto ws = wsIt->lock()) {
-                if (ws->GetLuaState() == L) websocketsToUpdate.push_back(ws);
+                websocketsToUpdate.push_back(ws);
                 ++wsIt;
             } else {
-                wsIt = ctx.webSockets.erase(wsIt);
+                wsIt = pCtx->webSockets.erase(wsIt);
             }
         }
     }
@@ -798,9 +812,11 @@ void Update(sol::state_view& lua) {
 }
 
 void CleanupState(lua_State* L) {
+    auto pCtx = GetPluginContext(L);
+
     // Purge pending HTTP requests
     {
-        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        std::lock_guard<std::mutex> lock(ctx.pendingRequestsMutex);
         for (auto it = ctx.pendingRequests.begin(); it != ctx.pendingRequests.end(); ) {
             if (it->second->L == L) {
                 it->second->abandoned.store(true);
@@ -811,24 +827,24 @@ void CleanupState(lua_State* L) {
             }
         }
     }
+    
+    // Clear out un-polled results
+    {
+        std::lock_guard<std::mutex> lock(pCtx->resultsMutex);
+        pCtx->results.clear();
+    }
 
     // Purge attached WebSockets
     {
-        std::lock_guard<std::mutex> wsLock(ctx.wsMutex);
-        auto wsIt = ctx.webSockets.begin();
-        while (wsIt != ctx.webSockets.end()) {
-            if (auto ws = wsIt->lock()) {
-                if (ws->GetLuaState() == L) {
-                    ws->Abandon();
-                    wsIt = ctx.webSockets.erase(wsIt);
-                } else {
-                    ++wsIt;
-                }
-            } else {
-                wsIt = ctx.webSockets.erase(wsIt);
-            }
+        std::lock_guard<std::mutex> wsLock(pCtx->wsMutex);
+        for (auto& weak_ws : pCtx->webSockets) {
+            if (auto ws = weak_ws.lock()) ws->Abandon();
         }
+        pCtx->webSockets.clear();
     }
+
+    std::lock_guard<std::mutex> lock(ctx.pluginContextsMutex);
+    ctx.pluginContexts.erase(L);
 }
 
 void Init() { 
@@ -856,17 +872,20 @@ void Shutdown() {
     }
     
     {
-        std::lock_guard<std::mutex> lock(ctx.resultsMutex);
+        std::lock_guard<std::mutex> lock(ctx.pendingRequestsMutex);
         ctx.pendingRequests.clear();
-        ctx.results.clear();
     }
 
     {
-        std::lock_guard<std::mutex> wsLock(ctx.wsMutex);
-        for (auto& weak_ws : ctx.webSockets) {
-            if (auto ws = weak_ws.lock()) ws->Abandon();
+        std::lock_guard<std::mutex> lock(ctx.pluginContextsMutex);
+        for (auto& [L, pCtx] : ctx.pluginContexts) {
+            std::lock_guard<std::mutex> wsLock(pCtx->wsMutex);
+            for (auto& weak_ws : pCtx->webSockets) {
+                if (auto ws = weak_ws.lock()) ws->Abandon();
+            }
+            pCtx->webSockets.clear();
         }
-        ctx.webSockets.clear();
+        ctx.pluginContexts.clear();
     }
 }
 
