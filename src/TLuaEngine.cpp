@@ -1081,11 +1081,6 @@ TLuaEngine::StateThreadData::~StateThreadData() noexcept {
     HttpAsync::CleanupState(mState);
 
     beammp_debug("\"" + mStateId + "\" destroyed");
-
-    if (mState) {
-        lua_close(mState);
-        mState = nullptr;
-    }
 }
 
 std::shared_ptr<TLuaResult> TLuaEngine::StateThreadData::EnqueueScript(const TLuaChunk& Script) {

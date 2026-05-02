@@ -48,6 +48,8 @@ struct PluginContext {
     
     std::vector<std::weak_ptr<AsyncWebSocket>> webSockets;
     std::mutex wsMutex;
+
+    std::chrono::steady_clock::time_point lastLimitWarning{};
 };
 
 // --- Centralized Global Context ---
@@ -77,6 +79,15 @@ static struct GlobalContext {
 static const char* DEFAULT_USER_AGENT = "BeamMP-Server/1.0";
 
 // --- Utilities ---
+
+static bool ShouldWarn(std::shared_ptr<PluginContext> pCtx) {
+    auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::seconds>(now - pCtx->lastLimitWarning).count() >= 10) {
+        pCtx->lastLimitWarning = now;
+        return true;
+    }
+    return false;
+}
 
 static std::shared_ptr<PluginContext> GetPluginContext(lua_State* L) {
     std::lock_guard<std::mutex> lock(ctx.pluginContextsMutex);
@@ -217,7 +228,10 @@ static std::shared_ptr<PendingRequest> EnqueueTask(lua_State* L, int cbRef, int 
     {
         std::lock_guard<std::mutex> lock(ctx.limitMutex);
         if (ctx.stateRequestCount[L] >= ctx.maxRequestsPerPlugin) {
-            beammp_lua_warnf("Plugin reached HTTP request limit ({}). Request rejected.", ctx.maxRequestsPerPlugin);
+            auto pCtx = GetPluginContext(L); 
+            if (ShouldWarn(pCtx)) {
+                beammp_lua_warnf("Plugin reached HTTP request limit ({}). Further requests silenced for 10s.", ctx.maxRequestsPerPlugin);
+            }
             UnrefCallback(L, cbRef);
             UnrefCallback(L, progRef);
             return nullptr;
@@ -539,7 +553,7 @@ AsyncWebSocket::AsyncWebSocket(std::string url, sol::table headers, lua_State* s
 
 AsyncWebSocket::~AsyncWebSocket() {
     Abandon();
-    if (mThread.joinable()) mThread.join();
+    if (mThread.joinable()) mThread.detach();
 }
 
 sol::object AsyncWebSocket::Create(sol::this_state s, std::string url, sol::object headers) {
@@ -548,8 +562,11 @@ sol::object AsyncWebSocket::Create(sol::this_state s, std::string url, sol::obje
     {
         std::lock_guard<std::mutex> lock(ctx.limitMutex);
         if (ctx.currentWsGlobal >= ctx.maxWsGlobal || ctx.stateWsCount[L] >= ctx.maxWsPerPlugin) {
-            beammp_lua_warnf("WebSocket limit reached (Global: {}/{}, Plugin: {}/{}).", 
-                ctx.currentWsGlobal, ctx.maxWsGlobal, ctx.stateWsCount[L], ctx.maxWsPerPlugin);
+            auto pCtx = GetPluginContext(L);
+            if (ShouldWarn(pCtx)) {
+                beammp_lua_warnf("WebSocket limit reached (Global: {}/{}, Plugin: {}/{}). Silencing for 10s.", 
+                    ctx.currentWsGlobal, ctx.maxWsGlobal, ctx.stateWsCount[L], ctx.maxWsPerPlugin);
+            }
             return sol::make_object(s, sol::lua_nil);
         }
         ctx.stateWsCount[L]++;
@@ -577,47 +594,70 @@ void AsyncWebSocket::VerifySSL(bool verify) { mVerifySSL = verify; }
 void AsyncWebSocket::Connect() {
     if (mIsRunning.exchange(true)) return;
     
-    mThread = std::thread([this]() {
+    std::weak_ptr<AsyncWebSocket> weakSelf = shared_from_this();
+    std::string url = mUrl;
+    std::map<std::string, std::string> headers = mHeaders;
+    bool verifySSL = mVerifySSL;
+
+    mThread = std::thread([weakSelf, url = std::move(url), headers = std::move(headers), verifySSL]() {
         httplib::Headers h;
         bool hasUA = false;
 
-        for (const auto& [k, v] : mHeaders) {
+        for (const auto&[k, v] : headers) {
             if (ToLower(k) == "user-agent") hasUA = true;
             h.emplace(k, v);
         }
         if (!hasUA) h.emplace("User-Agent", DEFAULT_USER_AGENT);
 
-        httplib::ws::WebSocketClient client(mUrl, h);
-        client.enable_server_certificate_verification(mVerifySSL);
+        httplib::ws::WebSocketClient client(url, h);
+        client.enable_server_certificate_verification(verifySSL);
         
-        {
-            std::lock_guard<std::mutex> lock(mClientMutex);
-            if (mAbandoned) return;
-            mClient = &client;
-        }
-
         if (!client.connect()) {
-            PushEvent({WSEventType::ERROR_EVENT, "Failed to connect", 0});
-            mIsRunning = false;
-            std::lock_guard<std::mutex> lock(mClientMutex);
-            mClient = nullptr;
+            if (auto self = weakSelf.lock()) {
+                if (self->mIsRunning.exchange(false)) {
+                    self->PushEvent({WSEventType::ERROR_EVENT, "Failed to connect", 0});
+                }
+            }
             return;
         }
 
-        PushEvent({WSEventType::OPEN, "", 0});
+        if (auto self = weakSelf.lock()) {
+            std::lock_guard<std::mutex> lock(self->mClientMutex);
+            if (self->mAbandoned) return;
+            
+            if (!self->mIsRunning) {
+                return;
+            }
+            
+            self->mClient = &client;
+            self->PushEvent({WSEventType::OPEN, "", 0});
+        } else {
+            return;
+        }
 
         std::string msg;
-        while (mIsRunning && !mAbandoned) {
+        while (true) {
+            if (auto self = weakSelf.lock()) {
+                if (!self->mIsRunning || self->mAbandoned) break;
+            } else break;
+
             if (client.read(msg) == httplib::ws::ReadResult::Fail) break;
-            PushEvent({WSEventType::MESSAGE, msg, 0});
+            
+            if (auto self = weakSelf.lock()) {
+                if (!self->mIsRunning || self->mAbandoned) break;
+                self->PushEvent({WSEventType::MESSAGE, msg, 0});
+            } else break;
+            
             msg.clear();
         }
 
-        PushEvent({WSEventType::CLOSE, "Connection closed", 1000});
-        mIsRunning = false;
-        
-        std::lock_guard<std::mutex> lock(mClientMutex);
-        mClient = nullptr;
+        if (auto self = weakSelf.lock()) {
+            if (self->mIsRunning.exchange(false)) {
+                self->PushEvent({WSEventType::CLOSE, "Connection closed by peer", 1000});
+            }
+            std::lock_guard<std::mutex> lock(self->mClientMutex);
+            self->mClient = nullptr;
+        }
     });
 }
 
@@ -627,9 +667,9 @@ void AsyncWebSocket::Send(const std::string& data) {
 }
 
 void AsyncWebSocket::Close() {
-    mIsRunning = false;
-    std::lock_guard<std::mutex> lock(mClientMutex);
-    if (mClient && mClient->is_open()) mClient->close();
+    if (mIsRunning.exchange(false)) {
+        PushEvent({WSEventType::CLOSE, "Connection closed locally", 1000});
+    }
 }
 
 void AsyncWebSocket::PushEvent(WSEvent ev) {
