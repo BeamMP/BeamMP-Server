@@ -47,6 +47,7 @@ set(PRJ_HEADERS
     include/TResourceManager.h
     include/TScopedTimer.h
     include/TServer.h
+    include/TVoiceChat.h
     include/VehicleData.h
     include/Env.h
     include/Settings.h
@@ -73,6 +74,7 @@ set(PRJ_SOURCES
     src/TResourceManager.cpp
     src/TScopedTimer.cpp
     src/TServer.cpp
+    src/TVoiceChat.cpp
     src/VehicleData.cpp
     src/Env.cpp
     src/Settings.cpp

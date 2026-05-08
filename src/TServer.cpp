@@ -23,6 +23,7 @@
 #include "TLuaEngine.h"
 #include "TNetwork.h"
 #include "TPPSMonitor.h"
+#include "TVoiceChat.h"
 #include <TLuaPlugin.h>
 #include <algorithm>
 #include <any>
@@ -287,6 +288,95 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     case 'N':
         Network.SendToAll(LockedClient.get(), Packet, false, true);
         return;
+    case 'F': { // voice chat packet
+        if (Packet.size() < 2) return;
+
+        auto& VC = VoiceChat();
+        int SenderId = LockedClient->GetID();
+
+        // Server-side mute check
+        if (VC.IsPlayerMuted(SenderId)) return;
+
+        // Helper: parse a client's active-vehicle position from its JSON blob.
+        // Returns {0,0,0} when no vehicle or position data is available.
+        // Prefers unicycle (player avatar); falls back to first vehicle.
+        // NOTE: parses JSON on every call. A future optimisation is to cache
+        // a float[3] on TClient whenever a 'Z' position packet arrives.
+        auto extractPos = [](TClient* client, float out[3]) {
+            out[0] = out[1] = out[2] = 0.0f;
+            auto cars = client->GetAllCars();
+            if (cars.VehicleData->empty()) return;
+            int vid = client->GetUnicycleID();
+            if (vid < 0) vid = cars.VehicleData->front().ID();
+            const std::string raw = client->GetCarPositionRaw(vid);
+            if (raw.empty()) return;
+            auto j = nlohmann::json::parse(raw, nullptr, false);
+            if (!j.is_discarded() && j.contains("pos")
+                    && j["pos"].is_array() && j["pos"].size() >= 3) {
+                out[0] = j["pos"][0].get<float>();
+                out[1] = j["pos"][1].get<float>();
+                out[2] = j["pos"][2].get<float>();
+            }
+        };
+
+        float senderPos[3];
+        extractPos(LockedClient.get(), senderPos);
+
+        // Fire voice activity event — throttled to once per 300ms per player
+        // to avoid flooding the server console and Lua event queue at 50/sec.
+        if (VC.ShouldFireVoiceEvent(SenderId)) {
+            LuaAPI::MP::Engine->ReportErrors(
+                LuaAPI::MP::Engine->TriggerEvent("onPlayerVoice", "", SenderId));
+        }
+
+        // Build v2 broadcast packet with PROXIMITY flag
+        const uint8_t* opusBytes = Packet.data() + 1;
+        int opusLen = static_cast<int>(Packet.size() - 1);
+        float proxDist = VC.GetProximityDistance();
+        auto Broadcast = TVoiceChat::BuildPacket(
+            TVoiceChat::FLAG_PROXIMITY,
+            static_cast<uint16_t>(SenderId),
+            senderPos, proxDist, 1.0f, opusBytes, opusLen);
+        auto senderChannels = VC.GetPlayerChannels(SenderId);
+
+        // Send to each eligible client
+        ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
+            std::shared_ptr<TClient> Target;
+            {
+                ReadLock Lock(GetClientMutex());
+                Target = ClientPtr.lock();
+            }
+            if (!Target || Target.get() == LockedClient.get()) return true;
+            if (!Target->IsSynced()) return true;
+
+            bool shouldSend = false;
+            // Always send if player shares a channel with sender
+            if (!senderChannels.empty()) {
+                auto targetChannels = VC.GetPlayerChannels(Target->GetID());
+                for (int ch : senderChannels) {
+                    if (targetChannels.count(ch)) { shouldSend = true; break; }
+                }
+            }
+            // Proximity check (if no channel match yet)
+            if (!shouldSend) {
+                if (proxDist <= 0.0f) {
+                    shouldSend = true; // unlimited distance
+                } else {
+                    float tPos[3];
+                    extractPos(Target.get(), tPos);
+                    float dx = senderPos[0] - tPos[0];
+                    float dy = senderPos[1] - tPos[1];
+                    float dz = senderPos[2] - tPos[2];
+                    shouldSend = (dx*dx + dy*dy + dz*dz) <= proxDist * proxDist;
+                }
+            }
+            if (shouldSend) {
+                (void)Network.UDPSend(*Target, Broadcast);
+            }
+            return true;
+        });
+        return;
+    }
     case 'Z': { // position packet
         PPSMonitor.IncrementInternalPPS();
 
