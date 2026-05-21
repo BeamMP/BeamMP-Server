@@ -71,14 +71,21 @@ void TLuaEngine::operator()() {
 
     Application::SetSubsystemStatus("LuaEngine", Application::Status::Good);
     // now call all onInit's
-    auto Futures = TriggerEvent("onInit", "");
-    WaitForAll(Futures, std::chrono::seconds(5));
-    for (const auto& Future : Futures) {
+    auto InitFutures = TriggerEvent("onInit", "");
+    WaitForAll(InitFutures, std::chrono::seconds(5));
+    for (const auto& Future : InitFutures) {
         if (Future->Error && Future->ErrorMessage != BeamMPFnNotFoundError) {
             beammp_lua_error("Calling \"onInit\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
         }
     }
-
+    // now call all onInitFinal's
+    auto FinalInitFutures = TriggerEvent("onInitFinal", "");
+    WaitForAll(FinalInitFutures, std::chrono::seconds(5));
+    for (const auto& Future : FinalInitFutures) {
+        if (Future->Error && Future->ErrorMessage != BeamMPFnNotFoundError) {
+            beammp_lua_error("Calling \"onInitFinal\" on \"" + Future->StateId + "\" failed: " + Future->ErrorMessage);
+        }
+    }
     auto ResultCheckThread = std::thread([&] {
         RegisterThread("ResultCheckThread");
         while (!Application::IsShuttingDown()) {
@@ -395,7 +402,7 @@ void TLuaEngine::InitializePlugin(const fs::path& Folder, const TLuaPluginConfig
     beammp_assert(fs::exists(Folder));
     beammp_assert(fs::is_directory(Folder));
     std::unique_lock Lock(mLuaStatesMutex);
-    EnsureStateExists(Config.StateId, Folder.stem().string(), true);
+    EnsureStateExists(Config.StateId, Folder.stem().string());
     mLuaStates[Config.StateId]->AddPath(Folder); // add to cpath + path
     Lock.unlock();
     auto Plugin = std::make_shared<TLuaPlugin>(*this, Config, Folder);
@@ -422,21 +429,13 @@ void TLuaEngine::FindAndParseConfig(const fs::path& Folder, TLuaPluginConfig& Co
     }
 }
 
-void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit) {
+void TLuaEngine::EnsureStateExists(TLuaStateId StateId, const std::string& Name) {
     beammp_assert(!StateId.empty());
     std::unique_lock Lock(mLuaStatesMutex);
     if (mLuaStates.find(StateId) == mLuaStates.end()) {
         beammp_debug("Creating lua state for state id \"" + StateId + "\"");
         auto DataPtr = std::make_unique<StateThreadData>(Name, StateId, *this);
         mLuaStates[StateId] = std::move(DataPtr);
-        RegisterEvent("onInit", StateId, "onInit");
-        if (!DontCallOnInit) {
-            auto Res = EnqueueFunctionCall(StateId, "onInit", {}, "onInit");
-            Res->WaitUntilReady();
-            if (Res->Error && Res->ErrorMessage != TLuaEngine::BeamMPFnNotFoundError) {
-                beammp_lua_error("Calling \"onInit\" on \"" + StateId + "\" failed: " + Res->ErrorMessage);
-            }
-        }
     }
 }
 
