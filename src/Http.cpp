@@ -18,15 +18,12 @@
 
 #include "Http.h"
 
-#include "Client.h"
 #include "Common.h"
 #include "CustomAssert.h"
-#include "LuaAPI.h"
 
+#include <curl/easy.h>
 #include <map>
 #include <nlohmann/json.hpp>
-#include <random>
-#include <stdexcept>
 
 using json = nlohmann::json;
 
@@ -37,17 +34,107 @@ static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void*
     return size * nmemb;
 }
 
+struct CurlDeleter {
+    void operator()(CURL* c) const noexcept {
+        if (c)
+            curl_easy_cleanup(c);
+    }
+};
+
+static std::mutex gCurlPoolMutex;
+static std::map<CURL*, bool> gCurlPool; // false = free, true = in use
+constexpr size_t MAX_CURL_POOL_SIZE = 128;
+
+static CURL* AcquireCurl() {
+    std::unique_lock Lock(gCurlPoolMutex);
+    for (auto& [Curl, InUse] : gCurlPool) {
+        if (!InUse) {
+            InUse = true;
+            curl_easy_reset(Curl);
+            return Curl;
+        }
+    }
+
+    // none found, if we're under the limit add one!
+    if (gCurlPool.size() >= MAX_CURL_POOL_SIZE) {
+        beammp_debugf("Ran out of curl handles for network requests, skipping this request");
+        return nullptr;
+    }
+    
+    CURL* Curl = curl_easy_init();
+    if (!Curl) {
+        // failed, ignore
+        return nullptr;
+    }
+    
+    gCurlPool[Curl] = true;
+    return Curl;
+}
+
+static void ReleaseCurl(CURL* curl) {
+    if (!curl) {
+        return;
+    }
+
+    std::unique_lock Lock(gCurlPoolMutex);
+    auto It = gCurlPool.find(curl);
+    if (It != gCurlPool.end()) {
+        It->second = false;
+    }
+}
+
+/// RAII container for curl handles to ensure correct release
+class CurlLease {
+private:
+    CURL* mHandle = nullptr;
+public:
+
+    CurlLease() : mHandle(AcquireCurl()) {}
+    ~CurlLease() {
+        ReleaseCurl(mHandle);
+    }
+    CurlLease(const CurlLease&) = delete;
+    CurlLease& operator=(const CurlLease&) = delete;
+
+    CurlLease(CurlLease&& other) noexcept
+        : mHandle(other.mHandle) {
+        other.mHandle = nullptr;
+    }
+
+    CurlLease& operator=(CurlLease&& other) noexcept {
+        if (this != &other) {
+            ReleaseCurl(mHandle);
+            mHandle = other.mHandle;
+            other.mHandle = nullptr;
+        }
+        return *this;
+    }
+
+    CURL* GetHandle() const noexcept {
+        return mHandle;
+    }
+};
+
 std::string Http::GET(const std::string& url, unsigned int* status) {
     std::string Ret;
-    static thread_local CURL* curl = curl_easy_init();
+    CurlLease Lease{};
+    CURL* curl = Lease.GetHandle();
     if (curl) {
         CURLcode res;
         char errbuf[CURL_ERROR_SIZE];
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&Ret);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10); // seconds
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, reinterpret_cast<void*>(&Ret));
+
+        // ensure we dont keep connections open for long
+        curl_easy_setopt(curl, CURLOPT_MAXCONNECTS, 8L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_MAXAGE_CONN, 60L);
+        curl_easy_setopt(curl, CURLOPT_MAXLIFETIME_CONN, 300L);
+
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
         errbuf[0] = 0;
@@ -71,15 +158,16 @@ std::string Http::GET(const std::string& url, unsigned int* status) {
 
 std::string Http::POST(const std::string& url, const std::string& body, const std::string& ContentType, unsigned int* status, const std::map<std::string, std::string>& headers) {
     std::string Ret;
-    static thread_local CURL* curl = curl_easy_init();
+    CurlLease Lease{};
+    CURL* curl = Lease.GetHandle();
     if (curl) {
         CURLcode res;
         char errbuf[CURL_ERROR_SIZE];
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&Ret);
-        curl_easy_setopt(curl, CURLOPT_POST, 1);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, reinterpret_cast<void*>(&Ret));
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, body.size());
         struct curl_slist* list = nullptr;
@@ -90,7 +178,15 @@ std::string Http::POST(const std::string& url, const std::string& body, const st
         }
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10); // seconds
+
+        // ensure we dont keep connections open for long
+        curl_easy_setopt(curl, CURLOPT_MAXCONNECTS, 8L);
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+        curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+        curl_easy_setopt(curl, CURLOPT_MAXAGE_CONN, 60L);
+        curl_easy_setopt(curl, CURLOPT_MAXLIFETIME_CONN, 300L);
+
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
         errbuf[0] = 0;

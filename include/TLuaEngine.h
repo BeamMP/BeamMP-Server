@@ -19,13 +19,12 @@
 #pragma once
 
 #include "Profiling.h"
+#include "TLuaResult.h"
 #include "TNetwork.h"
 #include "TServer.h"
-#include <any>
 #include <chrono>
 #include <condition_variable>
 #include <filesystem>
-#include <initializer_list>
 #include <list>
 #include <lua.hpp>
 #include <memory>
@@ -34,6 +33,8 @@
 #include <queue>
 #include <random>
 #include <set>
+#include <sol/forward.hpp>
+#include <sol/protected_function_result.hpp>
 #include <toml.hpp>
 #include <unordered_map>
 #include <vector>
@@ -58,35 +59,9 @@ namespace fs = std::filesystem;
 /**
  * std::variant means, that TLuaArgTypes may be one of the Types listed as template args
  */
-using TLuaValue = std::variant<std::string, int, JsonString, bool, std::unordered_map<std::string, std::string>, float>;
-enum TLuaType {
-    String = 0,
-    Int = 1,
-    Json = 2,
-    Bool = 3,
-    StringStringMap = 4,
-    Float = 5,
-};
+using TLuaValue = std::variant<std::monostate, std::string, int, JsonString, bool, std::unordered_map<std::string, std::string>, float>;
 
 class TLuaPlugin;
-
-struct TLuaResult {
-    bool Ready;
-    bool Error;
-    std::string ErrorMessage;
-    sol::object Result { sol::lua_nil };
-    TLuaStateId StateId;
-    std::string Function;
-    std::shared_ptr<std::mutex> ReadyMutex {
-        std::make_shared<std::mutex>()
-    };
-    std::shared_ptr<std::condition_variable> ReadyCondition {
-        std::make_shared<std::condition_variable>()
-    };
-
-    void MarkAsReady();
-    void WaitUntilReady();
-};
 
 struct TLuaPluginConfig {
     static inline const std::string FileName = "PluginConfig.toml";
@@ -166,7 +141,7 @@ public:
         const std::optional<std::chrono::high_resolution_clock::duration>& Max = std::nullopt);
     void ReportErrors(const std::vector<std::shared_ptr<TLuaResult>>& Results);
     bool HasState(TLuaStateId StateId);
-    [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
+    [[nodiscard]] std::shared_ptr<TLuaVoidResult> EnqueueScript(TLuaStateId StateID, const TLuaChunk& Script);
     [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(TLuaStateId StateID, const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName);
     void EnsureStateExists(TLuaStateId StateId, const std::string& Name, bool DontCallOnInit = false);
     void RegisterEvent(const std::string& EventName, TLuaStateId StateId, const std::string& FunctionName);
@@ -227,9 +202,9 @@ public:
 
     // Debugging functions (slow)
     std::unordered_map<std::string /*event name */, std::vector<std::string> /* handlers */> Debug_GetEventsForState(TLuaStateId StateId);
-    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
+    std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaVoidResult>>> Debug_GetStateExecuteQueueForState(TLuaStateId StateId);
     std::vector<QueuedFunction> Debug_GetStateFunctionQueueForState(TLuaStateId StateId);
-    std::vector<TLuaResult> Debug_GetResultsToCheckForState(TLuaStateId StateId);
+    std::vector<TLuaResult::DetachedSnapshot> Debug_GetResultsToCheckForState(TLuaStateId StateId);
 
 private:
     void CollectAndInitPlugins();
@@ -241,8 +216,8 @@ private:
     public:
         StateThreadData(const std::string& Name, TLuaStateId StateId, TLuaEngine& Engine);
         StateThreadData(const StateThreadData&) = delete;
-        virtual ~StateThreadData() noexcept;
-        [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueScript(const TLuaChunk& Script);
+        virtual ~StateThreadData() noexcept { beammp_debug("\"" + mStateId + "\" destroyed"); }
+        [[nodiscard]] std::shared_ptr<TLuaVoidResult> EnqueueScript(const TLuaChunk& Script);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCall(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName);
         [[nodiscard]] std::shared_ptr<TLuaResult> EnqueueFunctionCallFromCustomEvent(const std::string& FunctionName, const std::vector<TLuaValue>& Args, const std::string& EventName, CallStrategy Strategy);
         void RegisterEvent(const std::string& EventName, const std::string& FunctionName);
@@ -254,7 +229,7 @@ private:
         std::vector<std::string> GetStateTableKeys(const std::vector<std::string>& keys);
 
         // Debug functions, slow
-        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> Debug_GetStateExecuteQueue();
+        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaVoidResult>>> Debug_GetStateExecuteQueue();
         std::vector<TLuaEngine::QueuedFunction> Debug_GetStateFunctionQueue();
 
     private:
@@ -279,7 +254,7 @@ private:
         TLuaStateId mStateId;
         lua_State* mState;
         std::thread mThread;
-        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaResult>>> mStateExecuteQueue;
+        std::queue<std::pair<TLuaChunk, std::shared_ptr<TLuaVoidResult>>> mStateExecuteQueue;
         std::recursive_mutex mStateExecuteQueueMutex;
         std::vector<QueuedFunction> mStateFunctionQueue;
         std::mutex mStateFunctionQueueMutex;

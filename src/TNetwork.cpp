@@ -20,6 +20,7 @@
 #include "Client.h"
 #include "Common.h"
 #include "LuaAPI.h"
+#include "TConnectionLimiter.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
 #include "TScopedTimer.h"
@@ -27,20 +28,26 @@
 #include <CustomAssert.h>
 #include <Http.h>
 #include <array>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 #include <boost/asio/ip/address_v6.hpp>
 #include <boost/asio/ip/v6_only.hpp>
+#include <boost/asio/socket_base.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <condition_variable>
 #include <cstring>
+#include <memory>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#include <variant>
 #include <zlib.h>
 
 typedef boost::asio::detail::socket_option::integer<SOL_SOCKET, SO_RCVTIMEO> rcv_timeout_option;
 
 static constexpr uint8_t MAX_CONCURRENT_CONNECTIONS = 10;
 static constexpr uint8_t MAX_GLOBAL_CONNECTIONS = 128;
-static constexpr uint8_t READ_TIMEOUT_S = 10; //seconds
+static constexpr uint8_t READ_TIMEOUT_S = 10; // seconds
 
 std::vector<uint8_t> StringToVector(const std::string& Str) {
     return std::vector<uint8_t>(Str.data(), Str.data() + Str.size());
@@ -55,22 +62,42 @@ static void CompressProperly(std::vector<uint8_t>& Data) {
     Data = CombinedData;
 }
 
+// for unit-tests, otherwise unused
+static bool OpenLoopbackSocketPair(io_context& IoCtx, ip::tcp::socket& ClientSocket, ip::tcp::socket& ServerSocket, boost::system::error_code& Ec) {
+    ip::tcp::acceptor Acceptor(IoCtx);
+    Acceptor.open(ip::tcp::v4(), Ec);
+    if (Ec) {
+        return true;
+    }
+    Acceptor.bind(ip::tcp::endpoint(ip::address_v4::loopback(), 0), Ec);
+    if (Ec) {
+        return true;
+    }
+    Acceptor.listen(socket_base::max_listen_connections, Ec);
+    if (Ec) {
+        return true;
+    }
+
+    const auto Port = Acceptor.local_endpoint(Ec).port();
+    if (Ec) {
+        return true;
+    }
+    ClientSocket.connect(ip::tcp::endpoint(ip::address_v4::loopback(), Port), Ec);
+    if (Ec) {
+        return true;
+    }
+    Acceptor.accept(ServerSocket, Ec);
+    return true;
+}
+
 TNetwork::TNetwork(TServer& Server, TPPSMonitor& PPSMonitor, TResourceManager& ResourceManager)
     : mServer(Server)
     , mPPSMonitor(PPSMonitor)
     , mUDPSock(Server.IoCtx())
-    , mResourceManager(ResourceManager) {
+    , mResourceManager(ResourceManager)
+    , mConnectionLimiter(MAX_CONCURRENT_CONNECTIONS, MAX_GLOBAL_CONNECTIONS) {
     Application::SetSubsystemStatus("TCPNetwork", Application::Status::Starting);
     Application::SetSubsystemStatus("UDPNetwork", Application::Status::Starting);
-    Application::RegisterShutdownHandler([&] {
-        beammp_debug("Kicking all players due to shutdown");
-        Server.ForEachClient([&](std::weak_ptr<TClient> client) -> bool {
-            if (!client.expired()) {
-                ClientKick(*client.lock(), "Server shutdown");
-            }
-            return true;
-        });
-    });
     Application::RegisterShutdownHandler([&] {
         Application::SetSubsystemStatus("UDPNetwork", Application::Status::ShuttingDown);
         if (mUDPThread.joinable()) {
@@ -125,13 +152,13 @@ void TNetwork::UDPServerMain() {
         + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) + (" Clients"));
     while (!Application::IsShuttingDown()) {
         try {
-            boost::asio::ip::udp::endpoint remote_client_ep {};
+            boost::asio::ip::udp::endpoint remote_client_ep { };
             std::vector<uint8_t> Data = UDPRcvFromClient(remote_client_ep);
             if (Data.empty()) {
                 continue;
             }
             if (Data.size() == 1 && Data.at(0) == 'P') {
-                mUDPSock.send_to(boost::asio::const_buffer("P", 1), remote_client_ep, {}, ec);
+                mUDPSock.send_to(boost::asio::const_buffer("P", 1), remote_client_ep, { }, ec);
                 // ignore errors
                 (void)ec;
                 continue;
@@ -145,14 +172,14 @@ void TNetwork::UDPServerMain() {
                 std::shared_ptr<TClient> Client;
                 {
                     ReadLock Lock(mServer.GetClientMutex());
-                    if (!ClientPtr.expired()) {
-                        Client = ClientPtr.lock();
+                    if (auto Locked = ClientPtr.lock()) {
+                        Client = std::move(Locked);
                     } else
                         return true;
                 }
 
                 if (Client->GetID() == ID) {
-                    if (Client->GetUDPAddr() == boost::asio::ip::udp::endpoint {} && !Client->IsUDPConnected() && !Client->GetMagic().empty()) {
+                    if (Client->GetUDPAddr() == boost::asio::ip::udp::endpoint { } && !Client->IsUDPConnected() && !Client->GetMagic().empty()) {
                         if (Data.size() != 66) {
                             beammp_debugf("Invalid size for UDP value. IP: {} ID: {}", remote_client_ep.address().to_string(), ID);
                             return false;
@@ -165,7 +192,7 @@ void TNetwork::UDPServerMain() {
                             return false;
                         }
 
-                        Client->SetMagic({});
+                        Client->SetMagic({ });
                         Client->SetUDPAddr(remote_client_ep);
                         Client->SetIsUDPConnected(true);
                         return false;
@@ -217,7 +244,7 @@ void TNetwork::TCPServerMain() {
     beammp_warnf("WARNING: On FreeBSD, for IPv4 to work, you must run `sysctl net.inet6.ip6.v6only=0`!");
     beammp_debugf("This is due to an annoying detail in the *BSDs: In the name of security, unsetting the IPV6_V6ONLY option does not work by default (but does not fail???), as it allows IPv4 mapped IPv6 like ::ffff:127.0.0.1, which they deem a security issue. For more information, see RFC 2553, section 3.7.");
 #endif
-    socket_base::linger LingerOpt {};
+    socket_base::linger LingerOpt { };
     LingerOpt.enabled(false);
     Listener.set_option(LingerOpt, ec);
     if (ec) {
@@ -243,28 +270,27 @@ void TNetwork::TCPServerMain() {
                 beammp_debug("shutdown during TCP wait for accept loop");
                 break;
             }
-            boost::asio::ip::tcp::endpoint ClientEp;
-            boost::asio::ip::tcp::socket ClientSocket = Acceptor.accept(ClientEp, ec);
-            std::string ClientIP = ClientEp.address().to_string();
-            if (!ec) {
-                mClientMapMutex.lock();
-                if (mClientMap[ClientIP] >= MAX_CONCURRENT_CONNECTIONS) {
-                    beammp_debugf("The connection was rejected for {}, as it had {} concurrent connections.", ClientIP, mClientMap[ClientIP]);
-                }
-                else if (mClientMap.size() >= MAX_GLOBAL_CONNECTIONS) {
-                    beammp_debugf("The connection was rejected for {}, as there are {} global connections.", ClientIP, mClientMap.size());
-                }
-                else {
-                    TConnection Conn { std::move(ClientSocket), ClientEp };
-                    std::thread ID(&TNetwork::Identify, this, std::move(Conn));
-                    ID.detach(); // TODO: Add to a queue and attempt to join periodically
-                    mClientMap[ClientIP]++;
-                }
-                mClientMapMutex.unlock();
-            }
-            else {
+            boost::asio::ip::tcp::socket ClientSocket = Acceptor.accept(ec);
+            if (ec) {
                 beammp_errorf("Failed to accept() new client: {}", ec.message());
+                continue;
             }
+            boost::asio::ip::tcp::endpoint ClientEp = ClientSocket.remote_endpoint(ec);
+            if (ec) {
+                beammp_errorf("Accepted socket but failed to query remote endpoint for IP address: {}", ec.message());
+                continue;
+            }
+            std::string ClientIP = ClientEp.address().to_string();
+            auto MaybeGuard = mConnectionLimiter.TryAcquire(ClientIP);
+            if (!MaybeGuard.has_value()) {
+                beammp_debugf("Connection rejected for {} due to the global or concurrent connection limit", ClientIP);
+                continue;
+            }
+            // move-swap to avoid copy ctor (deleted)
+            auto Guard = std::move(MaybeGuard.value());
+            TConnection Conn { std::move(ClientSocket), ClientEp };
+            std::thread ID(&TNetwork::Identify, this, std::move(Conn), std::move(Guard));
+            ID.detach(); // TODO: Add to a queue and attempt to join periodically
         } catch (const std::exception& e) {
             beammp_errorf("Exception in accept routine: {}", e.what());
         }
@@ -276,7 +302,7 @@ void TNetwork::TCPServerMain() {
 #include "Json.h"
 namespace json = rapidjson;
 
-void TNetwork::Identify(TConnection&& RawConnection) {
+void TNetwork::Identify(TConnection&& RawConnection, TConnectionLimiter::TGuard&& Guard) {
     RegisterThreadAuto();
     char Code;
 
@@ -285,17 +311,8 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         // TODO: is this right?!
         beammp_debug("Error occured reading code");
         RawConnection.Socket.shutdown(socket_base::shutdown_both, ec);
-        mClientMapMutex.lock();
-        {
-            std::string ClientIP = RawConnection.SockAddr.address().to_string();
-            if (mClientMap[ClientIP] > 0) {
-                mClientMap[ClientIP]--;
-            }
-            if (mClientMap[ClientIP] == 0) {
-                mClientMap.erase(ClientIP);
-            }
-        }
-        mClientMapMutex.unlock();
+        // TODO: is this right too?
+        RawConnection.Socket.close(ec);
         return;
     }
     std::shared_ptr<TClient> Client { nullptr };
@@ -326,17 +343,6 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         beammp_errorf("Error during handling of code {} - client left in invalid state, closing socket: {}", Code, e.what());
         boost::system::error_code ec;
         RawConnection.Socket.shutdown(boost::asio::socket_base::shutdown_both, ec);
-        mClientMapMutex.lock();
-        {
-            std::string ClientIP = RawConnection.SockAddr.address().to_string();
-            if (mClientMap[ClientIP] > 0) {
-                mClientMap[ClientIP]--;
-            }
-            if (mClientMap[ClientIP] == 0) {
-                mClientMap.erase(ClientIP);
-            }
-        }
-        mClientMapMutex.unlock();
         if (ec) {
             beammp_debugf("Failed to shutdown client socket: {}", ec.message());
         }
@@ -346,8 +352,6 @@ void TNetwork::Identify(TConnection&& RawConnection) {
         }
     }
 }
-
-
 
 std::string HashPassword(const std::string& str) {
     std::stringstream ret;
@@ -376,7 +380,12 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
 
     beammp_info("Identifying new ClientConnection...");
 
-    auto Data = TCPRcv(*Client);
+    auto Data = TCPRcv(*Client, true);
+    if (Data.empty()) {
+        beammp_debug("Authentication failed: did not receive version packet");
+        ClientKick(*Client, "Connection closed during version handshake");
+        return nullptr;
+    }
 
     constexpr std::string_view VC = "VC";
     if (Data.size() > 3 && std::equal(Data.begin(), Data.begin() + VC.size(), VC.begin(), VC.end())) {
@@ -398,7 +407,12 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         // TODO: handle
     }
 
-    Data = TCPRcv(*Client);
+    Data = TCPRcv(*Client, true);
+    if (Data.empty()) {
+        beammp_debug("Authentication failed: did not receive auth key packet");
+        ClientKick(*Client, "Connection closed during authentication");
+        return nullptr;
+    }
 
     if (Data.size() > 50) {
         ClientKick(*Client, "Invalid Key (too long)!");
@@ -406,11 +420,15 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     std::string Key(reinterpret_cast<const char*>(Data.data()), Data.size());
+    if (Key.empty()) {
+        ClientKick(*Client, "Invalid Key (empty)!");
+        return nullptr;
+    }
     std::string AuthKey = Application::Settings.getAsString(Settings::Key::General_AuthKey);
     std::string ClientIp = Client->GetIdentifiers().at("ip");
 
-    nlohmann::json AuthReq {};
-    std::string AuthResStr {};
+    nlohmann::json AuthReq { };
+    std::string AuthResStr { };
     try {
         AuthReq = nlohmann::json {
             { "key", Key },
@@ -462,8 +480,8 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         std::shared_ptr<TClient> Cl;
         {
             ReadLock Lock(mServer.GetClientMutex());
-            if (!ClientPtr.expired()) {
-                Cl = ClientPtr.lock();
+            if (auto Locked = ClientPtr.lock()) {
+                Cl = std::move(Locked);
             } else
                 return true;
         }
@@ -481,23 +499,31 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     bool BypassLimit = false;
 
     for (const auto& Result : Futures) {
-        if (!Result->Error && Result->Result.is<int>()) {
-            auto Res = Result->Result.as<int>();
+        auto Snapshot = Result->GetDetachedSnapshot();
+        if (!Snapshot.Error) {
+            const int* MaybeInt = std::get_if<int>(&Snapshot.Result.V);
+            if (MaybeInt != nullptr) {
+                auto Res = *MaybeInt;
 
-            if (Res == 1) {
-                NotAllowed = true;
-                break;
-            } else if (Res == 2) {
-                BypassLimit = true;
+                if (Res == 1) {
+                    NotAllowed = true;
+                    break;
+                } else if (Res == 2) {
+                    BypassLimit = true;
+                }
             }
         }
     }
     std::string Reason;
     bool NotAllowedWithReason = std::any_of(Futures.begin(), Futures.end(),
         [&Reason](const std::shared_ptr<TLuaResult>& Result) -> bool {
-            if (!Result->Error && Result->Result.is<std::string>()) {
-                Reason = Result->Result.as<std::string>();
-                return true;
+            auto Snapshot = Result->GetDetachedSnapshot();
+            if (!Snapshot.Error) {
+                const std::string* MaybeStr = std::get_if<std::string>(&Snapshot.Result.V);
+                if (MaybeStr != nullptr) {
+                    Reason = *MaybeStr;
+                    return true;
+                }
             }
             return false;
         });
@@ -508,8 +534,8 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     }
 
     if (!NotAllowed && !NotAllowedWithReason && mServer.ClientCount() >= size_t(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) && !BypassLimit) {
-            NotAllowedWithReason = true;
-            Reason = "Server full!";
+        NotAllowedWithReason = true;
+        Reason = "Server full!";
     }
 
     if (NotAllowedWithReason) {
@@ -574,29 +600,33 @@ bool TNetwork::TCPSend(TClient& c, const std::vector<uint8_t>& Data, bool IsSync
     return true;
 }
 
-std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
+std::vector<uint8_t> TNetwork::TCPRcv(TClient& c, bool WithTimeout) {
     if (c.IsDisconnected()) {
         beammp_error("Client disconnected, cancelling TCPRcv");
-        return {};
+        return { };
     }
 
-    int32_t Header {};
+    int32_t Header { };
     auto& Sock = c.GetTCPSock();
 
     boost::system::error_code ec;
     std::array<uint8_t, sizeof(Header)> HeaderData;
-    boost::asio::read(Sock, boost::asio::buffer(HeaderData), ec);
+    if (WithTimeout) {
+        ec = ReadWithTimeout(Sock, HeaderData.data(), HeaderData.size(), std::chrono::seconds(READ_TIMEOUT_S));
+    } else {
+        boost::asio::read(Sock, boost::asio::buffer(HeaderData), ec);
+    }
     if (ec) {
         // TODO: handle this case (read failed)
         beammp_debugf("TCPRcv: Reading header failed: {}", ec.message());
-        return {};
+        return { };
     }
     Header = *reinterpret_cast<int32_t*>(HeaderData.data());
 
     if (Header < 0) {
         ClientKick(c, "Invalid packet - header negative");
         beammp_errorf("Client {} send negative TCP header, ignoring packet", c.GetID());
-        return {};
+        return { };
     }
 
     std::vector<uint8_t> Data;
@@ -608,13 +638,23 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
     } else {
         ClientKick(c, "Header size limit exceeded");
         beammp_warn("Client " + c.GetName() + " (" + std::to_string(c.GetID()) + ") sent header larger than expected - assuming malicious intent and disconnecting the client.");
-        return {};
+        return { };
     }
-    auto N = boost::asio::read(Sock, boost::asio::buffer(Data), ec);
+    std::size_t N = 0;
+    if (WithTimeout) {
+        if (!Data.empty()) {
+            ec = ReadWithTimeout(Sock, Data.data(), Data.size(), std::chrono::seconds(READ_TIMEOUT_S));
+            if (!ec) {
+                N = Data.size();
+            }
+        }
+    } else {
+        N = boost::asio::read(Sock, boost::asio::buffer(Data), ec);
+    }
     if (ec) {
         // TODO: handle this case properly
         beammp_debugf("TCPRcv: Reading data failed: {}", ec.message());
-        return {};
+        return { };
     }
 
     if (N != Header) {
@@ -626,7 +666,7 @@ std::vector<uint8_t> TNetwork::TCPRcv(TClient& c) {
         Data.erase(Data.begin(), Data.begin() + ABG.size());
         try {
             return DeComp(Data);
-        } catch (const InvalidDataError& ) {
+        } catch (const InvalidDataError&) {
             beammp_errorf("Failed to decompress packet from a client. The receive failed and the client may be disconnected as a result");
             // return empty -> error
             return std::vector<uint8_t>();
@@ -648,35 +688,26 @@ void TNetwork::ClientKick(TClient& c, const std::string& R) {
     DisconnectClient(c, "Kicked");
 }
 
-void TNetwork::DisconnectClient(const std::weak_ptr<TClient> &c, const std::string &R)
-{
+void TNetwork::DisconnectClient(const std::weak_ptr<TClient>& c, const std::string& R) {
     if (auto locked = c.lock()) {
         DisconnectClient(*locked, R);
-    }
-    else {
+    } else {
         beammp_debugf("Tried to disconnect a non existant client with reason: {}", R);
     }
 }
 
-void TNetwork::DisconnectClient(TClient &c, const std::string &R)
-{
-    if (c.IsDisconnected()) return;
-    std::string ClientIP = c.GetTCPSock().remote_endpoint().address().to_string();
-    mClientMapMutex.lock();
-    if (mClientMap[ClientIP] > 0) {
-        mClientMap[ClientIP]--;
-    }
-    if (mClientMap[ClientIP] == 0) {
-        mClientMap.erase(ClientIP);
-    }
-    mClientMapMutex.unlock();
-    c.Disconnect(R);
+void TNetwork::DisconnectClient(TClient& c, const std::string& R) {
+    // Keep this unconditional; TClient::Disconnect() is the single-winner guard.
+    (void)c.Disconnect(R);
 }
 
 void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
     RegisterThreadAuto();
-    while (!c.expired()) {
+    while (true) {
         auto Client = c.lock();
+        if (!Client) {
+            break;
+        }
         if (Client->IsDisconnected()) {
             beammp_debug("client is disconnected, breaking client loop");
             break;
@@ -684,7 +715,7 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
         if (!Client->IsSyncing() && Client->IsSynced() && Client->MissedPacketQueueSize() != 0) {
             // debug("sending " + std::to_string(Client->MissedPacketQueueSize()) + " queued packets");
             while (Client->MissedPacketQueueSize() > 0) {
-                std::vector<uint8_t> QData {};
+                std::vector<uint8_t> QData { };
                 { // locked context
                     std::unique_lock lock(Client->MissedPacketQueueMutex());
                     if (Client->MissedPacketQueueSize() <= 0) {
@@ -710,20 +741,29 @@ void TNetwork::Looper(const std::weak_ptr<TClient>& c) {
 }
 
 void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
-    // TODO: the c.expired() might cause issues here, remove if you end up here with your debugger
-    if (c.expired() || !c.lock()->GetTCPSock().is_open()) {
+    if (auto Client = c.lock()) {
+        if (Client->IsDisconnected()) {
+            mServer.RemoveClient(c);
+            return;
+        }
+    } else {
         mServer.RemoveClient(c);
         return;
     }
     OnConnect(c);
-    RegisterThread("(" + std::to_string(c.lock()->GetID()) + ") \"" + c.lock()->GetName() + "\"");
+    if (auto Client = c.lock()) {
+        RegisterThread("(" + std::to_string(Client->GetID()) + ") \"" + Client->GetName() + "\"");
+    } else {
+        return;
+    }
 
-    std::thread QueueSync(&TNetwork::Looper, this, c);
+    std::jthread QueueSync(&TNetwork::Looper, this, c);
 
     while (true) {
-        if (c.expired())
-            break;
         auto Client = c.lock();
+        if (!Client) {
+            break;
+        }
         if (Client->IsDisconnected()) {
             beammp_debug("client status < 0, breaking client loop");
             break;
@@ -744,11 +784,7 @@ void TNetwork::TCPClient(const std::weak_ptr<TClient>& c) {
         }
     }
 
-    if (QueueSync.joinable())
-        QueueSync.join();
-
-    if (!c.expired()) {
-        auto Client = c.lock();
+    if (auto Client = c.lock()) {
         OnDisconnect(c);
     } else {
         beammp_warn("client expired in TCPClient, should never happen");
@@ -759,8 +795,7 @@ void TNetwork::UpdatePlayer(TClient& Client) {
     std::string Packet = ("Ss") + std::to_string(mServer.ClientCount()) + "/" + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)) + ":";
     mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
         ReadLock Lock(mServer.GetClientMutex());
-        if (!ClientPtr.expired()) {
-            auto c = ClientPtr.lock();
+        if (auto c = ClientPtr.lock()) {
             Packet += c->GetName() + ",";
         }
         return true;
@@ -770,43 +805,144 @@ void TNetwork::UpdatePlayer(TClient& Client) {
     //(void)Respond(Client, Packet, true);
 }
 
-boost::system::error_code TNetwork::ReadWithTimeout(TConnection& Connection, void *Buf, size_t Len, std::chrono::steady_clock::duration Timeout)
-{
-    io_context TimerIO;
-    steady_timer Timer(TimerIO);
-    Timer.expires_after(Timeout);
+static boost::system::error_code ReadSocketWithTimeout(
+    boost::asio::ip::tcp::socket& socket,
+    void* buffer,
+    std::size_t length,
+    std::chrono::steady_clock::duration timeout);
 
-    std::atomic<bool> TimedOut = false;
+boost::system::error_code TNetwork::ReadWithTimeout(TConnection& Connection, void* Buf, size_t Len, std::chrono::steady_clock::duration Timeout) {
+    return ReadWithTimeout(Connection.Socket, Buf, Len, Timeout);
+}
 
-    Timer.async_wait([&](const boost::system::error_code& ec) {
-        if (!ec) {
-            TimedOut = true;
-            Connection.Socket.cancel();
-        }
-    });
-    std::thread TimerThread([&]() { TimerIO.run(); });
+boost::system::error_code TNetwork::ReadWithTimeout(boost::asio::ip::tcp::socket& Socket, void* Buf, size_t Len, std::chrono::steady_clock::duration Timeout) {
+    return ReadSocketWithTimeout(Socket, Buf, Len, Timeout);
+}
 
-    boost::system::error_code ReadEc;
-    boost::asio::read(Connection.Socket, boost::asio::buffer(Buf, Len), ReadEc);
+static boost::system::error_code ReadSocketWithTimeout(
+    boost::asio::ip::tcp::socket& Socket,
+    void* Buffer,
+    std::size_t Length,
+    std::chrono::steady_clock::duration Timeout) {
+    namespace asio = boost::asio;
+    using boost::system::error_code;
 
-    TimerIO.stop();
-    TimerThread.join();
+    struct TTimeoutState {
+        explicit TTimeoutState(const boost::asio::any_io_executor& Executor)
+            : Timer(Executor) { }
 
-    if (TimedOut.load()) {
-        return error::timed_out; // synthesize a clean timeout error
-    }
-    return ReadEc; //Succes!
+        asio::steady_timer Timer;
+        std::promise<std::pair<error_code, std::size_t>> Promise;
+        std::atomic_bool Completed { false };
+    };
+
+    auto State = std::make_shared<TTimeoutState>(Socket.get_executor());
+    auto Future = State->Promise.get_future();
+
+    asio::async_read(
+        Socket,
+        asio::buffer(Buffer, Length),
+        [State](error_code ec, std::size_t n) {
+            if (!State->Completed.exchange(true)) {
+                State->Timer.cancel();
+                State->Promise.set_value({ ec, n });
+            }
+        });
+
+    State->Timer.expires_after(Timeout);
+    State->Timer.async_wait(
+        [State, &Socket](error_code ec) {
+            if (ec == asio::error::operation_aborted)
+                return;
+
+            if (!State->Completed.exchange(true)) {
+                error_code IgnoredEc;
+                Socket.cancel(IgnoredEc);
+                State->Promise.set_value({ asio::error::timed_out, 0 });
+            }
+        });
+
+    auto [ec, NRead] = Future.get();
+    return ec;
+}
+
+TEST_CASE("ReadSocketWithTimeout returns timed_out when peer sends no data") {
+    TIoPollThread TimerThread;
+    boost::system::error_code Ec;
+    ip::tcp::socket ClientSocket(TimerThread.IoCtx());
+    ip::tcp::socket ServerSocket(TimerThread.IoCtx());
+    OpenLoopbackSocketPair(TimerThread.IoCtx(), ClientSocket, ServerSocket, Ec);
+    REQUIRE(!Ec);
+
+    uint8_t ReadByte = 0;
+    const auto ReadEc = ReadSocketWithTimeout(ServerSocket, &ReadByte, 1, std::chrono::milliseconds(50));
+
+    CHECK(ReadEc == error::timed_out);
+}
+
+TEST_CASE("ReadSocketWithTimeout reads small payload") {
+    TIoPollThread TimerThread;
+    boost::system::error_code Ec;
+    ip::tcp::socket ClientSocket(TimerThread.IoCtx());
+    ip::tcp::socket ServerSocket(TimerThread.IoCtx());
+    OpenLoopbackSocketPair(TimerThread.IoCtx(), ClientSocket, ServerSocket, Ec);
+    REQUIRE(!Ec);
+
+    const std::array<uint8_t, 2> Sent { 'O', 'K' };
+    boost::asio::write(ClientSocket, boost::asio::buffer(Sent), Ec);
+    REQUIRE(!Ec);
+    std::array<uint8_t, 2> Received { };
+    const auto ReadEc = ReadSocketWithTimeout(ServerSocket, Received.data(), Received.size(), std::chrono::milliseconds(200));
+
+    CHECK(!ReadEc);
+    CHECK(Received == Sent);
+}
+
+TEST_CASE("ReadSocketWithTimeout reads large payload") {
+    TIoPollThread TimerThread;
+    boost::system::error_code Ec;
+    ip::tcp::socket ClientSocket(TimerThread.IoCtx());
+    ip::tcp::socket ServerSocket(TimerThread.IoCtx());
+    OpenLoopbackSocketPair(TimerThread.IoCtx(), ClientSocket, ServerSocket, Ec);
+    REQUIRE(!Ec);
+
+    constexpr size_t PacketSize = 2 * 1024 * 1024;
+    std::vector<uint8_t> Sent(PacketSize, uint8_t(0x7A));
+    boost::asio::write(ClientSocket, boost::asio::buffer(Sent), Ec);
+    REQUIRE(!Ec);
+    std::vector<uint8_t> Received(PacketSize);
+    const auto ReadEc = ReadSocketWithTimeout(ServerSocket, Received.data(), Received.size(), std::chrono::seconds(2));
+
+    CHECK(!ReadEc);
+    CHECK(Received == Sent);
+}
+
+TEST_CASE("ReadSocketWithTimeout can timeout then retry successfully") {
+    TIoPollThread TimerThread;
+    boost::system::error_code Ec;
+    ip::tcp::socket ClientSocket(TimerThread.IoCtx());
+    ip::tcp::socket ServerSocket(TimerThread.IoCtx());
+    OpenLoopbackSocketPair(TimerThread.IoCtx(), ClientSocket, ServerSocket, Ec);
+    REQUIRE(!Ec);
+
+    uint8_t Received = 0;
+    CHECK(ReadSocketWithTimeout(ServerSocket, &Received, 1, std::chrono::milliseconds(20)) == error::timed_out);
+
+    const uint8_t Sent = 0x42;
+    boost::asio::write(ClientSocket, boost::asio::buffer(&Sent, 1), Ec);
+    REQUIRE(!Ec);
+    const auto ReadEc = ReadSocketWithTimeout(ServerSocket, &Received, 1, std::chrono::milliseconds(200));
+
+    CHECK(!ReadEc);
+    CHECK(Received == Sent);
 }
 
 void TNetwork::OnDisconnect(const std::weak_ptr<TClient>& ClientPtr) {
-    std::shared_ptr<TClient> LockedClientPtr { nullptr };
-    try {
-        LockedClientPtr = ClientPtr.lock();
-    } catch (const std::exception&) {
+    auto LockedClientPtr = ClientPtr.lock();
+    if (!LockedClientPtr) {
         beammp_warn("Client expired in OnDisconnect, this is unexpected");
         return;
     }
-    beammp_assert(LockedClientPtr != nullptr);
     TClient& c = *LockedClientPtr;
     beammp_info(c.GetName() + (" Connection Terminated"));
     std::string Packet;
@@ -837,8 +973,7 @@ int TNetwork::OpenID() {
         found = true;
         mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
             ReadLock Lock(mServer.GetClientMutex());
-            if (!ClientPtr.expired()) {
-                auto c = ClientPtr.lock();
+            if (auto c = ClientPtr.lock()) {
                 if (c->GetID() == ID) {
                     found = false;
                     ID++;
@@ -851,9 +986,11 @@ int TNetwork::OpenID() {
 }
 
 void TNetwork::OnConnect(const std::weak_ptr<TClient>& c) {
-    beammp_assert(!c.expired());
-    beammp_info("Client connected");
     auto LockedClient = c.lock();
+    if (!LockedClient) {
+        return;
+    }
+    beammp_info("Client connected");
     LockedClient->SetID(OpenID());
     beammp_info("Assigned ID " + std::to_string(LockedClient->GetID()) + " to " + LockedClient->GetName());
     LuaAPI::MP::Engine->ReportErrors(LuaAPI::MP::Engine->TriggerEvent("onPlayerConnecting", "", LockedClient->GetID()));
@@ -885,6 +1022,7 @@ void TNetwork::SyncResources(TClient& c) {
     while (!c.IsDisconnected()) {
         Data = TCPRcv(c);
         if (Data.empty()) {
+            DisconnectClient(c, "TCPRcv failed during resource sync");
             break;
         }
         constexpr std::string_view Done = "Done";
@@ -960,9 +1098,9 @@ void TNetwork::SendFile(TClient& c, const std::string& UnsafeName) {
 #if defined(BEAMMP_LINUX)
 #include <cerrno>
 #include <cstring>
+#include <signal.h>
 #include <sys/sendfile.h>
 #include <unistd.h>
-#include <signal.h>
 #endif
 void TNetwork::SendFileToClient(TClient& c, size_t Size, const std::string& Name) {
     TScopedTimer timer(fmt::format("Download of '{}' for client {}", Name, c.GetID()));
@@ -977,17 +1115,40 @@ void TNetwork::SendFileToClient(TClient& c, size_t Size, const std::string& Name
     // native handle, needed in order to make native syscalls with it
     int socket = c.GetTCPSock().native_handle();
 
-    ssize_t ret = 0;
-    auto ToSendTotal = Size;
-    auto Start = 0;
-    while (ret < ssize_t(ToSendTotal)) {
-        auto SysOffset = off_t(Start + size_t(ret));
-        ret = sendfile(socket, fd, &SysOffset, ToSendTotal - size_t(ret));
-        if (ret < 0) {
-            beammp_errorf("Failed to send mod '{}' to client {}: {}", Name, c.GetID(), std::strerror(errno));
+    const auto ToSendTotal = Size;
+    size_t TotalSent = 0;
+    while (TotalSent < ToSendTotal) {
+        off_t SysOffset = off_t(TotalSent);
+        const ssize_t SentNow = sendfile(socket, fd, &SysOffset, ToSendTotal - TotalSent);
+        if (SentNow > 0) {
+            TotalSent += size_t(SentNow);
+            continue;
+        }
+        if (SentNow == 0) {
+            beammp_errorf("Failed to send mod '{}' to client {}: sendfile returned 0 before all bytes were sent", Name, c.GetID());
+            ::close(fd);
+            DisconnectClient(c, "sendfile returned 0 during mod download");
             return;
         }
+
+        if (errno == EINTR) {
+            continue;
+        }
+        if (errno == EAGAIN
+#if EWOULDBLOCK != EAGAIN
+            || errno == EWOULDBLOCK
+#endif
+        ) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+
+        beammp_errorf("Failed to send mod '{}' to client {}: {}", Name, c.GetID(), std::strerror(errno));
+        ::close(fd);
+        DisconnectClient(c, "sendfile failed during mod download");
+        return;
     }
+    ::close(fd);
 
 #else
     std::ifstream f(Name.c_str(), std::ios::binary);
@@ -1056,10 +1217,10 @@ bool TNetwork::Respond(TClient& c, const std::vector<uint8_t>& MSG, bool Rel, bo
 }
 
 bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
-    if (c.expired()) {
+    auto LockedClient = c.lock();
+    if (!LockedClient) {
         return false;
     }
-    auto LockedClient = c.lock();
     if (LockedClient->IsSynced())
         return true;
     // Syncing, later set isSynced
@@ -1078,8 +1239,8 @@ bool TNetwork::SyncClient(const std::weak_ptr<TClient>& c) {
         std::shared_ptr<TClient> client;
         {
             ReadLock Lock(mServer.GetClientMutex());
-            if (!ClientPtr.expired()) {
-                client = ClientPtr.lock();
+            if (auto Locked = ClientPtr.lock()) {
+                client = std::move(Locked);
             } else
                 return true;
         }
@@ -1116,14 +1277,14 @@ void TNetwork::SendToAll(TClient* c, const std::vector<uint8_t>& Data, bool Self
     char C = Data.at(0);
     bool ret = true;
     mServer.ForEachClient([&](std::weak_ptr<TClient> ClientPtr) -> bool {
-        std::shared_ptr<TClient> Client;
-        try {
+        std::shared_ptr<TClient> Client { nullptr };
+        {
             ReadLock Lock(mServer.GetClientMutex());
-            Client = ClientPtr.lock();
-        } catch (const std::exception&) {
-            // continue
-            beammp_warn("Client expired, shouldn't happen - if a client disconnected recently, you can ignore this");
-            return true;
+            if (auto Locked = ClientPtr.lock()) {
+                Client = std::move(Locked);
+            } else {
+                return true;
+            }
         }
         if (Self || Client.get() != c) {
             if (Client->IsSynced() || Client->IsSyncing()) {
@@ -1178,12 +1339,12 @@ bool TNetwork::UDPSend(TClient& Client, std::vector<uint8_t> Data) {
 }
 
 std::vector<uint8_t> TNetwork::UDPRcvFromClient(boost::asio::ip::udp::endpoint& ClientEndpoint) {
-    std::array<char, 1024> Ret {};
+    std::array<char, 1024> Ret { };
     boost::system::error_code ec;
     const auto Rcv = mUDPSock.receive_from(boost::asio::mutable_buffer(Ret.data(), Ret.size()), ClientEndpoint, 0, ec);
     if (ec) {
         beammp_errorf("UDP recvfrom() failed: {}", ec.message());
-        return {};
+        return { };
     }
     beammp_assert(Rcv <= Ret.size());
     return std::vector<uint8_t>(Ret.begin(), Ret.begin() + Rcv);

@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "ArgsParser.h"
+#include "Client.h"
 #include "Common.h"
 #include "Http.h"
 #include "LuaAPI.h"
@@ -175,10 +176,6 @@ int BeamMPServerMain(MainArguments Arguments) {
         Application::SetSubsystemStatus("Main", Application::Status::ShuttingDown);
         Shutdown = true;
     });
-    Application::RegisterShutdownHandler([] {
-        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
-        TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
-    });
 
     TServer Server(Arguments.List);
 
@@ -199,6 +196,20 @@ int BeamMPServerMain(MainArguments Arguments) {
     Application::CheckForUpdates();
 
     TPluginMonitor PluginMonitor(fs::path(Application::Settings.getAsString(Settings::Key::General_ResourceFolder)) / "Server", LuaEngine);
+
+    Application::RegisterShutdownHandler([] {
+        auto Futures = LuaAPI::MP::Engine->TriggerEvent("onShutdown", "");
+        TLuaEngine::WaitForAll(Futures, std::chrono::seconds(5));
+    });
+    Application::RegisterShutdownHandler([&Server, &Network] {
+        beammp_debug("Kicking all players due to shutdown");
+        Server.ForEachClient([&Network](std::weak_ptr<TClient> client) -> bool {
+            if (!client.expired()) {
+                Network.ClientKick(*client.lock(), "Server shutdown");
+            }
+            return true;
+        });
+    });
 
     RegisterThread("Main(Waiting)");
 

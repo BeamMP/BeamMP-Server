@@ -69,8 +69,9 @@ void TPluginMonitor::operator()() {
                             auto StateID = mEngine->GetStateIDForPlugin(fs::path(Pair.first).parent_path());
                             auto Res = mEngine->EnqueueScript(StateID, Chunk);
                             Res->WaitUntilReady();
-                            if (Res->Error) {
-                                beammp_lua_errorf("Error while hot-reloading \"{}\": {}", Pair.first, Res->ErrorMessage);
+                            if (Res->IsError()) {
+                                auto Snapshot = Res->GetSnapshot();
+                                beammp_lua_errorf("Error while hot-reloading \"{}\": {}", Pair.first, Snapshot.ErrorMessage);
                             } else {
                                 mEngine->ReportErrors(mEngine->TriggerLocalEvent(StateID, "onInit"));
                                 mEngine->ReportErrors(mEngine->TriggerEvent("onFileChanged", "", Pair.first));

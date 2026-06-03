@@ -20,6 +20,7 @@
 
 #include "IThreaded.h"
 #include "RWMutex.h"
+#include "TIoPollThread.h"
 #include "TScopedTimer.h"
 #include <functional>
 #include <memory>
@@ -50,11 +51,10 @@ public:
 
     const TScopedTimer UptimeTimer;
 
-    // asio io context
-    io_context& IoCtx() { return mIoCtx; }
+    io_context& IoCtx() { return mIoCtxPoller.IoCtx(); }
 
 private:
-    io_context mIoCtx {};
+    TIoPollThread mIoCtxPoller;
     TClientSet mClients;
     mutable RWMutex mClientsMutex;
     static void ParseVehicle(TClient& c, const std::string& Pckt, TNetwork& Network);

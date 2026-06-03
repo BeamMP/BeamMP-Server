@@ -55,8 +55,8 @@ void TPPSMonitor::operator()() {
             std::shared_ptr<TClient> c;
             {
                 ReadLock Lock(mServer.GetClientMutex());
-                if (!ClientPtr.expired()) {
-                    c = ClientPtr.lock();
+                if (auto Locked = ClientPtr.lock()) {
+                    c = std::move(Locked);
                 } else
                     return true;
             }
@@ -76,7 +76,7 @@ void TPPSMonitor::operator()() {
             return true;
         });
         for (auto& ClientToKick : TimedOutClients) {
-            ClientToKick->Disconnect("Timeout");
+            Network().DisconnectClient(*ClientToKick, "Timeout");
         }
         TimedOutClients.clear();
         if (C == 0 || mInternalPPS == 0) {

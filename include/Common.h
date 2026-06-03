@@ -129,8 +129,12 @@ private:
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
 
-    static inline Version mVersion { 3, 9, 2 };
+    static inline Version mVersion { 3, 9, 3 };
 };
+
+/// Used to static_assert in std::visit
+template<class>
+inline constexpr bool AlwaysFalseV = false;
 
 void SplitString(std::string const& str, const char delim, std::vector<std::string>& out);
 std::string LowerString(std::string str);

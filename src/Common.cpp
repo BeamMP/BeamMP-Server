@@ -31,6 +31,7 @@
 #include <sstream>
 #include <thread>
 
+#include "TLuaResult.h"
 #include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"

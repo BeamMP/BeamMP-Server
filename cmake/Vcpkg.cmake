@@ -15,3 +15,5 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake)
 endif()
 
+# ensure SOL2 safeties are all ON
+add_compile_definitions(SOL_ALL_SAFETIES_ON=1)
