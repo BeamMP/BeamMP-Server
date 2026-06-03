@@ -1134,6 +1134,12 @@ TLuaEngine::StateThreadData::StateThreadData(const std::string& Name, TLuaStateI
     Start();
 }
 
+TLuaEngine::StateThreadData::~StateThreadData() noexcept {
+    HttpAsync::CleanupState(mState);
+
+    beammp_debug("\"" + mStateId + "\" destroyed");
+}
+
 std::shared_ptr<TLuaVoidResult> TLuaEngine::StateThreadData::EnqueueScript(const TLuaChunk& Script) {
     std::unique_lock Lock(mStateExecuteQueueMutex);
     auto Result = std::make_shared<TLuaVoidResult>(mStateId);
