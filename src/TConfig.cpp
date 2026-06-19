@@ -38,6 +38,8 @@ static constexpr std::string_view StrIP = "IP";
 static constexpr std::string_view EnvStrIP = "BEAMMP_IP";
 static constexpr std::string_view StrPort = "Port";
 static constexpr std::string_view EnvStrPort = "BEAMMP_PORT";
+static constexpr std::string_view StrRegisterIPv6 = "RegisterIPv6";
+static constexpr std::string_view EnvStrRegisterIPv6 = "BEAMMP_REGISTER_IPV6";
 static constexpr std::string_view StrMaxCars = "MaxCars";
 static constexpr std::string_view EnvStrMaxCars = "BEAMMP_MAX_CARS";
 static constexpr std::string_view StrMaxPlayers = "MaxPlayers";
@@ -144,6 +146,8 @@ void TConfig::FlushToFile() {
     SetComment(data["General"][StrIP.data()].comments(), " The IP address to bind the server to, this is NOT related to your public IP. Can be used if your machine has multiple network interfaces");
     data["General"][StrPort.data()] = Application::Settings.getAsInt(Settings::Key::General_Port);
     data["General"][StrName.data()] = Application::Settings.getAsString(Settings::Key::General_Name);
+    SetComment(data["General"][StrRegisterIPv6.data()].comments(), " If true, connect to and register with your public IPv6 (instead of IPv4) address on the backend");
+    data["General"][StrRegisterIPv6.data()] = Application::Settings.getAsBool(Settings::Key::General_RegisterIPv6);
     SetComment(data["General"][StrTags.data()].comments(), " Add custom identifying tags to your server to make it easier to find. Format should be TagA,TagB,TagC. Note the comma seperation.");
     data["General"][StrTags.data()] = Application::Settings.getAsString(Settings::Key::General_Tags);
     data["General"][StrMaxCars.data()] = Application::Settings.getAsInt(Settings::Key::General_MaxCars);
@@ -263,6 +267,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         } else {
             TryReadValue(data, "General", StrIP, EnvStrIP, Settings::Key::General_IP);
         }
+        TryReadValue(data, "General", StrRegisterIPv6, EnvStrRegisterIPv6, Settings::Key::General_RegisterIPv6);
         TryReadValue(data, "General", StrMaxCars, EnvStrMaxCars, Settings::Key::General_MaxCars);
         TryReadValue(data, "General", StrMaxPlayers, EnvStrMaxPlayers, Settings::Key::General_MaxPlayers);
         TryReadValue(data, "General", StrMap, EnvStrMap, Settings::Key::General_Map);
@@ -314,6 +319,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrInformationPacket) + ": " + std::string(Application::Settings.getAsBool(Settings::Key::General_InformationPacket) ? "true" : "false"));
     beammp_debug(std::string(StrPort) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)));
     beammp_debug(std::string(StrIP) + ": \"" + Application::Settings.getAsString(Settings::Key::General_IP) + "\"");
+    beammp_debug(std::string(StrRegisterIPv6) + ": \"" + (Application::Settings.getAsBool(Settings::Key::General_RegisterIPv6) ? "true" : "false") + "\"");
     beammp_debug(std::string(StrMaxCars) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxCars)));
     beammp_debug(std::string(StrMaxPlayers) + ": " + std::to_string(Application::Settings.getAsInt(Settings::Key::General_MaxPlayers)));
     beammp_debug(std::string(StrMap) + ": \"" + Application::Settings.getAsString(Settings::Key::General_Map) + "\"");
