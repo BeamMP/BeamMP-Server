@@ -73,6 +73,38 @@ std::string Application::ServerVersionString() {
     return mVersion.AsString();
 }
 
+std::vector<std::string> Application::GetBackendUrlsInOrder() {
+    return {
+        "https://backend." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region)),
+    };
+}
+
+std::string Application::GetServerCheckUrl()
+{
+    return "https://check." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
+}
+
+std::string Application::GetBackendUrlForAuth()
+{
+    return "https://auth." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
+}
+
+std::string Application::GetBackendUrlForSocketIO()
+{
+    return "https://backend." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
+}
+
+std::string Application::RegionToTopLevelDomain(const std::string region)
+{
+    if (region == "Restricted") {
+        return "beammp.ru";
+    }
+    else if (region == "Developer") {
+        return "beammp.dev";
+    }
+    return "beammp.com"; // Global
+}
+
 std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {
     std::array<uint8_t, 3> Version;
     std::stringstream ss(str);

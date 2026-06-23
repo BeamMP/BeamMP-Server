@@ -36,6 +36,7 @@ Settings::Settings() {
         { General_Debug, false },
         { General_AllowGuests, true },
         { General_InformationPacket, true },
+        { General_Region, std::string("Global")},
         { Misc_ImScaredOfUpdates, true },
         { Misc_UpdateReminderTime, "30s" }
     };
@@ -56,6 +57,7 @@ Settings::Settings() {
         { { "General", "Debug" }, { General_Debug, READ_WRITE } },
         { { "General", "AllowGuests" }, { General_AllowGuests, READ_WRITE } },
         { { "General", "InformationPacket" }, { General_InformationPacket, READ_WRITE } },
+        { { "General", "Region" }, { General_Region, READ_WRITE } },
         { { "Misc", "ImScaredOfUpdates" }, { Misc_ImScaredOfUpdates, READ_WRITE } },
         { { "Misc", "UpdateReminderTime" }, { Misc_UpdateReminderTime, READ_WRITE } }
     };

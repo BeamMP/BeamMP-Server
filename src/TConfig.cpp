@@ -52,6 +52,8 @@ static constexpr std::string_view StrTags = "Tags";
 static constexpr std::string_view EnvStrTags = "BEAMMP_TAGS";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view EnvStrResourceFolder = "BEAMMP_RESOURCE_FOLDER";
+static constexpr std::string_view StrRegion = "Region";
+static constexpr std::string_view EnvStrRegion = "BEAMMP_REGION";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view EnvStrAuthKey = "BEAMMP_AUTH_KEY";
 static constexpr std::string_view StrLogChat = "LogChat";
@@ -151,6 +153,7 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.getAsString(Settings::Key::General_Map);
     data["General"][StrDescription.data()] = Application::Settings.getAsString(Settings::Key::General_Description);
     data["General"][StrResourceFolder.data()] = Application::Settings.getAsString(Settings::Key::General_ResourceFolder);
+    data["General"][StrRegion.data()] = Application::Settings.getAsString(Settings::Key::General_Region);
     // data["General"][StrPassword.data()] = Application::Settings.Password;
     // SetComment(data["General"][StrPassword.data()].comments(), " Sets a password on this server, which restricts people from joining. To join, a player must enter this exact password. Leave empty ("") to disable the password.");
     // Misc
@@ -270,6 +273,7 @@ void TConfig::ParseFromFile(std::string_view name) {
         TryReadValue(data, "General", StrDescription, EnvStrDescription, Settings::Key::General_Description);
         TryReadValue(data, "General", StrTags, EnvStrTags, Settings::Key::General_Tags);
         TryReadValue(data, "General", StrResourceFolder, EnvStrResourceFolder, Settings::Key::General_ResourceFolder);
+        TryReadValue(data, "General", StrRegion, EnvStrRegion, Settings::Key::General_Region);
         TryReadValue(data, "General", StrAuthKey, EnvStrAuthKey, Settings::Key::General_AuthKey);
         TryReadValue(data, "General", StrLogChat, EnvStrLogChat, Settings::Key::General_LogChat);
         TryReadValue(data, "General", StrAllowGuests, EnvStrAllowGuests, Settings::Key::General_AllowGuests);
@@ -322,6 +326,7 @@ void TConfig::PrintDebug() {
     beammp_debug(std::string(StrTags) + ": " + TagsAsPrettyArray());
     beammp_debug(std::string(StrLogChat) + ": \"" + (Application::Settings.getAsBool(Settings::Key::General_LogChat) ? "true" : "false") + "\"");
     beammp_debug(std::string(StrResourceFolder) + ": \"" + Application::Settings.getAsString(Settings::Key::General_ResourceFolder) + "\"");
+    beammp_debug(std::string(StrRegion) + ": \"" + Application::Settings.getAsString(Settings::Key::General_Region) + "\"");
     beammp_debug(std::string(StrAllowGuests) + ": \"" + (Application::Settings.getAsBool(Settings::Key::General_AllowGuests) ? "true" : "false") + "\"");
     // special!
     beammp_debug("Key Length: " + std::to_string(Application::Settings.getAsString(Settings::Key::General_AuthKey).length()) + "");

@@ -80,16 +80,13 @@ public:
 
     static inline struct Settings Settings { };
 
-    static std::vector<std::string> GetBackendUrlsInOrder() {
-        return {
-            "https://backend.beammp.com",
-        };
-    }
+    static std::vector<std::string> GetBackendUrlsInOrder();
 
-    static std::string GetServerCheckUrl() { return "https://check.beammp.com"; }
+    static std::string GetServerCheckUrl();
 
-    static std::string GetBackendUrlForAuth() { return "https://auth.beammp.com"; }
-    static std::string GetBackendUrlForSocketIO() { return "https://backend.beammp.com"; }
+    static std::string GetBackendUrlForAuth();
+    static std::string GetBackendUrlForSocketIO();
+    static std::string RegionToTopLevelDomain(const std::string region);
     static void CheckForUpdates();
     static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
     static bool IsOutdated(const Version& Current, const Version& Newest);
