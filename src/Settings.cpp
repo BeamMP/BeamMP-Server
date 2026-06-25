@@ -36,7 +36,7 @@ Settings::Settings() {
         { General_Debug, false },
         { General_AllowGuests, true },
         { General_InformationPacket, true },
-        { General_Region, std::string("Global")},
+        { General_Region, std::string("")},
         { Misc_ImScaredOfUpdates, true },
         { Misc_UpdateReminderTime, "30s" }
     };

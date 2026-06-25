@@ -52,8 +52,8 @@ static constexpr std::string_view StrTags = "Tags";
 static constexpr std::string_view EnvStrTags = "BEAMMP_TAGS";
 static constexpr std::string_view StrResourceFolder = "ResourceFolder";
 static constexpr std::string_view EnvStrResourceFolder = "BEAMMP_RESOURCE_FOLDER";
-static constexpr std::string_view StrRegion = "Region";
-static constexpr std::string_view EnvStrRegion = "BEAMMP_REGION";
+static constexpr std::string_view StrRegion = "BackendRegion";
+static constexpr std::string_view EnvStrRegion = "BEAMMP_BACKEND_REGION";
 static constexpr std::string_view StrAuthKey = "AuthKey";
 static constexpr std::string_view EnvStrAuthKey = "BEAMMP_AUTH_KEY";
 static constexpr std::string_view StrLogChat = "LogChat";
@@ -153,7 +153,7 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.getAsString(Settings::Key::General_Map);
     data["General"][StrDescription.data()] = Application::Settings.getAsString(Settings::Key::General_Description);
     data["General"][StrResourceFolder.data()] = Application::Settings.getAsString(Settings::Key::General_ResourceFolder);
-    data["General"][StrRegion.data()] = Application::Settings.getAsString(Settings::Key::General_Region);
+    // data["General"][StrRegion.data()] = Application::Settings.getAsString(Settings::Key::General_Region);
     // data["General"][StrPassword.data()] = Application::Settings.Password;
     // SetComment(data["General"][StrPassword.data()].comments(), " Sets a password on this server, which restricts people from joining. To join, a player must enter this exact password. Leave empty ("") to disable the password.");
     // Misc
