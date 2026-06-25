@@ -24,7 +24,6 @@
 #include "Http.h"
 // #include "SocketIO.h"
 #include <nlohmann/json.hpp>
-#include <sstream>
 
 void THeartbeatThread::operator()() {
     RegisterThread("Heartbeat");
@@ -63,6 +62,10 @@ void THeartbeatThread::operator()() {
         bool Ok = false;
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url + Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
+            if (T == Http::ErrorString || ResponseCode != 200) {
+                Application::TopLevelDomainFailed(true);
+                T = Http::POST(Url + Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
+            }
 
             if (!Application::Settings.getAsBool(Settings::Key::General_Private)) {
                 beammp_debug("Backend response was: `" + T + "`");

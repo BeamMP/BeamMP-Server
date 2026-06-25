@@ -94,15 +94,20 @@ std::string Application::GetBackendUrlForSocketIO()
     return "https://backend." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
 }
 
+void Application::TopLevelDomainFailed(bool failed)
+{
+    if (failed) {
+        beammp_info("Top Level Domain (" + mValidTLDs[mTLDIndex % mValidTLDs.size()] + ") failed to respond correctly, switching to " + mValidTLDs[(mTLDIndex + 1) % mValidTLDs.size()]);
+        mTLDIndex++;
+    }
+}
+
 std::string Application::RegionToTopLevelDomain(const std::string region)
 {
-    if (region == "Restricted") {
-        return "beammp.ru";
-    }
-    else if (region == "Developer") {
+    if (region == "Developer") {
         return "beammp.dev";
     }
-    return "beammp.com"; // Global
+    return mValidTLDs[mTLDIndex % mValidTLDs.size()]; // Global
 }
 
 std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {

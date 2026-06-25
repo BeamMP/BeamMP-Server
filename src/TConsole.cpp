@@ -297,6 +297,10 @@ void TConsole::Command_NetTest(const std::string& cmd, const std::vector<std::st
 
     std::string T = Http::GET(
         Application::GetServerCheckUrl() + "/api/v2/beammp/" + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)), &status);
+    if (T == Http::ErrorString || status != 200) {
+        Application::TopLevelDomainFailed(true);
+        T = Http::GET(Application::GetServerCheckUrl() + "/api/v2/beammp/" + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)), &status);
+    }
 
     beammp_debugf("Status and response from Server Check API: {0}, {1}", status, T);
 

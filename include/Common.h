@@ -86,6 +86,7 @@ public:
 
     static std::string GetBackendUrlForAuth();
     static std::string GetBackendUrlForSocketIO();
+    static void TopLevelDomainFailed(bool failed);
     static std::string RegionToTopLevelDomain(const std::string region);
     static void CheckForUpdates();
     static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
@@ -125,6 +126,8 @@ private:
     static inline bool mShutdown { false };
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
+    static inline int mTLDIndex { 0 };
+    static inline std::vector<std::string> mValidTLDs {"beammp.com", "beammp.ru"};
 
     static inline Version mVersion { 3, 9, 3 };
 };
