@@ -153,7 +153,9 @@ void TConfig::FlushToFile() {
     data["General"][StrMap.data()] = Application::Settings.getAsString(Settings::Key::General_Map);
     data["General"][StrDescription.data()] = Application::Settings.getAsString(Settings::Key::General_Description);
     data["General"][StrResourceFolder.data()] = Application::Settings.getAsString(Settings::Key::General_ResourceFolder);
-    // data["General"][StrRegion.data()] = Application::Settings.getAsString(Settings::Key::General_Region);
+    if (Application::Settings.getAsString(Settings::Key::General_Region) != "") {
+        data["General"][StrRegion.data()] = Application::Settings.getAsString(Settings::Key::General_Region);
+    }
     // data["General"][StrPassword.data()] = Application::Settings.Password;
     // SetComment(data["General"][StrPassword.data()].comments(), " Sets a password on this server, which restricts people from joining. To join, a player must enter this exact password. Leave empty ("") to disable the password.");
     // Misc
