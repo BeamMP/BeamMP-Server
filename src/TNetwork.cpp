@@ -458,7 +458,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         unsigned int ResponseCode = 0;
         AuthResStr = Http::POST(Application::GetBackendUrlForAuth() + Target, AuthReq.dump(), "application/json", &ResponseCode);
         if (AuthResStr == Http::ErrorString || ResponseCode != 200) {
-            Application::TopLevelDomainFailed(true);
+            Application::TopLevelDomainFailed();
             AuthResStr = Http::POST(Application::GetBackendUrlForAuth() + Target, AuthReq.dump(), "application/json", &ResponseCode);
         }
 

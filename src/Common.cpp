@@ -35,6 +35,7 @@
 #include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"
+#include "RegionHandler.h"
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
@@ -75,39 +76,23 @@ std::string Application::ServerVersionString() {
 
 std::vector<std::string> Application::GetBackendUrlsInOrder() {
     return {
-        "https://backend." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region)),
+        "https://backend." + RegionHandler::RegionToTopLevelDomain(),
     };
 }
 
 std::string Application::GetServerCheckUrl()
 {
-    return "https://check." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
+    return "https://check." + RegionHandler::RegionToTopLevelDomain();
 }
 
 std::string Application::GetBackendUrlForAuth()
 {
-    return "https://auth." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
+    return "https://auth." + RegionHandler::RegionToTopLevelDomain();
 }
 
 std::string Application::GetBackendUrlForSocketIO()
 {
-    return "https://backend." + RegionToTopLevelDomain(Settings.getAsString(Settings::Key::General_Region));
-}
-
-void Application::TopLevelDomainFailed(bool failed)
-{
-    if (failed) {
-        beammp_info("Top Level Domain (" + mValidTLDs[mTLDIndex % mValidTLDs.size()] + ") failed to respond correctly, switching to " + mValidTLDs[(mTLDIndex + 1) % mValidTLDs.size()]);
-        mTLDIndex++;
-    }
-}
-
-std::string Application::RegionToTopLevelDomain(const std::string region)
-{
-    if (region == "Developer") {
-        return "beammp.dev";
-    }
-    return mValidTLDs[mTLDIndex % mValidTLDs.size()]; // Global
+    return "https://backend." + RegionHandler::RegionToTopLevelDomain();
 }
 
 std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {

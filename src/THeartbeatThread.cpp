@@ -63,7 +63,7 @@ void THeartbeatThread::operator()() {
         for (const auto& Url : Application::GetBackendUrlsInOrder()) {
             T = Http::POST(Url + Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
             if (T == Http::ErrorString || ResponseCode != 200) {
-                Application::TopLevelDomainFailed(true);
+                Application::TopLevelDomainFailed();
                 T = Http::POST(Url + Target, Body, "application/json", &ResponseCode, { { "api-v", "2" } });
             }
 

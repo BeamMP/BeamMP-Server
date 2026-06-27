@@ -19,16 +19,16 @@
 #include "RegionHandler.h"
 #include "Common.h"
 
-void RegionHandler::TopLevelDomainFailed(bool failed)
+void RegionHandler::TopLevelDomainFailed()
 {
-    if (!failed) return;
     beammp_info("Top level domain of " + mValidTLDs[mRegionIndex % mValidTLDs.size()] + " didn't respond correctly , changing domain to " + mValidTLDs[(mRegionIndex + 1) % mValidTLDs.size()]);
     mRegionIndex++;
 }
 
-std::string RegionHandler::RegionToTopLevelDomain(const std::string region)
+std::string RegionHandler::RegionToTopLevelDomain()
 {
-    if (region == "Developer") {
+    static bool isDeveloperRegion = Application::Settings.getAsString(Settings::Key::General_Region) == "Developer";
+    if (isDeveloperRegion) {
         return "beammp.dev";
     }
     return mValidTLDs[mRegionIndex % mValidTLDs.size()]; // Global

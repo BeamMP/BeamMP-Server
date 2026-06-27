@@ -25,8 +25,8 @@
 class RegionHandler final {
 public:
     RegionHandler() = delete;
-    static void TopLevelDomainFailed(bool failed);
-    static std::string RegionToTopLevelDomain(const std::string region);
+    static void TopLevelDomainFailed();
+    static std::string RegionToTopLevelDomain();
 private:
     static inline unsigned int mRegionIndex { 0 };
     const static inline std::array<std::string, 2> mValidTLDs {"beammp.com", "beammp.ru"};
