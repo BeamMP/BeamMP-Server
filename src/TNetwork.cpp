@@ -21,6 +21,7 @@
 #include "Common.h"
 #include "Env.h"
 #include "LuaAPI.h"
+#include "RegionHandler.h"
 #include "TConnectionLimiter.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"
@@ -458,7 +459,7 @@ std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
         unsigned int ResponseCode = 0;
         AuthResStr = Http::POST(Application::GetBackendUrlForAuth() + Target, AuthReq.dump(), "application/json", &ResponseCode);
         if (AuthResStr == Http::ErrorString || ResponseCode != 200) {
-            Application::TopLevelDomainFailed();
+            RegionHandler::TopLevelDomainFailed();
             AuthResStr = Http::POST(Application::GetBackendUrlForAuth() + Target, AuthReq.dump(), "application/json", &ResponseCode);
         }
 

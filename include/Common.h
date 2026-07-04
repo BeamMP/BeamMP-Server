@@ -86,8 +86,6 @@ public:
 
     static std::string GetBackendUrlForAuth();
     static std::string GetBackendUrlForSocketIO();
-    static void TopLevelDomainFailed(bool failed);
-    static std::string RegionToTopLevelDomain(const std::string region);
     static void CheckForUpdates();
     static std::array<uint8_t, 3> VersionStrToInts(const std::string& str);
     static bool IsOutdated(const Version& Current, const Version& Newest);

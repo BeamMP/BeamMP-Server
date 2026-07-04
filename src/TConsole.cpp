@@ -25,6 +25,7 @@
 #include "Http.h"
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
+#include "RegionHandler.h"
 
 #include <ctime>
 #include <lua.hpp>
@@ -298,7 +299,7 @@ void TConsole::Command_NetTest(const std::string& cmd, const std::vector<std::st
     std::string T = Http::GET(
         Application::GetServerCheckUrl() + "/api/v2/beammp/" + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)), &status);
     if (T == Http::ErrorString || status != 200) {
-        Application::TopLevelDomainFailed();
+        RegionHandler::TopLevelDomainFailed();
         T = Http::GET(Application::GetServerCheckUrl() + "/api/v2/beammp/" + std::to_string(Application::Settings.getAsInt(Settings::Key::General_Port)), &status);
     }
 

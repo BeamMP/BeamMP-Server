@@ -226,16 +226,22 @@ void TConfig::TryReadValue(toml::value& Table, const std::string& Category, cons
         if constexpr (std::is_same_v<T, std::string>) {
             if (Table[Category.c_str()][Key.data()].is_string())
                 Application::Settings.set(key, Table[Category.c_str()][Key.data()].as_string());
+            else if (Table[Category.c_str()][Key.data()].is_empty())
+                beammp_debugf("Value '{}.{}' is empty", Category, Key);
             else
                 beammp_warnf("Value '{}.{}' has unexpected type, expected type 'string'", Category, Key);
         } else if constexpr (std::is_same_v<T, int>) {
             if (Table[Category.c_str()][Key.data()].is_integer())
                 Application::Settings.set(key, int(Table[Category.c_str()][Key.data()].as_integer()));
+            else if (Table[Category.c_str()][Key.data()].is_empty())
+                beammp_debugf("Value '{}.{}' is empty", Category, Key);
             else
                 beammp_warnf("Value '{}.{}' has unexpected type, expected type 'integer'", Category, Key);
         } else if constexpr (std::is_same_v<T, bool>) {
             if (Table[Category.c_str()][Key.data()].is_boolean())
                 Application::Settings.set(key, Table[Category.c_str()][Key.data()].as_boolean());
+            else if (Table[Category.c_str()][Key.data()].is_empty())
+                beammp_debugf("Value '{}.{}' is empty", Category, Key);
             else
                 beammp_warnf("Value '{}.{}' has unexpected type, expected type 'boolean'", Category, Key);
         } else {
