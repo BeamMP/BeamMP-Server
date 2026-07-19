@@ -76,23 +76,23 @@ std::string Application::ServerVersionString() {
 
 std::vector<std::string> Application::GetBackendUrlsInOrder() {
     return {
-        "https://backend." + RegionHandler::RegionToTopLevelDomain(),
+        "https://backend.beammp.com",
     };
 }
 
 std::string Application::GetServerCheckUrl()
 {
-    return "https://check." + RegionHandler::RegionToTopLevelDomain();
+    return "https://check.beammp.com";
 }
 
 std::string Application::GetBackendUrlForAuth()
 {
-    return "https://auth." + RegionHandler::RegionToTopLevelDomain();
+    return "https://auth.beammp.com";
 }
 
 std::string Application::GetBackendUrlForSocketIO()
 {
-    return "https://backend." + RegionHandler::RegionToTopLevelDomain();
+    return "https://backend.beammp.com";
 }
 
 std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {

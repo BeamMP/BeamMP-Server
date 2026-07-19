@@ -18,6 +18,7 @@
 
 #include "Http.h"
 
+#include "RegionHandler.h"
 #include "Common.h"
 #include "CustomAssert.h"
 
@@ -115,10 +116,13 @@ public:
     }
 };
 
-std::string Http::GET(const std::string& url, unsigned int* status) {
+std::string Http::GET(std::string url, unsigned int* status, const bool& redirect) {
     std::string Ret;
     CurlLease Lease{};
     CURL* curl = Lease.GetHandle();
+    if (redirect) {
+        url = RegionHandler::RedirectURL(url);
+    }
     if (curl) {
         CURLcode res;
         char errbuf[CURL_ERROR_SIZE];
@@ -142,6 +146,7 @@ std::string Http::GET(const std::string& url, unsigned int* status) {
         if (res != CURLE_OK) {
             beammp_error("GET to " + url + " failed: " + std::string(curl_easy_strerror(res)));
             beammp_error("Curl error: " + std::string(errbuf));
+            RegionHandler::TopLevelDomainFailed();
             return Http::ErrorString;
         }
 
@@ -156,10 +161,13 @@ std::string Http::GET(const std::string& url, unsigned int* status) {
     return Ret;
 }
 
-std::string Http::POST(const std::string& url, const std::string& body, const std::string& ContentType, unsigned int* status, const std::map<std::string, std::string>& headers) {
+std::string Http::POST(std::string url, const std::string& body, const std::string& ContentType, unsigned int* status, const std::map<std::string, std::string>& headers, const bool& redirect) {
     std::string Ret;
     CurlLease Lease{};
     CURL* curl = Lease.GetHandle();
+    if (redirect) {
+        url = RegionHandler::RedirectURL(url);
+    }
     if (curl) {
         CURLcode res;
         char errbuf[CURL_ERROR_SIZE];
@@ -195,6 +203,7 @@ std::string Http::POST(const std::string& url, const std::string& body, const st
         if (res != CURLE_OK) {
             beammp_error("POST to " + url + " failed: " + std::string(curl_easy_strerror(res)));
             beammp_error("Curl error: " + std::string(errbuf));
+            RegionHandler::TopLevelDomainFailed();
             return Http::ErrorString;
         }
 
