@@ -124,8 +124,6 @@ private:
     static inline bool mShutdown { false };
     static inline std::mutex mShutdownHandlersMutex {};
     static inline std::deque<TShutdownHandler> mShutdownHandlers {};
-    static inline int mTLDIndex { 0 };
-    static inline std::vector<std::string> mValidTLDs {"beammp.com", "beammp.ru"};
 
     static inline Version mVersion { 3, 9, 3 };
 };

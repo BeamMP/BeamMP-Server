@@ -30,5 +30,5 @@ public:
     static std::string RedirectURL(const std::string &URL);
 private:
     static inline unsigned int mRegionIndex { 0 };
-    const static inline std::array<std::string, 2> mValidTLDs {"beammp.com", "beammp.ru"};
+    const static inline std::array<std::string, 2> mValidTLDs {"beammp.com", "beammp.net"};
 };
