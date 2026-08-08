@@ -146,7 +146,18 @@ std::string Http::GET(std::string url, unsigned int* status, const bool& redirec
         if (res != CURLE_OK) {
             beammp_error("GET to " + url + " failed: " + std::string(curl_easy_strerror(res)));
             beammp_error("Curl error: " + std::string(errbuf));
+            if (!redirect) {
+                return Http::ErrorString;
+            }
             RegionHandler::TopLevelDomainFailed();
+            url = RegionHandler::RedirectURL(url);
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                beammp_error("GET to " + url + " failed: " + std::string(curl_easy_strerror(res)));
+                beammp_error("Curl error: " + std::string(errbuf));
+                return Http::ErrorString;
+            }
             return Http::ErrorString;
         }
 
@@ -203,7 +214,18 @@ std::string Http::POST(std::string url, const std::string& body, const std::stri
         if (res != CURLE_OK) {
             beammp_error("POST to " + url + " failed: " + std::string(curl_easy_strerror(res)));
             beammp_error("Curl error: " + std::string(errbuf));
+            if (!redirect) {
+                return Http::ErrorString;
+            }
             RegionHandler::TopLevelDomainFailed();
+            url = RegionHandler::RedirectURL(url);
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            res = curl_easy_perform(curl);
+            if (res != CURLE_OK) {
+                beammp_error("GET to " + url + " failed: " + std::string(curl_easy_strerror(res)));
+                beammp_error("Curl error: " + std::string(errbuf));
+                return Http::ErrorString;
+            }
             return Http::ErrorString;
         }
 
