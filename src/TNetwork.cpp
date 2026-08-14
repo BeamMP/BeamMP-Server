@@ -201,7 +201,8 @@ void TNetwork::UDPServerMain() {
                             beammp_debugf("Invalid size for UDP value. IP: {} ID: {}, Size: {}", remote_client_ep.address().to_string(), ID, Data.size());
                             std::stringstream hexData;
                             for (auto c : Data) {
-                                hexData << std::hex << std::setw(2) << std::setfill('0') << c;
+                                hexData << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
+                                hexData << " ";
                             }
                             beammp_debug(hexData.str());
                             return false;
