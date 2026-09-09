@@ -655,7 +655,6 @@ std::string LuaAPI::FS::ConcatPaths(sol::variadic_args Args) {
     return Result;
 }
 
-// Check if a Lua table is a valid array (all keys are integers >= 1)
 static bool IsLuaArray(const sol::table& table) {
     for (const auto& pair : table) {
         if (pair.first.get_type() != sol::type::number) {
