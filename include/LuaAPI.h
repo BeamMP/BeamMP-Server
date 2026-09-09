@@ -32,6 +32,8 @@ namespace MP {
     std::tuple<int, int, int> GetServerVersion();
     std::pair<bool, std::string> TriggerClientEvent(int PlayerID, const std::string& EventName, const sol::object& Data);
     std::pair<bool, std::string> TriggerClientEventJson(int PlayerID, const std::string& EventName, const sol::table& Data);
+    std::pair<bool, std::string> TriggerClientEventUnreliable(int PlayerID, const std::string& EventName, const sol::object& Data);
+    std::pair<bool, std::string> TriggerClientEventJsonUnreliable(int PlayerID, const std::string& EventName, const sol::table& Data);
     inline size_t GetPlayerCount() { return Engine->Server().ClientCount(); }
     std::pair<bool, std::string> DropPlayer(int ID, std::optional<std::string> MaybeReason);
     std::pair<bool, std::string> SendChatMessage(int ID, const std::string& Message, const bool& LogChat = true);
