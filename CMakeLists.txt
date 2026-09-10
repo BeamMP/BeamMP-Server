@@ -86,14 +86,15 @@ set(PRJ_SOURCES
     src/TLuaResult.cpp
 )
 
-find_package(Lua REQUIRED)
+# fix for sol2
+find_path(LUAJIT_INCLUDE_DIR lua.hpp PATH_SUFFIXES luajit)
 
 # set the source file containing main()
 set(PRJ_MAIN src/main.cpp)
 # set the source file containing the test's main
 set(PRJ_TEST_MAIN test/test_main.cpp)
 # set include paths not part of libraries
-set(PRJ_INCLUDE_DIRS ${LUA_INCLUDE_DIR})
+set(PRJ_INCLUDE_DIRS ${LUAJIT_INCLUDE_DIR})
 # set compile features (e.g. standard version)
 set(PRJ_COMPILE_FEATURES cxx_std_20)
 # set #defines (test enable/disable not included here)
@@ -111,8 +112,10 @@ set(PRJ_LIBRARIES
     libzip::zip
     OpenSSL::SSL OpenSSL::Crypto
     CURL::libcurl
-    ${LUA_LIBRARIES}
+    lua51
 )
+
+link_directories(${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib)
 
 # add dependency find_package calls and similar here
 find_package(fmt CONFIG REQUIRED)
