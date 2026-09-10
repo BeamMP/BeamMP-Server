@@ -39,8 +39,8 @@
 namespace fs = std::filesystem;
 
 namespace Http {
-std::string GET(const std::string& url, unsigned int* status = nullptr);
-std::string POST(const std::string& url, const std::string& body, const std::string& ContentType, unsigned int* status = nullptr, const std::map<std::string, std::string>& headers = {});
+std::string GET(std::string url, unsigned int* status = nullptr, const bool& redirect = true);
+std::string POST(std::string url, const std::string& body, const std::string& ContentType, unsigned int* status = nullptr, const std::map<std::string, std::string>& headers = {}, const bool& redirect = true);
 namespace Status {
     std::string ToString(int code);
 }

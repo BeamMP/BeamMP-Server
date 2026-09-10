@@ -25,6 +25,7 @@
 #include "Http.h"
 #include "LuaAPI.h"
 #include "TLuaEngine.h"
+#include "RegionHandler.h"
 
 #include <ctime>
 #include <lua.hpp>

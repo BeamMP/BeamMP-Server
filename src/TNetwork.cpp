@@ -21,6 +21,7 @@
 #include "Common.h"
 #include "Env.h"
 #include "LuaAPI.h"
+#include "RegionHandler.h"
 #include "TConnectionLimiter.h"
 #include "THeartbeatThread.h"
 #include "TLuaEngine.h"

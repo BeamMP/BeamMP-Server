@@ -87,6 +87,7 @@ struct Settings {
         General_Debug,
         General_AllowGuests,
         General_InformationPacket,
+        General_Region,
     };
 
     Sync<std::unordered_map<Key, SettingsTypeVariant>> SettingsMap;
