@@ -819,6 +819,39 @@ void TNetwork::UpdatePlayer(TClient& Client) {
     });
     Packet = Packet.substr(0, Packet.length() - 1);
     Client.EnqueuePacket(StringToVector(Packet));
+
+    std::vector<uint8_t> PingsPacket = StringToVector("Sp");
+
+    PingsPacket.push_back(0);
+
+    uint8_t amount = 0;
+
+    mServer.ForEachClient([&](const std::weak_ptr<TClient>& ClientPtr) -> bool {
+        if (amount == UINT8_MAX) {
+            beammp_debugf("Client ping packet overflow");
+            return false;
+        }
+        ReadLock Lock(mServer.GetClientMutex());
+        if (const auto c = ClientPtr.lock()) {
+            int ID = c->GetID();
+            if (ID < 0 || ID > UINT8_MAX) {
+                beammp_debugf("Invalid ID found: {}", ID);
+                return true;
+            }
+            PingsPacket.push_back(static_cast<uint8_t>(ID));
+            const uint16_t ping = c->GetSelfPing();
+
+            PingsPacket.push_back(static_cast<uint8_t>(ping));
+            PingsPacket.push_back(static_cast<uint8_t>(ping >> 8));
+
+            amount++;
+        }
+        return true;
+    });
+
+    PingsPacket[2] = amount;
+
+    Client.EnqueuePacket(PingsPacket);
     //(void)Respond(Client, Packet, true);
 }
 

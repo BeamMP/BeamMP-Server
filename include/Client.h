@@ -85,10 +85,12 @@ public:
     [[nodiscard]] std::string GetName() const { return mName; }
     void SetUnicycleID(int ID) { mUnicycleID = ID; }
     void SetID(int ID) { mID = ID; }
+    void SetSelfPing(uint16_t ping ) { mSelfPing = ping; }
     [[nodiscard]] int GetOpenCarID() const;
     [[nodiscard]] int GetCarCount() const;
     void ClearCars();
     [[nodiscard]] int GetID() const { return mID; }
+    [[nodiscard]] uint16_t GetSelfPing() const { return mSelfPing; }
     [[nodiscard]] int GetUnicycleID() const { return mUnicycleID; }
     [[nodiscard]] bool IsUDPConnected() const { return mIsUDPConnected; }
     [[nodiscard]] bool IsSynced() const { return mIsSynced; }
@@ -139,6 +141,7 @@ private:
     std::string mRole;
     std::string mDID;
     int mID = -1;
+    uint16_t mSelfPing = 0;
     std::chrono::time_point<std::chrono::high_resolution_clock> mLastPingTime = std::chrono::high_resolution_clock::now();
     std::vector<uint8_t> mMagic;
 };
