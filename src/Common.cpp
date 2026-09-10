@@ -398,6 +398,13 @@ static constexpr size_t MAX_DECOMPRESSION_BUFFER_SIZE = 30 * 1024 * 1024;
 std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
     beammp_debugf("got {} bytes of input data", input.size());
 
+    // An empty body (e.g. a bare 4-byte "ABG:" frame) can never decompress into anything; reject it
+    // up front. NOTE: this guard is required for the capped doubling below to be safe -- with a
+    // 0-size buffer, 0 * 2 stays 0 and the loop would never terminate.
+    if (input.empty()) {
+        throw std::runtime_error("empty compressed input");
+    }
+
     // start with a decompression buffer of 5x the input size, clamped to a maximum of 15 MB.
     // this buffer can and will grow, but we don't want to start it too large. A 5x compression ratio
     // is pretty optimistic.
@@ -420,8 +427,12 @@ std::vector<uint8_t> DeComp(std::span<const uint8_t> input) {
             if (output_buffer.size() >= MAX_DECOMPRESSION_BUFFER_SIZE) {
                 throw std::runtime_error(fmt::format("decompressed packet size of {} bytes exceeded", MAX_DECOMPRESSION_BUFFER_SIZE));
             }
-            // if decompression fails, we double the buffer size (up to the allowed limit) and try again
-            output_buffer.resize(std::max<size_t>(output_buffer.size() * 2, MAX_DECOMPRESSION_BUFFER_SIZE));
+            // if decompression fails, we double the buffer size (up to the allowed limit) and try again.
+            // Must be std::min: with std::max the buffer jumps straight to the 30 MB cap on the first
+            // retry (size * 2 is almost always < the cap), so every packet that needed one grow
+            // allocated the full 30 MB instead of doubling as the comment above intends. The >= cap
+            // check above still terminates the loop.
+            output_buffer.resize(std::min<size_t>(output_buffer.size() * 2, MAX_DECOMPRESSION_BUFFER_SIZE));
             beammp_warnf("zlib uncompress() failed, trying with a larger buffer size of {}", output_buffer.size());
             output_size = output_buffer.size();
         } else if (res != Z_OK) {
