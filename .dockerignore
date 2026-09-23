@@ -1,0 +1,26 @@
+.git/
+build/
+cmake-build-*/
+bin/
+out/
+.cache/
+**/.DS_Store
+
+# IDE
+.idea/
+.vs/
+*.user
+*.suo
+
+# CI
+.github/
+
+# Scripts
+scripts/
+
+# Docs
+*.md
+!README.md
+
+# Docker files
+docker-compose*.yml

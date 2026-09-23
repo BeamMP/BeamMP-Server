@@ -1,0 +1,18 @@
+services:
+  beammp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/beammp/beammp-server
+    container_name: beammp-server
+    restart: unless-stopped
+    ports:
+      - "${BEAMMP_PORT}:${BEAMMP_PORT}/tcp"
+      - "${BEAMMP_PORT}:${BEAMMP_PORT}/udp"
+    volumes:
+      - ./Resources:/app/Resources
+    env_file:
+      - .env
+    environment:
+      - BEAMMP_PROVIDER_DISABLE_CONFIG=true
+

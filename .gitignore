@@ -478,3 +478,8 @@ callgrind.*
 notes/*
 compile_commands.json
 nohup.out
+
+build/
+
+# Ignore Docker env file
+.env
