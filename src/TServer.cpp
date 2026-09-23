@@ -217,12 +217,18 @@ void TServer::GlobalParser(const std::weak_ptr<TClient>& Client, std::vector<uin
     }
     switch (Code) {
     case 't':
-        if (!udp && Packet.size() == 9) {
-            auto Time = GetServerTimeMS();
+        if (!udp && Packet.size() == 11) {
+            uint64_t Time = GetServerTimeMS();
 
             std::vector<uint8_t> ServerTime(sizeof(uint64_t));
             std::memcpy(ServerTime.data(), &Time, sizeof(uint64_t));
 
+            uint16_t selfPing = 0;
+            std::memcpy(&selfPing, &Packet[Packet.size() - 2], sizeof(uint16_t));
+
+            LockedClient->SetSelfPing(selfPing);
+
+            Packet.erase(Packet.end() - 2,Packet.end());
             auto Data = Packet;
 
             beammp_debugf("Sending server time {} to client  '{}' ({}), client time: {}", Time, LockedClient->GetName(), LockedClient->GetID(), reinterpret_cast<uint64_t>(Data.data()));
