@@ -66,15 +66,20 @@ void TResourceManager::RefreshFiles() {
 
     nlohmann::json modsDB;
 
-    if (std::filesystem::exists(Path + "/mods.json")) {
-        try {
-            std::ifstream stream(Path + "/mods.json");
+    auto modsJsonPath = Path + "/mods.json";
+    if (std::filesystem::exists(modsJsonPath)) {
+        if (std::filesystem::file_size(modsJsonPath) > 0) {
+            try {
+                std::ifstream stream(modsJsonPath);
 
-            stream >> modsDB;
+                stream >> modsDB;
 
-            stream.close();
-        } catch (const std::exception& e) {
-            beammp_errorf("Failed to load mods.json: {}", e.what());
+                stream.close();
+            } catch (const std::exception& e) {
+                beammp_errorf("Failed to load mods.json: {}", e.what());
+            }
+        } else {
+            beammp_warn("Mods database file is empty, ignoring it");
         }
     }
 
@@ -220,20 +225,21 @@ void TResourceManager::SetProtected(const std::string& ModName, bool Protected) 
         try {
             nlohmann::json modsDB;
 
-            std::fstream stream(modsDBPath);
-
-            stream >> modsDB;
+            if (std::filesystem::file_size(modsDBPath) > 0) {
+                std::ifstream inStream(modsDBPath);
+                inStream >> modsDB;
+                inStream.close();
+            } else {
+                beammp_warn("Mods database file is empty, regenerating it");
+            }
 
             if (modsDB.contains(ModName)) {
                 modsDB[ModName]["protected"] = Protected;
             }
 
-            stream.clear();
-            stream.seekp(0, std::ios::beg);
-
-            stream << modsDB.dump(4);
-
-            stream.close();
+            std::ofstream outStream(modsDBPath);
+            outStream << modsDB.dump(4);
+            outStream.close();
         } catch (const std::exception& e) {
             beammp_errorf("Failed to update mods.json: {}", e.what());
         }
