@@ -260,8 +260,7 @@ void TConsole::Command_Version(const std::string& cmd, const std::vector<std::st
 
     Application::Console().WriteRaw("Platform: " + platform);
     Application::Console().WriteRaw("Server:   v" + Application::ServerVersionString());
-    std::string lua_version = fmt::format("Lua:      v{}.{}.{}", LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE);
-    Application::Console().WriteRaw(lua_version);
+    Application::Console().WriteRaw(LUA_RELEASE);
     std::string openssl_version = fmt::format("OpenSSL:  v{}.{}.{}", OPENSSL_VERSION_MAJOR, OPENSSL_VERSION_MINOR, OPENSSL_VERSION_PATCH);
     Application::Console().WriteRaw(openssl_version);
 }
