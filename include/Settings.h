@@ -81,6 +81,7 @@ struct Settings {
         General_Private,
         General_IP,
         General_Port,
+        General_RegisterIPv6,
         General_MaxCars,
         General_LogChat,
         General_ResourceFolder,
