@@ -35,6 +35,7 @@
 #include "Compat.h"
 #include "CustomAssert.h"
 #include "Http.h"
+#include "RegionHandler.h"
 
 void Application::RegisterShutdownHandler(const TShutdownHandler& Handler) {
     std::unique_lock Lock(mShutdownHandlersMutex);
@@ -71,6 +72,27 @@ void Application::GracefullyShutdown() {
 
 std::string Application::ServerVersionString() {
     return mVersion.AsString();
+}
+
+std::vector<std::string> Application::GetBackendUrlsInOrder() {
+    return {
+        "https://backend.beammp.com",
+    };
+}
+
+std::string Application::GetServerCheckUrl()
+{
+    return "https://check.beammp.com";
+}
+
+std::string Application::GetBackendUrlForAuth()
+{
+    return "https://auth.beammp.com";
+}
+
+std::string Application::GetBackendUrlForSocketIO()
+{
+    return "https://backend.beammp.com";
 }
 
 std::array<uint8_t, 3> Application::VersionStrToInts(const std::string& str) {

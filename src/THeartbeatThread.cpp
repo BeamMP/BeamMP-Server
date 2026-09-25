@@ -22,9 +22,9 @@
 #include "Client.h"
 #include "Common.h"
 #include "Http.h"
+#include "RegionHandler.h"
 // #include "SocketIO.h"
 #include <nlohmann/json.hpp>
-#include <sstream>
 
 void THeartbeatThread::operator()() {
     RegisterThread("Heartbeat");
