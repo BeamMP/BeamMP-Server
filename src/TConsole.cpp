@@ -30,6 +30,7 @@
 #include <lua.hpp>
 #include <mutex>
 #include <openssl/opensslv.h>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
@@ -73,6 +74,62 @@ TEST_CASE("TrimString") {
     CHECK(TrimString("  ") == "");
     CHECK(TrimString(" \t\n\r ") == "");
     CHECK(TrimString("") == "");
+}
+
+static std::string ConvertColorCodes(const std::string& input) {
+    static const std::unordered_map<char, std::string> ColorMap = {
+        { 'r', "\x1b[0m" },    // reset
+        { 'p', "\n" },         // newline
+        { 'n', "\x1b[4m" },    // underline
+        { 'l', "\x1b[1m" },    // bold
+        { 'm', "\x1b[9m" },    // strike-through
+        { 'o', "\x1b[3m" },    // italic
+        { '0', "\x1b[30m" },   // black
+        { '1', "\x1b[34m" },   // blue
+        { '2', "\x1b[32m" },   // green
+        { '3', "\x1b[36m" },   // cyan
+        { '4', "\x1b[31m" },   // red
+        { '5', "\x1b[35m" },   // magenta
+        { '6', "\x1b[33m" },   // yellow/orange
+        { '7', "\x1b[37m" },   // white
+        { '8', "\x1b[90m" },   // dark gray
+        { '9', "\x1b[94m" },   // light blue
+        { 'a', "\x1b[92m" },   // light green
+        { 'b', "\x1b[96m" },   // light cyan
+        { 'c', "\x1b[91m" },   // light red
+        { 'd', "\x1b[95m" },   // light magenta
+        { 'e', "\x1b[93m" },   // light yellow
+        { 'f', "\x1b[97m" },   // bright white
+    };
+
+    std::string result;
+    result.reserve(input.size());
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (input[i] == '^' && i + 1 < input.size()) {
+            char code = static_cast<char>(std::tolower(static_cast<unsigned char>(input[i + 1])));
+            auto it = ColorMap.find(code);
+            if (it != ColorMap.end()) {
+                result += it->second;
+                ++i;
+                continue;
+            }
+        }
+        result += input[i];
+    }
+
+    return result;
+}
+
+TEST_CASE("ConvertColorCodes") {
+    CHECK(ConvertColorCodes("^rHello") == "\x1b[0mHello");
+    CHECK(ConvertColorCodes("^4Red^r") == "\x1b[31mRed\x1b[0m");
+    CHECK(ConvertColorCodes("^lBold^r") == "\x1b[1mBold\x1b[0m");
+    CHECK(ConvertColorCodes("No codes") == "No codes");
+    CHECK(ConvertColorCodes("^") == "^");
+    CHECK(ConvertColorCodes("^^") == "^^");
+    CHECK(ConvertColorCodes("^z") == "^z");
+    CHECK(ConvertColorCodes("^2Green ^4Red^r") == "\x1b[32mGreen \x1b[31mRed\x1b[0m");
 }
 
 static std::string GetDate() {
@@ -905,7 +962,7 @@ void TConsole::InitializeCommandline() {
 }
 
 void TConsole::Write(const std::string& str) {
-    auto ToWrite = GetDate() + str;
+    auto ToWrite = GetDate() + ConvertColorCodes(str);
     // allows writing to stdout without an initialized console
     if (mCommandline) {
         mCommandline->write(ToWrite);
@@ -915,11 +972,12 @@ void TConsole::Write(const std::string& str) {
 }
 
 void TConsole::WriteRaw(const std::string& str) {
+    auto ToWrite = ConvertColorCodes(str);
     // allows writing to stdout without an initialized console
     if (mCommandline) {
-        mCommandline->write(str);
+        mCommandline->write(ToWrite);
     } else {
-        std::cout << str << std::endl;
+        std::cout << ToWrite << std::endl;
     }
 }
 
