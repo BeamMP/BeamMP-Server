@@ -66,7 +66,7 @@ void Application::GracefullyShutdown() {
         beammp_info("Subsystem " + std::to_string(i + 1) + "/" + std::to_string(mShutdownHandlers.size()) + " shutting down");
         mShutdownHandlers[i]();
     }
-    // std::exit(-1);
+    std::_Exit(0);
 }
 
 std::string Application::ServerVersionString() {
