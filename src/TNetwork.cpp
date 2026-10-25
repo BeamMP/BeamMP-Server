@@ -152,11 +152,13 @@ void TNetwork::UDPServerMain() {
         std::this_thread::sleep_for(std::chrono::seconds(5));
         Application::GracefullyShutdown();
     }
-    // set IP_V6ONLY to false to allow both v4 and v6
-    boost::asio::ip::v6_only option(false);
-    mUDPSock.set_option(option, ec);
-    if (ec) {
-        beammp_warnf("Failed to unset IP_V6ONLY on UDP, only IPv6 will work: {}", ec.message());
+    if (UdpListenEndpoint.protocol() == boost::asio::ip::udp::v6()) {
+        // set IP_V6ONLY to false to allow both v4 and v6 (dual-stack)
+        boost::asio::ip::v6_only option(false);
+        mUDPSock.set_option(option, ec);
+        if (ec) {
+            beammp_warnf("Failed to unset IP_V6ONLY on UDP, only IPv6 will work: {}", ec.message());
+        }
     }
     mUDPSock.bind(UdpListenEndpoint, ec);
     if (ec) {
@@ -245,17 +247,19 @@ void TNetwork::TCPServerMain() {
     boost::asio::ip::tcp::endpoint ListenEp(address,
         uint16_t(Application::Settings.getAsInt(Settings::Key::General_Port)));
 
-    boost::asio::ip::tcp::socket Listener(mServer.IoCtx());
-    Listener.open(ListenEp.protocol(), ec);
+    boost::asio::ip::tcp::acceptor Acceptor(mServer.IoCtx());
+    Acceptor.open(ListenEp.protocol(), ec);
     if (ec) {
         beammp_errorf("Failed to open socket: {}", ec.message());
         return;
     }
-    // set IP_V6ONLY to false to allow both v4 and v6
-    boost::asio::ip::v6_only option(false);
-    Listener.set_option(option, ec);
-    if (ec) {
-        beammp_warnf("Failed to unset IP_V6ONLY on TCP, only IPv6 will work: {}", ec.message());
+    if (ListenEp.protocol() == boost::asio::ip::tcp::v6()) {
+        // set IP_V6ONLY to false to allow both v4 and v6 (dual-stack)
+        boost::asio::ip::v6_only option(false);
+        Acceptor.set_option(option, ec);
+        if (ec) {
+            beammp_warnf("Failed to unset IP_V6ONLY on TCP, only IPv6 will work: {}", ec.message());
+        }
     }
 #if defined(BEAMMP_FREEBSD)
     beammp_warnf("WARNING: On FreeBSD, for IPv4 to work, you must run `sysctl net.inet6.ip6.v6only=0`!");
@@ -263,14 +267,21 @@ void TNetwork::TCPServerMain() {
 #endif
     socket_base::linger LingerOpt { };
     LingerOpt.enabled(false);
-    Listener.set_option(LingerOpt, ec);
+    Acceptor.set_option(LingerOpt, ec);
     if (ec) {
         beammp_errorf("Failed to set up listening socket to not linger / reuse address. "
                       "This may cause the socket to refuse to bind(). Error: {}",
             ec.message());
     }
 
-    boost::asio::ip::tcp::acceptor Acceptor(mServer.IoCtx(), ListenEp);
+    Acceptor.bind(ListenEp, ec);
+    if (ec) {
+        beammp_errorf("bind() failed, which is needed for the server to operate. "
+                      "Shutting down. Error: {}",
+            ec.message());
+        Application::GracefullyShutdown();
+        return;
+    }
     Acceptor.listen(socket_base::max_listen_connections, ec);
     if (ec) {
         beammp_errorf("listen() failed, which is needed for the server to operate. "
@@ -379,16 +390,23 @@ std::string HashPassword(const std::string& str) {
     return ret.str();
 }
 
+std::string NormalizeClientIP(const ip::address& Addr) {
+    if (Addr.is_v6() && Addr.to_v6().is_v4_mapped()) {
+        return boost::asio::ip::make_address_v4(ip::v4_mapped_t::v4_mapped, Addr.to_v6()).to_string();
+    }
+    return Addr.to_string();
+}
+
 std::shared_ptr<TClient> TNetwork::Authentication(TConnection&& RawConnection) {
     auto Client = CreateClient(std::move(RawConnection.Socket));
-    std::string ip = "";
-    if (RawConnection.SockAddr.address().to_v6().is_v4_mapped()) {
-        ip = boost::asio::ip::make_address_v4(ip::v4_mapped_t::v4_mapped, RawConnection.SockAddr.address().to_v6()).to_string();
-    } else {
-        ip = RawConnection.SockAddr.address().to_string();
-    }
+    const auto& Addr = RawConnection.SockAddr.address();
+    std::string ip = NormalizeClientIP(Addr);
     Client->SetIdentifier("ip", ip);
-    beammp_tracef("This thread is ip {} ({})", ip, RawConnection.SockAddr.address().to_v6().is_v4_mapped() ? "IPv4 mapped IPv6" : "IPv6");
+    const char* Kind = "IPv4";
+    if (Addr.is_v6()) {
+        Kind = Addr.to_v6().is_v4_mapped() ? "IPv4 mapped IPv6" : "IPv6";
+    }
+    beammp_tracef("This thread is ip {} ({})", ip, Kind);
 
     if (Application::GetSubsystemStatuses().at("Main") == Application::Status::Starting) {
         ClientKick(*Client, "The server is still starting, please try joining again later.");
@@ -1398,4 +1416,17 @@ std::vector<uint8_t> TNetwork::UDPRcvFromClient(boost::asio::ip::udp::endpoint& 
     }
     beammp_assert(Rcv <= Ret.size());
     return std::vector<uint8_t>(Ret.begin(), Ret.begin() + Rcv);
+}
+
+TEST_CASE("NormalizeClientIP") {
+    using boost::asio::ip::make_address;
+    // plain IPv4 (e.g. server bound to 0.0.0.0) must not throw
+    CHECK(NormalizeClientIP(make_address("192.0.2.1")) == "192.0.2.1");
+    CHECK(NormalizeClientIP(make_address("127.0.0.1")) == "127.0.0.1");
+    // IPv4-mapped IPv6 (dual-stack socket) is unmapped to plain IPv4
+    CHECK(NormalizeClientIP(make_address("::ffff:192.0.2.1")) == "192.0.2.1");
+    CHECK(NormalizeClientIP(make_address("::ffff:127.0.0.1")) == "127.0.0.1");
+    // native IPv6 is kept as-is
+    CHECK(NormalizeClientIP(make_address("::1")) == "::1");
+    CHECK(NormalizeClientIP(make_address("2001:db8::1")) == "2001:db8::1");
 }

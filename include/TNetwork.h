@@ -80,3 +80,4 @@ private:
 
 std::string HashPassword(const std::string& str);
 std::vector<uint8_t> StringToVector(const std::string& Str);
+std::string NormalizeClientIP(const boost::asio::ip::address& Addr);
